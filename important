@@ -1,0 +1,1 @@
+call vcvars64.bat && kalamake --compile project.kmake global when compiling

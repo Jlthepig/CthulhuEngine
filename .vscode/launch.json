@@ -1,0 +1,635 @@
+{
+    "version": "0.2.0",
+    "configurations": [
+        {
+            "name": "",
+            "type": "cppvsdbg",
+            "request": "launch",
+            "program": "${workspaceFolder}/build\\Cthulhu.exe",
+            "args": [],
+            "cwd": "${workspaceFolder}",
+            "stopAtEntry": false,
+            "console": "integratedTerminal"
+        },
+        {
+            "name": "",
+            "type": "cppvsdbg",
+            "request": "launch",
+            "program": "${workspaceFolder}/build\\Cthulhu.exe",
+            "args": [],
+            "cwd": "${workspaceFolder}",
+            "stopAtEntry": false,
+            "console": "integratedTerminal"
+        },
+        {
+            "name": "",
+            "type": "cppvsdbg",
+            "request": "launch",
+            "program": "${workspaceFolder}/build\\Cthulhu.exe",
+            "args": [],
+            "cwd": "${workspaceFolder}",
+            "stopAtEntry": false,
+            "console": "integratedTerminal"
+        },
+        {
+            "name": "",
+            "type": "cppvsdbg",
+            "request": "launch",
+            "program": "${workspaceFolder}/build\\Cthulhu.exe",
+            "args": [],
+            "cwd": "${workspaceFolder}",
+            "stopAtEntry": false,
+            "console": "integratedTerminal"
+        },
+        {
+            "name": "",
+            "type": "cppvsdbg",
+            "request": "launch",
+            "program": "${workspaceFolder}/build\\Cthulhu.exe",
+            "args": [],
+            "cwd": "${workspaceFolder}",
+            "stopAtEntry": false,
+            "console": "integratedTerminal"
+        },
+        {
+            "name": "",
+            "type": "cppvsdbg",
+            "request": "launch",
+            "program": "${workspaceFolder}/build\\Cthulhu.exe",
+            "args": [],
+            "cwd": "${workspaceFolder}",
+            "stopAtEntry": false,
+            "console": "integratedTerminal"
+        },
+        {
+            "name": "",
+            "type": "cppvsdbg",
+            "request": "launch",
+            "program": "${workspaceFolder}/build\\Cthulhu.exe",
+            "args": [],
+            "cwd": "${workspaceFolder}",
+            "stopAtEntry": false,
+            "console": "integratedTerminal"
+        },
+        {
+            "name": "",
+            "type": "cppvsdbg",
+            "request": "launch",
+            "program": "${workspaceFolder}/build\\Cthulhu.exe",
+            "args": [],
+            "cwd": "${workspaceFolder}",
+            "stopAtEntry": false,
+            "console": "integratedTerminal"
+        },
+        {
+            "name": "",
+            "type": "cppvsdbg",
+            "request": "launch",
+            "program": "${workspaceFolder}/build\\Cthulhu.exe",
+            "args": [],
+            "cwd": "${workspaceFolder}",
+            "stopAtEntry": false,
+            "console": "integratedTerminal"
+        },
+        {
+            "name": "",
+            "type": "cppvsdbg",
+            "request": "launch",
+            "program": "${workspaceFolder}/build\\Cthulhu.exe",
+            "args": [],
+            "cwd": "${workspaceFolder}",
+            "stopAtEntry": false,
+            "console": "integratedTerminal"
+        },
+        {
+            "name": "",
+            "type": "cppvsdbg",
+            "request": "launch",
+            "program": "${workspaceFolder}/build\\Cthulhu.exe",
+            "args": [],
+            "cwd": "${workspaceFolder}",
+            "stopAtEntry": false,
+            "console": "integratedTerminal"
+        },
+        {
+            "name": "",
+            "type": "cppvsdbg",
+            "request": "launch",
+            "program": "${workspaceFolder}/build\\Cthulhu.exe",
+            "args": [],
+            "cwd": "${workspaceFolder}",
+            "stopAtEntry": false,
+            "console": "integratedTerminal"
+        },
+        {
+            "name": "",
+            "type": "cppvsdbg",
+            "request": "launch",
+            "program": "${workspaceFolder}/build\\Cthulhu.exe",
+            "args": [],
+            "cwd": "${workspaceFolder}",
+            "stopAtEntry": false,
+            "console": "integratedTerminal"
+        },
+        {
+            "name": "",
+            "type": "cppvsdbg",
+            "request": "launch",
+            "program": "${workspaceFolder}/build\\Cthulhu.exe",
+            "args": [],
+            "cwd": "${workspaceFolder}",
+            "stopAtEntry": false,
+            "console": "integratedTerminal"
+        },
+        {
+            "name": "",
+            "type": "cppvsdbg",
+            "request": "launch",
+            "program": "${workspaceFolder}/build\\Cthulhu.exe",
+            "args": [],
+            "cwd": "${workspaceFolder}",
+            "stopAtEntry": false,
+            "console": "integratedTerminal"
+        },
+        {
+            "name": "",
+            "type": "cppvsdbg",
+            "request": "launch",
+            "program": "${workspaceFolder}/build\\Cthulhu.exe",
+            "args": [],
+            "cwd": "${workspaceFolder}",
+            "stopAtEntry": false,
+            "console": "integratedTerminal"
+        },
+        {
+            "name": "",
+            "type": "cppvsdbg",
+            "request": "launch",
+            "program": "${workspaceFolder}/build\\Cthulhu.exe",
+            "args": [],
+            "cwd": "${workspaceFolder}",
+            "stopAtEntry": false,
+            "console": "integratedTerminal"
+        },
+        {
+            "name": "",
+            "type": "cppvsdbg",
+            "request": "launch",
+            "program": "${workspaceFolder}/build\\Cthulhu.exe",
+            "args": [],
+            "cwd": "${workspaceFolder}",
+            "stopAtEntry": false,
+            "console": "integratedTerminal"
+        },
+        {
+            "name": "",
+            "type": "cppvsdbg",
+            "request": "launch",
+            "program": "${workspaceFolder}/build\\Cthulhu.exe",
+            "args": [],
+            "cwd": "${workspaceFolder}",
+            "stopAtEntry": false,
+            "console": "integratedTerminal"
+        },
+        {
+            "name": "",
+            "type": "cppvsdbg",
+            "request": "launch",
+            "program": "${workspaceFolder}/build\\Cthulhu.exe",
+            "args": [],
+            "cwd": "${workspaceFolder}",
+            "stopAtEntry": false,
+            "console": "integratedTerminal"
+        },
+        {
+            "name": "",
+            "type": "cppvsdbg",
+            "request": "launch",
+            "program": "${workspaceFolder}/build\\Cthulhu.exe",
+            "args": [],
+            "cwd": "${workspaceFolder}",
+            "stopAtEntry": false,
+            "console": "integratedTerminal"
+        },
+        {
+            "name": "",
+            "type": "cppvsdbg",
+            "request": "launch",
+            "program": "${workspaceFolder}/build\\Cthulhu.exe",
+            "args": [],
+            "cwd": "${workspaceFolder}",
+            "stopAtEntry": false,
+            "console": "integratedTerminal"
+        },
+        {
+            "name": "",
+            "type": "cppvsdbg",
+            "request": "launch",
+            "program": "${workspaceFolder}/build\\Cthulhu.exe",
+            "args": [],
+            "cwd": "${workspaceFolder}",
+            "stopAtEntry": false,
+            "console": "integratedTerminal"
+        },
+        {
+            "name": "",
+            "type": "cppvsdbg",
+            "request": "launch",
+            "program": "${workspaceFolder}/build\\Cthulhu.exe",
+            "args": [],
+            "cwd": "${workspaceFolder}",
+            "stopAtEntry": false,
+            "console": "integratedTerminal"
+        },
+        {
+            "name": "",
+            "type": "cppvsdbg",
+            "request": "launch",
+            "program": "${workspaceFolder}/build\\Cthulhu.exe",
+            "args": [],
+            "cwd": "${workspaceFolder}",
+            "stopAtEntry": false,
+            "console": "integratedTerminal"
+        },
+        {
+            "name": "",
+            "type": "cppvsdbg",
+            "request": "launch",
+            "program": "${workspaceFolder}/build\\Cthulhu.exe",
+            "args": [],
+            "cwd": "${workspaceFolder}",
+            "stopAtEntry": false,
+            "console": "integratedTerminal"
+        },
+        {
+            "name": "",
+            "type": "cppvsdbg",
+            "request": "launch",
+            "program": "${workspaceFolder}/build\\Cthulhu.exe",
+            "args": [],
+            "cwd": "${workspaceFolder}",
+            "stopAtEntry": false,
+            "console": "integratedTerminal"
+        },
+        {
+            "name": "",
+            "type": "cppvsdbg",
+            "request": "launch",
+            "program": "${workspaceFolder}/build\\Cthulhu.exe",
+            "args": [],
+            "cwd": "${workspaceFolder}",
+            "stopAtEntry": false,
+            "console": "integratedTerminal"
+        },
+        {
+            "name": "",
+            "type": "cppvsdbg",
+            "request": "launch",
+            "program": "${workspaceFolder}/build\\Cthulhu.exe",
+            "args": [],
+            "cwd": "${workspaceFolder}",
+            "stopAtEntry": false,
+            "console": "integratedTerminal"
+        },
+        {
+            "name": "",
+            "type": "cppvsdbg",
+            "request": "launch",
+            "program": "${workspaceFolder}/build\\Cthulhu.exe",
+            "args": [],
+            "cwd": "${workspaceFolder}",
+            "stopAtEntry": false,
+            "console": "integratedTerminal"
+        },
+        {
+            "name": "",
+            "type": "cppvsdbg",
+            "request": "launch",
+            "program": "${workspaceFolder}/build\\Cthulhu.exe",
+            "args": [],
+            "cwd": "${workspaceFolder}",
+            "stopAtEntry": false,
+            "console": "integratedTerminal"
+        },
+        {
+            "name": "",
+            "type": "cppvsdbg",
+            "request": "launch",
+            "program": "${workspaceFolder}/build\\Cthulhu.exe",
+            "args": [],
+            "cwd": "${workspaceFolder}",
+            "stopAtEntry": false,
+            "console": "integratedTerminal"
+        },
+        {
+            "name": "",
+            "type": "cppvsdbg",
+            "request": "launch",
+            "program": "${workspaceFolder}/build\\Cthulhu.exe",
+            "args": [],
+            "cwd": "${workspaceFolder}",
+            "stopAtEntry": false,
+            "console": "integratedTerminal"
+        },
+        {
+            "name": "",
+            "type": "cppvsdbg",
+            "request": "launch",
+            "program": "${workspaceFolder}/build\\Cthulhu.exe",
+            "args": [],
+            "cwd": "${workspaceFolder}",
+            "stopAtEntry": false,
+            "console": "integratedTerminal"
+        },
+        {
+            "name": "",
+            "type": "cppvsdbg",
+            "request": "launch",
+            "program": "${workspaceFolder}/build\\Cthulhu.exe",
+            "args": [],
+            "cwd": "${workspaceFolder}",
+            "stopAtEntry": false,
+            "console": "integratedTerminal"
+        },
+        {
+            "name": "",
+            "type": "cppvsdbg",
+            "request": "launch",
+            "program": "${workspaceFolder}/build\\Cthulhu.exe",
+            "args": [],
+            "cwd": "${workspaceFolder}",
+            "stopAtEntry": false,
+            "console": "integratedTerminal"
+        },
+        {
+            "name": "",
+            "type": "cppvsdbg",
+            "request": "launch",
+            "program": "${workspaceFolder}/build\\Cthulhu.exe",
+            "args": [],
+            "cwd": "${workspaceFolder}",
+            "stopAtEntry": false,
+            "console": "integratedTerminal"
+        },
+        {
+            "name": "",
+            "type": "cppvsdbg",
+            "request": "launch",
+            "program": "${workspaceFolder}/build\\Cthulhu.exe",
+            "args": [],
+            "cwd": "${workspaceFolder}",
+            "stopAtEntry": false,
+            "console": "integratedTerminal"
+        },
+        {
+            "name": "",
+            "type": "cppvsdbg",
+            "request": "launch",
+            "program": "${workspaceFolder}/build\\Cthulhu.exe",
+            "args": [],
+            "cwd": "${workspaceFolder}",
+            "stopAtEntry": false,
+            "console": "integratedTerminal"
+        },
+        {
+            "name": "",
+            "type": "cppvsdbg",
+            "request": "launch",
+            "program": "${workspaceFolder}/build\\Cthulhu.exe",
+            "args": [],
+            "cwd": "${workspaceFolder}",
+            "stopAtEntry": false,
+            "console": "integratedTerminal"
+        },
+        {
+            "name": "",
+            "type": "cppvsdbg",
+            "request": "launch",
+            "program": "${workspaceFolder}/build\\Cthulhu.exe",
+            "args": [],
+            "cwd": "${workspaceFolder}",
+            "stopAtEntry": false,
+            "console": "integratedTerminal"
+        },
+        {
+            "name": "",
+            "type": "cppvsdbg",
+            "request": "launch",
+            "program": "${workspaceFolder}/build\\Cthulhu.exe",
+            "args": [],
+            "cwd": "${workspaceFolder}",
+            "stopAtEntry": false,
+            "console": "integratedTerminal"
+        },
+        {
+            "name": "",
+            "type": "cppvsdbg",
+            "request": "launch",
+            "program": "${workspaceFolder}/build\\Cthulhu.exe",
+            "args": [],
+            "cwd": "${workspaceFolder}",
+            "stopAtEntry": false,
+            "console": "integratedTerminal"
+        },
+        {
+            "name": "",
+            "type": "cppvsdbg",
+            "request": "launch",
+            "program": "${workspaceFolder}/build\\Cthulhu.exe",
+            "args": [],
+            "cwd": "${workspaceFolder}",
+            "stopAtEntry": false,
+            "console": "integratedTerminal"
+        },
+        {
+            "name": "",
+            "type": "cppvsdbg",
+            "request": "launch",
+            "program": "${workspaceFolder}/build\\Cthulhu.exe",
+            "args": [],
+            "cwd": "${workspaceFolder}",
+            "stopAtEntry": false,
+            "console": "integratedTerminal"
+        },
+        {
+            "name": "",
+            "type": "cppvsdbg",
+            "request": "launch",
+            "program": "${workspaceFolder}/build\\Cthulhu.exe",
+            "args": [],
+            "cwd": "${workspaceFolder}",
+            "stopAtEntry": false,
+            "console": "integratedTerminal"
+        },
+        {
+            "name": "",
+            "type": "cppvsdbg",
+            "request": "launch",
+            "program": "${workspaceFolder}/build\\Cthulhu.exe",
+            "args": [],
+            "cwd": "${workspaceFolder}",
+            "stopAtEntry": false,
+            "console": "integratedTerminal"
+        },
+        {
+            "name": "",
+            "type": "cppvsdbg",
+            "request": "launch",
+            "program": "${workspaceFolder}/build\\Cthulhu.exe",
+            "args": [],
+            "cwd": "${workspaceFolder}",
+            "stopAtEntry": false,
+            "console": "integratedTerminal"
+        },
+        {
+            "name": "",
+            "type": "cppvsdbg",
+            "request": "launch",
+            "program": "${workspaceFolder}/build\\Cthulhu.exe",
+            "args": [],
+            "cwd": "${workspaceFolder}",
+            "stopAtEntry": false,
+            "console": "integratedTerminal"
+        },
+        {
+            "name": "",
+            "type": "cppvsdbg",
+            "request": "launch",
+            "program": "${workspaceFolder}/build\\Cthulhu.exe",
+            "args": [],
+            "cwd": "${workspaceFolder}",
+            "stopAtEntry": false,
+            "console": "integratedTerminal"
+        },
+        {
+            "name": "",
+            "type": "cppvsdbg",
+            "request": "launch",
+            "program": "${workspaceFolder}/build\\Cthulhu.exe",
+            "args": [],
+            "cwd": "${workspaceFolder}",
+            "stopAtEntry": false,
+            "console": "integratedTerminal"
+        },
+        {
+            "name": "",
+            "type": "cppvsdbg",
+            "request": "launch",
+            "program": "${workspaceFolder}/build\\Cthulhu.exe",
+            "args": [],
+            "cwd": "${workspaceFolder}",
+            "stopAtEntry": false,
+            "console": "integratedTerminal"
+        },
+        {
+            "name": "",
+            "type": "cppvsdbg",
+            "request": "launch",
+            "program": "${workspaceFolder}/build\\Cthulhu.exe",
+            "args": [],
+            "cwd": "${workspaceFolder}",
+            "stopAtEntry": false,
+            "console": "integratedTerminal"
+        },
+        {
+            "name": "",
+            "type": "cppvsdbg",
+            "request": "launch",
+            "program": "${workspaceFolder}/build\\Cthulhu.exe",
+            "args": [],
+            "cwd": "${workspaceFolder}",
+            "stopAtEntry": false,
+            "console": "integratedTerminal"
+        },
+        {
+            "name": "",
+            "type": "cppvsdbg",
+            "request": "launch",
+            "program": "${workspaceFolder}/build\\Cthulhu.exe",
+            "args": [],
+            "cwd": "${workspaceFolder}",
+            "stopAtEntry": false,
+            "console": "integratedTerminal"
+        },
+        {
+            "name": "",
+            "type": "cppvsdbg",
+            "request": "launch",
+            "program": "${workspaceFolder}/build\\Cthulhu.exe",
+            "args": [],
+            "cwd": "${workspaceFolder}",
+            "stopAtEntry": false,
+            "console": "integratedTerminal"
+        },
+        {
+            "name": "",
+            "type": "cppvsdbg",
+            "request": "launch",
+            "program": "${workspaceFolder}/build\\Cthulhu.exe",
+            "args": [],
+            "cwd": "${workspaceFolder}",
+            "stopAtEntry": false,
+            "console": "integratedTerminal"
+        },
+        {
+            "name": "",
+            "type": "cppvsdbg",
+            "request": "launch",
+            "program": "${workspaceFolder}/build\\Cthulhu.exe",
+            "args": [],
+            "cwd": "${workspaceFolder}",
+            "stopAtEntry": false,
+            "console": "integratedTerminal"
+        },
+        {
+            "name": "",
+            "type": "cppvsdbg",
+            "request": "launch",
+            "program": "${workspaceFolder}/build\\Cthulhu.exe",
+            "args": [],
+            "cwd": "${workspaceFolder}",
+            "stopAtEntry": false,
+            "console": "integratedTerminal"
+        },
+        {
+            "name": "",
+            "type": "cppvsdbg",
+            "request": "launch",
+            "program": "${workspaceFolder}/build\\Cthulhu.exe",
+            "args": [],
+            "cwd": "${workspaceFolder}",
+            "stopAtEntry": false,
+            "console": "integratedTerminal"
+        },
+        {
+            "name": "",
+            "type": "cppvsdbg",
+            "request": "launch",
+            "program": "${workspaceFolder}/build\\Cthulhu.exe",
+            "args": [],
+            "cwd": "${workspaceFolder}",
+            "stopAtEntry": false,
+            "console": "integratedTerminal"
+        },
+        {
+            "name": "",
+            "type": "cppvsdbg",
+            "request": "launch",
+            "program": "${workspaceFolder}/build\\Cthulhu.exe",
+            "args": [],
+            "cwd": "${workspaceFolder}",
+            "stopAtEntry": false,
+            "console": "integratedTerminal"
+        },
+        {
+            "name": "",
+            "type": "cppvsdbg",
+            "request": "launch",
+            "program": "${workspaceFolder}/build\\Cthulhu.exe",
+            "args": [],
+            "cwd": "${workspaceFolder}",
+            "stopAtEntry": false,
+            "console": "integratedTerminal"
+        },
+    ]
+}

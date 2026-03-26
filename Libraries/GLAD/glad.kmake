@@ -1,0 +1,12 @@
+#version 1.0
+#global
+compiler: cl
+standard: c++20
+binarytype: static
+binaryname: glad
+buildtype: debug
+buildpath: "../../build"
+sources: "glad.c"
+
+customflags: export-compile-commands, export-vscode-sln
+headers: "."

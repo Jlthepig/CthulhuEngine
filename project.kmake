@@ -1,0 +1,17 @@
+#version 1.0
+#global
+compiler: cl
+standard: c++20
+binarytype: executable
+binaryname: Cthulhu
+buildtype: debug
+buildpath: "build"
+sources: "src/main.cpp"
+
+headers: "Libraries/GLFW/", "Libraries/GLM/", "Libraries/glad/", "Libraries/Stb_image/", "include/"
+
+customflags: export-compile-commands, export-vscode-sln
+
+links: opengl32, "build/glad.lib", "Libraries/GLFW/debug/glfw3dll.lib"
+
+postbuildaction: copy "Libraries\\GLFW\\debug\\glfw3.dll" "build\\"
