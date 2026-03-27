@@ -9,6 +9,10 @@
 #include "gtc/type_ptr.hpp"
 #include <iostream>
 #include <algorithm>
+#include "shader.h"
+
+
+using Cthulhu::Rendering::Shader;
 
 //Window settings
 const int SCR_WIDTH = 1920;
@@ -25,6 +29,7 @@ float pitch = 0.0f;
 float lastX = SCR_WIDTH/2.0;
 float lastY = SCR_HEIGHT/2.0;
 float fov = 45.0f;
+
 
 
 float vertices[] = {
@@ -83,36 +88,6 @@ unsigned int indices[] = {
 };
 
 
-
-
-
-
-const char *vertexShaderSource = "#version 330 core\n"
-    "layout (location = 0) in vec3 aPos;\n"
-    "layout (location = 1) in vec2 aTexCoord;\n"
-    "out vec2 TexCoord;\n"
-    "uniform mat4 model;\n"
-    "uniform mat4 view;\n"
-    "uniform mat4 projection;\n"
-
-    "void main()\n"
-    "{\n"
-    "   gl_Position = projection * view * model * vec4(aPos,1.0);\n"
-    "TexCoord = aTexCoord;\n"
-    "}\0";
-
-const char *fragmentShaderSource = "#version 330 core\n"
-    "out vec4 FragColor;\n"
-    "in vec2 TexCoord;\n"
-    "uniform sampler2D uTexture;\n"
-    "void main()\n"
-    "{\n"
-    "FragColor = texture(uTexture,TexCoord);\n"
-    "}\0";
-    
-
-
-
 int width = 128;
 int height = 128;
 int nrChannels;
@@ -121,9 +96,8 @@ int nrChannels;
 // Function declarations
 void framebuffer_size_callback(GLFWwindow* window, int width, int height);
 void processInput(GLFWwindow *window);
-unsigned int createShaderProgram();
 void setupCube(unsigned int &VAO, unsigned int &VBO,unsigned int &EBO);
-void cleanup(unsigned int &VAO,unsigned int &VBO,unsigned int &EBO,unsigned int shaderProgram);
+void cleanup(unsigned int &VAO,unsigned int &VBO,unsigned int &EBO);
 void mouse_callback(GLFWwindow* window,double xposIn, double yposIn);
 
 
@@ -153,16 +127,10 @@ int main(void)
         return -1;
     }
 
+    Shader shader;
+
+
     glfwSetInputMode(window, GLFW_CURSOR, GLFW_CURSOR_DISABLED);
-    
-    
-    glm::vec3 cameraTarget = glm::vec3(0.0f,0.0f,0.0f);
-    glm::vec3 cameraDirection = glm::normalize(cameraPos - cameraTarget);
-
-    glm::vec3 up = glm::vec3(0.0f,1.0f,0.0f);
-    glm::vec3 cameraRight = glm::normalize(glm::cross(up,cameraDirection));
-
-    
 
     glm::mat4 view;
     
@@ -180,7 +148,10 @@ int main(void)
     }
 
     glViewport(0, 0, SCR_WIDTH, SCR_HEIGHT);
-    unsigned int shaderProgram = createShaderProgram();
+    
+    shader.load("shaders/cube.vertex","shaders/cube.fragment");
+
+  
     unsigned int VAO;
     unsigned int VBO;
     unsigned int EBO;
@@ -219,18 +190,14 @@ int main(void)
 
         glActiveTexture(GL_TEXTURE0); // Activate texture unit 0
         glBindTexture(GL_TEXTURE_2D, texture);
-        glUseProgram(shaderProgram);
-        glUniform1i(glGetUniformLocation(shaderProgram, "uTexture"), 0);
+        shader.use();
+        shader.setInt("uTexture", 0);
         
         glm::mat4 model = glm::mat4(1.0f); 
         float time = (float)glfwGetTime();
         model = glm::rotate(model, time * glm::radians(50.0f), glm::vec3(0.5f, 1.0f, 0.0f));
 
-        unsigned int modelLoc = glGetUniformLocation(shaderProgram, "model");
-        glUniformMatrix4fv(modelLoc, 1, GL_FALSE, &model[0][0]);
-
-        unsigned int viewLoc = glGetUniformLocation(shaderProgram, "view");
-        
+        shader.setMat4("model", model);
 
         int width, height;
         glfwGetFramebufferSize(window, &width, &height);
@@ -239,52 +206,26 @@ int main(void)
             (float)width / (float)height,
             0.1f, 100.0f);
 
-        unsigned int projLoc = glGetUniformLocation(shaderProgram, "projection");
-        glUniformMatrix4fv(projLoc, 1, GL_FALSE, &projection[0][0]);
+        shader.setMat4("projection", projection);
         
         view = glm::lookAt(cameraPos,cameraPos+cameraFront,cameraUp);
+        shader.setMat4("view", view);
 
-        glUniformMatrix4fv(viewLoc, 1, GL_FALSE, &view[0][0]);
-        
         glBindVertexArray(VAO);
         glDrawElements(GL_TRIANGLES, 36, GL_UNSIGNED_INT,0);
         glfwSwapBuffers(window);
         glfwPollEvents();
     }
 
-    cleanup(VAO,VBO,EBO,shaderProgram);
+    cleanup(VAO,VBO,EBO);
+    shader.destroy();
     glDeleteTextures(1,&texture);
     stbi_image_free(data);
     glfwTerminate();
     return 0;
 }
 
-unsigned int createShaderProgram()
-{
 
-    unsigned int vertexShader;
-    unsigned int fragmentShader;
-
-    vertexShader = glCreateShader(GL_VERTEX_SHADER);
-    glShaderSource(vertexShader,1,&vertexShaderSource,NULL);
-    glCompileShader(vertexShader);
-
-    fragmentShader = glCreateShader(GL_FRAGMENT_SHADER);
-    glShaderSource(fragmentShader,1,&fragmentShaderSource,NULL);
-    glCompileShader(fragmentShader);
-
-    unsigned int shaderProgram;
-    shaderProgram = glCreateProgram();
-
-    glAttachShader(shaderProgram,vertexShader);
-    glAttachShader(shaderProgram,fragmentShader);
-    glLinkProgram(shaderProgram);
-
-    glDeleteShader(vertexShader);
-    glDeleteShader(fragmentShader);  
-
-    return shaderProgram;
-}
 
 void setupCube(unsigned int &VAO, unsigned int &VBO,unsigned int &EBO)
 {
@@ -313,12 +254,12 @@ void setupCube(unsigned int &VAO, unsigned int &VBO,unsigned int &EBO)
     
 
 }
-void cleanup(unsigned int &VAO,unsigned int &VBO,unsigned int &EBO,unsigned int shaderProgram) 
+void cleanup(unsigned int &VAO,unsigned int &VBO,unsigned int &EBO) 
 {
     glDeleteVertexArrays(1, &VAO);
     glDeleteBuffers(1, &VBO);
     glDeleteBuffers(1, &EBO);
-    glDeleteProgram(shaderProgram);
+    
     
 }
 

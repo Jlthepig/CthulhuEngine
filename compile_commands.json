@@ -4,5 +4,17 @@
         "command": "cl /std:c++20 /MDd /EHsc /Zi /Od /IC:\\Users\\jarri\\Desktop\\Cthulhu\\Libraries\\GLFW /IC:\\Users\\jarri\\Desktop\\Cthulhu\\Libraries\\GLM /IC:\\Users\\jarri\\Desktop\\Cthulhu\\Libraries\\GLAD /IC:\\Users\\jarri\\Desktop\\Cthulhu\\Libraries\\Stb_image /IC:\\Users\\jarri\\Desktop\\Cthulhu\\include /c C:\\Users\\jarri\\Desktop\\Cthulhu\\src\\main.cpp /Fo: C:\\Users\\jarri\\Desktop\\Cthulhu\\build\\obj\\main.obj",
         "file": "C:\\Users\\jarri\\Desktop\\Cthulhu\\src\\main.cpp",
         "output": "C:\\Users\\jarri\\Desktop\\Cthulhu\\build\\obj\\main.obj"
+    },
+    {
+        "directory": "C:\\Users\\jarri\\Desktop\\Cthulhu",
+        "command": "cl /std:c++20 /MDd /EHsc /Zi /Od /IC:\\Users\\jarri\\Desktop\\Cthulhu\\Libraries\\GLFW /IC:\\Users\\jarri\\Desktop\\Cthulhu\\Libraries\\GLM /IC:\\Users\\jarri\\Desktop\\Cthulhu\\Libraries\\GLAD /IC:\\Users\\jarri\\Desktop\\Cthulhu\\Libraries\\Stb_image /IC:\\Users\\jarri\\Desktop\\Cthulhu\\include /c C:\\Users\\jarri\\Desktop\\Cthulhu\\src\\shader.cpp /Fo: C:\\Users\\jarri\\Desktop\\Cthulhu\\build\\obj\\shader.obj",
+        "file": "C:\\Users\\jarri\\Desktop\\Cthulhu\\src\\shader.cpp",
+        "output": "C:\\Users\\jarri\\Desktop\\Cthulhu\\build\\obj\\shader.obj"
+    },
+    {
+        "directory": "C:\\Users\\jarri\\Desktop\\Cthulhu",
+        "command": "cl /std:c++20 /MDd /EHsc /Zi /Od /IC:\\Users\\jarri\\Desktop\\Cthulhu\\Libraries\\GLFW /IC:\\Users\\jarri\\Desktop\\Cthulhu\\Libraries\\GLM /IC:\\Users\\jarri\\Desktop\\Cthulhu\\Libraries\\GLAD /IC:\\Users\\jarri\\Desktop\\Cthulhu\\Libraries\\Stb_image /IC:\\Users\\jarri\\Desktop\\Cthulhu\\include /c C:\\Users\\jarri\\Desktop\\Cthulhu\\src\\fileReader.cpp /Fo: C:\\Users\\jarri\\Desktop\\Cthulhu\\build\\obj\\fileReader.obj",
+        "file": "C:\\Users\\jarri\\Desktop\\Cthulhu\\src\\fileReader.cpp",
+        "output": "C:\\Users\\jarri\\Desktop\\Cthulhu\\build\\obj\\fileReader.obj"
     }
 ]

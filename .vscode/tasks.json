@@ -20,6 +20,42 @@
             "group": "build"
         },
         {
+            "label": "",
+            "type": "shell",
+            "command": "kalamake --compile C:\\Users\\jarri\\Desktop\\Cthulhu\\project.kmake ",
+            "group": "build"
+        },
+        {
+            "label": "",
+            "type": "shell",
+            "command": "kalamake --compile C:\\Users\\jarri\\Desktop\\Cthulhu\\project.kmake ",
+            "group": "build"
+        },
+        {
+            "label": "",
+            "type": "shell",
+            "command": "kalamake --compile C:\\Users\\jarri\\Desktop\\Cthulhu\\project.kmake ",
+            "group": "build"
+        },
+        {
+            "label": "",
+            "type": "shell",
+            "command": "kalamake --compile C:\\Users\\jarri\\Desktop\\Cthulhu\\project.kmake ",
+            "group": "build"
+        },
+        {
+            "label": "",
+            "type": "shell",
+            "command": "kalamake --compile C:\\Users\\jarri\\Desktop\\Cthulhu\\project.kmake ",
+            "group": "build"
+        },
+        {
+            "label": "",
+            "type": "shell",
+            "command": "kalamake --compile C:\\Users\\jarri\\Desktop\\Cthulhu\\project.kmake ",
+            "group": "build"
+        },
+        {
             "label": "EasyBuild",
             "type": "shell",
             "command": "vcvars64.bat && kalamake --compile C:\\Users\\jarri\\Desktop\\Cthulhu\\project.kmake global",

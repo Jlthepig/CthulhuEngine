@@ -6,7 +6,7 @@ binarytype: executable
 binaryname: Cthulhu
 buildtype: debug
 buildpath: "build"
-sources: "src/main.cpp"
+sources: "src/main.cpp" , "src/shader.cpp" , "src/fileReader.cpp"
 
 headers: "Libraries/GLFW/", "Libraries/GLM/", "Libraries/glad/", "Libraries/Stb_image/", "include/"
 
