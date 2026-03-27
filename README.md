@@ -67,5 +67,5 @@ Cthulhu/
 ├─ include/
 ├─ assets/
 ├─ shaders/
-├─ third_party/
+├─ libraries/
 └─ docs/
