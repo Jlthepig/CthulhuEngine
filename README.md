@@ -69,3 +69,9 @@ Cthulhu/
 ├─ shaders/
 ├─ libraries/
 └─ docs/
+
+Big Thanks to Lost Empire Entertainment for the KalaMake build system found here - https://github.com/KalaKit/KalaMake
+
+additonally if you'd like dive deeper into Lost Empire Entertainment ecosystem go here - https://github.com/greeenlaser
+
+note elypso engine is currently being reworked.
