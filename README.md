@@ -29,7 +29,7 @@ Current implemented work includes:
 - Mouse look
 - Delta time movement
 
-## Tech Stack
+## Current Tech Stack
 
 - **C++20**
 - **OpenGL**
