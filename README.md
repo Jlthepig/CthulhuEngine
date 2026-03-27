@@ -1,3 +1,4 @@
+
 # Cthulhu
 
 **Cthulhu** is a custom 3D game engine written in **C++** for building **first-person shooter games**.
@@ -69,9 +70,12 @@ Cthulhu/
 ├─ shaders/
 ├─ libraries/
 └─ docs/
+```
 
-Big Thanks to Lost Empire Entertainment for the KalaMake build system found here - https://github.com/KalaKit/KalaMake
+## Acknowledgements
 
-additonally if you'd like dive deeper into Lost Empire Entertainment ecosystem go here - https://github.com/greeenlaser
+- **[KalaMake](https://github.com/KalaKit/KalaMake)** — build system used for Cthulhu, developed by **Lost Empire Entertainment**.  
+  Big thanks for making a clean and capable build system that made this project easier to set up.
 
-note elypso engine is currently being reworked.
+- **[Lost Empire Entertainment](https://github.com/greeenlaser)** — if you want to explore their broader ecosystem of tools and engines, check out their GitHub.  
+  Note: their **Elypso Engine** is currently being reworked.
