@@ -10,10 +10,11 @@
 #include <iostream>
 #include <algorithm>
 #include "shader.h"
+#include "camera.h"
 
 
 using Cthulhu::Rendering::Shader;
-
+using Cthulhu::Scene::Camera;
 //Window settings
 const int SCR_WIDTH = 1920;
 const int SCR_HEIGHT = 1920;
@@ -24,13 +25,11 @@ float lastFrame = 0.0f;
 
 // mouse
 bool firstMouse = true;
-float yaw = -90.0f;
-float pitch = 0.0f;
 float lastX = SCR_WIDTH/2.0;
 float lastY = SCR_HEIGHT/2.0;
-float fov = 45.0f;
 
 
+ Camera camera;
 
 float vertices[] = {
     // Positions            // Texture Coords
@@ -99,11 +98,7 @@ void processInput(GLFWwindow *window);
 void setupCube(unsigned int &VAO, unsigned int &VBO,unsigned int &EBO);
 void cleanup(unsigned int &VAO,unsigned int &VBO,unsigned int &EBO);
 void mouse_callback(GLFWwindow* window,double xposIn, double yposIn);
-
-
-glm::vec3 cameraPos   = glm::vec3(0.0f, 0.0f,  3.0f);
-glm::vec3 cameraFront = glm::vec3(0.0f, 0.0f, -1.0f);
-glm::vec3 cameraUp    = glm::vec3(0.0f, 1.0f,  0.0f);
+void mouse_button_callback(GLFWwindow* window,int button,int action,int mods);
 
 int main(void)
 {
@@ -120,6 +115,10 @@ int main(void)
     glfwMakeContextCurrent(window);
     glfwSetFramebufferSizeCallback(window, framebuffer_size_callback);
     glfwSetCursorPosCallback(window, mouse_callback);
+    glfwSetMouseButtonCallback(window, mouse_button_callback);
+
+    Shader shader;
+    
 
     if (!gladLoadGLLoader((GLADloadproc)glfwGetProcAddress))
     {
@@ -127,14 +126,17 @@ int main(void)
         return -1;
     }
 
-    Shader shader;
+    int fbW, fbH;
+    glfwGetFramebufferSize(window, &fbW, &fbH);
+    glViewport(0, 0, fbW, fbH);
 
+    camera.init();
 
     glfwSetInputMode(window, GLFW_CURSOR, GLFW_CURSOR_DISABLED);
 
-    glm::mat4 view;
+   
     
-    glm::mat4 projection = glm::perspective(glm::radians(45.0f), (float)SCR_WIDTH/(float)SCR_HEIGHT, 0.1f, 100.0f);
+    glm::mat4 projection = glm::perspective(camera.getFov(), (float)SCR_WIDTH/(float)SCR_HEIGHT, 0.1f, 100.0f);
     glEnable(GL_DEPTH_TEST);
 
 
@@ -147,7 +149,9 @@ int main(void)
         return -1;
     }
 
-    glViewport(0, 0, SCR_WIDTH, SCR_HEIGHT);
+    
+
+   
     
     shader.load("shaders/cube.vertex","shaders/cube.fragment");
 
@@ -178,11 +182,11 @@ int main(void)
     // Main Loop
     while (!glfwWindowShouldClose(window)) {
 
-            float currentFrame = glfwGetTime();
-            deltaTime = currentFrame - lastFrame;
-            lastFrame = currentFrame;  
+        float currentFrame = glfwGetTime();
+        deltaTime = currentFrame - lastFrame;
+        lastFrame = currentFrame;  
     
-        processInput(window);
+        camera.processKeyboard(window, deltaTime);
 
         glClearColor(0.2f,0.3f,0.3f,1.0f);
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
@@ -202,13 +206,13 @@ int main(void)
         int width, height;
         glfwGetFramebufferSize(window, &width, &height);
 
-        projection = glm::perspective(glm::radians(90.0f),
+        projection = glm::perspective(camera.getFov(),
             (float)width / (float)height,
             0.1f, 100.0f);
 
         shader.setMat4("projection", projection);
         
-        view = glm::lookAt(cameraPos,cameraPos+cameraFront,cameraUp);
+        glm::mat4 view = camera.getViewMatrix();
         shader.setMat4("view", view);
 
         glBindVertexArray(VAO);
@@ -263,27 +267,6 @@ void cleanup(unsigned int &VAO,unsigned int &VBO,unsigned int &EBO)
     
 }
 
-void processInput(GLFWwindow *window)
-{
-    if (glfwGetKey(window, GLFW_KEY_ESCAPE) == GLFW_PRESS)
-        glfwSetInputMode(window, GLFW_CURSOR, GLFW_CURSOR_NORMAL);
-
-     float cameraSpeed = 2.5f * deltaTime;
-    if (glfwGetKey(window, GLFW_KEY_W) == GLFW_PRESS)
-        cameraPos += cameraSpeed * cameraFront;
-    if (glfwGetKey(window, GLFW_KEY_S) == GLFW_PRESS)
-        cameraPos -= cameraSpeed * cameraFront;
-    if (glfwGetKey(window, GLFW_KEY_A) == GLFW_PRESS)
-        cameraPos -= glm::normalize(glm::cross(cameraFront, cameraUp)) * cameraSpeed;
-    if (glfwGetKey(window, GLFW_KEY_D) == GLFW_PRESS)
-        cameraPos += glm::normalize(glm::cross(cameraFront, cameraUp)) * cameraSpeed;
-    if (glfwGetKey(window, GLFW_KEY_Q) == GLFW_PRESS)
-        cameraPos += cameraSpeed * cameraUp;
-    if (glfwGetKey(window, GLFW_KEY_E) == GLFW_PRESS)
-        cameraPos -= cameraSpeed * cameraUp;
-
-}
-
 void framebuffer_size_callback(GLFWwindow* window, int width, int height)
 {
     
@@ -309,18 +292,14 @@ void mouse_callback(GLFWwindow* window, double xposIn, double yposIn)
     lastX = xpos;
     lastY = ypos;
 
-    float sensitivity = 0.1f; // change this value to your liking
-    xoffset *= sensitivity;
-    yoffset *= sensitivity;
+   camera.processMouse(xoffset,yoffset);
 
-    yaw += xoffset;
-    pitch += yoffset;
-    pitch = std::clamp(pitch,-89.0f,89.0f); 
+}
 
-    glm::vec3 front;
-    front.x = cos(glm::radians(yaw)) * cos(glm::radians(pitch));
-    front.y = sin(glm::radians(pitch));
-    front.z = sin(glm::radians(yaw)) * cos(glm::radians(pitch));
-    cameraFront = glm::normalize(front);
-
+void mouse_button_callback(GLFWwindow* window,int button,int action,int mods)
+{
+    if (button == GLFW_MOUSE_BUTTON_LEFT && action == GLFW_PRESS)
+    {
+        glfwSetInputMode(window, GLFW_CURSOR, GLFW_CURSOR_DISABLED);
+    }
 }

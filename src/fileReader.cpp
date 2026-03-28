@@ -8,7 +8,7 @@ using KalaHeaders::KalaLog::LogType;
 
 namespace Cthulhu::Utils
 {
-    string FileReader::readFile(const string& file)
+    std::string FileReader::readFile(const std::string& file)
     {
         std::ifstream input(file);
 
