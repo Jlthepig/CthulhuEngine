@@ -1,5 +1,4 @@
 
-
 #include <vector>
 #define STB_IMAGE_IMPLEMENTATION
 #include "glad.h"
@@ -9,23 +8,23 @@
 #include "gtc/matrix_transform.hpp"
 #include "gtc/type_ptr.hpp"
 #include <iostream>
-#include <algorithm>
 #include "shader.h"
 #include "camera.h"
 #include "mesh.h"
-
+#include "texture.h"
 
 using Cthulhu::Rendering::Shader;
 using Cthulhu::Scene::Camera;
 using Cthulhu::Rendering::Mesh;
+using Cthulhu::Rendering::Texture;
 
 //Window settings
 const int SCR_WIDTH = 1920;
 const int SCR_HEIGHT = 1920;
 
 // time
-float deltaTime = 0.0f;
-float lastFrame = 0.0f;
+double deltaTime = 0.0f;
+double lastFrame = 0.0f;
 
 // mouse
 bool firstMouse = true;
@@ -35,6 +34,7 @@ float lastY = SCR_HEIGHT/2.0;
 // instantiate objects
 Camera camera;
 Mesh mesh;
+Texture texture;
 
 std::vector<float> vertices = {
     // Positions            // Texture Coords
@@ -75,7 +75,6 @@ std::vector<float> vertices = {
      0.5f,  0.5f,  0.5f,  1.0f, 0.0f  // 23
 };
 
-
 std::vector<unsigned int> indices = {
     0,  3,  2,
                2,  1,  0,
@@ -91,11 +90,11 @@ std::vector<unsigned int> indices = {
                22, 23, 20
 };
 
-
-int width = 128;
-int height = 128;
-int nrChannels;
-
+std::vector<glm::vec3> cubePositions = {
+    glm::vec3( 0.0f,  0.0f,  0.0f),
+    glm::vec3( 2.0f,  0.0f, -2.0f),
+    glm::vec3(-2.0f,  0.0f, -4.0f),
+};
 
 // Function declarations
 void framebuffer_size_callback(GLFWwindow* window, int width, int height);
@@ -135,56 +134,20 @@ int main(void)
     camera.init();
     
     glfwSetInputMode(window, GLFW_CURSOR, GLFW_CURSOR_DISABLED);
-
-   
     
     glm::mat4 projection = glm::perspective(camera.getFov(), (float)SCR_WIDTH/(float)SCR_HEIGHT, 0.1f, 100.0f);
     glEnable(GL_DEPTH_TEST);
 
 
-    stbi_set_flip_vertically_on_load(true);
-    unsigned char *data = stbi_load("./assets/images/lava.png",  &width,  &height,  &nrChannels,0);
-
-    if (!data)
-    {
-        std::cout << "Image data missing" << std::endl;
-        return -1;
-    }
-
-    
-
-   
-    
+    texture.load("./assets/images/lava.png");
     shader.load("shaders/cube.vertex","shaders/cube.fragment");
-
-  
-    unsigned int VAO;
-    unsigned int VBO;
-    unsigned int EBO;
-
-    unsigned int texture;
-    glGenTextures(1,&texture);
-    glBindTexture(GL_TEXTURE_2D,texture);
-
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR_MIPMAP_LINEAR); // Use mipmaps if generated
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
-
-    GLenum format = GL_RGB;
-    if (nrChannels == 4) format = GL_RGBA;
-
-    glTexImage2D(GL_TEXTURE_2D, 0, format, width, height, 0, format, GL_UNSIGNED_BYTE, data);
-    glGenerateMipmap(GL_TEXTURE_2D); 
-
-    
     mesh.setup(vertices, indices);
     
 
     // Main Loop
     while (!glfwWindowShouldClose(window)) {
 
-        float currentFrame = glfwGetTime();
+        double currentFrame = glfwGetTime();
         deltaTime = currentFrame - lastFrame;
         lastFrame = currentFrame;  
     
@@ -194,8 +157,7 @@ int main(void)
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
 
-        glActiveTexture(GL_TEXTURE0); // Activate texture unit 0
-        glBindTexture(GL_TEXTURE_2D, texture);
+        texture.bind(0);
         shader.use();
         shader.setInt("uTexture", 0);
         
@@ -217,16 +179,21 @@ int main(void)
         glm::mat4 view = camera.getViewMatrix();
         shader.setMat4("view", view);
 
-        glBindVertexArray(VAO);
-        mesh.draw();
+        
+        for (auto& pos : cubePositions)
+        {
+            glm::mat4 model = glm::mat4(1.0f);
+            model = glm::translate(model, pos);
+            shader.setMat4("model", model);
+            mesh.draw();
+        }
         glfwSwapBuffers(window);
         glfwPollEvents();
     }
 
     mesh.destroy();
     shader.destroy();
-    glDeleteTextures(1,&texture);
-    stbi_image_free(data);
+    texture.destroy();
     glfwTerminate();
     return 0;
 }

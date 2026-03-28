@@ -49,7 +49,7 @@ namespace Cthulhu::Scene
         return fov;
     }
 
-    void Camera::processKeyboard(GLFWwindow *window, float deltaTime)
+    void Camera::processKeyboard(GLFWwindow *window, double deltaTime)
     {
         float currentSpeed = speed * deltaTime;
         if (glfwGetKey(window, GLFW_KEY_ESCAPE) == GLFW_PRESS)

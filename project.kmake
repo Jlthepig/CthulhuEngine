@@ -4,7 +4,7 @@ compiler: cl
 standard: c++20
 binarytype: executable
 binaryname: Cthulhu
-sources: "src/main.cpp" , "src/shader.cpp" , "src/fileReader.cpp" , "src/camera.cpp" , "src/mesh.cpp"
+sources: "src/main.cpp" , "src/shader.cpp" , "src/fileReader.cpp" , "src/camera.cpp" , "src/mesh.cpp" , "src/texture.cpp"
 
 headers: "Libraries/GLFW/", "Libraries/GLM/", "Libraries/glad/", "Libraries/Stb_image/", "include/"
 
@@ -13,6 +13,7 @@ customflags: export-compile-commands, export-vscode-sln
 links: opengl32
 compileflags: FS
 
+warninglevel: normal
 
 #profile release-windows
     buildtype: release

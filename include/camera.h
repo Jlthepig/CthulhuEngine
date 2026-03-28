@@ -10,7 +10,7 @@ namespace Cthulhu::Scene
     {
         public:
         void init();
-        void processKeyboard(GLFWwindow *window, float deltaTime);
+        void processKeyboard(GLFWwindow *window, double Time);
         void processMouse(float xoffset,float yoffset);
         glm::mat4 getViewMatrix() const;
         float getFov() const;

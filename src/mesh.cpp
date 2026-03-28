@@ -34,7 +34,7 @@ namespace Cthulhu::Rendering
     void Mesh::draw()
     {
         glBindVertexArray(VAO);
-        glDrawElements(GL_TRIANGLES, indexData.size(), GL_UNSIGNED_INT,0);
+        glDrawElements(GL_TRIANGLES, (GLsizei)indexData.size(), GL_UNSIGNED_INT,0);
         glBindVertexArray(0); 
     }
     
