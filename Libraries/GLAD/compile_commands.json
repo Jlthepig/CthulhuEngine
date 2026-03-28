@@ -1,8 +1,0 @@
-[
-    {
-        "directory": "C:\\Users\\jarri\\Desktop\\Cthulhu\\Libraries\\GLAD",
-        "command": "cl /std:c++20 /MDd /EHsc /Zi /Od /IC:\\Users\\jarri\\Desktop\\Cthulhu\\Libraries\\GLAD /c C:\\Users\\jarri\\Desktop\\Cthulhu\\Libraries\\GLAD\\glad.c /Fo: C:\\Users\\jarri\\Desktop\\Cthulhu\\build\\obj\\glad.obj",
-        "file": "C:\\Users\\jarri\\Desktop\\Cthulhu\\Libraries\\GLAD\\glad.c",
-        "output": "C:\\Users\\jarri\\Desktop\\Cthulhu\\build\\obj\\glad.obj"
-    }
-]
