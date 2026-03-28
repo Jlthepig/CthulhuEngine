@@ -1,3 +1,35 @@
+# Build output
+build/
 
-/build
-.vscode/tasks.json
+# VS Code
+.vscode/
+
+# Cache
+.cache/
+
+# Compiled object files
+*.obj
+*.o
+*.lib
+*.dll
+*.exe
+*.pdb
+*.ilk
+*.exp
+
+# Dependency files
+*.d
+
+# Kalamake generated
+compile_commands.json
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log
+
+# Exceptions
+!build/glad.lib
+!build/glfw3.dll
