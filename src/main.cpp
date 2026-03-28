@@ -1,5 +1,6 @@
 
 
+#include <vector>
 #define STB_IMAGE_IMPLEMENTATION
 #include "glad.h"
 #include "glfw3.h"
@@ -11,10 +12,13 @@
 #include <algorithm>
 #include "shader.h"
 #include "camera.h"
+#include "mesh.h"
 
 
 using Cthulhu::Rendering::Shader;
 using Cthulhu::Scene::Camera;
+using Cthulhu::Rendering::Mesh;
+
 //Window settings
 const int SCR_WIDTH = 1920;
 const int SCR_HEIGHT = 1920;
@@ -28,10 +32,11 @@ bool firstMouse = true;
 float lastX = SCR_WIDTH/2.0;
 float lastY = SCR_HEIGHT/2.0;
 
+// instantiate objects
+Camera camera;
+Mesh mesh;
 
- Camera camera;
-
-float vertices[] = {
+std::vector<float> vertices = {
     // Positions            // Texture Coords
     // Back face
     -0.5f, -0.5f, -0.5f,  0.0f, 0.0f, // 0
@@ -71,7 +76,7 @@ float vertices[] = {
 };
 
 
-unsigned int indices[] = {
+std::vector<unsigned int> indices = {
     0,  3,  2,
                2,  1,  0,
                4,  5,  6,
@@ -94,9 +99,6 @@ int nrChannels;
 
 // Function declarations
 void framebuffer_size_callback(GLFWwindow* window, int width, int height);
-void processInput(GLFWwindow *window);
-void setupCube(unsigned int &VAO, unsigned int &VBO,unsigned int &EBO);
-void cleanup(unsigned int &VAO,unsigned int &VBO,unsigned int &EBO);
 void mouse_callback(GLFWwindow* window,double xposIn, double yposIn);
 void mouse_button_callback(GLFWwindow* window,int button,int action,int mods);
 
@@ -131,7 +133,7 @@ int main(void)
     glViewport(0, 0, fbW, fbH);
 
     camera.init();
-
+    
     glfwSetInputMode(window, GLFW_CURSOR, GLFW_CURSOR_DISABLED);
 
    
@@ -176,8 +178,8 @@ int main(void)
     glGenerateMipmap(GL_TEXTURE_2D); 
 
     
-
-    setupCube(VAO, VBO,EBO);
+    mesh.setup(vertices, indices);
+    
 
     // Main Loop
     while (!glfwWindowShouldClose(window)) {
@@ -216,12 +218,12 @@ int main(void)
         shader.setMat4("view", view);
 
         glBindVertexArray(VAO);
-        glDrawElements(GL_TRIANGLES, 36, GL_UNSIGNED_INT,0);
+        mesh.draw();
         glfwSwapBuffers(window);
         glfwPollEvents();
     }
 
-    cleanup(VAO,VBO,EBO);
+    mesh.destroy();
     shader.destroy();
     glDeleteTextures(1,&texture);
     stbi_image_free(data);
@@ -229,43 +231,6 @@ int main(void)
     return 0;
 }
 
-
-
-void setupCube(unsigned int &VAO, unsigned int &VBO,unsigned int &EBO)
-{
-    
-    glGenVertexArrays(1,&VAO);
-    glGenBuffers(1, &VBO);
-    glGenBuffers(1,&EBO);
-
-    glBindVertexArray(VAO);
-    
-    glBindBuffer(GL_ARRAY_BUFFER,VBO);
-    glBufferData(GL_ARRAY_BUFFER,sizeof(vertices),vertices,GL_STATIC_DRAW);
-
-    glBindBuffer(GL_ELEMENT_ARRAY_BUFFER,EBO);
-    glBufferData(GL_ELEMENT_ARRAY_BUFFER,sizeof(indices),indices,GL_STATIC_DRAW);
-
-    glVertexAttribPointer(0,3,GL_FLOAT,GL_FALSE,5 * sizeof(float), (void*)0);
-    glEnableVertexAttribArray(0);
-
-    glVertexAttribPointer(1,2,GL_FLOAT,GL_FALSE,5 * sizeof(float), (void*) (3 * sizeof(float)));
-    glEnableVertexAttribArray(1);
-
-
-    glBindBuffer(GL_ARRAY_BUFFER, 0); 
-    glBindVertexArray(0); 
-    
-
-}
-void cleanup(unsigned int &VAO,unsigned int &VBO,unsigned int &EBO) 
-{
-    glDeleteVertexArrays(1, &VAO);
-    glDeleteBuffers(1, &VBO);
-    glDeleteBuffers(1, &EBO);
-    
-    
-}
 
 void framebuffer_size_callback(GLFWwindow* window, int width, int height)
 {

@@ -1,6 +1,6 @@
 #pragma once
 
-#include "fwd.hpp"
+
 #include "glm.hpp"
 #include "glfw3.h"
 #include <algorithm>

@@ -4,14 +4,23 @@ compiler: cl
 standard: c++20
 binarytype: executable
 binaryname: Cthulhu
-buildtype: debug
-buildpath: "build"
-sources: "src/main.cpp" , "src/shader.cpp" , "src/fileReader.cpp" , "src/camera.cpp"
+sources: "src/main.cpp" , "src/shader.cpp" , "src/fileReader.cpp" , "src/camera.cpp" , "src/mesh.cpp"
 
 headers: "Libraries/GLFW/", "Libraries/GLM/", "Libraries/glad/", "Libraries/Stb_image/", "include/"
 
 customflags: export-compile-commands, export-vscode-sln
 
-links: opengl32, "build/glad.lib", "Libraries/GLFW/debug/glfw3dll.lib"
+links: opengl32
+compileflags: FS
 
-postbuildaction: copy "Libraries\\GLFW\\debug\\glfw3.dll" "build\\"
+
+#profile release-windows
+    buildtype: release
+    buildpath: "build/release-windows"
+    postbuildaction: copy "Libraries\\GLFW\\release\\glfw3.dll" "build\\release-windows"
+    links: "Libraries/GLAD/build/release-windows/glad.lib", "Libraries/GLFW/release/glfw3dll.lib"
+#profile debug-windows
+    buildtype: debug
+    buildpath: "build/debug-windows"
+    postbuildaction: copy "Libraries\\GLFW\\debug\\glfw3.dll" "build\\debug-windows"
+    links: "Libraries/GLAD/build/debug-windows/glad.lib", "Libraries/GLFW/debug/glfw3dll.lib"

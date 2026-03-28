@@ -1,1 +1,3 @@
-call vcvars64.bat && kalamake --compile project.kmake global when compiling
+call vcvars64.bat && kalamake --compile project.kmake release-windows when compiling release
+
+call vcvars64.bat && kalamake --compile project.kmake debug-windows when compiling debug
