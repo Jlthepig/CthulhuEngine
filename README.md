@@ -20,15 +20,23 @@ Early visual targets are inspired by games like **Return to Castle Wolfenstein**
 
 Cthulhu is in early development.
 
-Current implemented work includes:
-- OpenGL window/context setup
-- Shader loading/usage
-- Texture loading
-- Textured 3D cube rendering
-- Depth testing
-- Basic fly camera
-- Mouse look
-- Delta time movement
+✅ Implemented:
+
+Window/context setup (GLFW + GLAD)
+OpenGL 3.3 core profile
+Shader loading and compilation
+Shader uniform setters (int, mat4)
+Texture loading (stb_image, RGB/RGBA, mipmaps)
+Flexible mesh system (configurable vertex attributes)
+Indexed rendering (VAO/VBO/EBO)
+Fly camera (6DOF, mouse look, keyboard movement)
+Delta time
+File reader utility
+Logging system (KalaLog)
+glTF/GLB model loading (fastgltf)
+Model class (multi-mesh container)
+Basic unlit shader
+Depth testing
 
 ## Current Tech Stack
 
