@@ -1,3 +1,17 @@
 call vcvars64.bat && kalamake --compile project.kmake release-windows when compiling release
 
 call vcvars64.bat && kalamake --compile project.kmake debug-windows when compiling debug
+
+
+MESHLOADER LOGIC:
+
+For each mesh in the asset:
+    For each primitive in that mesh:
+        1. Find the POSITION accessor → read all vertex positions
+        2. Find the NORMAL accessor → read all normals (if they exist)
+        3. Find the TEXCOORD_0 accessor → read all UVs (if they exist)
+        4. Find the indices accessor → read all indices
+        5. Interleave positions + normals + UVs into one vector<float>
+        6. Build the VertexAttribute layout describing what's in there
+        7. Call mesh.setup() with that data
+        8. Push the mesh into the model

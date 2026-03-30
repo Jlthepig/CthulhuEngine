@@ -3,7 +3,11 @@
 
 namespace Cthulhu::Rendering
 {
-    void Mesh::setup(const std::vector<float>& vertices, const std::vector<unsigned int>& indices)
+    void Mesh::setup(const std::vector<float>& vertices, 
+        const std::vector<unsigned int>& indices,
+        const std::vector<vertexAttribute>& attributes,
+        unsigned int stride
+    )
     {
 
         vertexData = vertices;
@@ -21,16 +25,32 @@ namespace Cthulhu::Rendering
         glBindBuffer(GL_ELEMENT_ARRAY_BUFFER,EBO);
         glBufferData(GL_ELEMENT_ARRAY_BUFFER,indices.size() * sizeof(unsigned int),indices.data(),GL_STATIC_DRAW);
 
-        glVertexAttribPointer(0,3,GL_FLOAT,GL_FALSE,5 * sizeof(float), (void*)0);
-        glEnableVertexAttribArray(0);
-
-        glVertexAttribPointer(1,2,GL_FLOAT,GL_FALSE,5 * sizeof(float), (void*) (3 * sizeof(float)));
-        glEnableVertexAttribArray(1);
+        for (const auto& attr : attributes)
+        {
+            glVertexAttribPointer(
+                attr.location,
+                attr.componentCount,
+                GL_FLOAT,
+                GL_FALSE,
+                stride,
+                (void*)attr.offset
+            );
+            glEnableVertexAttribArray(attr.location);
+        }
 
         glBindBuffer(GL_ARRAY_BUFFER, 0); 
         glBindVertexArray(0); 
     }
     
+    size_t Mesh::getIndexCount() const
+    {
+        return indexData.size();
+    }
+    
+    size_t Mesh::getVertexDataSize() const
+    {
+        return vertexData.size();
+    }
     void Mesh::draw()
     {
         glBindVertexArray(VAO);
