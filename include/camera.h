@@ -4,12 +4,17 @@
 #include "glm.hpp"
 #include "glfw3.h"
 #include <algorithm>
+#include <memory>
+
+using std::unique_ptr;
+using std::make_unique;
+
 namespace Cthulhu::Scene
 {
     class Camera
     {
         public:
-        void init();
+        static Camera* init();
         void processKeyboard(GLFWwindow *window, double Time);
         void processMouse(float xoffset,float yoffset);
         glm::mat4 getViewMatrix() const;

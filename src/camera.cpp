@@ -1,21 +1,32 @@
 
 #include "camera.h"
 #include "ext/matrix_transform.hpp"
+#include <string>
+#include <vector>
+#include "log_utils.hpp"
 
+using KalaHeaders::KalaLog::Log;
+using KalaHeaders::KalaLog::LogType;
 namespace Cthulhu::Scene
 {
-    void Camera::init()
+    static std::vector<unique_ptr<Camera>> cameraContainer;
+    Camera* Camera::init()
     {
-        position = glm::vec3(0.0f,0.0f,3.0f);
-        front = glm::vec3(0.0f,0.0f,-1.0f);
-        up= glm::vec3(0.0f,1.0f,0.0f);
+        unique_ptr<Camera> camera = std::make_unique<Camera>();
+        Camera* camera_ptr = camera.get();
+        camera_ptr->position = glm::vec3(0.0f,0.0f,3.0f);
+        camera_ptr->front = glm::vec3(0.0f,0.0f,-1.0f);
+        camera_ptr->up= glm::vec3(0.0f,1.0f,0.0f);
 
-        yaw = -90.0f;
-        pitch = 0.0f;
-        speed = 2.5f;
-        sensitivity = 0.1f;
-        fov = 90.0f;
-        updateFrontVector();
+        camera_ptr->yaw = -90.0f;
+        camera_ptr->pitch = 0.0f;
+        camera_ptr->speed = 2.5f;
+        camera_ptr->sensitivity = 0.1f;
+        camera_ptr->fov = 90.0f;
+        camera_ptr->updateFrontVector();
+
+        cameraContainer.push_back(std::move(camera));
+        return camera_ptr;
     }
 
 
@@ -29,6 +40,7 @@ namespace Cthulhu::Scene
 
     void Camera::processMouse(float xoffset,float yoffset)
     {
+        Log::Print(std::to_string(xoffset) + ", " + std::to_string(yoffset));
         xoffset *= sensitivity;
         yoffset *= sensitivity;
 

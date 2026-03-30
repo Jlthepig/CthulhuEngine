@@ -6,11 +6,12 @@ binarytype: executable
 binaryname: Cthulhu
 sources: "src", "Libraries\\fastGltf\", "Libraries\\simdjson\\simdjson.cpp"
 
-headers: "Libraries\\GLFW", "Libraries\\GLM", "Libraries\\glad", "Libraries\\Stb_image", "Libraries\\simdjson", "Libraries", "include"
+headers: "Libraries\\GLFW\\include\\GLFW", "Libraries\\GLM", "Libraries\\glad", "Libraries\\Stb_image", "Libraries\\simdjson", "Libraries", "include"
 
 customflags: export-compile-commands, export-vscode-sln
 
 links: opengl32
+defines: _GLFW_WIN32
 compileflags: FS
 
 warninglevel: normal
@@ -18,10 +19,10 @@ warninglevel: normal
 #profile release-windows
     buildtype: release
     buildpath: "build\\release-windows"
-    postbuildaction: copy "Libraries\\GLFW\\release\\glfw3.dll" "build\\release-windows"
-    links: "Libraries\\GLAD\\build\\release-windows\\glad.lib", "Libraries\\GLFW\\release\\glfw3dll.lib"
+    
+    links: "Libraries\\GLAD\\build\\release-windows\\glad.lib", "Libraries\\GLFW\\build\\release-windows\\glfw3.lib"
 #profile debug-windows
     buildtype: debug
     buildpath: "build\\debug-windows"
-    postbuildaction: copy "Libraries\\GLFW\\debug\\glfw3.dll" "build\\debug-windows"
-    links: "Libraries\\GLAD\\build\\debug-windows\\glad.lib", "Libraries\\GLFW\\debug\\glfw3dll.lib"
+    
+    links: "Libraries\\GLAD\\build\\debug-windows\\glad.lib", "Libraries\\GLFW\\build\\debug-windows\\glfw3.lib"

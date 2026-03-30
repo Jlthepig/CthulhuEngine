@@ -1,0 +1,20 @@
+#version 1.0
+#global
+compiler: cl
+standard: c17
+binarytype: static
+binaryname: glfw3
+sources: "src/win32_init.c", "src/win32_joystick.c", "src/win32_module.c", "src/win32_monitor.c", "src/win32_thread.c", "src/win32_time.c", "src/win32_window.c", "src/wgl_context.c", "src/context.c", "src/init.c", "src/input.c", "src/monitor.c", "src/platform.c", "src/vulkan.c", "src/window.c", "src/egl_context.c", "src/osmesa_context.c", "src/null_init.c", "src/null_joystick.c", "src/null_monitor.c", "src/null_window.c"
+links: user32, gdi32, shell32
+customflags: export-compile-commands, export-vscode-sln
+headers: "include"
+warninglevel: none
+defines: _GLFW_WIN32
+compileflags: FS
+#profile release-windows
+    buildtype: release
+    buildpath: "build/release-windows"
+    
+#profile debug-windows
+    buildtype: debug
+    buildpath: "build/debug-windows"

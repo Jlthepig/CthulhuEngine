@@ -1,5 +1,6 @@
 
 // standard libraries
+#include <cstdlib>
 #include <vector>
 
 // third party libraries
@@ -18,6 +19,7 @@
 #include "mesh.h"
 #include "texture.h"
 #include "modelLoader.h"
+#include "window.h"
 
 // engine types
 using Cthulhu::Rendering::Shader;
@@ -26,28 +28,23 @@ using Cthulhu::Rendering::Mesh;
 using Cthulhu::Rendering::Texture;
 using Cthulhu::Rendering::Model;
 using Cthulhu::Rendering::ModelLoader;
+using Cthulhu::Core::Window;
 
 // utilities
 using KalaHeaders::KalaLog::Log;
 using KalaHeaders::KalaLog::LogType;
 
-//Window settings
-const int SCR_WIDTH = 1920;
-const int SCR_HEIGHT = 1080;
+// window settings
+glm::vec2 resolution = glm::vec2(1920.0f,1080.0f);
 
 // frame state
 double deltaTime = 0.0f;
 double lastFrame = 0.0f;
 
-// mouse
-bool firstMouse = true;
-float lastX = SCR_WIDTH/2.0f;
-float lastY = SCR_HEIGHT/2.0f;
+
 
 // test scene data
-Camera camera;
-Mesh mesh;
-Texture texture;
+
 
 std::vector<float> vertices = {
     // Positions            // Texture Coords
@@ -113,10 +110,7 @@ std::vector<Mesh::vertexAttribute> attrs = {
 
 };
 
-// callbacks
-void framebuffer_size_callback(GLFWwindow* window, int width, int height);
-void mouse_callback(GLFWwindow* window,double xposIn, double yposIn);
-void mouse_button_callback(GLFWwindow* window,int button,int action,int mods);
+
 
 int main()
 {
@@ -126,14 +120,16 @@ int main()
     glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 3);
     glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);
 
-    // Window creation
-    GLFWwindow* window = glfwCreateWindow(SCR_WIDTH, SCR_HEIGHT, "GLFW Window", NULL, NULL);
-    if (!window) {  Log::Print("FAILED TO CREATE A WINDOW.", "Main", LogType::LOG_ERROR); glfwTerminate(); return -1; }
+    Window* window = Cthulhu::Core::Window::createWindow(resolution,"Cthulhu Engine");
+    GLFWwindow* glfwWindow = window->getWindow();
+    Camera* camera = Camera::init();
+    window->setCamera(camera);
+    Log::Print("start log", "Main", LogType::LOG_INFO);
+    Mesh mesh;
+    Texture texture;
 
-    glfwMakeContextCurrent(window);
-    glfwSetFramebufferSizeCallback(window, framebuffer_size_callback);
-    glfwSetCursorPosCallback(window, mouse_callback);
-    glfwSetMouseButtonCallback(window, mouse_button_callback);
+    // Window creation
+    
 
     // Initialize GLAD
     if (!gladLoadGLLoader((GLADloadproc)glfwGetProcAddress))
@@ -152,23 +148,29 @@ int main()
     mesh.setup(vertices, indices,attrs,5 * sizeof(float));
 
     int fbW, fbH;
-    glfwGetFramebufferSize(window, &fbW, &fbH);
+    if (glfwWindow == NULL)
+    {
+        Log::Print("WINDOW IS NULL", "Main", LogType::LOG_ERROR);
+        exit(1);
+    }
+    glfwGetFramebufferSize(glfwWindow, &fbW, &fbH);
     glViewport(0, 0, fbW, fbH);
 
     // scene setup
-    camera.init();
-    glfwSetInputMode(window, GLFW_CURSOR, GLFW_CURSOR_DISABLED);
-    glm::mat4 projection = glm::perspective(camera.getFov(), (float)SCR_WIDTH/(float)SCR_HEIGHT, 0.1f, 100.0f);
+    
+    glfwSetInputMode(glfwWindow, GLFW_CURSOR, GLFW_CURSOR_DISABLED);
+    glm::mat4 projection = glm::perspective(camera->getFov(), (float)window->getWidth()/(float)window->getHeight(), 0.1f, 100.0f);
+    glm::mat4 view{};
     glEnable(GL_DEPTH_TEST);
 
     // Main Loop
-    while (!glfwWindowShouldClose(window)) {
+    while (!glfwWindowShouldClose(glfwWindow)) {
 
         double currentFrame = glfwGetTime();
         deltaTime = currentFrame - lastFrame;
         lastFrame = currentFrame;  
     
-        camera.processKeyboard(window, deltaTime);
+        camera->processKeyboard(glfwWindow, deltaTime);
 
         glClearColor(0.2f,0.3f,0.3f,1.0f);
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
@@ -176,13 +178,16 @@ int main()
        
 
         int width, height;
-        glfwGetFramebufferSize(window, &width, &height);
-
-        projection = glm::perspective(camera.getFov(),
+        glfwGetFramebufferSize(glfwWindow, &width, &height);
+        if (camera != nullptr)
+        {
+            projection = glm::perspective(camera->getFov(),
             (float)width / (float)height,
             0.1f, 100.0f);
         
-        glm::mat4 view = camera.getViewMatrix();
+            view = camera->getViewMatrix();
+        }
+        
 
         texture.bind(0);
         shader.use();
@@ -208,7 +213,7 @@ int main()
         basicShader.setMat4("model", boxModelMatrix);
         boxModel.draw();
 
-        glfwSwapBuffers(window);
+        glfwSwapBuffers(glfwWindow);
         glfwPollEvents();
     }
 
@@ -223,39 +228,7 @@ int main()
 }
 
 
-void framebuffer_size_callback(GLFWwindow* window, int width, int height)
-{
-    
-    glViewport(0, 0, width, height);
-}
 
-void mouse_callback(GLFWwindow* window, double xposIn, double yposIn)
-{
 
-    float xpos = static_cast<float>(xposIn);
-    float ypos = static_cast<float>(yposIn);
 
-    if (firstMouse)
-    {
-        lastX = xpos;
-        lastY = ypos;
-        firstMouse = false;
 
-    }
-
-    float xoffset = xpos - lastX;
-    float yoffset = lastY - ypos;
-    lastX = xpos;
-    lastY = ypos;
-
-   camera.processMouse(xoffset,yoffset);
-
-}
-
-void mouse_button_callback(GLFWwindow* window,int button,int action,int mods)
-{
-    if (button == GLFW_MOUSE_BUTTON_LEFT && action == GLFW_PRESS)
-    {
-        glfwSetInputMode(window, GLFW_CURSOR, GLFW_CURSOR_DISABLED);
-    }
-}
