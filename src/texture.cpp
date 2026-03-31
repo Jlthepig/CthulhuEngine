@@ -39,6 +39,35 @@ namespace Cthulhu::Rendering
         stbi_image_free(data);
     }
     
+    void Texture::loadFromMemory(const unsigned char* data, int length)
+    {
+        stbi_set_flip_vertically_on_load(true);
+        unsigned char* pixels = stbi_load_from_memory(data, length, &width, &height, &nrChannels, 0);
+        if (!pixels)
+        {
+            Log::Print("FAILED TO LOAD IMAGE FROM MEMORY","Texture",LogType::LOG_ERROR);
+            return;
+        }
+
+        glGenTextures(1, &textureID);
+        glBindTexture(GL_TEXTURE_2D,textureID);
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR_MIPMAP_LINEAR); // Use mipmaps if generated
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+
+        GLenum format = GL_RGB;
+        if (nrChannels ==  4) format = GL_RGBA;
+
+        glTexImage2D(GL_TEXTURE_2D,0,format,width,height,0,format,GL_UNSIGNED_BYTE,pixels);
+        glGenerateMipmap(GL_TEXTURE_2D);
+
+        stbi_image_free(pixels);
+        
+    }
+
+   
+    
     void Texture::bind(unsigned int slot)
     {
         glActiveTexture(GL_TEXTURE0 + slot);

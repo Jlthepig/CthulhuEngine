@@ -9,7 +9,9 @@
 #include "mesh.h"
 #include <algorithm>
 #include <cstddef>
+#include <type_traits>
 #include <utility>
+#include <variant>
 #include <vector>
 
 using KalaHeaders::KalaLog::Log;
@@ -103,6 +105,42 @@ namespace Cthulhu::Rendering
                     currentOffset += 3 * sizeof(float);
                 }
 
+                auto* textureIt = primitive.findAttribute("TEXCOORD_0");
+                    if (textureIt != primitive.attributes.end())
+                    {
+                        auto& uvAccessor = gltf.accessors[textureIt->accessorIndex];
+                        // how many floats per vertex currently?
+                        unsigned int currentFloats = currentOffset/sizeof(float);
+                        unsigned int newFloats = currentFloats + 2;
+
+                        std::vector<float> expanded(posAccessor.count * newFloats);
+
+                        // copy the exisiting data into the new layout that supports texcoord
+                        for(size_t i =0; i<posAccessor.count;i++)
+                        {
+                            for (unsigned int j = 0; j<currentFloats;j++)
+                            {
+                                expanded[i * newFloats + j] = vertexData[i * currentFloats + j];
+
+                            }
+                            
+                        }
+
+                        fastgltf::iterateAccessorWithIndex<glm::vec2>(
+                            gltf, uvAccessor, [&](glm::vec2 uv , size_t index)
+                        {
+                            expanded[index * newFloats + currentFloats] = uv.x;
+                            expanded[index * newFloats + currentFloats + 1] = uv.y;
+                        }
+                        
+                    );
+
+                    vertexData = std::move(expanded);
+                    attributes.push_back({2,2,currentOffset});
+                    currentOffset += 2 * sizeof(float);
+                        
+                    }
+
                 if (primitive.indicesAccessor.has_value())
                 {
                     auto& indexAccessor = gltf.accessors[primitive.indicesAccessor.value()];
@@ -121,6 +159,47 @@ namespace Cthulhu::Rendering
                  unsigned int stride = currentOffset;
                     Mesh newMesh;
                     newMesh.setup(vertexData, indexdata, attributes, stride);
+
+                    Texture newTexture;
+                    if (primitive.materialIndex.has_value())
+                    {
+                        auto& material = gltf.materials[primitive.materialIndex.value()];
+                        if (material.pbrData.baseColorTexture.has_value())
+                        {
+                            auto& textureInfo = material.pbrData.baseColorTexture.value();
+                            auto& texture = gltf.textures[textureInfo.textureIndex];
+
+                            if (texture.imageIndex.has_value())
+                            {
+                                auto image = gltf.images[texture.imageIndex.value()];
+                                
+                                std::visit([&](auto& source)
+                                {
+                                    using T = std::decay_t<decltype(source)>;
+                                    if constexpr (std::is_same_v<T, fastgltf::sources::BufferView>)
+                                    {
+                                        auto& bufferView = gltf.bufferViews[source.bufferViewIndex];
+                                        auto& buffer = gltf.buffers[bufferView.bufferIndex];
+
+                                        std::visit([&](auto& bufferSource)
+                                        {
+                                            using BT = std::decay_t<decltype(bufferSource)>;
+                                            if constexpr (std::is_same_v<BT, fastgltf::sources::Array>)
+                                            {
+
+                                                const unsigned char* data = reinterpret_cast<const unsigned char*>(bufferSource.bytes.data() + bufferView.byteOffset);
+                                                newTexture.loadFromMemory(data,static_cast<int>(bufferView.byteLength));
+                                            
+                                            }
+                                        }, buffer.data);
+                                    }
+                                    
+                                    
+                                },image.data);
+                            }
+                        }
+                    }
+                    model.textures.push_back(std::move(newTexture));
                     model.meshes.push_back(std::move(newMesh));
 
             }

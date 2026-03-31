@@ -8,6 +8,7 @@ namespace Cthulhu::Rendering
     {
         public:
         void load(const std::string& path);
+        void loadFromMemory(const unsigned char* data, int length);
         void bind(unsigned int slot);
         void destroy();
         unsigned int getID() const;

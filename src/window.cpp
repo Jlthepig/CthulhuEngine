@@ -77,7 +77,7 @@ namespace Cthulhu::Core
 
        if (self->camera)
        {
-            Log::Print("mouse call log", "Main", LogType::LOG_INFO);
+            
             self->camera->processMouse(xoffset,yoffset);
        }
     }

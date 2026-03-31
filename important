@@ -15,3 +15,15 @@ For each mesh in the asset:
         6. Build the VertexAttribute layout describing what's in there
         7. Call mesh.setup() with that data
         8. Push the mesh into the model
+
+
+primitive → has a material index
+material → has a base color texture index
+texture → has an image index
+image → has data stored as a variant (could be buffer, file, memory)
+    → we check: is it a BufferView? (embedded in .glb)
+        → buffer → has data stored as a variant
+            → we check: is it an Array? (raw bytes)
+                → get the raw pointer + offset
+                → pass to stbi_load_from_memory
+                → upload to GPU

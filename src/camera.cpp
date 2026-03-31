@@ -40,7 +40,7 @@ namespace Cthulhu::Scene
 
     void Camera::processMouse(float xoffset,float yoffset)
     {
-        Log::Print(std::to_string(xoffset) + ", " + std::to_string(yoffset));
+        
         xoffset *= sensitivity;
         yoffset *= sensitivity;
 
