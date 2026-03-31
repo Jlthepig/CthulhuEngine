@@ -11,7 +11,14 @@ using KalaHeaders::KalaLog::LogType;
 namespace Cthulhu::Rendering
 {
     void Texture::load(const std::string& path)
-    {
+    {   
+        if (isLoaded)
+        {
+            Log::Print("TEXTURE IS ALREADY LOADED, DESTROY BEFORE RELOADING" + path, "Texture(path)", LogType::LOG_WARNING);
+        return;
+        }
+
+        
         const char* rawPath = path.c_str();
         stbi_set_flip_vertically_on_load(true);
         unsigned char *data = stbi_load(rawPath,  &width,  &height,  &nrChannels,0);
@@ -37,10 +44,18 @@ namespace Cthulhu::Rendering
         glGenerateMipmap(GL_TEXTURE_2D);
 
         stbi_image_free(data);
+        isLoaded = true;
+
     }
     
     void Texture::loadFromMemory(const unsigned char* data, int length)
     {
+         if (isLoaded)
+        {
+            Log::Print("TEXTURE FROM MEMORY IS ALREADY LOADED, DESTROY BEFORE RELOADING", "Texture(Memory)", LogType::LOG_WARNING);
+        return;
+        }
+
         stbi_set_flip_vertically_on_load(true);
         unsigned char* pixels = stbi_load_from_memory(data, length, &width, &height, &nrChannels, 0);
         if (!pixels)
@@ -63,7 +78,7 @@ namespace Cthulhu::Rendering
         glGenerateMipmap(GL_TEXTURE_2D);
 
         stbi_image_free(pixels);
-        
+        isLoaded = true;
     }
 
    
@@ -77,7 +92,9 @@ namespace Cthulhu::Rendering
     
     void Texture::destroy()
     {
+        if (!isLoaded) return;
         glDeleteTextures(1, &textureID);
+        isLoaded = false;
     }
     
     unsigned int Texture::getID() const

@@ -21,6 +21,7 @@ namespace Cthulhu::Rendering
         unsigned int getId() const;
         private:
         unsigned int shaderProgram = 0;
+        bool isLoaded = false;
 
     };
 }

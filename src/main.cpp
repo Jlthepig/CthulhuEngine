@@ -22,7 +22,7 @@
 #include "texture.h"
 #include "modelLoader.h"
 #include "window.h"
-
+#include "grid.h"
 // engine types
 using Cthulhu::Rendering::Shader;
 using Cthulhu::Scene::Camera;
@@ -30,6 +30,7 @@ using Cthulhu::Rendering::Mesh;
 using Cthulhu::Rendering::Texture;
 using Cthulhu::Rendering::Model;
 using Cthulhu::Rendering::ModelLoader;
+using Cthulhu::Rendering::GridLines;
 using Cthulhu::Core::Window;
 
 // utilities
@@ -59,13 +60,14 @@ int main()
         Log::Print("WINDOW IS NULL", "Main", LogType::LOG_ERROR);
         exit(1);
     }
+
+    
+
     Camera* camera = Camera::init();
     window->setCamera(camera);
     Log::Print("start log", "Main", LogType::LOG_INFO);
     
     Texture texture;
-
-    
     
 
     // Initialize GLAD
@@ -77,11 +79,16 @@ int main()
 
     // loading resources
     
+    GridLines grid;
+    grid.setupGrid(256);
+
     Shader basicShader;
+    Shader gridLines_Shader;
     Model boxModel = ModelLoader::loadGltf("assets/models/BarramundiFish.glb");
     texture.load("./assets/images/lava.png");
     
     basicShader.load("shaders/basic.vertex","shaders/basic.fragment");
+    gridLines_Shader.load("shaders/basic.vertex", "shaders/grid.fragment");
 
     int fbW, fbH;
     
@@ -108,7 +115,8 @@ int main()
         glClearColor(0.2f,0.3f,0.3f,1.0f);
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
-       
+        
+        
 
         int width, height;
         glfwGetFramebufferSize(glfwWindow, &width, &height);
@@ -125,14 +133,24 @@ int main()
         texture.bind(0);
         
 
+        
+
+        gridLines_Shader.use();
+        gridLines_Shader.setMat4("projection", projection);
+        gridLines_Shader.setMat4("view",view);
+
+
+        glm::mat4 gridModel = glm::mat4(1.0f);
+        basicShader.setMat4("model", gridModel);
+        grid.draw();
+
         basicShader.use();
         basicShader.setInt("uTexture", 0);
         basicShader.setMat4("projection", projection);
         basicShader.setMat4("view",view);
 
-
         glm::mat4 boxModelMatrix = glm::mat4(1.0f);
-        boxModelMatrix = glm::translate(boxModelMatrix, glm::vec3(5.0f, 0.0f, 0.0f));
+        boxModelMatrix = glm::translate(boxModelMatrix, glm::vec3(0.0f, 0.0f, 0.0f));
         boxModelMatrix = glm::rotate(boxModelMatrix, glm::radians(45.0f * currentFrame), glm::vec3(0.0f,1.0f,0.0f));
         basicShader.setMat4("model", boxModelMatrix);
         boxModel.draw();
@@ -142,6 +160,8 @@ int main()
     }
 
     // cleanup
+    grid.destroy();
+    gridLines_Shader.destroy();
     boxModel.destroy();
     basicShader.destroy();
     texture.destroy();

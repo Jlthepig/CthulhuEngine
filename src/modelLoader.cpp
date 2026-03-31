@@ -76,17 +76,20 @@ namespace Cthulhu::Rendering
                 if (normalIt != primitive.attributes.end())
                 {
                     auto& normAccessor  = gltf.accessors[normalIt->accessorIndex];
-                    
+                    unsigned int currentFloats = currentOffset/sizeof(float);
+                    unsigned int newFloats = currentFloats + 3;
                     // vertexdata has only space for pos so we need to expand to have space for normals too
                     // basically make 6 floats instead of 3, 3 for pos and 3 for normals
-                    std:: vector<float> expanded(posAccessor.count * 6);
+                    std:: vector<float> expanded(posAccessor.count * newFloats);
 
                     // get already existing pos and put into the new expanded layout
                     for (size_t i = 0; i< posAccessor.count;i++)
                     {
-                        expanded[i * 6 + 0] = vertexData[i * 3 + 0];
-                        expanded[i * 6 + +1] = vertexData[i * 3 + +1];
-                        expanded[i * 6 + +2] = vertexData[i * 3 + +2];
+                        for (unsigned int j = 0; j<currentFloats;j++)
+                            {
+                                expanded[i * newFloats + j] = vertexData[i * currentFloats + j];
+
+                            }
                     }
 
                     // read the normals into the expanded layout
@@ -94,9 +97,9 @@ namespace Cthulhu::Rendering
                     fastgltf::iterateAccessorWithIndex<glm::vec3>(
                         gltf, normAccessor, [&](glm::vec3 norm, size_t index)
                         {
-                            expanded[index * 6 + 3] = norm.x;
-                            expanded[index * 6 + 4] = norm.y;
-                            expanded[index * 6 + 5] = norm.z;
+                            expanded[index * newFloats + currentFloats] = norm.x;
+                            expanded[index * newFloats + currentFloats + 1] = norm.y;
+                            expanded[index * newFloats + currentFloats + 2] = norm.z;
                         }
                     );
 

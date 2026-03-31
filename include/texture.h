@@ -12,10 +12,13 @@ namespace Cthulhu::Rendering
         void bind(unsigned int slot);
         void destroy();
         unsigned int getID() const;
+        
+
+        private:
         unsigned int textureID = 0;
         int width = 128;
         int height = 128;
         int nrChannels;
-
+        bool isLoaded = false;
     };
 }

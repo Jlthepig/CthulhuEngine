@@ -8,7 +8,14 @@ using KalaHeaders::KalaLog::LogType;
 namespace Cthulhu::Rendering
 {
     void Shader::load(const std::string& vertexPath, const std::string& fragmentPath)
-    {
+    {   
+        if (isLoaded)
+        {
+            Log::Print("SHADER IS ALREADY LOADED,DESTROY BEFORE RELOADING" + vertexPath + fragmentPath, "Shader", LogType::LOG_WARNING);
+        return;
+        }
+
+        
         std::string vertexShaderSource = Utils::FileReader::readFile(vertexPath);
         std::string fragmentShaderSource = Utils::FileReader::readFile(fragmentPath);
 
@@ -60,6 +67,7 @@ namespace Cthulhu::Rendering
         
         glDeleteShader(vertexShader);
         glDeleteShader(fragmentShader);
+        isLoaded = true;
     }
     
      void Shader::use()
@@ -81,8 +89,10 @@ namespace Cthulhu::Rendering
     }
     
     void Shader::destroy()
-    {
+    {   
+        if (!isLoaded) return;
         glDeleteProgram(shaderProgram);
+        isLoaded = false;
     }
     
     unsigned int Shader::getId() const
