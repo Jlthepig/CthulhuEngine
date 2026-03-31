@@ -94,6 +94,7 @@ int main()
     glm::mat4 projection = glm::perspective(camera->getFov(), (float)window->getWidth()/(float)window->getHeight(), 0.1f, 100.0f);
     glm::mat4 view{};
     glEnable(GL_DEPTH_TEST);
+    glEnable(GL_CULL_FACE);
 
     // Main Loop
     while (!glfwWindowShouldClose(glfwWindow)) {
