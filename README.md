@@ -1,5 +1,4 @@
 
-
 # 🐙 Cthulhu
 
 **Cthulhu** is a custom 3D game engine written in **C++** for building **first-person shooter games**.
@@ -27,20 +26,23 @@ Cthulhu is in **early development**.
 
 ### ✅ Implemented
 
-- Window/context setup (GLFW + GLAD)
+- Window class with GLFW + GLAD context setup
 - OpenGL 3.3 core profile
-- Shader loading and compilation
+- Shader loading and compilation with double-load protection
 - Shader uniform setters (int, mat4)
-- Texture loading (stb\_image, RGB/RGBA, mipmaps)
+- Texture loading from disk (stb\_image, RGB/RGBA, mipmaps) with double-load protection
+- Texture loading from memory (embedded glTF textures)
 - Texture extraction from glTF models
 - Flexible mesh system (configurable vertex attributes)
 - Indexed rendering (VAO/VBO/EBO)
 - Fly camera (6DOF, mouse look, keyboard movement)
+- Input system (key down, pressed, released detection, mouse tracking)
 - Delta time
 - File reader utility
 - Logging system (KalaLog)
 - glTF/GLB model loading (fastgltf)
-- Model class (multi-mesh container)
+- Model class (multi-mesh container with per-mesh textures)
+- Debug grid rendering (GL\_LINES)
 - Basic unlit shader
 - Depth testing
 - Back face culling
@@ -109,3 +111,4 @@ Cthulhu/
 - [KalaMake](https://github.com/KalaKit/KalaMake) — build system used for Cthulhu, developed by Lost Empire Entertainment. Big thanks for making a clean and capable build system that made this project easier to set up.
 
 - [Lost Empire Entertainment](https://github.com/greeenlaser) — if you want to explore their broader ecosystem of tools and engines, check out their GitHub. Note: their Elypso Engine is currently being reworked.
+  
