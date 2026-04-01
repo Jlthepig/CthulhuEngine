@@ -1,10 +1,12 @@
 
 #include "camera.h"
+#include "glad.h"        
+#include "glfw3.h"
+#include "cthulhuInput.h"
 #include "ext/matrix_transform.hpp"
+#include "log_utils.hpp"
 #include <string>
 #include <vector>
-#include "log_utils.hpp"
-
 using KalaHeaders::KalaLog::Log;
 using KalaHeaders::KalaLog::LogType;
 namespace Cthulhu::Scene
@@ -61,23 +63,23 @@ namespace Cthulhu::Scene
         return fov;
     }
 
-    void Camera::processKeyboard(GLFWwindow *window, double deltaTime)
+    void Camera::processKeyboard(double deltaTime)
     {
         float currentSpeed = speed * deltaTime;
-        if (glfwGetKey(window, GLFW_KEY_ESCAPE) == GLFW_PRESS)
-            glfwSetInputMode(window, GLFW_CURSOR, GLFW_CURSOR_NORMAL);
+        if (Core::Input::isKeyPressed(GLFW_KEY_ESCAPE))
+            glfwSetInputMode(Core::Input::getWindowHandle(), GLFW_CURSOR, GLFW_CURSOR_NORMAL);
 
-        if (glfwGetKey(window, GLFW_KEY_W) == GLFW_PRESS)
+        if (Core::Input::isKeyDown(GLFW_KEY_W))
             position += currentSpeed * front;
-        if (glfwGetKey(window, GLFW_KEY_S) == GLFW_PRESS)
+        if (Core::Input::isKeyDown(GLFW_KEY_S))
             position -= currentSpeed * front;
-        if (glfwGetKey(window, GLFW_KEY_A) == GLFW_PRESS)
+        if (Core::Input::isKeyDown(GLFW_KEY_A))
             position -= glm::normalize(glm::cross(front, up)) * currentSpeed;
-        if (glfwGetKey(window, GLFW_KEY_D) == GLFW_PRESS)
+        if (Core::Input::isKeyDown(GLFW_KEY_D))
             position += glm::normalize(glm::cross(front, up)) * currentSpeed;
-        if (glfwGetKey(window, GLFW_KEY_Q) == GLFW_PRESS)
+        if (Core::Input::isKeyDown(GLFW_KEY_Q))
             position += currentSpeed * up;
-        if (glfwGetKey(window, GLFW_KEY_E) == GLFW_PRESS)
+        if (Core::Input::isKeyDown(GLFW_KEY_E))
             position -= currentSpeed * up;
     }
     

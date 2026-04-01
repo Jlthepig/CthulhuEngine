@@ -23,6 +23,7 @@
 #include "modelLoader.h"
 #include "window.h"
 #include "grid.h"
+#include "cthulhuInput.h"
 // engine types
 using Cthulhu::Rendering::Shader;
 using Cthulhu::Scene::Camera;
@@ -32,6 +33,7 @@ using Cthulhu::Rendering::Model;
 using Cthulhu::Rendering::ModelLoader;
 using Cthulhu::Rendering::GridLines;
 using Cthulhu::Core::Window;
+using Cthulhu::Core::Input;
 
 // utilities
 using KalaHeaders::KalaLog::Log;
@@ -64,7 +66,7 @@ int main()
     
 
     Camera* camera = Camera::init();
-    window->setCamera(camera);
+    Input::setCamera(camera);
     Log::Print("start log", "Main", LogType::LOG_INFO);
     
     Texture texture;
@@ -77,6 +79,7 @@ int main()
         return -1;
     }
 
+    Input::init(glfwWindow, resolution);
     // loading resources
     
     GridLines grid;
@@ -106,11 +109,13 @@ int main()
     // Main Loop
     while (!glfwWindowShouldClose(glfwWindow)) {
 
+        Input::update();    
+        
         float currentFrame = glfwGetTime();
         deltaTime = currentFrame - lastFrame;
         lastFrame = currentFrame;  
     
-        camera->processKeyboard(glfwWindow, deltaTime);
+        camera->processKeyboard(deltaTime);
 
         glClearColor(0.2f,0.3f,0.3f,1.0f);
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);

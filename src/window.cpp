@@ -22,17 +22,14 @@ namespace Cthulhu::Core
         glfwMakeContextCurrent( window->glfWwindow);
         glfwSetWindowUserPointer(window->glfWwindow, window_ptr);  // attach this instance
         glfwSetFramebufferSizeCallback( window->glfWwindow, framebuffer_size_callback);
-        glfwSetCursorPosCallback( window->glfWwindow, mouse_callback);
-        glfwSetMouseButtonCallback( window->glfWwindow, mouse_button_callback);
+        
+        
         
         windowContainer.push_back(std::move(window));
         return window_ptr;
     }
     
-    void Window::setCamera(Cthulhu::Scene::Camera* cam)
-    {
-        camera = cam;
-    }
+  
     
     float Window::getWidth()
     {
@@ -54,41 +51,9 @@ namespace Cthulhu::Core
         glViewport(0, 0, width, height);
     }
     
-    void Window::mouse_callback(GLFWwindow* window, double xposIn, double yposIn)
-    {   
-        
-        auto* self = static_cast<Window*>(glfwGetWindowUserPointer(window));
-
-        float xpos = static_cast<float>(xposIn);
-        float ypos = static_cast<float>(yposIn);
-
-        if (self->firstMouse)
-        {
-            self->lastX = xpos;
-            self->lastY = ypos;
-            self->firstMouse = false;
-
-        }
-
-        float xoffset = xpos - self->lastX;
-        float yoffset = self->lastY - ypos;
-        self->lastX = xpos;
-        self->lastY = ypos;
-
-       if (self->camera)
-       {
-            
-            self->camera->processMouse(xoffset,yoffset);
-       }
-    }
+   
     
-    void Window::mouse_button_callback(GLFWwindow* window, int button, int action, int mods)
-    {
-        if (button == GLFW_MOUSE_BUTTON_LEFT && action == GLFW_PRESS)
-        {
-            glfwSetInputMode(window, GLFW_CURSOR, GLFW_CURSOR_DISABLED);
-        }
-    }
+   
     
   
 

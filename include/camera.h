@@ -2,7 +2,7 @@
 
 
 #include "glm.hpp"
-#include "glfw3.h"
+
 #include <algorithm>
 #include <memory>
 
@@ -15,7 +15,7 @@ namespace Cthulhu::Scene
     {
         public:
         static Camera* init();
-        void processKeyboard(GLFWwindow *window, double Time);
+        void processKeyboard(double deltaTime);
         void processMouse(float xoffset,float yoffset);
         glm::mat4 getViewMatrix() const;
         float getFov() const;
