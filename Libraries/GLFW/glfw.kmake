@@ -12,9 +12,11 @@ warninglevel: none
 defines: _GLFW_WIN32
 compileflags: FS
 #profile release-windows
-    buildtype: release
+    buildtype: minsizerel
     buildpath: "build/release-windows"
     
 #profile debug-windows
     buildtype: debug
     buildpath: "build/debug-windows"
+
+// vcvars64.bat && kalamake --compile glfw.kmake debug-windows && vcvars64.bat && kalamake --compile glfw.kmake release-windows

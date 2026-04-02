@@ -1,6 +1,7 @@
 
 // standard libraries
 #include "ext/matrix_transform.hpp"
+#include "ext/vector_float3.hpp"
 #include "trigonometric.hpp"
 #include <cstdlib>
 #include <vector>
@@ -24,6 +25,7 @@
 #include "window.h"
 #include "grid.h"
 #include "cthulhuInput.h"
+#include "transform.h"
 // engine types
 using Cthulhu::Rendering::Shader;
 using Cthulhu::Scene::Camera;
@@ -34,6 +36,7 @@ using Cthulhu::Rendering::ModelLoader;
 using Cthulhu::Rendering::GridLines;
 using Cthulhu::Core::Window;
 using Cthulhu::Core::Input;
+using Cthulhu::Scene::Transform;
 
 // utilities
 using KalaHeaders::KalaLog::Log;
@@ -154,10 +157,11 @@ int main()
         basicShader.setMat4("projection", projection);
         basicShader.setMat4("view",view);
 
-        glm::mat4 boxModelMatrix = glm::mat4(1.0f);
-        boxModelMatrix = glm::translate(boxModelMatrix, glm::vec3(0.0f, 0.0f, 0.0f));
-        boxModelMatrix = glm::rotate(boxModelMatrix, glm::radians(45.0f * currentFrame), glm::vec3(0.0f,1.0f,0.0f));
-        basicShader.setMat4("model", boxModelMatrix);
+        Transform fishTransform;
+        fishTransform.position = glm::vec3(0.0f,0.0f,0.0f);
+        fishTransform.rotation.y = 0.59 * currentFrame;
+        fishTransform.scale = glm::vec3(1.0f);
+        basicShader.setMat4("model", fishTransform.getModelMatrix());
         boxModel.draw();
 
         glfwSwapBuffers(glfwWindow);

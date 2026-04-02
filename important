@@ -2,6 +2,7 @@ call vcvars64.bat && kalamake --compile project.kmake release-windows when compi
 
 call vcvars64.bat && kalamake --compile project.kmake debug-windows when compiling debug
 
+vcvars64.bat && kalamake --compile fastgltf.kmake debug-windows && vcvars64.bat && kalamake --compile fastgltf.kmake release-windows
 
 MESHLOADER LOGIC:
 
