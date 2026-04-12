@@ -88,6 +88,16 @@ namespace Cthulhu::Rendering
         glUniformMatrix4fv( glGetUniformLocation(shaderProgram, NAME), 1, GL_FALSE, &matrix[0][0]);
     }
     
+    void Shader::setVec3(const std::string& name, const glm::vec3& value)
+    {
+        glUniform3fv(glGetUniformLocation(shaderProgram,name.c_str()), 1, &value[0]);
+    }
+    
+    void Shader::setFloat(const std::string& name, float value)
+    {
+        glUniform1f(glGetUniformLocation(shaderProgram,name.c_str()), value);
+    }
+
     void Shader::destroy()
     {   
         if (!isLoaded) return;

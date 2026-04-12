@@ -2,7 +2,7 @@
 #include "camera.h"
 #include "glad.h"        
 #include "glfw3.h"
-#include "cthulhuInput.h"
+#include "Input.h"
 #include "ext/matrix_transform.hpp"
 #include "log_utils.hpp"
 #include <string>
@@ -51,6 +51,11 @@ namespace Cthulhu::Scene
         pitch = std::clamp(pitch,-89.0f,89.0f);
         updateFrontVector();
         
+    }
+    
+    glm::vec3 Camera::getPosition() const
+    {
+        return position;
     }
     
     glm::mat4 Camera::getViewMatrix() const

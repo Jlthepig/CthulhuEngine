@@ -1,6 +1,7 @@
 #pragma once
 
 
+#include "fwd.hpp"
 #include "glm.hpp"
 
 #include <algorithm>
@@ -17,6 +18,7 @@ namespace Cthulhu::Scene
         static Camera* init();
         void processKeyboard(double deltaTime);
         void processMouse(float xoffset,float yoffset);
+        glm::vec3 getPosition() const;
         glm::mat4 getViewMatrix() const;
         float getFov() const;
         

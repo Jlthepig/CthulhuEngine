@@ -1,7 +1,16 @@
 #version 330 core
 out vec4 FragColor;
 
+in vec3 fragPos;
+
+uniform vec3 cameraPos;
+uniform float fadeDistance = 40.0;
 void main()
 {
-    FragColor = vec4(1.0, 1.0, 1.0, 1.0);
+    float dist = distance(fragPos, cameraPos);
+
+    float alpha = 1.0 - (dist / fadeDistance);
+    
+    alpha = clamp(alpha, 0.0, 1.0);
+    FragColor = vec4(1.0, 1.0, 1.0, alpha);
 }

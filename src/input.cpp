@@ -1,4 +1,4 @@
-#include "cthulhuInput.h"
+#include "input.h"
 #include "camera.h"
 #include "glfw3.h"
 #include <cstring>
@@ -6,7 +6,7 @@
 
 namespace Cthulhu::Core
 {
-    GLFWwindow* Input::windowHandle = nullptr;
+    GLFWwindow* Input::windowHandle = nullptr; 
     Cthulhu::Scene::Camera* Input::camera = nullptr;
     bool Input::currentKeys[GLFW_KEY_LAST + 1] = {};
     bool Input::previousKeys[GLFW_KEY_LAST + 1] = {};
