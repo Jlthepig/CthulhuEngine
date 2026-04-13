@@ -9,6 +9,7 @@
 #include "glad.h"
 #include "glfw3.h"
 #include "glm.hpp"
+#include "skybox.h"
 
 
 namespace Cthulhu::Rendering
@@ -25,6 +26,7 @@ namespace Cthulhu::Rendering
         Cthulhu::Rendering::Model fishModel;
         Cthulhu::Rendering::GridLines grid;
         Cthulhu::Scene::Transform fishTransform;
+        Cthulhu::Rendering::Skybox skybox;
         glm::mat4 projection;
         glm::mat4 view;
         Scene::Camera* camera = nullptr;

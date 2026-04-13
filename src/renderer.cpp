@@ -21,7 +21,7 @@ namespace Cthulhu::Rendering
         gridShader.load("shaders/grid.vertex", "shaders/grid.fragment");
 
         fishModel = ModelLoader::loadGltf("assets/models/BarramundiFish.glb");
-
+        skybox.load("assets/images/hdriTest.hdr");
         grid.setupGrid(256);
 
         fishTransform.position = glm::vec3(0.0f);
@@ -45,17 +45,6 @@ namespace Cthulhu::Rendering
         
             view = camera->getViewMatrix();
         }
-        
-        gridShader.use();
-        gridShader.setVec3("cameraPos", camera->getPosition());
-        gridShader.setMat4("projection", projection);
-        gridShader.setMat4("view",view);
-        glm::mat4 gridModel = glm::mat4(1.0f);
-        gridShader.setMat4("model", gridModel);
-        glEnable(GL_BLEND);
-        glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
-
-        grid.draw();
 
         basicShader.use();
         basicShader.setVec3("uLightDir", sunLight.direction);
@@ -70,6 +59,21 @@ namespace Cthulhu::Rendering
         basicShader.setMat4("model", fishTransform.getModelMatrix());
         fishModel.draw();
 
+        glEnable(GL_BLEND);
+        glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+
+        gridShader.use();
+        gridShader.setVec3("cameraPos", camera->getPosition());
+        gridShader.setMat4("projection", projection);
+        gridShader.setMat4("view", view);
+        glm::mat4 gridModel = glm::mat4(1.0f);
+        gridShader.setMat4("model", gridModel);
+        grid.draw();
+
+        glDisable(GL_BLEND);
+
+        skybox.draw(window, view, projection);
+
         glfwSwapBuffers(window);
     }
     
@@ -79,6 +83,7 @@ namespace Cthulhu::Rendering
         gridShader.destroy();
         fishModel.destroy();
         basicShader.destroy();
+        skybox.destroy();
     }
 
     
