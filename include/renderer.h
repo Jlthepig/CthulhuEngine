@@ -1,5 +1,6 @@
 #pragma once
 
+#include "scene.h"
 #include "shader.h"
 #include "model.h"
 #include "grid.h"
@@ -20,15 +21,15 @@ namespace Cthulhu::Rendering
     class Renderer
     {
         public:
+        void setScene(Cthulhu::Scene::Scene* scene);
         void init(GLFWwindow* window, Scene::Camera* camera);
         void render(float deltaTime);
+
         void shutdown();
         private:
         Cthulhu::Rendering::Shader basicShader;
         Cthulhu::Rendering::Shader gridShader;
-        Cthulhu::Rendering::Model fishModel;
         Cthulhu::Rendering::GridLines grid;
-        Cthulhu::Scene::Transform fishTransform;
         Cthulhu::Rendering::Skybox skybox;
         glm::mat4 projection;
         glm::mat4 view;
@@ -36,5 +37,6 @@ namespace Cthulhu::Rendering
         GLFWwindow* window = nullptr;
         DirectionalLight sunLight;
         ShadowMap shadowMap;
+        Cthulhu::Scene::Scene* scene = nullptr;
     };
 }

@@ -6,6 +6,11 @@
 
 namespace Cthulhu::Rendering
 {
+    void Renderer::setScene(Cthulhu::Scene::Scene* scene)
+    {
+        this->scene = scene;
+    }
+
     void Renderer::init(GLFWwindow* window, Scene::Camera* camera)
     {
 
@@ -27,12 +32,11 @@ namespace Cthulhu::Rendering
         basicShader.load("shaders/basic.vertex","shaders/basic.fragment");
         gridShader.load("shaders/grid.vertex", "shaders/grid.fragment");
 
-        fishModel = ModelLoader::loadGltf("assets/models/BarramundiFish.glb");
+       
         skybox.load("assets/images/suburban_garden_1k.hdr");
         grid.setupGrid(256);
 
-        fishTransform.position = glm::vec3(0.0f);
-        fishTransform.scale = glm::vec3(1.0f);
+        
 
         shadowMap.init(2048, 2048);
         shadowMap.setLightDir(sunLight.direction);
@@ -57,10 +61,13 @@ namespace Cthulhu::Rendering
         }
 
         // 1. shadow pass
-        fishTransform.rotation.y = 0.59 * currentFrame;
         shadowMap.beginPass();
-        shadowMap.getDepthShader().setMat4("model", fishTransform.getModelMatrix());
-        fishModel.draw();
+        for (auto& entity : scene->getEntities())
+        {
+            if (!entity.active || entity.model == nullptr) continue;
+            shadowMap.getDepthShader().setMat4("model", entity.transform.getModelMatrix());
+            entity.model->draw();
+        }
         shadowMap.endPass();
 
         // 2. main pass
@@ -78,12 +85,17 @@ namespace Cthulhu::Rendering
         basicShader.setMat4("projection", projection);
         basicShader.setMat4("view", view);
         basicShader.setMat4("lightSpaceMatrix", shadowMap.getLightSpaceMatrix());
-        basicShader.setMat4("model", fishTransform.getModelMatrix());
+        
 
         glActiveTexture(GL_TEXTURE1);
         glBindTexture(GL_TEXTURE_2D, shadowMap.getDepthMap());
 
-        fishModel.draw();
+        for (auto& entity : scene->getEntities())
+        {
+            if (!entity.active || entity.model == nullptr) continue;
+            basicShader.setMat4("model", entity.transform.getModelMatrix());
+            entity.model->draw();
+        }
 
         // 3. grid
         glEnable(GL_BLEND);
@@ -117,7 +129,6 @@ namespace Cthulhu::Rendering
     {
         grid.destroy();
         gridShader.destroy();
-        fishModel.destroy();
         basicShader.destroy();
         skybox.destroy();
 

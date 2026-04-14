@@ -1,5 +1,7 @@
 
 // standard libraries
+#include "entity.h"
+#include "model.h"
 #include <cstdlib>
 
 // third party libraries
@@ -14,6 +16,8 @@
 #include "window.h"
 #include "input.h"
 #include "renderer.h"
+#include "scene.h"
+#include "modelLoader.h"
 
 // engine types
 using Cthulhu::Scene::Camera;
@@ -56,13 +60,49 @@ int main()
         return -1;
     }
 
+    
     Renderer renderer;
 
     Camera* camera = Camera::init();
     Input::init(glfwWindow, resolution);
     Input::setCamera(camera);
-
     renderer.init(glfwWindow, camera);
+
+    Cthulhu::Rendering::Model fishModel;
+    fishModel = Cthulhu::Rendering::ModelLoader::loadGltf("assets/models/BarramundiFish.glb");
+
+    Cthulhu::Scene::Scene scene;
+    Cthulhu::Scene::Entity fishEntity;
+    fishEntity.name = "Fish";
+    fishEntity.model = &fishModel;  // point to the model
+    fishEntity.transform.position = glm::vec3(0.0f);
+    fishEntity.transform.scale = glm::vec3(1.0f);
+
+    Cthulhu::Scene::Entity& fish = scene.addEntity(fishEntity);
+
+    int gridCount = 100; // Roughly sqrt(9999)
+    float spacing = 3.0f;
+
+    for (int i = 0; i < 9999; i++) {
+        Cthulhu::Scene::Entity fishEntity;
+        fishEntity.name = "Fish " + std::to_string(i);
+        fishEntity.model = &fishModel;
+
+        // Calculate row and column
+        int row = i / gridCount;
+        int col = i % gridCount;
+
+        // Position in a 2D plane (x, z)
+        fishEntity.transform.position = glm::vec3(
+            col * spacing - (gridCount * spacing / 2.0f), // Centered x
+            0.0f,                                          // Flat y
+            row * spacing - (gridCount * spacing / 2.0f)  // Centered z
+        );
+
+        scene.addEntity(fishEntity);
+    }
+
+    renderer.setScene(&scene);
 
     int fbW, fbH;
     glfwGetFramebufferSize(glfwWindow, &fbW, &fbH);
@@ -85,11 +125,12 @@ int main()
 
         renderer.render(deltaTime);
 
+        fish.transform.rotation.y = 0.59f * currentFrame;
         glfwPollEvents();
     }
 
     renderer.shutdown();
-    
+    fishModel.destroy();
     glfwTerminate();
     return 0;
 }
