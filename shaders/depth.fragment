@@ -1,0 +1,7 @@
+#version 330 core
+
+void main()
+{
+    // OpenGL writes depth automatically
+    // don't do anything here
+}
