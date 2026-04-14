@@ -1,5 +1,6 @@
 
 #include "window.h"
+#include "glfw3.h"
 #include "log_utils.hpp"
 #include "camera.h"
 #include <memory>
@@ -20,6 +21,7 @@ namespace Cthulhu::Core
         Window* window_ptr = window.get();
         window->windowSize = windowSize;
         glfwMakeContextCurrent( window->glfWwindow);
+        glfwSwapInterval(0);
         glfwSetWindowUserPointer(window->glfWwindow, window_ptr);  // attach this instance
         glfwSetFramebufferSizeCallback( window->glfWwindow, framebuffer_size_callback);
         

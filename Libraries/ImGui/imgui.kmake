@@ -1,0 +1,23 @@
+#version 1.0
+#global
+compileflags: FS
+compiler: cl
+standard: c++20
+binarytype: static
+binaryname: imgui
+
+sources: "imgui.cpp", "imgui_draw.cpp", "imgui_tables.cpp", "imgui_widgets.cpp", "imgui_impl_glfw.cpp", "imgui_impl_opengl3.cpp", "../GLFW/src/context.c", "../GLFW/src/init.c", "../GLFW/src/input.c", "../GLFW/src/monitor.c", "../GLFW/src/platform.c", "../GLFW/src/vulkan.c", "../GLFW/src/window.c", "../GLFW/src/win32_init.c", "../GLFW/src/win32_joystick.c", "../GLFW/src/win32_module.c", "../GLFW/src/win32_monitor.c", "../GLFW/src/win32_thread.c", "../GLFW/src/win32_time.c", "../GLFW/src/win32_window.c", "../GLFW/src/wgl_context.c"
+links: user32, gdi32, shell32
+customflags: export-compile-commands, export-vscode-sln
+headers: ".", "../GLFW/include"
+defines: _GLFW_WIN32
+#profile release-windows
+    buildtype: minsizerel
+    buildpath: "build/release-windows"
+    
+#profile debug-windows
+    buildtype: debug
+    buildpath: "build/debug-windows"
+
+
+// vcvars64.bat && kalamake --compile imgui.kmake debug-windows && vcvars64.bat && kalamake --compile imgui.kmake release-windows

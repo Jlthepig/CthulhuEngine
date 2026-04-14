@@ -7,6 +7,12 @@ namespace Cthulhu::Rendering
 {
     void Renderer::init(GLFWwindow* window, Scene::Camera* camera)
     {
+
+        IMGUI_CHECKVERSION();
+        ImGui::CreateContext();
+        ImGui_ImplGlfw_InitForOpenGL(window, true);
+        ImGui_ImplOpenGL3_Init("#version 330");
+
         this->camera = camera;
         this->window = window;
         
@@ -32,6 +38,14 @@ namespace Cthulhu::Rendering
     {
         glClearColor(0.2f,0.3f,0.3f,1.0f);
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+
+        ImGui_ImplOpenGL3_NewFrame();
+        ImGui_ImplGlfw_NewFrame();
+        ImGui::NewFrame();
+
+        ImGui::Begin("Debug");
+        ImGui::Text("FPS: %.1f", 1.0f / deltaTime);
+        ImGui::End();
 
         float currentFrame = glfwGetTime(); 
 
@@ -74,6 +88,9 @@ namespace Cthulhu::Rendering
 
         skybox.draw(window, view, projection);
 
+        ImGui::Render();
+        ImGui_ImplOpenGL3_RenderDrawData(ImGui::GetDrawData());
+
         glfwSwapBuffers(window);
     }
     
@@ -84,6 +101,10 @@ namespace Cthulhu::Rendering
         fishModel.destroy();
         basicShader.destroy();
         skybox.destroy();
+
+        ImGui_ImplOpenGL3_Shutdown();
+        ImGui_ImplGlfw_Shutdown();
+        ImGui::DestroyContext();
     }
 
     
