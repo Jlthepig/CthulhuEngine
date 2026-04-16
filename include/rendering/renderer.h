@@ -1,5 +1,6 @@
 #pragma once
 
+#include "frustum.h"
 #include "scene.h"
 #include "shader.h"
 #include "model.h"
@@ -24,7 +25,6 @@ namespace Cthulhu::Rendering
         void setScene(Cthulhu::Scene::Scene* scene);
         void init(GLFWwindow* window, Scene::Camera* camera);
         void render(float deltaTime);
-
         void shutdown();
         private:
         Cthulhu::Rendering::Shader basicShader;
@@ -38,5 +38,7 @@ namespace Cthulhu::Rendering
         DirectionalLight sunLight;
         ShadowMap shadowMap;
         Cthulhu::Scene::Scene* scene = nullptr;
+        Frustum frustum;
+        Scene::AABB TransformAABB(const Scene::AABB& localBounds, const glm::mat4& modelMatrix);
     };
 }

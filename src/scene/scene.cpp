@@ -10,7 +10,7 @@ namespace Cthulhu::Scene
     }
 
 
-    const std::vector<Entity>& Scene::getEntities() const
+    std::vector<Entity>& Scene::getEntities()
     {
         return entities;
     }

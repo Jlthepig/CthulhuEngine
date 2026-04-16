@@ -10,7 +10,7 @@ namespace Cthulhu::Scene
     {
     public:
         Entity& addEntity(Entity entity);
-        const std::vector<Entity>& getEntities() const;
+        std::vector<Entity>& getEntities();
     private:
         std::vector<Entity> entities;
         uint32_t nextId = 0;

@@ -60,7 +60,6 @@ int main()
         return -1;
     }
 
-    
     Renderer renderer;
 
     Camera* camera = Camera::init();
@@ -75,40 +74,18 @@ int main()
     Cthulhu::Scene::Entity fishEntity;
     fishEntity.name = "Fish";
     fishEntity.model = &fishModel;  // point to the model
-    fishEntity.transform.position = glm::vec3(0.0f);
-    fishEntity.transform.scale = glm::vec3(1.0f);
+    fishEntity.transform.setPosition(glm::vec3(0.0f));
+    fishEntity.transform.setScale(glm::vec3(1.0f));
+    fishEntity.bounds.min = glm::vec3(-2.0f, -2.0f, -2.0f);
+    fishEntity.bounds.max = glm::vec3(2.0f, 2.0f, 2.0f);
 
     Cthulhu::Scene::Entity& fish = scene.addEntity(fishEntity);
-
-    int gridCount = 100; // Roughly sqrt(9999)
-    float spacing = 3.0f;
-
-    for (int i = 0; i < 9999; i++) {
-        Cthulhu::Scene::Entity fishEntity;
-        fishEntity.name = "Fish " + std::to_string(i);
-        fishEntity.model = &fishModel;
-
-        // Calculate row and column
-        int row = i / gridCount;
-        int col = i % gridCount;
-
-        // Position in a 2D plane (x, z)
-        fishEntity.transform.position = glm::vec3(
-            col * spacing - (gridCount * spacing / 2.0f), // Centered x
-            0.0f,                                          // Flat y
-            row * spacing - (gridCount * spacing / 2.0f)  // Centered z
-        );
-
-        scene.addEntity(fishEntity);
-    }
-
+    
     renderer.setScene(&scene);
 
     int fbW, fbH;
     glfwGetFramebufferSize(glfwWindow, &fbW, &fbH);
     glViewport(0, 0, fbW, fbH);
-
-    // scene setup
     
     glfwSetInputMode(glfwWindow, GLFW_CURSOR, GLFW_CURSOR_DISABLED);
 
@@ -122,13 +99,11 @@ int main()
         lastFrame = currentFrame;  
     
         camera->processKeyboard(deltaTime);
-
         renderer.render(deltaTime);
 
-        fish.transform.rotation.y = 0.59f * currentFrame;
+        fish.transform.setRotation(glm::vec3(0.0f, 0.59f * currentFrame, 0.0f));
         glfwPollEvents();
     }
-
     renderer.shutdown();
     fishModel.destroy();
     glfwTerminate();

@@ -5,6 +5,11 @@
 #include <string>
 namespace Cthulhu::Scene 
 {
+    struct AABB
+    {
+        glm::vec3 min = glm::vec3(-0.5f);
+        glm::vec3 max = glm::vec3(0.5f);
+    };
     struct Entity
     {
         std::string name;
@@ -14,7 +19,7 @@ namespace Cthulhu::Scene
 
         Transform transform;
         Rendering::Model* model = nullptr;
+        AABB bounds;
 
     };
-
 }

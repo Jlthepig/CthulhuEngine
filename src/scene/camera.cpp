@@ -5,7 +5,6 @@
 #include "Input.h"
 #include "ext/matrix_transform.hpp"
 #include "log_utils.hpp"
-#include <string>
 #include <vector>
 using KalaHeaders::KalaLog::Log;
 using KalaHeaders::KalaLog::LogType;

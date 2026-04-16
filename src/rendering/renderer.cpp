@@ -1,4 +1,5 @@
 #include "renderer.h"
+#include "entity.h"
 #include "ext/matrix_clip_space.hpp"
 #include "modelLoader.h"
 #include "shader.h"
@@ -60,15 +61,19 @@ namespace Cthulhu::Rendering
             view = camera->getViewMatrix();
         }
 
+        frustum.extractFromMatrix(projection * view);
+
         // 1. shadow pass
         shadowMap.beginPass();
         for (auto& entity : scene->getEntities())
         {
             if (!entity.active || entity.model == nullptr) continue;
-            shadowMap.getDepthShader().setMat4("model", entity.transform.getModelMatrix());
+            glm::mat4 modelMatrix = entity.transform.getModelMatrix(); // once per entity
+            shadowMap.getDepthShader().setMat4("model", modelMatrix);
             entity.model->draw();
         }
         shadowMap.endPass();
+        
 
         // 2. main pass
         glViewport(0, 0, width, height);
@@ -90,12 +95,21 @@ namespace Cthulhu::Rendering
         glActiveTexture(GL_TEXTURE1);
         glBindTexture(GL_TEXTURE_2D, shadowMap.getDepthMap());
 
+        int entityCount = 0;
         for (auto& entity : scene->getEntities())
         {
             if (!entity.active || entity.model == nullptr) continue;
-            basicShader.setMat4("model", entity.transform.getModelMatrix());
+            glm::mat4 modelMatrix = entity.transform.getModelMatrix(); 
+            Scene::AABB worldBounds = TransformAABB(entity.bounds, modelMatrix);
+            
+            if (!frustum.testAABB(worldBounds)) continue;
+            entityCount++;
+
+            basicShader.setMat4("model", modelMatrix);
             entity.model->draw();
         }
+
+        
 
         // 3. grid
         glEnable(GL_BLEND);
@@ -118,6 +132,7 @@ namespace Cthulhu::Rendering
         ImGui::NewFrame();
         ImGui::Begin("Debug");
         ImGui::Text("FPS: %.1f", 1.0f / deltaTime);
+        ImGui::Text("Entities: %d", entityCount);
         ImGui::End();
         ImGui::Render();
         ImGui_ImplOpenGL3_RenderDrawData(ImGui::GetDrawData());
@@ -135,6 +150,35 @@ namespace Cthulhu::Rendering
         ImGui_ImplOpenGL3_Shutdown();
         ImGui_ImplGlfw_Shutdown();
         ImGui::DestroyContext();
+    }
+    
+    Scene::AABB Renderer::TransformAABB(const Scene::AABB& localBounds, const glm::mat4& modelMatrix)
+    {
+            // get all 8 corners of the local AABB
+            glm::vec3 corners[8] = {
+                glm::vec3(localBounds.min.x, localBounds.min.y, localBounds.min.z),
+                glm::vec3(localBounds.max.x, localBounds.min.y, localBounds.min.z),
+                glm::vec3(localBounds.min.x, localBounds.max.y, localBounds.min.z),
+                glm::vec3(localBounds.max.x, localBounds.max.y, localBounds.min.z),
+                glm::vec3(localBounds.min.x, localBounds.min.y, localBounds.max.z),
+                glm::vec3(localBounds.max.x, localBounds.min.y, localBounds.max.z),
+                glm::vec3(localBounds.min.x, localBounds.max.y, localBounds.max.z),
+                glm::vec3(localBounds.max.x, localBounds.max.y, localBounds.max.z)
+            };
+
+            // transform each corner to world space and compute new min/max
+            glm::vec3 worldMin = glm::vec3(FLT_MAX);
+            glm::vec3 worldMax = glm::vec3(-FLT_MAX);
+
+            for (int i = 0; i < 8; i++)
+            {
+                glm::vec4 worldCorner = modelMatrix * glm::vec4(corners[i], 1.0f);
+                worldMin = glm::min(worldMin, glm::vec3(worldCorner));
+                worldMax = glm::max(worldMax, glm::vec3(worldCorner));
+            }
+
+            Scene::AABB worldBounds{ worldMin, worldMax };
+            return worldBounds;
     }
 
     
