@@ -108,8 +108,7 @@ Cthulhu is being developed as a long-term engine project with a focus on:
 ---
 
 ## 📁 Project Structure
-
-```txt
+```
 Cthulhu/
 ├─ src/           # Engine source files
 ├─ include/       # Engine headers
@@ -117,6 +116,8 @@ Cthulhu/
 ├─ shaders/       # GLSL shader files
 ├─ Libraries/     # Third party dependencies
 └─ build/         # Build output
+```
+---
 🙏 Acknowledgements
 KalaMake — build system used for Cthulhu, developed by Lost Empire Entertainment. Big thanks for making a clean and capable build system that made this project easier to set up.
 
