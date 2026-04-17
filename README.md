@@ -1,4 +1,3 @@
-
 # 🐙 Cthulhu
 
 **Cthulhu** is a custom 3D game engine written in **C++** for building **first-person shooter games**.
@@ -29,8 +28,8 @@ Cthulhu is in **early development**.
 - Window class with GLFW + GLAD context setup
 - OpenGL 3.3 core profile
 - Shader loading and compilation with double-load protection
-- Shader uniform setters (int, mat4)
-- Texture loading from disk (stb\_image, RGB/RGBA, mipmaps) with double-load protection
+- Shader uniform setters (int, float, vec3, mat4)
+- Texture loading from disk (stb_image, RGB/RGBA, mipmaps) with double-load protection
 - Texture loading from memory (embedded glTF textures)
 - Texture extraction from glTF models
 - Flexible mesh system (configurable vertex attributes)
@@ -42,10 +41,22 @@ Cthulhu is in **early development**.
 - Logging system (KalaLog)
 - glTF/GLB model loading (fastgltf)
 - Model class (multi-mesh container with per-mesh textures)
-- Debug grid rendering (GL\_LINES)
-- Basic unlit shader
+- Debug grid rendering (GL_LINES) with distance-based alpha fade
+- Blinn-Phong lighting (ambient, diffuse, specular)
+- Directional light support
+- Point light with attenuation (constant, linear, quadratic)
+- PCF shadow mapping with bias
+- HDR skybox (equirectangular to cubemap conversion)
+- HDR tonemapping and gamma correction
+- Frustum culling (AABB-based)
+- Entity system (transform, model pointer, AABB, ID, name, active flag)
+- Scene system (entity container with auto-incrementing IDs)
+- Cached transform matrices (dirty flag system)
+- Transform with getters/setters and matrix caching
+- ImGui debug panel (FPS counter, entity count)
 - Depth testing
 - Back face culling
+- Alpha blending
 
 ---
 
@@ -58,10 +69,11 @@ Cthulhu is in **early development**.
 | Windowing | GLFW |
 | GL Loader | GLAD |
 | Math | GLM |
-| Image Loading | stb\_image |
+| Image Loading | stb_image |
 | Model Loading | fastgltf |
 | Build System | KalaMake |
 | Logging | KalaLog |
+| Debug UI | ImGui |
 
 ---
 
@@ -78,17 +90,20 @@ Cthulhu is being developed as a long-term engine project with a focus on:
 
 ## 🔮 Planned Features
 
-- Lighting and atmosphere systems
-- Material system
+- Additional light types (spot lights)
+- Omnidirectional shadow mapping (point light shadows)
+- Cascaded shadow maps
+- Material system / PBR
 - Scene loading
 - FPS controller
 - Level editor
-- Entity system
 - Lua scripting
 - Physics integration with Jolt
 - Audio integration with miniaudio
 - Asset pipeline improvements
-- ImGui editor interface
+- Expanded ImGui editor interface
+- Instanced rendering
+- Spatial partitioning (octree / BVH)
 
 ---
 
@@ -102,13 +117,7 @@ Cthulhu/
 ├─ shaders/       # GLSL shader files
 ├─ Libraries/     # Third party dependencies
 └─ build/         # Build output
-```
+🙏 Acknowledgements
+KalaMake — build system used for Cthulhu, developed by Lost Empire Entertainment. Big thanks for making a clean and capable build system that made this project easier to set up.
 
----
-
-## 🙏 Acknowledgements
-
-- [KalaMake](https://github.com/KalaKit/KalaMake) — build system used for Cthulhu, developed by Lost Empire Entertainment. Big thanks for making a clean and capable build system that made this project easier to set up.
-
-- [Lost Empire Entertainment](https://github.com/greeenlaser) — if you want to explore their broader ecosystem of tools and engines, check out their GitHub. Note: their Elypso Engine is currently being reworked.
-  
+Lost Empire Entertainment — if you want to explore their broader ecosystem of tools and engines, check out their GitHub. Note: their Elypso Engine is currently being reworked.
