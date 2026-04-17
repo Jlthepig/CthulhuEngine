@@ -3,19 +3,13 @@
 #include "frustum.h"
 #include "scene.h"
 #include "shader.h"
-#include "model.h"
 #include "grid.h"
-#include "transform.h"
 #include "light.h"
 #include "camera.h"
 #include "glad.h"
 #include "glfw3.h"
-#include "glm.hpp"
 #include "skybox.h"
 #include "shadowMap.h"
-#include "imgui.h"
-#include "imgui_impl_glfw.h"
-#include "imgui_impl_opengl3.h"
 
 namespace Cthulhu::Rendering
 {
@@ -36,6 +30,7 @@ namespace Cthulhu::Rendering
         Scene::Camera* camera = nullptr;
         GLFWwindow* window = nullptr;
         DirectionalLight sunLight;
+        PointLight pointLight;
         ShadowMap shadowMap;
         Cthulhu::Scene::Scene* scene = nullptr;
         Frustum frustum;

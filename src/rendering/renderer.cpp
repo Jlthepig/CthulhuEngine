@@ -1,10 +1,18 @@
 #include "renderer.h"
 #include "entity.h"
 #include "ext/matrix_clip_space.hpp"
-#include "modelLoader.h"
 #include "shader.h"
 #include "shadowMap.h"
+#include "imgui.h"
+#include "imgui_impl_glfw.h"
+#include "imgui_impl_opengl3.h"
 
+const float near = 0.1f;
+const float far = 100.0f;
+const float gridSize = 256.0f;
+const float shadowMapWidth = 2048.0f;
+const float shadowMapHeight = 2048.0f;
+const glm::vec4 color(0.2f, 0.3f, 1.0f, 1.0f);
 namespace Cthulhu::Rendering
 {
     void Renderer::setScene(Cthulhu::Scene::Scene* scene)
@@ -25,7 +33,7 @@ namespace Cthulhu::Rendering
         
          int width, height;
         glfwGetFramebufferSize(window, &width, &height);
-        this->projection = glm::perspective(camera->getFov(), (float)width / (float)height, 0.1f, 100.0f);
+        this->projection = glm::perspective(camera->getFov(), (float)width / (float)height, near, far);
 
         glEnable(GL_DEPTH_TEST);
         glEnable(GL_CULL_FACE);
@@ -34,22 +42,16 @@ namespace Cthulhu::Rendering
         gridShader.load("shaders/grid.vertex", "shaders/grid.fragment");
 
        
-        skybox.load("assets/images/suburban_garden_1k.hdr");
-        grid.setupGrid(256);
+        skybox.load("assets/images/hdriTest.hdr");
+        grid.setupGrid(gridSize);
 
-        
-
-        shadowMap.init(2048, 2048);
+        shadowMap.init(shadowMapWidth, shadowMapHeight);
         shadowMap.setLightDir(sunLight.direction);
 
     }
     
     void Renderer::render(float deltaTime)
     {
-        
-        
-        float currentFrame = glfwGetTime();
-
         int width, height;
         glfwGetFramebufferSize(window, &width, &height);
 
@@ -57,7 +59,7 @@ namespace Cthulhu::Rendering
         {
             projection = glm::perspective(camera->getFov(),
             (float)width / (float)height,
-            0.1f, 100.0f);
+            near, far);
             view = camera->getViewMatrix();
         }
 
@@ -77,13 +79,20 @@ namespace Cthulhu::Rendering
 
         // 2. main pass
         glViewport(0, 0, width, height);
-        glClearColor(0.2f, 0.3f, 0.3f, 1.0f);
+        glClearColor(color.r, color.g, color.b, color.a);
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
         basicShader.use();
         basicShader.setVec3("uLightDir", sunLight.direction);
         basicShader.setVec3("uLightColor", sunLight.color);
         basicShader.setFloat("uLightIntensity", sunLight.intensity);
+        basicShader.setVec3("uPointLightPos", pointLight.position);
+        basicShader.setVec3("uPointLightColor", pointLight.color);
+        basicShader.setFloat("uPointLightIntensity", pointLight.intensity);
+        basicShader.setFloat("uPointLightRadius", pointLight.radius);
+        basicShader.setFloat("uPointLightConstant", pointLight.constant);
+        basicShader.setFloat("uPointLightLinear", pointLight.linear);
+        basicShader.setFloat("uPointLightQuadratic", pointLight.quadratic);
         basicShader.setVec3("uViewPos", camera->getPosition());
         basicShader.setInt("uTexture", 0);
         basicShader.setInt("uShadowMap", 1);
@@ -108,8 +117,6 @@ namespace Cthulhu::Rendering
             basicShader.setMat4("model", modelMatrix);
             entity.model->draw();
         }
-
-        
 
         // 3. grid
         glEnable(GL_BLEND);
