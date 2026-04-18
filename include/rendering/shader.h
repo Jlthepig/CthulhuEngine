@@ -18,6 +18,7 @@ namespace Cthulhu::Rendering
         void setInt(const std::string& name,int value);
         void setMat4(const std::string& name, const glm::mat4& matrix);
         void setVec3(const std::string& name, const glm::vec3& value);
+        void setVec4(const std::string& name, const glm::vec4& value);
         void setFloat(const std::string& name, float value);
         void destroy();
         unsigned int getId() const;

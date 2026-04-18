@@ -125,7 +125,29 @@ namespace Cthulhu::Rendering
             entityCount++;
 
             basicShader.setMat4("model", modelMatrix);
-            entity.model->draw();
+
+            // Draw each mesh individually with its own material
+            for (size_t meshIdx = 0; meshIdx < entity.model->meshes.size(); meshIdx++)
+            {
+                auto& mesh = entity.model->meshes[meshIdx];
+                // Get a material 
+                glm::vec4 baseColorFactor(1.0f); 
+                if (mesh.materialIndex >= 0 && mesh.materialIndex < static_cast<int>(entity.model->materials.size()))
+                {
+                    auto& material = entity.model->materials[mesh.materialIndex];
+                    baseColorFactor = material.baseColorFactor;
+                    
+                    // Bind a texture if can
+                    if (material.baseColorTextureIndex >= 0 && 
+                        material.baseColorTextureIndex < static_cast<int>(entity.model->textures.size()))
+                    {
+                        entity.model->textures[material.baseColorTextureIndex].bind(0);
+                    }
+                }
+                
+                basicShader.setVec4("uBaseColorFactor", baseColorFactor);
+                mesh.draw();
+            }
         }
 
         // 3. grid

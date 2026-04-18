@@ -19,11 +19,12 @@ namespace Cthulhu::Rendering
             size_t offset;
         };
 
+        int materialIndex = -1;
+
         void setup(const std::vector<float>& vertices, 
         const std::vector<unsigned int>& indices,
         const std::vector<vertexAttribute>& attributes,
-        unsigned int stride
-        
+        unsigned int stride   
     );
         size_t getIndexCount() const;
         size_t getVertexDataSize() const;

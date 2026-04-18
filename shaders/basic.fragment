@@ -14,6 +14,8 @@ uniform vec3 uLightDir;
 uniform vec3 uLightColor;
 uniform float uLightIntensity;
 
+uniform vec4 uBaseColorFactor;
+
 // point light
 struct PointLight
 {
@@ -91,7 +93,7 @@ void main()
     }
 
     // Sample texture (sRGB → linear conversion happens automatically if internal format is GL_SRGB8_ALPHA8)
-    vec4 texColor = texture(uTexture, TexCoord);
+    vec4 texColor = texture(uTexture, TexCoord) * uBaseColorFactor;
     vec3 result = (ambient + (1.0 - shadow) * (diffuse + specular) + pointLightResult) * texColor.rgb;
 
     // Apply tonemapping (optional, but recommended for HDR)

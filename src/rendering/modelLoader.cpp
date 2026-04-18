@@ -7,12 +7,15 @@
 #include "fwd.hpp"
 #include "log_utils.hpp"
 #include "mesh.h"
+#include "material.h"
 #include <algorithm>
 #include <cstddef>
 #include <type_traits>
 #include <utility>
 #include <variant>
 #include <vector>
+#include <unordered_map>
+
 
 using KalaHeaders::KalaLog::Log;
 using KalaHeaders::KalaLog::LogType;
@@ -43,6 +46,88 @@ namespace Cthulhu::Rendering
 
         fastgltf::Asset& gltf = asset.get();
 
+        // pass 1 load materials and textures
+
+        std::unordered_map<int,int> imageToTexture; // from gltf texture index to our texture index in model.textures
+
+        for (size_t matIdx = 0; matIdx < gltf.materials.size(); ++matIdx)
+        {
+            auto& gltfMaterial = gltf.materials[matIdx];
+            Material material;
+
+            // base color factor default to white
+            material.baseColorFactor = glm::vec4(
+                gltfMaterial.pbrData.baseColorFactor[0],
+                gltfMaterial.pbrData.baseColorFactor[1],
+                gltfMaterial.pbrData.baseColorFactor[2],
+                gltfMaterial.pbrData.baseColorFactor[3]
+            );
+
+            if (gltfMaterial.pbrData.baseColorTexture.has_value())
+            {
+                auto &textureInfo = gltfMaterial.pbrData.baseColorTexture.value();
+                auto &gltfTexture = gltf.textures[textureInfo.textureIndex];
+
+                if (gltfTexture.imageIndex.has_value())
+                {
+                    int imageIdx = static_cast<int>(gltfTexture.imageIndex.value());
+
+                    // check if we already loaded this specific texture
+                    auto it = imageToTexture.find(imageIdx);
+                    if (it != imageToTexture.end())
+                    {
+                        // reuse  a existing texture 
+                        material.baseColorTextureIndex = it->second;
+                    }
+                    else
+                    {
+                        auto &image = gltf.images[imageIdx];
+                        Texture newTexture;
+
+                        std::visit([&](auto& source)
+                        {
+                            using T = std::decay_t<decltype(source)>;
+                            if constexpr (std::is_same_v<T, fastgltf::sources::BufferView>)
+                            {
+                                auto& bufferView = gltf.bufferViews[source.bufferViewIndex];
+                                auto& buffer = gltf.buffers[bufferView.bufferIndex];
+
+                                std::visit([&](auto& bufferSource)
+                                {
+                                    using BT = std::decay_t<decltype(bufferSource)>;
+                                    if constexpr (std::is_same_v<BT, fastgltf::sources::Array>)
+                                    {
+
+                                        const unsigned char* data = reinterpret_cast<const unsigned char*>(bufferSource.bytes.data() + bufferView.byteOffset);
+                                        newTexture.loadFromMemory(data,static_cast<int>(bufferView.byteLength));
+                                    
+                                    }
+                                }, buffer.data);
+                            }
+            
+                            else if constexpr (std::is_same_v<T, fastgltf::sources::URI>)
+                            {
+                                Log::Print("TEXTURE IS URI - NOT SUPPORTED YET", "ModelLoader", LogType::LOG_WARNING);
+                            }
+                            else
+                            {
+                                Log::Print("TEXTURE FORMAT NOT HANDLED", "ModelLoader", LogType::LOG_WARNING);
+                            }
+                            
+                        },image.data);
+
+                        int textureIndex = static_cast<int>(model.textures.size());
+                        model.textures.push_back(std::move(newTexture));
+                        imageToTexture[imageIdx] = textureIndex;
+                        material.baseColorTextureIndex = textureIndex;
+                    }
+                }
+            }
+
+            model.materials.push_back(std::move(material));
+        }
+
+        // pass 2 load meshes
         for (auto& mesh : gltf.meshes)
         {
             for (auto& primitive : mesh.primitives)
@@ -174,53 +259,14 @@ namespace Cthulhu::Rendering
                     Texture newTexture;
                     if (primitive.materialIndex.has_value())
                     {
-                        auto& material = gltf.materials[primitive.materialIndex.value()];
-                        if (material.pbrData.baseColorTexture.has_value())
+                        int gltfMatIdx = static_cast<int>(primitive.materialIndex.value());
+                        if (gltfMatIdx >= 0 && gltfMatIdx < static_cast<int>(model.materials.size()))
                         {
-                            auto& textureInfo = material.pbrData.baseColorTexture.value();
-                            auto& texture = gltf.textures[textureInfo.textureIndex];
-
-                            if (texture.imageIndex.has_value())
-                            {
-                                auto image = gltf.images[texture.imageIndex.value()];
-                                
-                                std::visit([&](auto& source)
-                                {
-                                    using T = std::decay_t<decltype(source)>;
-                                    if constexpr (std::is_same_v<T, fastgltf::sources::BufferView>)
-                                    {
-                                        auto& bufferView = gltf.bufferViews[source.bufferViewIndex];
-                                        auto& buffer = gltf.buffers[bufferView.bufferIndex];
-
-                                        std::visit([&](auto& bufferSource)
-                                        {
-                                            using BT = std::decay_t<decltype(bufferSource)>;
-                                            if constexpr (std::is_same_v<BT, fastgltf::sources::Array>)
-                                            {
-
-                                                const unsigned char* data = reinterpret_cast<const unsigned char*>(bufferSource.bytes.data() + bufferView.byteOffset);
-                                                newTexture.loadFromMemory(data,static_cast<int>(bufferView.byteLength));
-                                            
-                                            }
-                                        }, buffer.data);
-                                    }
-                                    
-                                    else if constexpr (std::is_same_v<T, fastgltf::sources::URI>)
-                                    {
-                                        Log::Print("TEXTURE IS URI - NOT SUPPORTED YET", "ModelLoader", LogType::LOG_WARNING);
-                                    }
-                                    else
-                                    {
-                                        Log::Print("TEXTURE FORMAT NOT HANDLED", "ModelLoader", LogType::LOG_WARNING);
-                                    }
-                                    
-                                },image.data);
-                            }
+                            newMesh.materialIndex = gltfMatIdx;
                         }
                     }
-                    model.textures.push_back(std::move(newTexture));
+                    
                     model.meshes.push_back(std::move(newMesh));
-
             }
         }
         Log::Print("Meshes: " + std::to_string(model.meshes.size()) + " Textures: " + std::to_string(model.textures.size()), "ModelLoader", LogType::LOG_INFO);

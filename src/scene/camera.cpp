@@ -70,6 +70,9 @@ namespace Cthulhu::Scene
     void Camera::processKeyboard(double deltaTime)
     {
         float currentSpeed = speed * deltaTime;
+
+        glm::vec3 right = glm::normalize(glm::cross(front, up));
+
         if (Core::Input::isKeyPressed(GLFW_KEY_ESCAPE))
             glfwSetInputMode(Core::Input::getWindowHandle(), GLFW_CURSOR, GLFW_CURSOR_NORMAL);
 
@@ -78,9 +81,9 @@ namespace Cthulhu::Scene
         if (Core::Input::isKeyDown(GLFW_KEY_S))
             position -= currentSpeed * front;
         if (Core::Input::isKeyDown(GLFW_KEY_A))
-            position -= glm::normalize(glm::cross(front, up)) * currentSpeed;
+            position -= right * currentSpeed;
         if (Core::Input::isKeyDown(GLFW_KEY_D))
-            position += glm::normalize(glm::cross(front, up)) * currentSpeed;
+            position += right * currentSpeed;
         if (Core::Input::isKeyDown(GLFW_KEY_Q))
             position += currentSpeed * up;
         if (Core::Input::isKeyDown(GLFW_KEY_E))

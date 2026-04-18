@@ -4,24 +4,24 @@ namespace Cthulhu::Rendering
 {
     void Model::draw()
     {
-        size_t index = 0;
         for (auto& Mesh : meshes)
         {
-            if (index< textures.size())
+            if (Mesh.materialIndex >= 0 && Mesh.materialIndex < materials.size())
             {
-                textures[index].bind(0);
-            }
+                auto& material = materials[Mesh.materialIndex];
+                if (material.baseColorTextureIndex >= 0 && material.baseColorTextureIndex < (int)textures.size())
+                {
+                    textures[material.baseColorTextureIndex].bind(0);
+                }
+            }  
+
             Mesh.draw();
-            index++;
         }
     }
     
     void Model::destroy()
     {
         for (auto& Mesh : meshes) {  Mesh.destroy();}
-        for (auto& Tex: textures) {Tex.destroy();}
-        
-         
-        
+        for (auto& Tex: textures) {Tex.destroy();} 
     }
 }
