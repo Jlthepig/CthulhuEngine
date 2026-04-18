@@ -40,7 +40,10 @@ namespace Cthulhu::Rendering
         GLenum format = GL_RGB;
         if (nrChannels == 4) format = GL_RGBA;
 
-        glTexImage2D(GL_TEXTURE_2D, 0, format, width, height, 0, format, GL_UNSIGNED_BYTE, data);
+        GLenum internalFormat = GL_SRGB8;
+        if (nrChannels == 4) internalFormat = GL_SRGB8_ALPHA8;
+
+        glTexImage2D(GL_TEXTURE_2D, 0, internalFormat, width, height, 0, format, GL_UNSIGNED_BYTE, data);
         glGenerateMipmap(GL_TEXTURE_2D);
 
         stbi_image_free(data);
@@ -56,7 +59,7 @@ namespace Cthulhu::Rendering
         return;
         }
 
-        stbi_set_flip_vertically_on_load(true);
+        stbi_set_flip_vertically_on_load(false);
         unsigned char* pixels = stbi_load_from_memory(data, length, &width, &height, &nrChannels, 0);
         if (!pixels)
         {
@@ -74,7 +77,10 @@ namespace Cthulhu::Rendering
         GLenum format = GL_RGB;
         if (nrChannels ==  4) format = GL_RGBA;
 
-        glTexImage2D(GL_TEXTURE_2D,0,format,width,height,0,format,GL_UNSIGNED_BYTE,pixels);
+        GLenum internalFormat = GL_SRGB8;
+        if (nrChannels == 4) internalFormat = GL_SRGB8_ALPHA8;
+
+        glTexImage2D(GL_TEXTURE_2D,0,internalFormat,width,height,0,format,GL_UNSIGNED_BYTE,pixels);
         glGenerateMipmap(GL_TEXTURE_2D);
 
         stbi_image_free(pixels);

@@ -37,6 +37,7 @@ namespace Cthulhu::Rendering
 
         glEnable(GL_DEPTH_TEST);
         glEnable(GL_CULL_FACE);
+        
 
         basicShader.load("shaders/basic.vertex","shaders/basic.fragment");
         gridShader.load("shaders/grid.vertex", "shaders/grid.fragment");

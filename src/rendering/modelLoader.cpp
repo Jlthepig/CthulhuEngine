@@ -109,6 +109,9 @@ namespace Cthulhu::Rendering
                 }
 
                 auto* textureIt = primitive.findAttribute("TEXCOORD_0");
+                auto* texture1It = primitive.findAttribute("TEXCOORD_1");
+                Log::Print("Has TEXCOORD_0: " + std::to_string(textureIt != primitive.attributes.end()), "ModelLoader", LogType::LOG_INFO);
+                Log::Print("Has TEXCOORD_1: " + std::to_string(texture1It != primitive.attributes.end()), "ModelLoader", LogType::LOG_INFO);
                     if (textureIt != primitive.attributes.end())
                     {
                         auto& uvAccessor = gltf.accessors[textureIt->accessorIndex];
@@ -159,7 +162,12 @@ namespace Cthulhu::Rendering
                    
                 }
 
-                 unsigned int stride = currentOffset;
+                    unsigned int stride = currentOffset;
+                    Log::Print("Vertex count: " + std::to_string(posAccessor.count), "ModelLoader", LogType::LOG_INFO);
+                    Log::Print("Index count: " + std::to_string(indexdata.size()), "ModelLoader", LogType::LOG_INFO);
+                    Log::Print("Stride: " + std::to_string(stride), "ModelLoader", LogType::LOG_INFO);
+                    Log::Print("Attributes: " + std::to_string(attributes.size()), "ModelLoader", LogType::LOG_INFO);
+
                     Mesh newMesh;
                     newMesh.setup(vertexData, indexdata, attributes, stride);
 
@@ -197,6 +205,14 @@ namespace Cthulhu::Rendering
                                         }, buffer.data);
                                     }
                                     
+                                    else if constexpr (std::is_same_v<T, fastgltf::sources::URI>)
+                                    {
+                                        Log::Print("TEXTURE IS URI - NOT SUPPORTED YET", "ModelLoader", LogType::LOG_WARNING);
+                                    }
+                                    else
+                                    {
+                                        Log::Print("TEXTURE FORMAT NOT HANDLED", "ModelLoader", LogType::LOG_WARNING);
+                                    }
                                     
                                 },image.data);
                             }
@@ -207,7 +223,7 @@ namespace Cthulhu::Rendering
 
             }
         }
-
+        Log::Print("Meshes: " + std::to_string(model.meshes.size()) + " Textures: " + std::to_string(model.textures.size()), "ModelLoader", LogType::LOG_INFO);
         return model;
     };
 }

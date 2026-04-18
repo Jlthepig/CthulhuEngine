@@ -68,31 +68,20 @@ int main()
     renderer.init(glfwWindow, camera);
 
     Cthulhu::Rendering::Model fishModel;
-    fishModel = Cthulhu::Rendering::ModelLoader::loadGltf("assets/models/BarramundiFish.glb");
+    fishModel = Cthulhu::Rendering::ModelLoader::loadGltf("assets/models/DamagedHelmet.glb");
 
     Cthulhu::Scene::Scene scene;
     Cthulhu::Scene::Entity fishEntity;
     fishEntity.name = "Fish";
     fishEntity.model = &fishModel;  // point to the model
-    fishEntity.transform.setPosition(glm::vec3(0.0f));
-    fishEntity.transform.setScale(glm::vec3(1.0f));
+    fishEntity.transform.setPosition(glm::vec3(0.0f,1.0f,0.0f));
+    fishEntity.transform.setScale(glm::vec3(0.5f));
     fishEntity.bounds.min = glm::vec3(-2.0f, -2.0f, -2.0f);
     fishEntity.bounds.max = glm::vec3(2.0f, 2.0f, 2.0f);
 
     Cthulhu::Scene::Entity& fish = scene.addEntity(fishEntity);
     
     renderer.setScene(&scene);
-
-    Cthulhu::Rendering::PointLight light1;
-    light1.position = glm::vec3(2.0f, 2.0f, 2.0f);
-    light1.color = glm::vec3(1.0f, 0.5f, 0.0f); // orange
-
-    Cthulhu::Rendering::PointLight light2;
-    light2.position = glm::vec3(-2.0f, 2.0f, -2.0f);
-    light2.color = glm::vec3(0.0f, 0.5f, 1.0f); // blue
-
-    renderer.addPointLight(light1);
-    renderer.addPointLight(light2);
 
     int fbW, fbH;
     glfwGetFramebufferSize(glfwWindow, &fbW, &fbH);
