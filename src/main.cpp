@@ -83,6 +83,17 @@ int main()
     
     renderer.setScene(&scene);
 
+    Cthulhu::Rendering::PointLight light1;
+    light1.position = glm::vec3(2.0f, 2.0f, 2.0f);
+    light1.color = glm::vec3(1.0f, 0.5f, 0.0f); // orange
+
+    Cthulhu::Rendering::PointLight light2;
+    light2.position = glm::vec3(-2.0f, 2.0f, -2.0f);
+    light2.color = glm::vec3(0.0f, 0.5f, 1.0f); // blue
+
+    renderer.addPointLight(light1);
+    renderer.addPointLight(light2);
+
     int fbW, fbH;
     glfwGetFramebufferSize(glfwWindow, &fbW, &fbH);
     glViewport(0, 0, fbW, fbH);

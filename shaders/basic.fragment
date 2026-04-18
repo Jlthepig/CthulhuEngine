@@ -15,12 +15,19 @@ uniform vec3 uLightColor;
 uniform float uLightIntensity;
 
 // point light
-uniform vec3 uPointLightPos;
-uniform vec3 uPointLightColor;
-uniform float uPointLightIntensity;
-uniform float uPointLightConstant;
-uniform float uPointLightLinear;
-uniform float uPointLightQuadratic;
+struct PointLight
+{
+    vec3 position;
+    vec3 color;
+    float intensity;
+    float constant;
+    float linear;
+    float quadratic;
+};
+
+#define MAX_POINT_LIGHTS 8
+uniform PointLight uPointLights[MAX_POINT_LIGHTS];
+uniform int uPointLightCount;
 
 uniform vec3 uViewPos;
 
@@ -77,21 +84,25 @@ void main()
     float shadow = calculateShadow(FragPosLightSpace,norm,lightDir);
 
     // point light
+    vec3 pointLightResult = vec3(0.0);
+    for (int i = 0; i < uPointLightCount; i++)
+    {
+        vec3 pointLightDir = normalize(uPointLights[i].position - FragPos);
+        float distance = length(uPointLights[i].position - FragPos);
+        float attenuation = 1.0 / (uPointLights[i].constant + uPointLights[i].linear * distance + uPointLights[i].quadratic * (distance * distance));
 
-    vec3 pointLightDir = normalize(uPointLightPos - FragPos);
-    float distance = length(uPointLightPos - FragPos);
-    float attenuation = 1.0 / (uPointLightConstant + uPointLightLinear * distance + uPointLightQuadratic * (distance * distance));
+        float pointDiff = max(dot(norm,pointLightDir),0.0);
+        vec3 pointDiffuse = pointDiff * uPointLights[i].color * uPointLights[i].intensity * attenuation;
 
-    
-    float pointDiff = max(dot(norm, pointLightDir), 0.0);
-    vec3 pointDiffuse = pointDiff * uPointLightColor * uPointLightIntensity * attenuation;
+        vec3 pointHalfDir = normalize(pointLightDir +viewDir);
+        float pointSpec = pow(max(dot(norm,pointHalfDir),0.0),32.0);
+        vec3 pointSpecular = 0.3 * pointSpec * uPointLights[i].color * attenuation;
 
-    vec3 pointHalfDir = normalize(pointLightDir + viewDir);
-    float pointSpec = pow(max(dot(norm, pointHalfDir), 0.0), 32.0);
-    vec3 pointSpecular = 0.3 * pointSpec * uPointLightColor * attenuation;
+         pointLightResult += pointDiffuse + pointSpecular;
+    }
 
     // combine all
     vec4 texColor = texture(uTexture, TexCoord);
-    vec3 result = (ambient + (1.0 - shadow) * (diffuse + specular) + pointDiffuse + pointSpecular) * texColor.rgb;
+    vec3 result = (ambient + (1.0 - shadow) * (diffuse + specular) + pointLightResult) * texColor.rgb;
     FragColor = vec4(result, texColor.a);
 }

@@ -10,6 +10,7 @@
 #include "glfw3.h"
 #include "skybox.h"
 #include "shadowMap.h"
+#include <vector>
 
 namespace Cthulhu::Rendering
 {
@@ -18,6 +19,7 @@ namespace Cthulhu::Rendering
         public:
         void setScene(Cthulhu::Scene::Scene* scene);
         void init(GLFWwindow* window, Scene::Camera* camera);
+        void addPointLight(const PointLight& light);
         void render(float deltaTime);
         void shutdown();
         private:
@@ -30,10 +32,11 @@ namespace Cthulhu::Rendering
         Scene::Camera* camera = nullptr;
         GLFWwindow* window = nullptr;
         DirectionalLight sunLight;
-        PointLight pointLight;
+        std::vector<PointLight> pointLights;
         ShadowMap shadowMap;
         Cthulhu::Scene::Scene* scene = nullptr;
         Frustum frustum;
         Scene::AABB TransformAABB(const Scene::AABB& localBounds, const glm::mat4& modelMatrix);
     };
+    
 }

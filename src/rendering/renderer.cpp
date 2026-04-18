@@ -12,7 +12,7 @@ const float far = 100.0f;
 const float gridSize = 256.0f;
 const float shadowMapWidth = 2048.0f;
 const float shadowMapHeight = 2048.0f;
-const glm::vec4 color(0.2f, 0.3f, 1.0f, 1.0f);
+const glm::vec4 fogColor(0.2f, 0.3f, 0.3f, 1.0f);
 namespace Cthulhu::Rendering
 {
     void Renderer::setScene(Cthulhu::Scene::Scene* scene)
@@ -49,6 +49,11 @@ namespace Cthulhu::Rendering
         shadowMap.setLightDir(sunLight.direction);
 
     }
+
+    void Renderer::addPointLight(const PointLight& light)
+    {
+        pointLights.push_back(light);
+    }
     
     void Renderer::render(float deltaTime)
     {
@@ -79,20 +84,24 @@ namespace Cthulhu::Rendering
 
         // 2. main pass
         glViewport(0, 0, width, height);
-        glClearColor(color.r, color.g, color.b, color.a);
+        glClearColor(fogColor.r, fogColor.g, fogColor.b, fogColor.a);
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
         basicShader.use();
         basicShader.setVec3("uLightDir", sunLight.direction);
         basicShader.setVec3("uLightColor", sunLight.color);
         basicShader.setFloat("uLightIntensity", sunLight.intensity);
-        basicShader.setVec3("uPointLightPos", pointLight.position);
-        basicShader.setVec3("uPointLightColor", pointLight.color);
-        basicShader.setFloat("uPointLightIntensity", pointLight.intensity);
-        basicShader.setFloat("uPointLightRadius", pointLight.radius);
-        basicShader.setFloat("uPointLightConstant", pointLight.constant);
-        basicShader.setFloat("uPointLightLinear", pointLight.linear);
-        basicShader.setFloat("uPointLightQuadratic", pointLight.quadratic);
+        basicShader.setInt("uPointLightCount", (int)pointLights.size());
+        for (int i = 0; i < (int)pointLights.size(); i++)
+        {
+            std::string base = "uPointLights[" + std::to_string(i) + "].";
+            basicShader.setVec3(base + "position", pointLights[i].position);
+            basicShader.setVec3(base + "color", pointLights[i].color);
+            basicShader.setFloat(base + "intensity", pointLights[i].intensity);
+            basicShader.setFloat(base + "constant", pointLights[i].constant);
+            basicShader.setFloat(base + "linear", pointLights[i].linear);
+            basicShader.setFloat(base + "quadratic", pointLights[i].quadratic);
+        }
         basicShader.setVec3("uViewPos", camera->getPosition());
         basicShader.setInt("uTexture", 0);
         basicShader.setInt("uShadowMap", 1);
