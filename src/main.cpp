@@ -9,6 +9,8 @@
 #include "glfw3.h"
 #include "stb_image.h"
 #include "log_utils.hpp"
+#include "Jolt/Jolt.h"
+
 
 // engine
 #include "camera.h"
