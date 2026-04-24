@@ -18,7 +18,7 @@ compileflags: FS
 warninglevel: normal
 
 #profile release-windows
-    buildtype: minsizerel
+    buildtype: release
     buildpath: "build\\release-windows"
     
     links: "Libraries\\GLAD\\build\\release-windows\\glad.lib", "Libraries\\GLFW\\build\\release-windows\\glfw3.lib", "Libraries\\fastgltf\\build\\release-windows\\fastGltf.lib", "Libraries\\ImGui\\build\\release-windows\\imgui.lib"

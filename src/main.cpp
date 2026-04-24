@@ -1,7 +1,6 @@
 
 // standard libraries
-#include "entity.h"
-#include "model.h"
+#include "sceneLoader.h"
 #include <cstdlib>
 
 // third party libraries
@@ -17,7 +16,6 @@
 #include "input.h"
 #include "renderer.h"
 #include "scene.h"
-#include "modelLoader.h"
 
 // engine types
 using Cthulhu::Scene::Camera;
@@ -61,25 +59,20 @@ int main()
     }
 
     Renderer renderer;
-
     Camera* camera = Camera::init();
     Input::init(glfwWindow, resolution);
     Input::setCamera(camera);
     renderer.init(glfwWindow, camera);
 
-    Cthulhu::Rendering::Model fishModel;
-    fishModel = Cthulhu::Rendering::ModelLoader::loadGltf("assets/models/DamagedHelmet.glb");
-
     Cthulhu::Scene::Scene scene;
-    Cthulhu::Scene::Entity fishEntity;
-    fishEntity.name = "Fish";
-    fishEntity.model = &fishModel;  // point to the model
-    fishEntity.transform.setPosition(glm::vec3(0.0f,1.0f,0.0f));
-    fishEntity.transform.setScale(glm::vec3(0.5f));
-    fishEntity.bounds.min = glm::vec3(-2.0f, -2.0f, -2.0f);
-    fishEntity.bounds.max = glm::vec3(2.0f, 2.0f, 2.0f);
+    Cthulhu::Scene::SceneData sceneData = Cthulhu::Scene::SceneLoader::load(
+        "assets/scenes/test.scene", scene);
 
-    Cthulhu::Scene::Entity& fish = scene.addEntity(fishEntity);
+    renderer.setDirectionalLight(sceneData.directionalLight);
+    for (const auto& light : sceneData.pointLights)
+    {
+        renderer.addPointLight(light);
+    }
     
     renderer.setScene(&scene);
 
@@ -101,11 +94,10 @@ int main()
         camera->processKeyboard(deltaTime);
         renderer.render(deltaTime);
 
-        fish.transform.setRotation(glm::vec3(0.0f, 0.59f * currentFrame, 0.0f));
         glfwPollEvents();
     }
     renderer.shutdown();
-    fishModel.destroy();
+    scene.clear();
     glfwTerminate();
     return 0;
 }

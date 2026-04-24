@@ -10,8 +10,7 @@
 const float near = 0.1f;
 const float far = 100.0f;
 const float gridSize = 256.0f;
-const float shadowMapWidth = 2048.0f;
-const float shadowMapHeight = 2048.0f;
+const float shadowMapResolution = 2048.0f;
 const glm::vec4 fogColor(0.2f, 0.3f, 0.3f, 1.0f);
 namespace Cthulhu::Rendering
 {
@@ -46,7 +45,7 @@ namespace Cthulhu::Rendering
         skybox.load("assets/images/hdriTest.hdr");
         grid.setupGrid(gridSize);
 
-        shadowMap.init(shadowMapWidth, shadowMapHeight);
+        shadowMap.init(shadowMapResolution, shadowMapResolution);
         shadowMap.setLightDir(sunLight.direction);
 
     }
@@ -60,6 +59,8 @@ namespace Cthulhu::Rendering
     {
         int width, height;
         glfwGetFramebufferSize(window, &width, &height);
+
+        totalTriangles = 0;
 
         if (camera != nullptr)
         {
@@ -123,7 +124,7 @@ namespace Cthulhu::Rendering
             
             if (!frustum.testAABB(worldBounds)) continue;
             entityCount++;
-
+            
             basicShader.setMat4("model", modelMatrix);
 
             // Draw each mesh individually with its own material
@@ -144,8 +145,13 @@ namespace Cthulhu::Rendering
                         entity.model->textures[material.baseColorTextureIndex].bind(0);
                     }
                 }
-                
+
                 basicShader.setVec4("uBaseColorFactor", baseColorFactor);
+
+                for (auto& mesh : entity.model->meshes)
+                {
+                    totalTriangles += mesh.getIndexCount() / 3;
+                }
                 mesh.draw();
             }
         }
@@ -172,6 +178,9 @@ namespace Cthulhu::Rendering
         ImGui::Begin("Debug");
         ImGui::Text("FPS: %.1f", 1.0f / deltaTime);
         ImGui::Text("Entities: %d", entityCount);
+        ImGui::Text("Draw Calls: %d", entityCount + 2);  // +1 grid +1 skybox
+        ImGui::Text("Triangles: %zu", totalTriangles);
+        ImGui::Text("Shadow Map Resolution: %d", static_cast<int>(shadowMapResolution));
         ImGui::End();
         ImGui::Render();
         ImGui_ImplOpenGL3_RenderDrawData(ImGui::GetDrawData());
@@ -220,5 +229,15 @@ namespace Cthulhu::Rendering
             return worldBounds;
     }
 
+    void Renderer::setDirectionalLight(const DirectionalLight& light)
+    {
+        sunLight = light;
+        shadowMap.setLightDir(light.direction);
+    }
+
+    void Renderer::setPointLights(const std::vector<PointLight>& lights)
+    {
+        pointLights = lights;
+    }
     
 }

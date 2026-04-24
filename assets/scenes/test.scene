@@ -1,0 +1,31 @@
+{
+    "name": "test_level",
+    "entities": [
+        {
+            "name": "Helmet",
+            "model": "assets/models/DamagedHelmet.glb",
+            "position": [0.0, 1.0, 0.0],
+            "rotation": [0.0, 0.0, 0.0],
+            "scale": [0.5, 0.5, 0.5],
+            "bounds": {
+                "min": [-2.0, -2.0, -2.0],
+                "max": [2.0, 2.0, 2.0]
+            }
+        }
+    ],
+    "directional_light": {
+        "direction": [-0.2, -1.0, -0.3],
+        "color": [1.0, 1.0, 1.0],
+        "intensity": 1.0
+    },
+    "point_lights": [
+        {
+            "position": [3.0, 2.0, 3.0],
+            "color": [1.0, 0.5, 0.5],
+            "intensity": 4.0,
+            "constant": 1.0,
+            "linear": 0.09,
+            "quadratic": 0.032
+        }
+    ]
+}

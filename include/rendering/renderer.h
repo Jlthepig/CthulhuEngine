@@ -20,6 +20,8 @@ namespace Cthulhu::Rendering
         void setScene(Cthulhu::Scene::Scene* scene);
         void init(GLFWwindow* window, Scene::Camera* camera);
         void addPointLight(const PointLight& light);
+        void setDirectionalLight(const DirectionalLight& light);
+        void setPointLights(const std::vector<PointLight>& lights);
         void render(float deltaTime);
         void shutdown();
         private:
@@ -37,6 +39,7 @@ namespace Cthulhu::Rendering
         Cthulhu::Scene::Scene* scene = nullptr;
         Frustum frustum;
         Scene::AABB TransformAABB(const Scene::AABB& localBounds, const glm::mat4& modelMatrix);
+        size_t totalTriangles = 0;
     };
     
 }
