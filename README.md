@@ -114,15 +114,15 @@ Cthulhu is being developed as a long-term engine project with a focus on:
 
 ## 📁 Project Structure
 
-
-Cthulhu/
-├─ src/ # Engine source files
-├─ include/ # Engine headers
-├─ assets/ # Models, textures, etc.
-├─ shaders/ # GLSL shader files
-├─ Libraries/ # Third party dependencies
-└─ build/ # Build output
-
+```
+  Cthulhu/
+  ├─ src/ # Engine source files
+  ├─ include/ # Engine headers
+  ├─ assets/ # Models, textures, etc.
+  ├─ shaders/ # GLSL shader files
+  ├─ Libraries/ # Third party dependencies
+  └─ build/ # Build output
+```
 
 ---
 
