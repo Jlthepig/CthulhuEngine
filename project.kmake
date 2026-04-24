@@ -6,12 +6,11 @@ standard: c++20
 binarytype: executable
 binaryname: Cthulhu
 sources: "src"
-headers: "Libraries\\GLFW\\include\\GLFW", "Libraries\\GLM", "Libraries\\glad", "Libraries\\Stb_image", "Libraries\\simdjson", "Libraries", "Libraries\\ImGui", "Libraries\\JoltPhysics-5.5.0", "include\\core", "include\\rendering", "include\\scene", "include\\utils"
+headers: "Libraries\\GLFW\\include\\GLFW", "Libraries\\GLM", "Libraries\\glad", "Libraries\\Stb_image", "Libraries\\simdjson", "Libraries", "Libraries\\ImGui", "Libraries\\JoltPhysics-5.5.0", "include\\core", "include\\rendering", "include\\scene", "include\\utils", "include\\physics\\"
 
 customflags: export-compile-commands, export-vscode-sln
 
 links: opengl32
-defines: _GLFW_WIN32
 compileflags: FS
 
 warninglevel: normal
@@ -21,8 +20,11 @@ warninglevel: normal
     buildpath: "build\\release-windows"
     
     links: "Libraries\\GLAD\\build\\release-windows\\glad.lib", "Libraries\\GLFW\\build\\release-windows\\glfw3.lib", "Libraries\\fastgltf\\build\\release-windows\\fastGltf.lib", "Libraries\\ImGui\\build\\release-windows\\imgui.lib", "Libraries\\JoltPhysics-5.5.0\\build\\distribution-windows\\Jolt.lib"
+    defines: _GLFW_WIN32
+
 #profile debug-windows
     buildtype: debug
     buildpath: "build\\debug-windows"
     
     links: "Libraries\\GLAD\\build\\debug-windows\\glad.lib", "Libraries\\GLFW\\build\\debug-windows\\glfw3.lib", "Libraries\\fastgltf\\build\\debug-windows\\fastGltf.lib", "Libraries\\ImGui\\build\\debug-windows\\imgui.lib", "Libraries\\JoltPhysics-5.5.0\\build\\debug-windows\\Jolt.lib"
+    defines: _GLFW_WIN32, JPH_ENABLE_ASSERTS

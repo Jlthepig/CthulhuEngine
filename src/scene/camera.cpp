@@ -56,6 +56,12 @@ namespace Cthulhu::Scene
     {
         return position;
     }
+
+    glm::vec3 Camera::setPosition(const glm::vec3& newPos)
+    {
+        position = newPos;
+        return position;
+    }
     
     glm::mat4 Camera::getViewMatrix() const
     {

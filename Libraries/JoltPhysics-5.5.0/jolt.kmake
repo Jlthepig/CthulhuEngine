@@ -1,0 +1,24 @@
+#version 1.0
+#global
+compilerlauncher: ccache
+compiler: cl
+standard: c++20
+binarytype: static
+binaryname: Jolt
+
+sources: "Jolt"
+headers: "."
+
+customflags: export-compile-commands, export-vscode-sln
+compileflags: FS
+warninglevel: normal
+
+#profile debug-windows
+    buildtype: debug
+    buildpath: "build\\debug-windows"
+
+    defines: JPH_ENABLE_ASSERTS
+
+#profile distribution-windows
+    buildtype: release
+    buildpath: "build\\distribution-windows"

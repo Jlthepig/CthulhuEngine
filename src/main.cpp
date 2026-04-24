@@ -18,12 +18,16 @@
 #include "input.h"
 #include "renderer.h"
 #include "scene.h"
+#include "physics.h"
+#include "characterController.h"
 
 // engine types
 using Cthulhu::Scene::Camera;
 using Cthulhu::Core::Window;
 using Cthulhu::Core::Input;
 using Cthulhu::Rendering::Renderer;
+using Cthulhu::Physics::Physics;
+using Cthulhu::Physics::CharacterController;
 
 // utilities
 using KalaHeaders::KalaLog::Log;
@@ -35,6 +39,8 @@ glm::vec2 resolution = glm::vec2(1920.0f,1080.0f);
 // frame state
 float deltaTime = 0.0f;
 float lastFrame = 0.0f;
+
+bool inEditorMode = true; // start in editor/fly mode
 
 int main()
 {
@@ -60,6 +66,9 @@ int main()
         return -1;
     }
 
+    Physics::init();
+    Physics::createGroundPlane();
+    CharacterController::init(glm::vec3(0, 2, 0));
     Renderer renderer;
     Camera* camera = Camera::init();
     Input::init(glfwWindow, resolution);
@@ -84,7 +93,7 @@ int main()
     
     glfwSetInputMode(glfwWindow, GLFW_CURSOR, GLFW_CURSOR_DISABLED);
 
-    // Main Loop
+   // Main Loop
     while (!glfwWindowShouldClose(glfwWindow)) {
 
         Input::update();    
@@ -92,12 +101,46 @@ int main()
         float currentFrame = glfwGetTime();
         deltaTime = currentFrame - lastFrame;
         lastFrame = currentFrame;  
-    
-        camera->processKeyboard(deltaTime);
+
+        // toggle mode
+        if (Input::isKeyPressed(GLFW_KEY_F1))
+        {
+            inEditorMode = !inEditorMode;
+            Log::Print(inEditorMode ? "Switched to Editor Mode" : "Switched to Game Mode", "Main", LogType::LOG_INFO);
+        }
+
+        if (inEditorMode)
+        {
+            camera->processKeyboard(deltaTime);
+        }
+        else
+        {
+            // build movement vector from WASD
+            glm::vec3 movement(0.0f);
+            glm::vec3 front = camera->getFront();
+            glm::vec3 right = glm::normalize(glm::cross(front, glm::vec3(0.0f, 1.0f, 0.0f)));
+
+            if (Input::isKeyDown(GLFW_KEY_W)) movement += front;
+            if (Input::isKeyDown(GLFW_KEY_S)) movement -= front;
+            if (Input::isKeyDown(GLFW_KEY_A)) movement -= right;
+            if (Input::isKeyDown(GLFW_KEY_D)) movement += right;
+
+            if (glm::length(movement) > 0.0f)
+                movement = glm::normalize(movement);
+
+            bool jump = Input::isKeyPressed(GLFW_KEY_SPACE);
+
+            CharacterController::update(movement, jump, deltaTime);
+            camera->setPosition(CharacterController::getPosition());
+        }
+
+        Physics::step(deltaTime);
         renderer.render(deltaTime);
 
         glfwPollEvents();
     }
+    CharacterController::destroy();
+    Physics::shutdown();
     renderer.shutdown();
     scene.clear();
     glfwTerminate();
