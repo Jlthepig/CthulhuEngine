@@ -29,6 +29,20 @@ using KalaHeaders::KalaLog::LogType;
 
 namespace
 {
+    // Physics system configuration
+    constexpr int TEMP_ALLOCATOR_SIZE_MB = 10;
+    constexpr int PHYSICS_THREAD_COUNT = 1;
+    constexpr int MAX_BODIES = 1024;
+    constexpr int MAX_BODY_PAIRS = 1024;
+    constexpr int MAX_CONTACT_CONSTRAINTS = 1024;
+    constexpr float FIXED_TIMESTEP = 1.0f / 60.0f;
+    constexpr int COLLISION_STEPS = 1;
+    constexpr size_t TRACE_BUFFER_SIZE = 1024;
+
+    // Ground plane configuration
+    constexpr float GROUND_PLANE_WIDTH = 100.0f;
+    constexpr float GROUND_PLANE_HEIGHT = 0.5f;
+    constexpr float GROUND_PLANE_DEPTH = 100.0f;
     namespace ObjectLayers
     {
         // assigned to each object or body
@@ -113,7 +127,7 @@ static void joltTrace(const char* inFMT, ...)
 {
     va_list list;
     va_start(list, inFMT);
-    char buffer[1024];
+    char buffer[TRACE_BUFFER_SIZE];
     vsnprintf(buffer, sizeof(buffer), inFMT, list);
     va_end(list);
     Log::Print(buffer, "Jolt", LogType::LOG_INFO);
@@ -136,25 +150,25 @@ namespace Cthulhu::Physics
     Log::Print("Jolt types registered successfully", "Physics", LogType::LOG_SUCCESS);
         // temp allocation jolt needs a little bit of memory for calculations
         // 10mb should be good
-        tempAllocator = new JPH::TempAllocatorImpl(10 * 1024 * 1024);
+        tempAllocator = new JPH::TempAllocatorImpl(TEMP_ALLOCATOR_SIZE_MB * 1024 * 1024);
         // job system jolt is able to use multiple threads but for now we'll just use
         // 1 physics thread + main thread
         jobSystem = new JPH::JobSystemThreadPool(
             JPH::cMaxPhysicsJobs,
             JPH::cMaxPhysicsBarriers,
-            1);
+            PHYSICS_THREAD_COUNT);
 
         // create the physics system this is the world
         physicsSystem = new JPH::PhysicsSystem();
         physicsSystem->Init(
-            1024, // max bodies
-            0, // max body pairs 0 for auto
-            1024, // max body pairs
-            1024, // max contact constraints
-            bpLayerInterface,
-            objVsBpFilter,
-            objLayerPairFilter
-        );
+        MAX_BODIES,
+        0,
+        MAX_BODY_PAIRS, 
+        MAX_CONTACT_CONSTRAINTS,
+        bpLayerInterface,
+        objVsBpFilter,
+        objLayerPairFilter
+            );
 
         physicsSystem->SetContactListener(&contactListener);
         Log::Print("Initialized Jolt Physics System", "Physics", LogType::LOG_INFO);
@@ -167,10 +181,10 @@ namespace Cthulhu::Physics
         // jolt wants fixed timesteps for stabilty
         // 1/60th of a second is a good default
 
-        constexpr float fixedDeltaTime = 1.0f / 60.0f;
+        constexpr float fixedDeltaTime = FIXED_TIMESTEP;
         physicsSystem->Update(
             fixedDeltaTime,
-            1,  // collision steps per update
+            COLLISION_STEPS,  // collision steps per update
             tempAllocator,
             jobSystem
         );
@@ -298,7 +312,7 @@ namespace Cthulhu::Physics
         JPH::BodyInterface &bodyInterface = physicsSystem->GetBodyInterface();
 
         // create a large thin box to act as the ground plane at y = 0
-        JPH::BoxShapeSettings groundShapeSettings(JPH::Vec3(100.0f, 0.5f, 100.0f));
+        JPH::BoxShapeSettings groundShapeSettings(JPH::Vec3(GROUND_PLANE_WIDTH, GROUND_PLANE_HEIGHT, GROUND_PLANE_DEPTH));
         auto groundShape = groundShapeSettings.Create();
 
         if (groundShape.HasError())
@@ -310,7 +324,7 @@ namespace Cthulhu::Physics
         // boddy creation settins for pos rot shape layer and motion type
         JPH::BodyCreationSettings groundSettings(
             groundShape.Get(), // shape
-            JPH::Vec3(0.0f, -0.5f, 0.0f), // push it down half its height so top face sits at Y=0
+            JPH::Vec3(0.0f, -GROUND_PLANE_HEIGHT, 0.0f), // push it down half its height so top face sits at Y=0
             JPH::Quat::sIdentity(), // no rotation
             JPH::EMotionType::Static, // motion type never moves
             ObjectLayers::NON_MOVING // coll layer

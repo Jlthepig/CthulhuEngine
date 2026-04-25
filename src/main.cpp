@@ -29,29 +29,41 @@ using Cthulhu::Rendering::Renderer;
 using Cthulhu::Physics::Physics;
 using Cthulhu::Physics::CharacterController;
 
-// utilities
 using KalaHeaders::KalaLog::Log;
 using KalaHeaders::KalaLog::LogType;
 
-// window settings
-glm::vec2 resolution = glm::vec2(1920.0f,1080.0f);
+// Configuration constants
+namespace Config
+{
+    constexpr glm::vec2 WINDOW_RESOLUTION = glm::vec2(1920.0f, 1080.0f);
+    constexpr const char* WINDOW_TITLE = "Cthulhu Engine";
+    constexpr const char* SCENE_PATH = "assets/scenes/test.scene";
+    // OpenGL version
+    constexpr int OPENGL_VERSION_MAJOR = 3;
+    constexpr int OPENGL_VERSION_MINOR = 3;
+    // Character controller
+    constexpr glm::vec3 CHARACTER_START_POSITION = glm::vec3(0, 2, 0);
+    constexpr float CAMERA_EYE_HEIGHT_OFFSET = 0.6f;
+    // World up vector
+    constexpr glm::vec3 WORLD_UP = glm::vec3(0.0f, 1.0f, 0.0f);
+}
 
-// frame state
+// Global state
+glm::vec2 resolution = Config::WINDOW_RESOLUTION;
 float deltaTime = 0.0f;
 float lastFrame = 0.0f;
-
-bool inEditorMode = true; // start in editor/fly mode
+bool inEditorMode = true;
 
 int main()
 {
     // Initialize system
     if (!glfwInit()) return -1;
-    glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 3);
-    glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 3);
+    glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, Config::OPENGL_VERSION_MAJOR);
+    glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, Config::OPENGL_VERSION_MINOR);
     glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);
 
     // Window creation
-    Window* window = Cthulhu::Core::Window::createWindow(resolution,"Cthulhu Engine");
+    Window* window = Cthulhu::Core::Window::createWindow(resolution, Config::WINDOW_TITLE);
     GLFWwindow* glfwWindow = window->getWindow();
     if (glfwWindow == NULL)
     {
@@ -68,7 +80,7 @@ int main()
 
     Physics::init();
     Physics::createGroundPlane();
-    CharacterController::init(glm::vec3(0, 2, 0));
+    CharacterController::init(glm::vec3(0, Config::CHARACTER_START_POSITION.y, 0));
     Renderer renderer;
     Camera* camera = Camera::init();
     Input::init(glfwWindow, resolution);
@@ -77,7 +89,7 @@ int main()
 
     Cthulhu::Scene::Scene scene;
     Cthulhu::Scene::SceneData sceneData = Cthulhu::Scene::SceneLoader::load(
-        "assets/scenes/test.scene", scene);
+        Config::SCENE_PATH, scene);
 
     renderer.setDirectionalLight(sceneData.directionalLight);
     for (const auto& light : sceneData.pointLights)
@@ -118,7 +130,8 @@ int main()
             // build movement vector from WASD
             glm::vec3 movement(0.0f);
             glm::vec3 front = camera->getFront();
-            glm::vec3 right = glm::normalize(glm::cross(front, glm::vec3(0.0f, 1.0f, 0.0f)));
+            glm::vec3 right = glm::normalize(glm::cross(front, Config::WORLD_UP));
+
 
             if (Input::isKeyDown(GLFW_KEY_W)) movement += front;
             if (Input::isKeyDown(GLFW_KEY_S)) movement -= front;
@@ -132,7 +145,7 @@ int main()
 
             CharacterController::update(movement, jump, deltaTime);
             glm::vec3 charPos = CharacterController::getPosition();
-            charPos.y += 0.6f;
+            charPos.y += Config::CAMERA_EYE_HEIGHT_OFFSET;
             camera->setPosition(charPos);
         }
 

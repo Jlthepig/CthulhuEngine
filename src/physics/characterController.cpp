@@ -23,16 +23,19 @@ namespace
 {
     JPH::CharacterVirtual* character = nullptr;
 
+    // Physics constants
     constexpr float gravity = -9.81f;
+    constexpr float jumpVelocity = 5.0f;
 
-    // player dimensions
+    // Player dimensions
     constexpr float capsuleRadius = 0.3f;
     constexpr float capsuleHeight = 2.0f;
 
-    // movement settings
-    constexpr float jumpVelocity = 5.0f;
+    // Character controller settings
+    constexpr float maxWalkableSlope = 45.0f;  // degrees
+    constexpr float maxPushStrength = 100.0f;
 
-    // current vertical velocity (gravity accumulates here)
+    // Current vertical velocity (gravity accumulates here)
     float verticalVelocity = 0.0f;
 
 }
@@ -76,8 +79,8 @@ namespace Cthulhu::Physics
 
         // character settings
         JPH::CharacterVirtualSettings settings;
-        settings.mMaxSlopeAngle = JPH::DegreesToRadians(45.0f); // max walkable slope
-        settings.mMaxStrength = 100.0f;                          // how hard it can push
+        settings.mMaxSlopeAngle = JPH::DegreesToRadians(maxWalkableSlope);
+        settings.mMaxStrength = maxPushStrength;                  // how hard it can push
         settings.mShape = offsetShape.Get();
         settings.mUp = JPH::Vec3::sAxisY();                     // Y is up
        

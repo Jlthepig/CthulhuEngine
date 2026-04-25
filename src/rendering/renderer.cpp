@@ -7,12 +7,32 @@
 #include "imgui.h"
 #include "imgui_impl_glfw.h"
 #include "imgui_impl_opengl3.h"
+namespace
+{
+    // Rendering configuration
+    constexpr float CAMERA_NEAR_PLANE = 0.1f;
+    constexpr float CAMERA_FAR_PLANE = 100.0f;
+    constexpr float GRID_SIZE = 256.0f;
+    constexpr float SHADOW_MAP_RESOLUTION = 2048.0f;
+    constexpr glm::vec4 FOG_COLOR(0.2f, 0.3f, 0.3f, 1.0f);
 
-const float near = 0.1f;
-const float far = 100.0f;
-const float gridSize = 256.0f;
-const float shadowMapResolution = 2048.0f;
-const glm::vec4 fogColor(0.2f, 0.3f, 0.3f, 1.0f);
+    // Shader paths
+    constexpr const char* BASIC_VERTEX_SHADER = "shaders/basic.vertex";
+    constexpr const char* BASIC_FRAGMENT_SHADER = "shaders/basic.fragment";
+    constexpr const char* GRID_VERTEX_SHADER = "shaders/grid.vertex";
+    constexpr const char* GRID_FRAGMENT_SHADER = "shaders/grid.fragment";
+    constexpr const char* SKYBOX_HDR_PATH = "assets/images/hdriTest.hdr";
+    constexpr const char* IMGUI_GLSL_VERSION = "#version 330";
+
+    // Texture slots
+    constexpr int DIFFUSE_TEXTURE_SLOT = 0;
+    constexpr int SHADOW_MAP_TEXTURE_SLOT = 1;
+
+    // Debug UI
+    constexpr int ADDITIONAL_DRAW_CALLS = 2; // grid + skybox
+    constexpr int TRIANGLES_PER_FACE = 3;
+    constexpr int AABB_CORNER_COUNT = 8;
+}
 namespace Cthulhu::Rendering
 {
     void Renderer::setScene(Cthulhu::Scene::Scene* scene)
@@ -26,7 +46,7 @@ namespace Cthulhu::Rendering
         IMGUI_CHECKVERSION();
         ImGui::CreateContext();
         ImGui_ImplGlfw_InitForOpenGL(window, true);
-        ImGui_ImplOpenGL3_Init("#version 330");
+        ImGui_ImplOpenGL3_Init(IMGUI_GLSL_VERSION);
 
         this->camera = camera;
         this->window = window;
@@ -38,14 +58,14 @@ namespace Cthulhu::Rendering
         glEnable(GL_CULL_FACE);
         
 
-        basicShader.load("shaders/basic.vertex","shaders/basic.fragment");
-        gridShader.load("shaders/grid.vertex", "shaders/grid.fragment");
+        basicShader.load(BASIC_VERTEX_SHADER,BASIC_FRAGMENT_SHADER);
+        gridShader.load(GRID_VERTEX_SHADER, GRID_FRAGMENT_SHADER);
 
        
-        skybox.load("assets/images/hdriTest.hdr");
-        grid.setupGrid(gridSize);
+        skybox.load(SKYBOX_HDR_PATH);
+        grid.setupGrid(GRID_SIZE);
 
-        shadowMap.init(shadowMapResolution, shadowMapResolution);
+        shadowMap.init(SHADOW_MAP_RESOLUTION, SHADOW_MAP_RESOLUTION);
         shadowMap.setLightDir(sunLight.direction);
 
     }
@@ -66,7 +86,7 @@ namespace Cthulhu::Rendering
         {
             projection = glm::perspective(camera->getFov(),
             (float)width / (float)height,
-            near, far);
+            CAMERA_NEAR_PLANE, CAMERA_FAR_PLANE);
             view = camera->getViewMatrix();
         }
 
@@ -86,7 +106,7 @@ namespace Cthulhu::Rendering
 
         // 2. main pass
         glViewport(0, 0, width, height);
-        glClearColor(fogColor.r, fogColor.g, fogColor.b, fogColor.a);
+        glClearColor(FOG_COLOR.r, FOG_COLOR.g, FOG_COLOR.b, FOG_COLOR.a);
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
         basicShader.use();
@@ -105,8 +125,8 @@ namespace Cthulhu::Rendering
             basicShader.setFloat(base + "quadratic", pointLights[i].quadratic);
         }
         basicShader.setVec3("uViewPos", camera->getPosition());
-        basicShader.setInt("uTexture", 0);
-        basicShader.setInt("uShadowMap", 1);
+        basicShader.setInt("uTexture", DIFFUSE_TEXTURE_SLOT);
+        basicShader.setInt("uShadowMap", SHADOW_MAP_TEXTURE_SLOT);
         basicShader.setMat4("projection", projection);
         basicShader.setMat4("view", view);
         basicShader.setMat4("lightSpaceMatrix", shadowMap.getLightSpaceMatrix());
@@ -150,7 +170,7 @@ namespace Cthulhu::Rendering
 
                 for (auto& mesh : entity.model->meshes)
                 {
-                    totalTriangles += mesh.getIndexCount() / 3;
+                    totalTriangles += mesh.getIndexCount() / TRIANGLES_PER_FACE;
                 }
                 mesh.draw();
             }
@@ -180,9 +200,9 @@ namespace Cthulhu::Rendering
         ImGui::Begin("Debug");
         ImGui::Text("FPS: %.1f", 1.0f / deltaTime);
         ImGui::Text("Entities: %d", entityCount);
-        ImGui::Text("Draw Calls: %d", entityCount + 2);  // +1 grid +1 skybox
+        ImGui::Text("Draw Calls: %d", entityCount + ADDITIONAL_DRAW_CALLS);  // +1 grid +1 skybox
         ImGui::Text("Triangles: %zu", totalTriangles);
-        ImGui::Text("Shadow Map Resolution: %d", static_cast<int>(shadowMapResolution));
+        ImGui::Text("Shadow Map Resolution: %d", static_cast<int>(SHADOW_MAP_RESOLUTION));
         ImGui::End();
         ImGui::Render();
         ImGui_ImplOpenGL3_RenderDrawData(ImGui::GetDrawData());
@@ -220,7 +240,7 @@ namespace Cthulhu::Rendering
             glm::vec3 worldMin = glm::vec3(FLT_MAX);
             glm::vec3 worldMax = glm::vec3(-FLT_MAX);
 
-            for (int i = 0; i < 8; i++)
+            for (int i = 0; i < AABB_CORNER_COUNT; i++)
             {
                 glm::vec4 worldCorner = modelMatrix * glm::vec4(corners[i], 1.0f);
                 worldMin = glm::min(worldMin, glm::vec3(worldCorner));
