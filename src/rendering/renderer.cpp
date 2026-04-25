@@ -1,6 +1,7 @@
 #include "renderer.h"
 #include "entity.h"
 #include "ext/matrix_clip_space.hpp"
+#include "fwd.hpp"
 #include "shader.h"
 #include "shadowMap.h"
 #include "imgui.h"
@@ -32,7 +33,6 @@ namespace Cthulhu::Rendering
         
          int width, height;
         glfwGetFramebufferSize(window, &width, &height);
-        this->projection = glm::perspective(camera->getFov(), (float)width / (float)height, near, far);
 
         glEnable(GL_DEPTH_TEST);
         glEnable(GL_CULL_FACE);
@@ -155,6 +155,8 @@ namespace Cthulhu::Rendering
                 mesh.draw();
             }
         }
+
+        
 
         // 3. grid
         glEnable(GL_BLEND);

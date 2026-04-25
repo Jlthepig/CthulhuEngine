@@ -10,6 +10,7 @@
 #include "material.h"
 #include <algorithm>
 #include <cstddef>
+#include <cfloat>
 #include <type_traits>
 #include <utility>
 #include <variant>
@@ -35,11 +36,19 @@ namespace Cthulhu::Rendering
         }
 
         // create  a parser and parse the raw data/file
-        fastgltf::Parser parser;
+            fastgltf::Parser parser(fastgltf::Extensions::KHR_materials_unlit
+        | fastgltf::Extensions::KHR_texture_transform
+        | fastgltf::Extensions::KHR_materials_specular
+        | fastgltf::Extensions::KHR_materials_ior
+        | fastgltf::Extensions::KHR_materials_emissive_strength
+        | fastgltf::Extensions::KHR_materials_sheen
+        | fastgltf::Extensions::KHR_materials_transmission
+        | fastgltf::Extensions::KHR_materials_volume
+        | fastgltf::Extensions::KHR_materials_clearcoat);
         auto asset = parser.loadGltfBinary(data.get(),path);
         if (asset.error() != fastgltf::Error::None)
         {
-            Log::Print("FAILED TO PARSE GLTF " + path,"ModelLoader", LogType::LOG_ERROR);
+            Log::Print("FAILED TO PARSE GLTF " + path + " Error: " + std::string(fastgltf::getErrorMessage(asset.error())), "ModelLoader", LogType::LOG_ERROR);
             return model;
         }
 
@@ -143,15 +152,24 @@ namespace Cthulhu::Rendering
                 auto& posAccessor = gltf.accessors[positionIt->accessorIndex];
                 vertexData.resize(posAccessor.count * 3);
                 
-                  fastgltf::iterateAccessorWithIndex<glm::vec3>(
-            gltf, posAccessor,
-            [&](glm::vec3 pos, size_t index)
-            {
-                vertexData[index * 3 + 0] = pos.x;
-                vertexData[index * 3 + 1] = pos.y;
-                vertexData[index * 3 + 2] = pos.z;
-            }
-        );
+                glm::vec3 meshMin(FLT_MAX);
+                glm::vec3 meshMax(-FLT_MAX);
+
+                fastgltf::iterateAccessorWithIndex<glm::vec3>(
+                    gltf, posAccessor,
+                    [&](glm::vec3 pos, size_t index)
+                    {
+                        meshMin = glm::min(meshMin, pos);
+                        meshMax = glm::max(meshMax, pos);
+
+                        vertexData[index * 3 + 0] = pos.x;
+                        vertexData[index * 3 + 1] = pos.y;
+                        vertexData[index * 3 + 2] = pos.z;
+                    }
+                );
+
+                Log::Print("Mesh bounds min: " + std::to_string(meshMin.x) + ", " + std::to_string(meshMin.y) + ", " + std::to_string(meshMin.z), "ModelLoader", LogType::LOG_INFO);
+                Log::Print("Mesh bounds max: " + std::to_string(meshMax.x) + ", " + std::to_string(meshMax.y) + ", " + std::to_string(meshMax.z), "ModelLoader", LogType::LOG_INFO);
 
                 attributes.push_back({0,3,currentOffset});
                 currentOffset +=3 *sizeof(float);

@@ -2,6 +2,7 @@
 
 #include "transform.h"
 #include "model.h"
+#include <cstdint>
 #include <string>
 namespace Cthulhu::Scene 
 {
@@ -21,5 +22,7 @@ namespace Cthulhu::Scene
         Rendering::Model* model = nullptr;
         AABB bounds;
 
+        bool hasPhysicsBody = false;
+        uint32_t physicsBodyId = 0;
     };
 }

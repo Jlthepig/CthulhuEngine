@@ -11,6 +11,38 @@
                 "min": [-2.0, -2.0, -2.0],
                 "max": [2.0, 2.0, 2.0]
             }
+        },
+        {
+            "name": "Crate",
+            "model": "assets/models/woodenCrate.glb",
+            "position": [2.0, 5.0, 0.0],
+            "rotation": [0.0, 0.0, 0.0],
+            "scale": [0.4, 0.4, 0.4],
+            "bounds": {
+                "min": [-0.5, -0.5, -0.5],
+                "max": [0.5, 0.5, 0.5]
+            },
+            "physics": {
+                "type": "dynamic",
+                "mass": 2.0,
+                "half_extent": [0.4, 0.4, 0.4]
+            }
+        },
+        {
+            "name": "Crate",
+            "model": "assets/models/woodenCrate.glb",
+            "position": [2.0, 5.0, 0.0],
+            "rotation": [0.0, 0.0, 0.0],
+            "scale": [0.4, 0.4, 0.4],
+            "bounds": {
+                "min": [-0.5, -0.5, -0.5],
+                "max": [0.5, 0.5, 0.5]
+            },
+            "physics": {
+                "type": "dynamic",
+                "mass": 2.0,
+                "half_extent": [0.4, 0.4, 0.4]
+            }
         }
     ],
     "directional_light": {

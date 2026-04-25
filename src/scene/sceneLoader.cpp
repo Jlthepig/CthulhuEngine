@@ -1,5 +1,6 @@
 #include "sceneLoader.h"
 #include "jsonParser.h"
+#include "physics.h"
 #include "log_utils.hpp"
 
 using KalaHeaders::KalaLog::Log;
@@ -35,6 +36,26 @@ namespace Cthulhu::Scene
             entity.transform.setScale(parsedEntity.scale);
             entity.bounds.min = parsedEntity.boundsMin;
             entity.bounds.max = parsedEntity.boundsMax;
+
+            // create a physics body if it is present
+            if (parsedEntity.physics.has_value())
+            {
+                auto& p = parsedEntity.physics.value();
+
+                if (p.type == "static")
+                {
+                    entity.physicsBodyId = Physics::Physics::addStaticBox(
+                        parsedEntity.position, p.halfExtent);
+                    entity.hasPhysicsBody = true;
+                }
+                else if (p.type == "dynamic")
+                {
+                    entity.physicsBodyId = Physics::Physics::addDynamicBox(
+                        parsedEntity.position, p.halfExtent, p.mass);
+                    entity.hasPhysicsBody = true;
+                }
+                Log::Print("Entity '" + entity.name + "' has physics: " + p.type, "SceneLoader", LogType::LOG_INFO);
+            }
 
             scene.addEntity(entity);
             Log::Print("Added entity: " + entity.name, "SceneLoader", LogType::LOG_INFO);

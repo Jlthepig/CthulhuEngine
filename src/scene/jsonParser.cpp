@@ -1,6 +1,7 @@
 #include "jsonParser.h"
 #include "simdjson.h"
 #include "log_utils.hpp"
+#include <string>
 
 using KalaHeaders::KalaLog::Log;
 using KalaHeaders::KalaLog::LogType;
@@ -52,6 +53,23 @@ namespace Cthulhu::Scene
             auto boundsJson = entityJson["bounds"].get_object().value();
             entity.boundsMin = readVec3(boundsJson["min"].get_array().value());
             entity.boundsMax = readVec3(boundsJson["max"].get_array().value());
+
+            auto physicsResult = entityJson["physics"].get_object();
+            if (!physicsResult.error())
+            {
+                auto physicsJson = physicsResult.value();
+                ParsedPhysics physics;
+                physics.type = std::string(physicsJson["type"].get_string().value());
+                physics.halfExtent = readVec3(physicsJson["half_extent"].get_array().value());
+
+                auto massVal = physicsJson["mass"].get_double();
+                if (!massVal.error())
+                {
+                    physics.mass = static_cast<float>(massVal.value());
+                }
+
+                entity.physics = physics;
+            }
 
             result.entities.push_back(entity);
         }

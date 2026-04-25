@@ -131,10 +131,34 @@ int main()
             bool jump = Input::isKeyPressed(GLFW_KEY_SPACE);
 
             CharacterController::update(movement, jump, deltaTime);
-            camera->setPosition(CharacterController::getPosition());
+            glm::vec3 charPos = CharacterController::getPosition();
+            charPos.y += 0.6f;
+            camera->setPosition(charPos);
         }
 
         Physics::step(deltaTime);
+
+        // sync physics bodies to entities
+        auto& entities = scene.getEntities();
+        for (auto& entity : entities)
+        {
+            if (entity.hasPhysicsBody)
+            {
+                auto transform = Physics::Physics::getBodyTransform(entity.physicsBodyId);
+                entity.transform.setPosition(transform.position);
+                entity.transform.setRotation(transform.rotation);
+
+                static bool logged = false;
+                if (!logged)
+                {
+                    Log::Print("Crate physics pos: " + std::to_string(transform.position.x) + ", " 
+                        + std::to_string(transform.position.y) + ", " 
+                        + std::to_string(transform.position.z), "Debug", LogType::LOG_INFO);
+                    logged = true;
+                }
+            }
+        }
+
         renderer.render(deltaTime);
 
         glfwPollEvents();

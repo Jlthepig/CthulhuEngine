@@ -12,6 +12,8 @@
 #include "Jolt/Physics/Collision/Shape/BoxShape.h"
 #include "Jolt/Physics/Body/BodyCreationSettings.h"
 #include "Jolt/Physics/Body/BodyInterface.h"
+#include "Jolt/Physics/Body/BodyID.h"
+#include "gtc/quaternion.hpp"
 #include "Jolt/Core/Factory.h"
 #include "Jolt/Core/Memory.h"
 #include "log_utils.hpp"
@@ -173,6 +175,122 @@ namespace Cthulhu::Physics
             jobSystem
         );
     }
+
+    uint32_t Physics::addStaticBox(glm::vec3 position, glm::vec3 halfExtent)
+    {
+        if (!physicsSystem)
+        {
+            Log::Print("Cannot create static box - physics system not initialized", "Physics", LogType::LOG_ERROR);
+            return 0;
+        }
+
+        JPH::BodyInterface& bodyInterface = physicsSystem->GetBodyInterface();
+
+        JPH::BoxShapeSettings shapeSettings(
+        JPH::Vec3(halfExtent.x, halfExtent.y, halfExtent.z)
+        );
+
+        auto shapeResult = shapeSettings.Create();
+        if (shapeResult.HasError())
+        {
+            Log::Print("Failed to create static box shape", "Physics", LogType::LOG_ERROR);
+            return 0;
+        }
+
+        JPH::BodyCreationSettings bodySettings(
+            shapeResult.Get(),
+            JPH::RVec3(position.x, position.y, position.z),
+            JPH::Quat::sIdentity(),
+            JPH::EMotionType::Static,
+            ObjectLayers::NON_MOVING
+        );
+
+        JPH::BodyID bodyId = bodyInterface.CreateAndAddBody(
+            bodySettings,
+            JPH::EActivation::DontActivate
+        );
+
+        Log::Print("Created static box body", "Physics", LogType::LOG_INFO);
+
+        return bodyId.GetIndexAndSequenceNumber();
+    }
+
+    uint32_t Physics::addDynamicBox(glm::vec3 position, glm::vec3 halfExtent, float mass)
+    {
+        if (!physicsSystem)
+        {
+            Log::Print("Cannot create dynamic box - physics system not initialized", "Physics", LogType::LOG_ERROR);
+            return 0;
+        }
+
+        JPH::BodyInterface& bodyInterface = physicsSystem->GetBodyInterface();
+
+        JPH::BoxShapeSettings shapeSettings(
+            JPH::Vec3(halfExtent.x, halfExtent.y, halfExtent.z)
+        );
+
+        auto shapeResult = shapeSettings.Create();
+
+        if (shapeResult.HasError())
+        {
+            Log::Print("Failed to create dynamic box shape", "Physics", LogType::LOG_ERROR);
+            return 0;
+        }
+
+        JPH::BodyCreationSettings bodySettings(
+            shapeResult.Get(),
+            JPH::RVec3(position.x, position.y, position.z),
+            JPH::Quat::sIdentity(),
+            JPH::EMotionType::Dynamic,
+            ObjectLayers::MOVING
+        );
+
+        bodySettings.mOverrideMassProperties = JPH::EOverrideMassProperties::CalculateInertia;
+        bodySettings.mMassPropertiesOverride.mMass = mass;
+
+        JPH::BodyID bodyId = bodyInterface.CreateAndAddBody(
+            bodySettings,
+            JPH::EActivation::Activate
+        );
+
+        Log::Print("Created dynamic box body", "Physics", LogType::LOG_INFO);
+
+        return bodyId.GetIndexAndSequenceNumber();
+    }
+
+    BodyTransform Physics::getBodyTransform(uint32_t bodyIdValue)
+    {
+        BodyTransform result;
+
+        if (!physicsSystem)
+            return result;
+
+        JPH::BodyInterface& bodyInterface = physicsSystem->GetBodyInterface();
+
+        JPH::BodyID bodyId(bodyIdValue);
+
+        JPH::RVec3 pos = bodyInterface.GetPosition(bodyId);
+        JPH::Quat rot = bodyInterface.GetRotation(bodyId);
+
+        result.position = glm::vec3(
+            static_cast<float>(pos.GetX()),
+            static_cast<float>(pos.GetY()),
+            static_cast<float>(pos.GetZ())
+        );
+
+        glm::quat glmRot(
+            rot.GetW(),
+            rot.GetX(),
+            rot.GetY(),
+            rot.GetZ()
+        );
+
+        result.rotation = glm::eulerAngles(glmRot);
+
+        return result;
+    
+    }
+
 
     void Physics::createGroundPlane()
     {

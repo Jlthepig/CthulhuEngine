@@ -1,5 +1,6 @@
 #pragma once
 
+#include "fwd.hpp"
 #include "glm.hpp"
 #include "light.h"
 #include <string>
@@ -8,6 +9,12 @@
 
 namespace Cthulhu::Scene
 {
+    struct ParsedPhysics
+    {
+        std::string type;
+        float mass = 1.0f;
+        glm::vec3 halfExtent = glm::vec3(0.5f);
+    };
     struct ParsedEntity
     {
         std::string name;
@@ -17,6 +24,7 @@ namespace Cthulhu::Scene
         glm::vec3 scale = glm::vec3(1.0f);
         glm::vec3 boundsMin = glm::vec3(-1.0f);
         glm::vec3 boundsMax = glm::vec3(1.0f);
+        std::optional<ParsedPhysics> physics;
     };
 
     struct ParsedScene
