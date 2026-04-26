@@ -1,63 +1,117 @@
 {
-    "name": "test_level",
+    "name": "crate_platform_test",
     "entities": [
         {
-            "name": "Helmet",
+            "name": "Helmet_Goal",
             "model": "assets/models/DamagedHelmet.glb",
-            "position": [0.0, 1.0, 0.0],
-            "rotation": [0.0, 0.0, 0.0],
+            "position": [8.0, 5.5, 0.0],
+            "rotation": [0.0, 45.0, 0.0],
             "scale": [0.5, 0.5, 0.5],
             "bounds": {
                 "min": [-2.0, -2.0, -2.0],
                 "max": [2.0, 2.0, 2.0]
             }
         },
+
+        
         {
-            "name": "Crate",
+            "name": "Stair_1",
             "model": "assets/models/woodenCrate.glb",
-            "position": [2.0, 5.0, 0.0],
+            "position": [-4.0, 0.5, 0.0],
             "rotation": [0.0, 0.0, 0.0],
-            "scale": [0.4, 0.4, 0.4],
-            "bounds": {
-                "min": [-0.5, -0.5, -0.5],
-                "max": [0.5, 0.5, 0.5]
-            },
-            "physics": {
-                "type": "dynamic",
-                "mass": 2.0,
-                "half_extent": [0.4, 0.4, 0.4]
-            }
+            "scale": [0.6, 0.6, 0.6],
+            "bounds": { "min": [-0.5,-0.5,-0.5], "max": [0.5,0.5,0.5] },
+            "physics": { "type": "static", "half_extent": [0.6,0.6,0.6] }
         },
         {
-            "name": "Crate",
+            "name": "Stair_2",
             "model": "assets/models/woodenCrate.glb",
-            "position": [2.0, 5.0, 0.0],
+            "position": [-3.0, 1.2, 0.0],
+            "rotation": [0.0, 5.0, 0.0],
+            "scale": [0.6, 0.6, 0.6],
+            "bounds": { "min": [-0.5,-0.5,-0.5], "max": [0.5,0.5,0.5] },
+            "physics": { "type": "static", "half_extent": [0.6,0.6,0.6] }
+        },
+        {
+            "name": "Stair_3",
+            "model": "assets/models/woodenCrate.glb",
+            "position": [-2.0, 2.0, 0.0],
+            "rotation": [0.0, -5.0, 0.0],
+            "scale": [0.6, 0.6, 0.6],
+            "bounds": { "min": [-0.5,-0.5,-0.5], "max": [0.5,0.5,0.5] },
+            "physics": { "type": "static", "half_extent": [0.6,0.6,0.6] }
+        },
+        {
+            "name": "Stair_4",
+            "model": "assets/models/woodenCrate.glb",
+            "position": [-1.0, 2.8, 0.0],
+            "rotation": [0.0, 10.0, 0.0],
+            "scale": [0.6, 0.6, 0.6],
+            "bounds": { "min": [-0.5,-0.5,-0.5], "max": [0.5,0.5,0.5] },
+            "physics": { "type": "static", "half_extent": [0.6,0.6,0.6] }
+        },
+
+       
+        {
+            "name": "Platform_1",
+            "model": "assets/models/woodenCrate.glb",
+            "position": [1.5, 3.5, 0.0],
+            "rotation": [0.0, 15.0, 0.0],
+            "scale": [0.7, 0.7, 0.7],
+            "bounds": { "min": [-0.5,-0.5,-0.5], "max": [0.5,0.5,0.5] },
+            "physics": { "type": "static", "half_extent": [0.7,0.7,0.7] }
+        },
+        {
+            "name": "Platform_2",
+            "model": "assets/models/woodenCrate.glb",
+            "position": [3.5, 4.2, 1.0],
+            "rotation": [0.0, -20.0, 0.0],
+            "scale": [0.7, 0.7, 0.7],
+            "bounds": { "min": [-0.5,-0.5,-0.5], "max": [0.5,0.5,0.5] },
+            "physics": { "type": "static", "half_extent": [0.7,0.7,0.7] }
+        },
+        {
+            "name": "Platform_3",
+            "model": "assets/models/woodenCrate.glb",
+            "position": [5.5, 4.8, -0.5],
+            "rotation": [0.0, 30.0, 0.0],
+            "scale": [0.7, 0.7, 0.7],
+            "bounds": { "min": [-0.5,-0.5,-0.5], "max": [0.5,0.5,0.5] },
+            "physics": { "type": "static", "half_extent": [0.7,0.7,0.7] }
+        },
+        {
+            "name": "Final_Platform",
+            "model": "assets/models/woodenCrate.glb",
+            "position": [8.0, 5.0, 0.0],
             "rotation": [0.0, 0.0, 0.0],
-            "scale": [0.4, 0.4, 0.4],
-            "bounds": {
-                "min": [-0.5, -0.5, -0.5],
-                "max": [0.5, 0.5, 0.5]
-            },
-            "physics": {
-                "type": "dynamic",
-                "mass": 2.0,
-                "half_extent": [0.4, 0.4, 0.4]
-            }
+            "scale": [1.0, 1.0, 1.0],
+            "bounds": { "min": [-0.5,-0.5,-0.5], "max": [0.5,0.5,0.5] },
+            "physics": { "type": "static", "half_extent": [1.0,1.0,1.0] }
         }
     ],
+
     "directional_light": {
-        "direction": [-0.2, -1.0, -0.3],
-        "color": [1.0, 1.0, 1.0],
-        "intensity": 1.0
+        "direction": [-0.3, -1.0, -0.2],
+        "color": [0.05, 0.05, 0.08],
+        "intensity": 0.0
     },
+
     "point_lights": [
         {
-            "position": [3.0, 2.0, 3.0],
-            "color": [1.0, 0.5, 0.5],
-            "intensity": 4.0,
+            "position": [-2.0, 3.0, 0.0],
+            "color": [0.4, 0.6, 1.0],
+            "intensity": 3.0,
             "constant": 1.0,
-            "linear": 0.09,
-            "quadratic": 0.032
+            "linear": 0.14,
+            "quadratic": 0.07
+        },
+        {
+            "position": [6.0, 6.0, 0.0],
+            "color": [1.0, 0.7, 0.3],
+            "intensity": 3.0,
+            "constant": 1.0,
+            "linear": 0.14,
+            "quadratic": 0.07
         }
     ]
 }

@@ -3,7 +3,7 @@
 compilerlauncher: ccache
 compiler: cl
 standard: c++20
-binarytype: executable
+binarytype: static
 binaryname: Cthulhu
 sources: "src"
 headers: "Libraries\\GLFW\\include\\GLFW", "Libraries\\GLM", "Libraries\\glad", "Libraries\\Stb_image", "Libraries\\simdjson", "Libraries", "Libraries\\ImGui", "Libraries\\JoltPhysics-5.5.0", "include\\core", "include\\rendering", "include\\scene", "include\\utils", "include\\physics\\"
