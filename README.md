@@ -25,22 +25,22 @@ Cthulhu is in early development.
 
 ### ✅ Implemented
 
-  -- Engine static library with SandboxSample game project
-  -- Engine application wrapper with update callbacks
-  -- Window & input system (GLFW + GLAD, OpenGL 3.3)
-  -- glTF/GLB model loading with materials and embedded textures
-  -- Renderer pipeline (shadows → main pass → grid → skybox → ImGui)
-  -- Blinn-Phong lighting with directional and point lights
-  -- Shadow mapping (2048x2048, PCF)
-  -- Frustum culling (AABB-based)
-  -- HDR skybox with equirectangular-to-cubemap conversion
-  -- HDR tonemapping and gamma correction
-  -- Scene system with JSON scene files
-  -- Jolt Physics integration (static & dynamic bodies, ground plane)
-  -- FPS Character Controller (capsule collision, gravity, jumping)
-  -- Editor/Game mode toggle
-  -- Fly camera (6DOF)
-  -- ImGui debug panel
+  - Engine static library with SandboxSample game project
+  - Engine application wrapper with update callbacks
+  - Window & input system (GLFW + GLAD, OpenGL 3.3)
+  - glTF/GLB model loading with materials and embedded textures
+  - Renderer pipeline (shadows → main pass → grid → skybox → ImGui)
+  - Blinn-Phong lighting with directional and point lights
+  - Shadow mapping (2048x2048, PCF)
+  - Frustum culling (AABB-based)
+  - HDR skybox with equirectangular-to-cubemap conversion
+  - HDR tonemapping and gamma correction
+  - Scene system with JSON scene files
+  - Jolt Physics integration (static & dynamic bodies, ground plane)
+  - FPS Character Controller (capsule collision, gravity, jumping)
+  - Editor/Game mode toggle
+  - Fly camera (6DOF)
+  - ImGui debug panel
 
 ---
 
