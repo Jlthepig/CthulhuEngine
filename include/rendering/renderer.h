@@ -10,6 +10,7 @@
 #include "glfw3.h"
 #include "skybox.h"
 #include "shadowMap.h"
+#include "pointShadowMap.h"
 #include <vector>
 
 namespace Cthulhu::Rendering
@@ -34,6 +35,8 @@ namespace Cthulhu::Rendering
         Scene::Camera* camera = nullptr;
         GLFWwindow* window = nullptr;
         DirectionalLight sunLight;
+        static constexpr int MAX_POINT_SHADOW_CASTERS = 4;
+        PointLightShadowMap pointShadowMaps[MAX_POINT_SHADOW_CASTERS];
         std::vector<PointLight> pointLights;
         ShadowMap shadowMap;
         Cthulhu::Scene::Scene* scene = nullptr;

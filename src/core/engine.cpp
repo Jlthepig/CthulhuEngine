@@ -52,8 +52,8 @@ static Cthulhu::Engine::UpdateCallback gameUpdateCallback = nullptr;
 namespace EngineConfig
 {
     // OpenGL version
-    constexpr int OPENGL_VERSION_MAJOR = 3;
-    constexpr int OPENGL_VERSION_MINOR = 3;
+    constexpr int OPENGL_VERSION_MAJOR = 4;
+    constexpr int OPENGL_VERSION_MINOR = 0;
 }
 
 namespace Cthulhu

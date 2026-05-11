@@ -1,6 +1,7 @@
 #include "renderer.h"
 #include "entity.h"
 #include "ext/matrix_clip_space.hpp"
+#include "ext/matrix_transform.hpp"
 #include "fwd.hpp"
 #include "shader.h"
 #include "shadowMap.h"
@@ -59,6 +60,11 @@ namespace Cthulhu::Rendering
         
 
         basicShader.load(BASIC_VERTEX_SHADER,BASIC_FRAGMENT_SHADER);
+        for (int i = 0; i < MAX_POINT_SHADOW_CASTERS; i++)
+        {
+            GLint loc = glGetUniformLocation(basicShader.getId(), ("uPointShadowMaps[" + std::to_string(i) + "]").c_str());
+            printf("uPointShadowMaps[%d] location: %d\n", i, loc);
+        }
         gridShader.load(GRID_VERTEX_SHADER, GRID_FRAGMENT_SHADER);
 
        
@@ -66,6 +72,10 @@ namespace Cthulhu::Rendering
         grid.setupGrid(GRID_SIZE);
 
         shadowMap.init(SHADOW_MAP_RESOLUTION, SHADOW_MAP_RESOLUTION);
+        for (int i = 0; i < MAX_POINT_SHADOW_CASTERS; i++)
+        {
+            pointShadowMaps[i].init(SHADOW_MAP_RESOLUTION, SHADOW_MAP_RESOLUTION);
+        }
         shadowMap.setLightDir(sunLight.direction);
 
     }
@@ -102,7 +112,36 @@ namespace Cthulhu::Rendering
             entity.model->draw();
         }
         shadowMap.endPass();
-        
+        int shadowCasters = std::min((int)pointLights.size(), MAX_POINT_SHADOW_CASTERS);
+
+        for (int i = 0; i < shadowCasters; i++)
+        {
+            glm::vec3 lightPos = pointLights[i].position;
+    
+                glm::mat4 captureViews[] = {
+                    glm::lookAt(lightPos, lightPos + glm::vec3( 1.0f, 0.0f, 0.0f), glm::vec3(0.0f,-1.0f, 0.0f)),
+                    glm::lookAt(lightPos, lightPos + glm::vec3(-1.0f, 0.0f, 0.0f), glm::vec3(0.0f,-1.0f, 0.0f)),
+                    glm::lookAt(lightPos, lightPos + glm::vec3( 0.0f, 1.0f, 0.0f), glm::vec3(0.0f, 0.0f, 1.0f)),
+                    glm::lookAt(lightPos, lightPos + glm::vec3( 0.0f,-1.0f, 0.0f), glm::vec3(0.0f, 0.0f,-1.0f)),
+                    glm::lookAt(lightPos, lightPos + glm::vec3( 0.0f, 0.0f, 1.0f), glm::vec3(0.0f,-1.0f, 0.0f)),
+                    glm::lookAt(lightPos, lightPos + glm::vec3( 0.0f, 0.0f,-1.0f), glm::vec3(0.0f,-1.0f, 0.0f))
+                };
+
+            pointShadowMaps[i].beginPass(lightPos, CAMERA_NEAR_PLANE, CAMERA_FAR_PLANE);
+
+            for (int face = 0; face < 6; face++)
+            {
+                pointShadowMaps[i].bindFace(face, captureViews[face]);
+                for (auto& entity : scene->getEntities())
+                {
+                    if (!entity.active || entity.model == nullptr) continue;
+                    glm::mat4 modelMatrix = entity.transform.getModelMatrix(); // once per entity
+                    pointShadowMaps[i].getDepthShader().setMat4("model", modelMatrix);
+                    entity.model->draw();
+                }
+            }
+            pointShadowMaps[i].endPass();
+        }
 
         // 2. main pass
         glViewport(0, 0, width, height);
@@ -110,6 +149,22 @@ namespace Cthulhu::Rendering
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
         basicShader.use();
+        basicShader.setInt("uTexture", DIFFUSE_TEXTURE_SLOT);        // slot 0
+        basicShader.setInt("uShadowMap", SHADOW_MAP_TEXTURE_SLOT);   // slot 1
+        for (int i = 0; i < MAX_POINT_SHADOW_CASTERS; i++)
+            basicShader.setInt("uPointShadowMaps[" + std::to_string(i) + "]", 2 + i);
+        printf("=== SHADOW MAP SLOTS ===\n");
+        for (int i = 0; i < MAX_POINT_SHADOW_CASTERS; i++)
+        {
+            GLint val;
+            glGetUniformiv(basicShader.getId(), glGetUniformLocation(basicShader.getId(), ("uPointShadowMaps[" + std::to_string(i) + "]").c_str()), &val);
+            printf("uPointShadowMaps[%d] = slot %d\n", i, val);
+            fflush(stdout);
+        }
+        printf("=== END ===\n");
+        fflush(stdout);
+        basicShader.setInt("uPointShadowCount", shadowCasters);
+        basicShader.setFloat("uPointShadowFarPlane", CAMERA_FAR_PLANE);
         basicShader.setVec3("uLightDir", sunLight.direction);
         basicShader.setVec3("uLightColor", sunLight.color);
         basicShader.setFloat("uLightIntensity", sunLight.intensity);
@@ -125,53 +180,60 @@ namespace Cthulhu::Rendering
             basicShader.setFloat(base + "quadratic", pointLights[i].quadratic);
         }
         basicShader.setVec3("uViewPos", camera->getPosition());
-        basicShader.setInt("uTexture", DIFFUSE_TEXTURE_SLOT);
-        basicShader.setInt("uShadowMap", SHADOW_MAP_TEXTURE_SLOT);
         basicShader.setMat4("projection", projection);
         basicShader.setMat4("view", view);
         basicShader.setMat4("lightSpaceMatrix", shadowMap.getLightSpaceMatrix());
-        
 
+        // bind all textures in order: 0=diffuse(per mesh), 1=shadow, 2+=cubemaps
         glActiveTexture(GL_TEXTURE1);
         glBindTexture(GL_TEXTURE_2D, shadowMap.getDepthMap());
+
+        for (int i = 0; i < shadowCasters; i++)
+        {
+            glActiveTexture(GL_TEXTURE2 + i);
+            glBindTexture(GL_TEXTURE_CUBE_MAP, pointShadowMaps[i].getDepthCubeMap());
+        }
+        for (int i = shadowCasters; i < MAX_POINT_SHADOW_CASTERS; i++)
+        {
+            glActiveTexture(GL_TEXTURE2 + i);
+            glBindTexture(GL_TEXTURE_CUBE_MAP, pointShadowMaps[0].getDepthCubeMap());
+        }
+
+        // reset to slot 0 before entity loop
+        glActiveTexture(GL_TEXTURE0);
 
         int entityCount = 0;
         for (auto& entity : scene->getEntities())
         {
             if (!entity.active || entity.model == nullptr) continue;
-            glm::mat4 modelMatrix = entity.transform.getModelMatrix(); 
+            glm::mat4 modelMatrix = entity.transform.getModelMatrix();
             Scene::AABB worldBounds = TransformAABB(entity.bounds, modelMatrix);
-            
             if (!frustum.testAABB(worldBounds)) continue;
             entityCount++;
-            
+
             basicShader.setMat4("model", modelMatrix);
 
-            // Draw each mesh individually with its own material
             for (size_t meshIdx = 0; meshIdx < entity.model->meshes.size(); meshIdx++)
             {
                 auto& mesh = entity.model->meshes[meshIdx];
-                // Get a material 
-                glm::vec4 baseColorFactor(1.0f); 
+                glm::vec4 baseColorFactor(1.0f);
+
                 if (mesh.materialIndex >= 0 && mesh.materialIndex < static_cast<int>(entity.model->materials.size()))
                 {
                     auto& material = entity.model->materials[mesh.materialIndex];
                     baseColorFactor = material.baseColorFactor;
-                    
-                    // Bind a texture if can
-                    if (material.baseColorTextureIndex >= 0 && 
+
+                    if (material.baseColorTextureIndex >= 0 &&
                         material.baseColorTextureIndex < static_cast<int>(entity.model->textures.size()))
                     {
-                        entity.model->textures[material.baseColorTextureIndex].bind(0);
+                        // explicitly bind to slot 0 without disturbing other slots
+                        glActiveTexture(GL_TEXTURE0);
+                        glBindTexture(GL_TEXTURE_2D, entity.model->textures[material.baseColorTextureIndex].getID());
                     }
                 }
 
                 basicShader.setVec4("uBaseColorFactor", baseColorFactor);
-
-                for (auto& mesh : entity.model->meshes)
-                {
-                    totalTriangles += mesh.getIndexCount() / TRIANGLES_PER_FACE;
-                }
+                totalTriangles += mesh.getIndexCount() / TRIANGLES_PER_FACE;
                 mesh.draw();
             }
         }
