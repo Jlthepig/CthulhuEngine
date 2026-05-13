@@ -5,7 +5,7 @@
 #include "glm.hpp"
 #include "glad.h"
 #include "glfw3.h"
-
+#include <unordered_map>
 
 namespace Cthulhu::Rendering
 {
@@ -25,6 +25,7 @@ namespace Cthulhu::Rendering
         private:
         unsigned int shaderProgram = 0;
         bool isLoaded = false;
-
+        std::unordered_map<std::string, GLint> uniformCache;
+        GLint getUniformLocation(const std::string& name);
     };
 }

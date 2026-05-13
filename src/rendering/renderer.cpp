@@ -60,10 +60,13 @@ namespace Cthulhu::Rendering
         
 
         basicShader.load(BASIC_VERTEX_SHADER,BASIC_FRAGMENT_SHADER);
+        basicShader.use();
+        basicShader.setInt("uTexture", 0); // diffuse
+        basicShader.setInt("uShadowMap", 1); // directional shadow
+
         for (int i = 0; i < MAX_POINT_SHADOW_CASTERS; i++)
         {
-            GLint loc = glGetUniformLocation(basicShader.getId(), ("uPointShadowMaps[" + std::to_string(i) + "]").c_str());
-            printf("uPointShadowMaps[%d] location: %d\n", i, loc);
+            basicShader.setInt("uPointShadowMaps[" + std::to_string(i) + "]", 2 + i);
         }
         gridShader.load(GRID_VERTEX_SHADER, GRID_FRAGMENT_SHADER);
 
@@ -149,20 +152,6 @@ namespace Cthulhu::Rendering
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
         basicShader.use();
-        basicShader.setInt("uTexture", DIFFUSE_TEXTURE_SLOT);        // slot 0
-        basicShader.setInt("uShadowMap", SHADOW_MAP_TEXTURE_SLOT);   // slot 1
-        for (int i = 0; i < MAX_POINT_SHADOW_CASTERS; i++)
-            basicShader.setInt("uPointShadowMaps[" + std::to_string(i) + "]", 2 + i);
-        printf("=== SHADOW MAP SLOTS ===\n");
-        for (int i = 0; i < MAX_POINT_SHADOW_CASTERS; i++)
-        {
-            GLint val;
-            glGetUniformiv(basicShader.getId(), glGetUniformLocation(basicShader.getId(), ("uPointShadowMaps[" + std::to_string(i) + "]").c_str()), &val);
-            printf("uPointShadowMaps[%d] = slot %d\n", i, val);
-            fflush(stdout);
-        }
-        printf("=== END ===\n");
-        fflush(stdout);
         basicShader.setInt("uPointShadowCount", shadowCasters);
         basicShader.setFloat("uPointShadowFarPlane", CAMERA_FAR_PLANE);
         basicShader.setVec3("uLightDir", sunLight.direction);

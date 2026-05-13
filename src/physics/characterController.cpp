@@ -18,7 +18,6 @@ using KalaHeaders::KalaLog::LogType;
 namespace JPH { class PhysicsSystem; }
 extern JPH::PhysicsSystem* getPhysicsSystem();
 extern JPH::TempAllocatorImpl* getTempAllocator();
-
 namespace
 {
     JPH::CharacterVirtual* character = nullptr;
@@ -38,8 +37,10 @@ namespace
     // Current vertical velocity (gravity accumulates here)
     float verticalVelocity = 0.0f;
 
-}
+    glm::vec3 pendingMove(0.0f);
+    bool pendingJump = false;
 
+}
 namespace Cthulhu::Physics
 {
     void CharacterController::init(glm::vec3 startPosition)
@@ -95,33 +96,75 @@ namespace Cthulhu::Physics
         Log::Print("Character Controller Initialized", "CharacterController", LogType::LOG_SUCCESS);
     }
 
+    // This is the new method for queuing input. It simply stores the latest movement and jump input, which will be processed in fixedUpdate for consistent physics behavior.
+    void CharacterController::queueInput(glm::vec3 movement, bool jump)
+    {
+        pendingMove = movement;
+        pendingJump = pendingJump || jump;
+    }
+
+    // This is the new fixed update method that processes queued input for consistent physics behavior.
+    void CharacterController::fixedUpdate(float fixedDt)
+    {
+        if (!character) return;
+
+        auto groundState = character->GetGroundState();
+        bool isOnGround = groundState == JPH::CharacterBase::EGroundState::OnGround;
+
+        if (isOnGround) {
+            verticalVelocity = 0.0f;
+            if (pendingJump) verticalVelocity = jumpVelocity;
+        } else {
+            verticalVelocity += gravity * fixedDt;
+        }
+
+        JPH::Vec3 velocity(pendingMove.x, verticalVelocity, pendingMove.z);
+        character->SetLinearVelocity(velocity);
+
+        JPH::CharacterVirtual::ExtendedUpdateSettings s;
+        character->ExtendedUpdate(
+            fixedDt,
+            JPH::Vec3(0,0,0),
+            s,
+            getPhysicsSystem()->GetDefaultBroadPhaseLayerFilter(0),
+            getPhysicsSystem()->GetDefaultLayerFilter(0),
+            {}, {}, *getTempAllocator()
+        );
+
+        pendingJump = false; // consume
+    }
+    
+    // This is the old update method that directly applies movement and jump input. It's now deprecated in favor of queueing input and processing it in fixedUpdate for better physics consistency.
     void CharacterController::update(glm::vec3 movementInput, bool jump, float deltaTime)
     {
         if (!character) return;
 
-        // apply gravity
-        if (character->GetGroundState() == JPH::CharacterBase::EGroundState::OnGround)
+        // Check ground state
+        auto groundState = character->GetGroundState();
+        bool isOnGround = groundState == JPH::CharacterBase::EGroundState::OnGround;
+
+        // When on ground, reset vertical and apply jump
+        if (isOnGround)
         {
-            verticalVelocity = 0.0f; // reset vertical velocity when on ground
+            verticalVelocity = 0.0f;
             if (jump)
             {
-                verticalVelocity = jumpVelocity; // apply jump velocity
+                verticalVelocity = jumpVelocity;
             }
         }
         else
         {
-            verticalVelocity += gravity * deltaTime; // accumulate gravity
+            // In air: apply gravity to accumulated vertical velocity
+            verticalVelocity += gravity * deltaTime;
         }
-
-        // combine horizontal input with vertical velocity
+        // Set velocity: horizontal from input, vertical from our accumulated gravity
         JPH::Vec3 velocity(movementInput.x, verticalVelocity, movementInput.z);
         character->SetLinearVelocity(velocity);
 
-        // update settins for this step
         JPH::CharacterVirtual::ExtendedUpdateSettings updateSettings;
         character->ExtendedUpdate(
             deltaTime,
-            JPH::Vec3(0.0f, gravity, 0.0f), // gravity vector
+            JPH::Vec3(0.0f, 0.0f, 0.0f),
             updateSettings,
             getPhysicsSystem()->GetDefaultBroadPhaseLayerFilter(0),
             getPhysicsSystem()->GetDefaultLayerFilter(0),

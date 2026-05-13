@@ -1,5 +1,4 @@
 #include "physics.h"
-
 #include "Jolt/Core/Core.h"
 #include "Jolt/Core/IssueReporting.h"
 #include "Jolt/Jolt.h"
@@ -13,6 +12,7 @@
 #include "Jolt/Physics/Body/BodyCreationSettings.h"
 #include "Jolt/Physics/Body/BodyInterface.h"
 #include "Jolt/Physics/Body/BodyID.h"
+#include "characterController.h"
 #include "gtc/quaternion.hpp"
 #include "Jolt/Core/Factory.h"
 #include "Jolt/Core/Memory.h"
@@ -26,7 +26,6 @@ using KalaHeaders::KalaLog::LogType;
 // JOLT uses a layer system to determine which objects should collide with each other.
 // We need to define our own layers and tell JOLT about them.
 // I chose 2 layers one for moving objects and one for non moving
-
 namespace
 {
     // Physics system configuration
@@ -38,6 +37,8 @@ namespace
     constexpr float FIXED_TIMESTEP = 1.0f / 60.0f;
     constexpr int COLLISION_STEPS = 1;
     constexpr size_t TRACE_BUFFER_SIZE = 1024;
+    
+    static float physicsAccumulator = 0.0f;
 
     // Ground plane configuration
     constexpr float GROUND_PLANE_WIDTH = 100.0f;
@@ -136,13 +137,11 @@ static void joltTrace(const char* inFMT, ...)
 JPH::PhysicsSystem* getPhysicsSystem() { return physicsSystem; }
 JPH::TempAllocatorImpl* getTempAllocator() { return tempAllocator; }
 
-// init jolt
 namespace Cthulhu::Physics
 {
     void Physics::init()
     {
-        // tell jolt how to log and assert
-        
+        // tell jolt how to log and assert   
     JPH::Trace = joltTrace;
     JPH::RegisterDefaultAllocator();
     JPH::Factory::sInstance = new JPH::Factory();
@@ -177,17 +176,22 @@ namespace Cthulhu::Physics
     void Physics::step(float deltaTime)
     {
         if (!physicsSystem) return;
+        physicsAccumulator += deltaTime;
+        if (physicsAccumulator > 0.25f) // avoid spiral of death
+            physicsAccumulator = 0.25f;
 
-        // jolt wants fixed timesteps for stabilty
-        // 1/60th of a second is a good default
-
-        constexpr float fixedDeltaTime = FIXED_TIMESTEP;
-        physicsSystem->Update(
-            fixedDeltaTime,
-            COLLISION_STEPS,  // collision steps per update
-            tempAllocator,
-            jobSystem
-        );
+        while (physicsAccumulator >= FIXED_TIMESTEP)    
+        {
+            Cthulhu::Physics::CharacterController::fixedUpdate(FIXED_TIMESTEP);
+            physicsSystem->Update(
+                FIXED_TIMESTEP,
+                COLLISION_STEPS,  // collision steps per update
+                tempAllocator,
+                jobSystem
+            );
+            physicsAccumulator -= FIXED_TIMESTEP;
+        }
+        
     }
 
     uint32_t Physics::addStaticBox(glm::vec3 position, glm::vec3 halfExtent)
@@ -304,7 +308,6 @@ namespace Cthulhu::Physics
         return result;
     
     }
-
 
     void Physics::createGroundPlane()
     {

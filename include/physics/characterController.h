@@ -8,7 +8,9 @@ namespace Cthulhu::Physics
     {
     public:
         static void init(glm::vec3 startPosition);
-        static void update(glm::vec3 movementInput, bool jump, float deltaTime);
+        static void update(glm::vec3 movementInput, bool jump, float deltaTime); // deprecated, use queueInput + fixedUpdate instead
+        static void queueInput(glm::vec3 movement, bool jump);
+        static void fixedUpdate(float fixedDt);
         static glm::vec3 getPosition();
         static void destroy();
     };

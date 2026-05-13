@@ -15,6 +15,7 @@ namespace Cthulhu::Rendering
         return;
         }
 
+        uniformCache.clear();
         
         std::string vertexShaderSource = Utils::FileReader::readFile(vertexPath);
         std::string fragmentShaderSource = Utils::FileReader::readFile(fragmentPath);
@@ -74,33 +75,42 @@ namespace Cthulhu::Rendering
     {
         glUseProgram(shaderProgram);
     }
+
+    GLint Shader::getUniformLocation(const std::string& name)
+    {
+        auto it = uniformCache.find(name);
+        if (it != uniformCache.end()) return it->second;
+        GLint loc = glGetUniformLocation(shaderProgram, name.c_str());
+        uniformCache[name] = loc;
+        return loc;
+    }
     
     void Shader::setInt(const std::string& name,int value)
     {
 
         const char* NAME = name.c_str();
-        glUniform1i(glGetUniformLocation(shaderProgram, NAME), value);
+        glUniform1i(getUniformLocation(name), value);
     }
     
     void Shader::setMat4(const std::string& name, const glm::mat4& matrix)
     {
         const char* NAME = name.c_str();
-        glUniformMatrix4fv( glGetUniformLocation(shaderProgram, NAME), 1, GL_FALSE, &matrix[0][0]);
+        glUniformMatrix4fv( getUniformLocation(name), 1, GL_FALSE, &matrix[0][0]);
     }
     
     void Shader::setVec3(const std::string& name, const glm::vec3& value)
     {
-        glUniform3fv(glGetUniformLocation(shaderProgram,name.c_str()), 1, &value[0]);
+        glUniform3fv(getUniformLocation(name), 1, &value[0]);
     }
 
     void Shader::setVec4(const std::string& name, const glm::vec4& value)
     {
-        glUniform4fv(glGetUniformLocation(shaderProgram,name.c_str()), 1, &value[0]);
+        glUniform4fv(getUniformLocation(name), 1, &value[0]);
     }
     
     void Shader::setFloat(const std::string& name, float value)
     {
-        glUniform1f(glGetUniformLocation(shaderProgram,name.c_str()), value);
+        glUniform1f(getUniformLocation(name), value);
     }
 
     void Shader::destroy()
@@ -108,6 +118,7 @@ namespace Cthulhu::Rendering
         if (!isLoaded) return;
         glDeleteProgram(shaderProgram);
         isLoaded = false;
+        uniformCache.clear();
     }
     
     unsigned int Shader::getId() const
