@@ -7,12 +7,16 @@ in vec3 Normal;
 in vec4 FragPosLightSpace;
 
 uniform sampler2D uTexture;
+uniform sampler2D uMetallicRoughnessTexture;
+uniform sampler2D uNormalMap; 
 uniform sampler2D uShadowMap;
 
 uniform vec3 uLightDir;
 uniform vec3 uLightColor;
 uniform float uLightIntensity;
 uniform vec4 uBaseColorFactor;
+uniform float uMetallicFactor;
+uniform float uRoughnessFactor;
 
 struct PointLight
 {

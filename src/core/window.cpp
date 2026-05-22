@@ -8,7 +8,6 @@
 
 using KalaHeaders::KalaLog::Log;
 using KalaHeaders::KalaLog::LogType;
-
 namespace Cthulhu::Core
 {
     static std::vector<unique_ptr<Window>> windowContainer;
@@ -25,13 +24,9 @@ namespace Cthulhu::Core
         glfwSetWindowUserPointer(window->glfWwindow, window_ptr);  // attach this instance
         glfwSetFramebufferSizeCallback( window->glfWwindow, framebuffer_size_callback);
         
-        
-        
         windowContainer.push_back(std::move(window));
         return window_ptr;
     }
-    
-  
     
     float Window::getWidth()
     {
@@ -52,12 +47,4 @@ namespace Cthulhu::Core
     {
         glViewport(0, 0, width, height);
     }
-    
-   
-    
-   
-    
-  
-
-    
 }

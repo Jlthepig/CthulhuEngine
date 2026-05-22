@@ -1,6 +1,4 @@
 #include "mesh.h"
-
-
 namespace Cthulhu::Rendering
 {
     void Mesh::setup(const std::vector<float>& vertices, 

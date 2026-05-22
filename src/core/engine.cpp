@@ -11,7 +11,6 @@
 #include "log_utils.hpp"
 #include "Jolt/Jolt.h"
 
-
 // engine
 #include "engine.h"
 #include "camera.h"
@@ -33,12 +32,10 @@ using Cthulhu::Physics::CharacterController;
 using KalaHeaders::KalaLog::Log;
 using KalaHeaders::KalaLog::LogType;
 
-
 // Global state
 glm::vec2 resolution;
 float deltaTime = 0.0f;
 float lastFrame = 0.0f;
-
 
 // Subsystems
 static Renderer renderer;
@@ -48,14 +45,12 @@ static GLFWwindow* glfwWindow = nullptr;
 static Cthulhu::Scene::Scene scene;
 static Cthulhu::Scene::SceneData sceneData;
 static Cthulhu::Engine::UpdateCallback gameUpdateCallback = nullptr;
-
 namespace EngineConfig
 {
     // OpenGL version
     constexpr int OPENGL_VERSION_MAJOR = 4;
     constexpr int OPENGL_VERSION_MINOR = 0;
 }
-
 namespace Cthulhu
 {
     void Engine::init(const char* title, glm::vec2 resolution)

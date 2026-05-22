@@ -37,6 +37,7 @@ namespace
     // Current vertical velocity (gravity accumulates here)
     float verticalVelocity = 0.0f;
 
+    glm::vec3 prevPos(0.0f);
     glm::vec3 pendingMove(0.0f);
     bool pendingJump = false;
 
@@ -83,7 +84,8 @@ namespace Cthulhu::Physics
         settings.mMaxSlopeAngle = JPH::DegreesToRadians(maxWalkableSlope);
         settings.mMaxStrength = maxPushStrength;                  // how hard it can push
         settings.mShape = offsetShape.Get();
-        settings.mUp = JPH::Vec3::sAxisY();                     // Y is up
+        settings.mUp = JPH::Vec3::sAxisY();
+        settings.mCharacterPadding = 0.02f;
        
         // create the character controller
         character = new JPH::CharacterVirtual(
@@ -93,6 +95,7 @@ namespace Cthulhu::Physics
             physicsSystem
         );
 
+        prevPos = startPosition;
         Log::Print("Character Controller Initialized", "CharacterController", LogType::LOG_SUCCESS);
     }
 
@@ -107,6 +110,8 @@ namespace Cthulhu::Physics
     void CharacterController::fixedUpdate(float fixedDt)
     {
         if (!character) return;
+
+        prevPos = getPosition();
 
         auto groundState = character->GetGroundState();
         bool isOnGround = groundState == JPH::CharacterBase::EGroundState::OnGround;
@@ -184,6 +189,14 @@ namespace Cthulhu::Physics
             static_cast<float>(pos.GetY()),
             static_cast<float>(pos.GetZ())
         );
+    }
+
+    glm::vec3 CharacterController::getInterpolationPosition(float alpha)
+    {
+        if (!character) return glm::vec3(0.0f);
+
+        glm::vec3 currentPos = getPosition();
+        return glm::mix(prevPos, currentPos, alpha);
     }
 
     void CharacterController::destroy()

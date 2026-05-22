@@ -5,6 +5,7 @@
 #include "fwd.hpp"
 #include "shader.h"
 #include "shadowMap.h"
+#include "log_utils.hpp"
 #include "imgui.h"
 #include "imgui_impl_glfw.h"
 #include "imgui_impl_opengl3.h"
@@ -73,6 +74,28 @@ namespace Cthulhu::Rendering
        
         skybox.load(SKYBOX_HDR_PATH);
         grid.setupGrid(GRID_SIZE);
+
+        // temp setup for whitepointshadow
+        glGenTextures(1, &whitePointShadow);
+        glBindTexture(GL_TEXTURE_CUBE_MAP, whitePointShadow);
+
+        float whiteDepth = 1.0f; // far plane = "no shadow"
+        for (int face = 0; face < 6; ++face) {
+            glTexImage2D(GL_TEXTURE_CUBE_MAP_POSITIVE_X + face, 0,
+                        GL_DEPTH_COMPONENT24, 1, 1, 0,
+                        GL_DEPTH_COMPONENT, GL_FLOAT, &whiteDepth);
+        }
+
+        glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+        glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+        glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+        glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+        glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_WRAP_R, GL_CLAMP_TO_EDGE);
+        glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_COMPARE_MODE, GL_COMPARE_REF_TO_TEXTURE);
+        glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_COMPARE_FUNC, GL_LEQUAL);
+
+        glBindTexture(GL_TEXTURE_CUBE_MAP, 0);
+        KalaHeaders::KalaLog::Log::Print("White point shadow fallback created", "Renderer", KalaHeaders::KalaLog::LogType::LOG_SUCCESS);
 
         shadowMap.init(SHADOW_MAP_RESOLUTION, SHADOW_MAP_RESOLUTION);
         for (int i = 0; i < MAX_POINT_SHADOW_CASTERS; i++)
@@ -177,15 +200,14 @@ namespace Cthulhu::Rendering
         glActiveTexture(GL_TEXTURE1);
         glBindTexture(GL_TEXTURE_2D, shadowMap.getDepthMap());
 
-        for (int i = 0; i < shadowCasters; i++)
+        for (int i = 0; i < MAX_POINT_SHADOW_CASTERS; i++)
         {
             glActiveTexture(GL_TEXTURE2 + i);
-            glBindTexture(GL_TEXTURE_CUBE_MAP, pointShadowMaps[i].getDepthCubeMap());
-        }
-        for (int i = shadowCasters; i < MAX_POINT_SHADOW_CASTERS; i++)
-        {
-            glActiveTexture(GL_TEXTURE2 + i);
-            glBindTexture(GL_TEXTURE_CUBE_MAP, pointShadowMaps[0].getDepthCubeMap());
+            if (i < shadowCasters) {
+                glBindTexture(GL_TEXTURE_CUBE_MAP, pointShadowMaps[i].getDepthCubeMap());
+            } else {
+                glBindTexture(GL_TEXTURE_CUBE_MAP, whitePointShadow); // 1x1 depth=1.0 = no shadow
+            }
         }
 
         // reset to slot 0 before entity loop
@@ -226,9 +248,6 @@ namespace Cthulhu::Rendering
                 mesh.draw();
             }
         }
-
-        
-
         // 3. grid
         glEnable(GL_BLEND);
         glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);

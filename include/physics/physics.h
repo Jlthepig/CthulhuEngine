@@ -17,6 +17,7 @@ namespace Cthulhu::Physics
         public:
             static void init();
             static void step(float deltaTime);
+            static float getInterpolationAlpha();
             static void shutdown();
             static void createGroundPlane();
 

@@ -4,6 +4,7 @@
 #include "input.h"
 #include "glfw3.h"
 #include "log_utils.hpp"
+#include "physics.h"
 namespace GameConfig
 {
     constexpr glm::vec2 WINDOW_RESOLUTION = glm::vec2(1920.0f, 1080.0f);
@@ -48,7 +49,8 @@ void onUpdate(float deltaTime)
         bool jump = Cthulhu::Core::Input::isKeyPressed(GLFW_KEY_SPACE);
 
         Cthulhu::Physics::CharacterController::queueInput(movement, jump);
-        glm::vec3 charPos = Cthulhu::Physics::CharacterController::getPosition();
+        float alpha = Cthulhu::Physics::Physics::getInterpolationAlpha();
+        glm::vec3 charPos = Cthulhu::Physics::CharacterController::getInterpolationPosition(alpha);
         charPos.y += GameConfig::CAMERA_EYE_HEIGHT_OFFSET;
         camera->setPosition(charPos);
     }

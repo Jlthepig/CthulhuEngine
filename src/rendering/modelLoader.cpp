@@ -52,11 +52,8 @@ namespace Cthulhu::Rendering
             return model;
         }
 
-
         fastgltf::Asset& gltf = asset.get();
-
         // pass 1 load materials and textures
-
         std::unordered_map<int,int> imageToTexture; // from gltf texture index to our texture index in model.textures
 
         for (size_t matIdx = 0; matIdx < gltf.materials.size(); ++matIdx)

@@ -332,10 +332,15 @@ namespace Cthulhu::Physics
             JPH::EMotionType::Static, // motion type never moves
             ObjectLayers::NON_MOVING // coll layer
         );
-
+        groundSettings.mFriction = 0.8f;
         bodyInterface.CreateAndAddBody(groundSettings, JPH::EActivation::DontActivate);
 
         Log::Print("Ground plane created", "Physics", LogType::LOG_SUCCESS);
+    }
+
+    float Physics::getInterpolationAlpha()
+    {
+        return physicsAccumulator / FIXED_TIMESTEP;
     }
 
     void Physics::shutdown()
