@@ -129,6 +129,68 @@ namespace Cthulhu::Rendering
                     }
                 }
             }
+            material.metallicFactor = gltfMaterial.pbrData.metallicFactor;
+            material.roughnessFactor = gltfMaterial.pbrData.roughnessFactor;
+
+            if (gltfMaterial.pbrData.metallicRoughnessTexture.has_value())
+            {
+                auto& mrTextureInfo = gltfMaterial.pbrData.metallicRoughnessTexture.value();
+                auto& gltfTexture = gltf.textures[mrTextureInfo.textureIndex];
+
+                if (gltfTexture.imageIndex.has_value())
+                {
+                    int imageIdx = static_cast<int>(gltfTexture.imageIndex.value());
+                    
+                    auto it = imageToTexture.find(imageIdx);
+                    if (it != imageToTexture.end())
+                    {
+                        
+                        material.metallicRoughnessTextureIndex = it->second;
+                    }
+                    else
+                    {
+                        auto &image = gltf.images[imageIdx];
+                        Texture newTexture;
+
+                        std::visit([&](auto& source)
+                        {
+                            using T = std::decay_t<decltype(source)>;
+                            if constexpr (std::is_same_v<T, fastgltf::sources::BufferView>)
+                            {
+                                auto& bufferView = gltf.bufferViews[source.bufferViewIndex];
+                                auto& buffer = gltf.buffers[bufferView.bufferIndex];
+
+                                std::visit([&](auto& bufferSource)
+                                {
+                                    using BT = std::decay_t<decltype(bufferSource)>;
+                                    if constexpr (std::is_same_v<BT, fastgltf::sources::Array>)
+                                    {
+
+                                        const unsigned char* data = reinterpret_cast<const unsigned char*>(bufferSource.bytes.data() + bufferView.byteOffset);
+                                        newTexture.loadFromMemory(data,static_cast<int>(bufferView.byteLength), false);
+                                    
+                                    }
+                                }, buffer.data);
+                            }
+            
+                            else if constexpr (std::is_same_v<T, fastgltf::sources::URI>)
+                            {
+                                Log::Print("METALLIC/ROUGHNESS URI - NOT SUPPORTED YET", "ModelLoader", LogType::LOG_WARNING);
+                            }
+                            else
+                            {
+                                Log::Print("METALLIC/ROUGHNESS TEXTURE FORMAT NOT HANDLED", "ModelLoader", LogType::LOG_WARNING);
+                            }
+                            
+                        },image.data);
+
+                        int textureIndex = static_cast<int>(model.textures.size());
+                        model.textures.push_back(std::move(newTexture));
+                        imageToTexture[imageIdx] = textureIndex;
+                        material.metallicRoughnessTextureIndex = textureIndex;
+                    }
+                }
+            }
 
             model.materials.push_back(std::move(material));
         }

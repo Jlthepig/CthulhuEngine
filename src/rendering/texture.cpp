@@ -51,7 +51,7 @@ namespace Cthulhu::Rendering
 
     }
     
-    void Texture::loadFromMemory(const unsigned char* data, int length)
+    void Texture::loadFromMemory(const unsigned char* data, int length, bool isSRGB)
     {
          if (isLoaded)
         {
@@ -77,10 +77,15 @@ namespace Cthulhu::Rendering
         GLenum format = GL_RGB;
         if (nrChannels ==  4) format = GL_RGBA;
 
-        GLenum internalFormat = GL_SRGB8;
+        GLenum internalFormat = GL_RGB8;
+        if (isSRGB) {
+        internalFormat = GL_SRGB8;
         if (nrChannels == 4) internalFormat = GL_SRGB8_ALPHA8;
+        } else {
+            if (nrChannels == 4) internalFormat = GL_RGBA8;
+        }
 
-        glTexImage2D(GL_TEXTURE_2D,0,internalFormat,width,height,0,format,GL_UNSIGNED_BYTE,pixels);
+        glTexImage2D(GL_TEXTURE_2D, 0, internalFormat, width, height, 0, format, GL_UNSIGNED_BYTE, pixels);
         glGenerateMipmap(GL_TEXTURE_2D);
 
         stbi_image_free(pixels);

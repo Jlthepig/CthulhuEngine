@@ -3,6 +3,7 @@
 #include "ext/matrix_clip_space.hpp"
 #include "ext/matrix_transform.hpp"
 #include "fwd.hpp"
+#include "mesh.h"
 #include "shader.h"
 #include "shadowMap.h"
 #include "log_utils.hpp"
@@ -61,17 +62,8 @@ namespace Cthulhu::Rendering
         
 
         basicShader.load(BASIC_VERTEX_SHADER,BASIC_FRAGMENT_SHADER);
-        basicShader.use();
-        basicShader.setInt("uTexture", 0); // diffuse
-        basicShader.setInt("uShadowMap", 1); // directional shadow
-
-        for (int i = 0; i < MAX_POINT_SHADOW_CASTERS; i++)
-        {
-            basicShader.setInt("uPointShadowMaps[" + std::to_string(i) + "]", 2 + i);
-        }
         gridShader.load(GRID_VERTEX_SHADER, GRID_FRAGMENT_SHADER);
 
-       
         skybox.load(SKYBOX_HDR_PATH);
         grid.setupGrid(GRID_SIZE);
 
@@ -96,6 +88,24 @@ namespace Cthulhu::Rendering
 
         glBindTexture(GL_TEXTURE_CUBE_MAP, 0);
         KalaHeaders::KalaLog::Log::Print("White point shadow fallback created", "Renderer", KalaHeaders::KalaLog::LogType::LOG_SUCCESS);
+
+        glGenTextures(1, &defaultDataTexture);
+        glBindTexture(GL_TEXTURE_2D, defaultDataTexture);
+        unsigned char whitePixel[4] = { 255, 255, 255, 255 };
+        glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA8, 1, 1, 0, GL_RGBA, GL_UNSIGNED_BYTE, whitePixel);
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+        glBindTexture(GL_TEXTURE_2D, 0);
+
+        basicShader.use();
+        basicShader.setInt("uTexture", 0); // diffuse
+        basicShader.setInt("uShadowMap", 1); // directional shadow
+
+        for (int i = 0; i < MAX_POINT_SHADOW_CASTERS; i++)
+        {
+            basicShader.setInt("uPointShadowMaps[" + std::to_string(i) + "]", 2 + i);
+        }
+        basicShader.setInt("uMetallicRoughnessTexture", 6);
 
         shadowMap.init(SHADOW_MAP_RESOLUTION, SHADOW_MAP_RESOLUTION);
         for (int i = 0; i < MAX_POINT_SHADOW_CASTERS; i++)
@@ -234,6 +244,9 @@ namespace Cthulhu::Rendering
                     auto& material = entity.model->materials[mesh.materialIndex];
                     baseColorFactor = material.baseColorFactor;
 
+                    basicShader.setFloat("uMetallicFactor", material.metallicFactor);
+                    basicShader.setFloat("uRoughnessFactor", material.roughnessFactor);
+
                     if (material.baseColorTextureIndex >= 0 &&
                         material.baseColorTextureIndex < static_cast<int>(entity.model->textures.size()))
                     {
@@ -241,6 +254,26 @@ namespace Cthulhu::Rendering
                         glActiveTexture(GL_TEXTURE0);
                         glBindTexture(GL_TEXTURE_2D, entity.model->textures[material.baseColorTextureIndex].getID());
                     }
+
+                    if (material.metallicRoughnessTextureIndex >= 0 &&
+                        material.metallicRoughnessTextureIndex < static_cast<int>(entity.model->textures.size()))
+                    {
+                        
+                        glActiveTexture(GL_TEXTURE6);
+                        glBindTexture(GL_TEXTURE_2D, entity.model->textures[material.metallicRoughnessTextureIndex].getID());
+                    }
+                    else
+                    {
+                        glActiveTexture(GL_TEXTURE6);
+                        glBindTexture(GL_TEXTURE_2D, defaultDataTexture);
+                    }
+                }
+                else
+                {
+                    basicShader.setFloat("uMetallicFactor", 0.0f);
+                    basicShader.setFloat("uRoughnessFactor", 1.0f);
+                    glActiveTexture(GL_TEXTURE6);
+                    glBindTexture(GL_TEXTURE_2D, defaultDataTexture);
                 }
 
                 basicShader.setVec4("uBaseColorFactor", baseColorFactor);
