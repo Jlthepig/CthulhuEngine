@@ -44,6 +44,7 @@ namespace Cthulhu::Rendering
         Scene::AABB TransformAABB(const Scene::AABB& localBounds, const glm::mat4& modelMatrix);
         GLuint whitePointShadow = 0;
         GLuint defaultDataTexture = 0;
+        GLuint defaultNormalTexture = 0;
         size_t totalTriangles = 0;
     };
     

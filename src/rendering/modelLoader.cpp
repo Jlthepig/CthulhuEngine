@@ -191,6 +191,54 @@ namespace Cthulhu::Rendering
                     }
                 }
             }
+            if (gltfMaterial.normalTexture.has_value())
+                {
+                    auto& normTextureInfo = gltfMaterial.normalTexture.value();
+                    auto& gltfTexture = gltf.textures[normTextureInfo.textureIndex];
+
+                    if (gltfTexture.imageIndex.has_value())
+                    {
+                        int imageIdx = static_cast<int>(gltfTexture.imageIndex.value());
+
+                        auto it = imageToTexture.find(imageIdx);
+                        if (it != imageToTexture.end())
+                        {
+                            material.normalTextureIndex = it->second;
+                        }
+                        else
+                        {
+                            auto &image = gltf.images[imageIdx];
+                            Texture newTexture;
+
+                            std::visit([&](auto& source)
+                            {
+                                using T = std::decay_t<decltype(source)>;
+                                if constexpr (std::is_same_v<T, fastgltf::sources::BufferView>)
+                                {
+                                    auto& bufferView = gltf.bufferViews[source.bufferViewIndex];
+                                    auto& buffer = gltf.buffers[bufferView.bufferIndex];
+
+                                    std::visit([&](auto& bufferSource)
+                                    {
+                                        using BT = std::decay_t<decltype(bufferSource)>;
+                                        if constexpr (std::is_same_v<BT, fastgltf::sources::Array>)
+                                        {
+
+                                            const unsigned char* data = reinterpret_cast<const unsigned char*>(bufferSource.bytes.data() + bufferView.byteOffset);
+                                            newTexture.loadFromMemory(data,static_cast<int>(bufferView.byteLength), false);
+                                        
+                                        }
+                                    }, buffer.data);
+                                }
+                            },image.data);
+
+                            int textureIndex = static_cast<int>(model.textures.size());
+                            model.textures.push_back(std::move(newTexture));
+                            imageToTexture[imageIdx] = textureIndex;
+                            material.normalTextureIndex = textureIndex;
+                        }
+                    }
+                }
 
             model.materials.push_back(std::move(material));
         }
@@ -268,6 +316,39 @@ namespace Cthulhu::Rendering
                     vertexData = std::move(expanded);
                     attributes.push_back({1,3,currentOffset});
                     currentOffset += 3 * sizeof(float);
+                }
+
+                auto tangentIt = primitive.findAttribute("TANGENT");
+                if (tangentIt != primitive.attributes.end())
+                {
+                    auto &tanAccessor  = gltf.accessors[tangentIt->accessorIndex];
+                    unsigned int currentFloats = currentOffset/sizeof(float);
+                    unsigned int newFloats = currentFloats + 4; // tangents are vec4 
+                    std:: vector<float> expanded(posAccessor.count * newFloats);
+
+                    // copy existing data
+                    for (size_t i = 0; i< posAccessor.count;i++)
+                    {
+                        for (unsigned int j = 0; j<currentFloats;j++)
+                            {
+                                expanded[i * newFloats + j] = vertexData[i * currentFloats + j];
+
+                            }
+                    }
+
+                    fastgltf::iterateAccessorWithIndex<glm::vec4>(
+                        gltf, tanAccessor, [&](glm::vec4 tan, size_t index)
+                        {
+                            expanded[index * newFloats + currentFloats] = tan.x;
+                            expanded[index * newFloats + currentFloats + 1] = tan.y;
+                            expanded[index * newFloats + currentFloats + 2] = tan.z;
+                            expanded[index * newFloats + currentFloats + 3] = tan.w;
+                        }
+                    );
+
+                    vertexData = std::move(expanded);
+                    attributes.push_back({3,4,currentOffset});
+                    currentOffset += 4 * sizeof(float);
                 }
 
                 auto* textureIt = primitive.findAttribute("TEXCOORD_0");

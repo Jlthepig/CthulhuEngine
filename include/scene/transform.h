@@ -11,6 +11,7 @@ namespace Cthulhu::Scene
         glm::vec3 getRotation() const { return rotation; }
         glm::vec3 getScale() const { return scale; }
         glm::mat4 getModelMatrix();
+        glm::mat4 getNormalMatrix();
 
         void setPosition(const glm::vec3& p);
         void setRotation(const glm::vec3& r);
@@ -21,6 +22,7 @@ namespace Cthulhu::Scene
         glm::vec3 rotation = glm::vec3(0.0f);
         glm::vec3 scale = glm::vec3(1.0f);
         glm::mat4 cachedModelMatrix = glm::mat4(1.0f);
+        glm::mat4 cachedNormalMatrix = glm::mat4(1.0f);
         bool matrixDirty = true;
     };
 }

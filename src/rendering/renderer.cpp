@@ -97,15 +97,25 @@ namespace Cthulhu::Rendering
         glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
         glBindTexture(GL_TEXTURE_2D, 0);
 
+        glGenTextures(1, &defaultNormalTexture);
+        glBindTexture(GL_TEXTURE_2D, defaultNormalTexture);
+        unsigned char flatNormalPixel[4] = { 128, 128, 255, 255 }; // Normal pointing straight up
+        glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA8, 1, 1, 0, GL_RGBA, GL_UNSIGNED_BYTE, flatNormalPixel);
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+        glBindTexture(GL_TEXTURE_2D, 0);
+
         basicShader.use();
         basicShader.setInt("uTexture", 0); // diffuse
         basicShader.setInt("uShadowMap", 1); // directional shadow
+
 
         for (int i = 0; i < MAX_POINT_SHADOW_CASTERS; i++)
         {
             basicShader.setInt("uPointShadowMaps[" + std::to_string(i) + "]", 2 + i);
         }
         basicShader.setInt("uMetallicRoughnessTexture", 6);
+        basicShader.setInt("uNormalMap", 7);
 
         shadowMap.init(SHADOW_MAP_RESOLUTION, SHADOW_MAP_RESOLUTION);
         for (int i = 0; i < MAX_POINT_SHADOW_CASTERS; i++)
@@ -228,11 +238,13 @@ namespace Cthulhu::Rendering
         {
             if (!entity.active || entity.model == nullptr) continue;
             glm::mat4 modelMatrix = entity.transform.getModelMatrix();
+            glm::mat4 normalMatrix = entity.transform.getNormalMatrix();
             Scene::AABB worldBounds = TransformAABB(entity.bounds, modelMatrix);
             if (!frustum.testAABB(worldBounds)) continue;
             entityCount++;
 
             basicShader.setMat4("model", modelMatrix);
+            basicShader.setMat4("uNormalMatrix", normalMatrix);
 
             for (size_t meshIdx = 0; meshIdx < entity.model->meshes.size(); meshIdx++)
             {
@@ -267,6 +279,17 @@ namespace Cthulhu::Rendering
                         glActiveTexture(GL_TEXTURE6);
                         glBindTexture(GL_TEXTURE_2D, defaultDataTexture);
                     }
+                    if (material.normalTextureIndex >= 0 &&
+                        material.normalTextureIndex < static_cast<int>(entity.model->textures.size()))
+                    {
+                        glActiveTexture(GL_TEXTURE7);
+                        glBindTexture(GL_TEXTURE_2D, entity.model->textures[material.normalTextureIndex].getID());
+                    }
+                    else
+                    {
+                        glActiveTexture(GL_TEXTURE7);
+                        glBindTexture(GL_TEXTURE_2D, defaultNormalTexture);
+                    }
                 }
                 else
                 {
@@ -274,6 +297,9 @@ namespace Cthulhu::Rendering
                     basicShader.setFloat("uRoughnessFactor", 1.0f);
                     glActiveTexture(GL_TEXTURE6);
                     glBindTexture(GL_TEXTURE_2D, defaultDataTexture);
+
+                    glActiveTexture(GL_TEXTURE7);
+                    glBindTexture(GL_TEXTURE_2D, defaultNormalTexture);
                 }
 
                 basicShader.setVec4("uBaseColorFactor", baseColorFactor);

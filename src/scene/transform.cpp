@@ -20,6 +20,16 @@ namespace Cthulhu::Scene
         }
         return cachedModelMatrix;
     }
+
+    glm::mat4 Transform::getNormalMatrix()
+    {
+        if (matrixDirty)
+        {
+            getModelMatrix(); // ensure model matrix is up to date
+            cachedNormalMatrix = glm::transpose(glm::inverse(cachedModelMatrix));
+        }
+        return cachedNormalMatrix;
+    }
     
     void Transform::setPosition(const glm::vec3& p)
     {
