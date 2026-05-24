@@ -81,12 +81,13 @@ namespace Cthulhu
             exit(1);
         }
 
+        Cthulhu::Rendering::RenderConfig renderConfig;
         Physics::Physics::init();
         Physics::Physics::createGroundPlane();
         camera = Camera::init();
         Input::init(glfwWindow, resolution);
         Input::setCamera(camera);
-        renderer.init(glfwWindow, camera);
+        renderer.init(glfwWindow, camera, renderConfig);
 
         int fbW, fbH;
         glfwGetFramebufferSize(glfwWindow, &fbW, &fbH);
