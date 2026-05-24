@@ -1,7 +1,4 @@
-//---------------------------------------------------------------------------
 // log_utils.hpp
-//
-// Copyright (C) 2026 Lost Empire Entertainment
 //
 // This is free source code, and you are welcome to redistribute it under certain conditions.
 // Read LICENSE.md for more information.
@@ -12,7 +9,7 @@
 //   - log types - info (no log type stamp), debug (skipped in release), success, warning, error
 //   - time stamp, date stamp accurate to system clock
 //   - logHook - user-defined function that allows emitting logs to another target like the crash log storage in kalawindow
-//---------------------------------------------------------------------------
+//
 
 #pragma once
 
@@ -24,10 +21,23 @@
 #include <array>
 #include <algorithm>
 
+
 //static_cast
 #ifndef scast
 	#define scast static_cast
-#endif	
+#endif
+
+//
+// CROSS-PLATFORM DEBUG FLAG
+//
+
+#ifndef KDEBUG
+	#if defined(_MSC_VER) && defined(_DEBUG)
+		#define KDEBUG
+	#elif (defined(__GNUC__) || defined(__clang__)) && !defined(NDEBUG)
+		#define KDEBUG
+	#endif
+#endif
 
 namespace KalaHeaders::KalaLog
 {
@@ -36,7 +46,6 @@ namespace KalaHeaders::KalaLog
 	using std::chrono::system_clock;
 	using std::chrono::duration_cast;
 	using std::chrono::microseconds;
-	using std::chrono::milliseconds;
 	using std::array;
 	using std::fwrite;
 	using std::fflush;
@@ -61,6 +70,7 @@ namespace KalaHeaders::KalaLog
 
 	enum class LogType
 	{
+		LOG_VERBOSE, //Spammy, frequent log message for detailed logs, sent to stdout
 		LOG_INFO,    //General-purpose log message, sent to stdout
 		LOG_DEBUG,   //Debugging message, only appears in debug builds, sent to stdout
 		LOG_SUCCESS, //Confirmation that an operation succeeded, sent to stdout
@@ -69,14 +79,16 @@ namespace KalaHeaders::KalaLog
 	};
 	enum class TimeFormat : u8
 	{
-		TIME_NONE        = 0, //No time stamp
-		TIME_DEFAULT     = 1, //Uses TIME_HMS_MS
-		TIME_HMS         = 2, //23:59:59
-		TIME_HMS_MS      = 3, //23:59:59:123
-		TIME_12H         = 4, //11:59:59 PM
-		TIME_ISO_8601    = 5, //23:59:59Z
-		TIME_FILENAME    = 6, //23-59-59
-		TIME_FILENAME_MS = 7  //23-59-59-123
+		TIME_NONE           = 0, //No time stamp
+		TIME_DEFAULT        = 1, //Uses TIME_HMS_MS_US
+		TIME_HMS            = 2, //23:59:59
+		TIME_HMS_MS         = 3, //23:59:59:123
+		TIME_HMS_MS_US      = 4, //23:59:59:123:456
+		TIME_12H            = 5, //11:59:59 PM
+		TIME_ISO_8601       = 6, //23:59:59Z
+		TIME_FILENAME       = 7, //23-59-59
+		TIME_FILENAME_MS    = 8, //23-59-59-123
+		TIME_FILENAME_MS_US = 9  //23-59-59-123-456
 	};
 	enum class DateFormat : u8
 	{
@@ -102,41 +114,30 @@ namespace KalaHeaders::KalaLog
 	{
 	public:
 		//Returns current time in chosen or default format
-		static inline const string& GetTime(TimeFormat timeFormat = TimeFormat::TIME_DEFAULT)
+		static inline string_view GetTime(TimeFormat timeFormat = TimeFormat::TIME_DEFAULT)
 		{
 			static thread_local const string empty{};
 
 			//return empty for OOB or none
 			if (timeFormat == TimeFormat::TIME_NONE
-				|| timeFormat > TimeFormat::TIME_FILENAME_MS)
+				|| timeFormat > TimeFormat::TIME_FILENAME_MS_US)
 			{
 				return empty;
 			}
 
 			if (timeFormat == TimeFormat::TIME_DEFAULT)
 			{
-				return GetTime(TimeFormat::TIME_HMS_MS);
+				return GetTime(TimeFormat::TIME_HMS_MS_US);
 			}
 
-			static thread_local string cached[scast<int>(TimeFormat::TIME_FILENAME_MS) + 1];
-			static thread_local long long last_ms = -1;
 			static thread_local tm cachedLocal{};
 			static thread_local tm cachedUTC{};
 
-			const int idx = scast<int>(timeFormat);
 			const auto now = system_clock::now();
-			if (!cached[idx].empty())
-			{
-				auto now_ms = duration_cast<milliseconds>(now.time_since_epoch()).count();
-				if (now_ms == last_ms) return cached[idx];
-			}
-
 			const auto us_since_epoch = duration_cast<microseconds>(now.time_since_epoch()).count();
-			const auto ms_since_epoch = duration_cast<milliseconds>(now.time_since_epoch()).count();
-
-			last_ms = ms_since_epoch;
 
 			const auto in_time_t = system_clock::to_time_t(now);
+			const int us = us_since_epoch % 1000;          //true microsecond precision
 			const int ms = (us_since_epoch / 1000) % 1000; //sub-millisecond precision
 
 #ifdef _WIN32
@@ -147,7 +148,7 @@ namespace KalaHeaders::KalaLog
 			gmtime_r(&in_time_t, &cachedUTC);
 #endif
 
-			char buffer[32]{};
+			static thread_local char buffer[20]{};
 			switch (timeFormat)
 			{
 			case TimeFormat::TIME_HMS:
@@ -158,7 +159,7 @@ namespace KalaHeaders::KalaLog
 			}
 			case TimeFormat::TIME_HMS_MS:
 			{
-				char tmp[16]{};
+				char tmp[20]{};
 				size_t length = strftime(tmp, sizeof(tmp), "%H:%M:%S", &cachedLocal);
 
 				memcpy(buffer, tmp, length);
@@ -166,6 +167,24 @@ namespace KalaHeaders::KalaLog
 				buffer[length++] = '0' + (ms / 100) % 10;
 				buffer[length++] = '0' + (ms / 10) % 10;
 				buffer[length++] = '0' + (ms % 10);
+				buffer[length] = '\0';
+
+				break;
+			}
+			case TimeFormat::TIME_HMS_MS_US:
+			{
+				char tmp[20]{};
+				size_t length = strftime(tmp, sizeof(tmp), "%H:%M:%S", &cachedLocal);
+
+				memcpy(buffer, tmp, length);
+				buffer[length++] = ':';
+				buffer[length++] = '0' + (ms / 100) % 10;
+				buffer[length++] = '0' + (ms / 10) % 10;
+				buffer[length++] = '0' + (ms % 10);
+				buffer[length++] = ':';
+				buffer[length++] = '0' + (us / 100) % 10;
+				buffer[length++] = '0' + (us / 10) % 10;
+				buffer[length++] = '0' + (us % 10);
 				buffer[length] = '\0';
 
 				break;
@@ -190,7 +209,7 @@ namespace KalaHeaders::KalaLog
 			}
 			case TimeFormat::TIME_FILENAME_MS:
 			{
-				char tmp[16]{};
+				char tmp[20]{};
 				size_t length = strftime(tmp, sizeof(tmp), "%H-%M-%S", &cachedLocal);
 
 				memcpy(buffer, tmp, length);
@@ -202,14 +221,31 @@ namespace KalaHeaders::KalaLog
 
 				break;
 			}
+			case TimeFormat::TIME_FILENAME_MS_US:
+			{
+				char tmp[20]{};
+				size_t length = strftime(tmp, sizeof(tmp), "%H-%M-%S", &cachedLocal);
+
+				memcpy(buffer, tmp, length);
+				buffer[length++] = '-';
+				buffer[length++] = '0' + (ms / 100) % 10;
+				buffer[length++] = '0' + (ms / 10) % 10;
+				buffer[length++] = '0' + (ms % 10);
+				buffer[length++] = '-';
+				buffer[length++] = '0' + (us / 100) % 10;
+				buffer[length++] = '0' + (us / 10) % 10;
+				buffer[length++] = '0' + (us % 100);
+				buffer[length] = '\0';
+
+				break;
+			}
 			default: return empty;
 			}
 
-			cached[scast<int>(timeFormat)] = buffer;
-			return cached[scast<int>(timeFormat)];
+			return string_view(buffer);
 		}
 		//Returns current date in chosen or default format
-		static inline const string& GetDate(DateFormat dateFormat = DateFormat::DATE_DEFAULT)
+		static inline string_view GetDate(DateFormat dateFormat = DateFormat::DATE_DEFAULT)
 		{
 			static thread_local string empty{};
 
@@ -278,7 +314,7 @@ namespace KalaHeaders::KalaLog
 			TimeFormat timeFormat = TimeFormat::TIME_DEFAULT,
 			DateFormat dateFormat = DateFormat::DATE_DEFAULT)
 		{
-#ifndef _DEBUG
+#ifndef KDEBUG
 			if (type == LogType::LOG_DEBUG) return;
 #endif
 
@@ -294,12 +330,21 @@ namespace KalaHeaders::KalaLog
 
 			target = target.substr(0, MAX_TAG_LENGTH);
 
-			const string& timeStamp = GetTime(timeFormat);
-			const string& dateStamp = GetDate(dateFormat);
+			string_view timeStamp = GetTime(timeFormat);
+			string_view dateStamp = GetDate(dateFormat);
 
-			const string& prefix = GetCachedPrefix(type, target);
+			string_view prefix = GetCachedPrefix(type, target);
 
 			char* p = logBuffer().data();
+
+			FILE* out = (type == LogType::LOG_ERROR)
+				? stderr
+				: stdout;
+
+			//color open — LOG_INFO has an empty code (length 0) so memcpy is a no-op
+			const size_t colorLen = LogTypeColorLength[scast<size_t>(type)];
+			memcpy(p, LogTypeColor[scast<size_t>(type)], colorLen);
+			p += colorLen;
 
 			//append [ date ] [ time ]
 			if (!dateStamp.empty())
@@ -343,17 +388,17 @@ namespace KalaHeaders::KalaLog
 			memcpy(p, trimmed.data(), trimmed.size());
 			p += trimmed.size();
 
+			//color reset — skipped for LOG_INFO since we never opened a code
+			if (colorLen > 0)
+			{
+				memcpy(p, ANSI_RESET, ANSI_RESET_LEN);
+				p += ANSI_RESET_LEN;
+			}
+
 			//newline
 			*p++ = '\n';
 
-			FILE* out = (type == LogType::LOG_ERROR)
-				? stderr
-				: stdout;
-
 			const size_t length = scast<size_t>(p - logBuffer().data());
-
-			//TODO: figure out how to make it work
-			//EmitLog(string_view(logBuffer().data(), length));
 
 			fwrite(logBuffer().data(), 1, length, out);
 
@@ -382,14 +427,43 @@ namespace KalaHeaders::KalaLog
 			memcpy(logBuffer().data(), trimmed.data(), length);
 			logBuffer()[length] = '\n';
 
-			//TODO: figure out how to make it work
-			//EmitLog(string_view(logBuffer().data(), totalLength));
-
 			fwrite(logBuffer().data(), 1, totalLength, stdout);
 
 			if (flush) fflush(stdout);
 		}
-	private:		
+
+	private:
+		//---------------------------------------------------------------------
+		// ANSI color codes
+		//   VERBOSE -> dark grey   \x1b[90m
+		//   INFO    -> default     (no code, empty)
+		//   DEBUG   -> cyan        \x1b[36m
+		//   SUCCESS -> green       \x1b[32m
+		//   WARNING -> yellow      \x1b[33m
+		//   ERROR   -> bright red  \x1b[91m
+		//---------------------------------------------------------------------
+		static constexpr const char* ANSI_RESET    = "\x1b[0m";
+		static constexpr size_t      ANSI_RESET_LEN = 4;
+
+		static constexpr const char* LogTypeColor[] =
+		{
+			"\x1b[90m", //LOG_VERBOSE  dark grey
+			"",          //LOG_INFO     default (no code)
+			"\x1b[36m", //LOG_DEBUG    cyan
+			"\x1b[32m", //LOG_SUCCESS  green
+			"\x1b[33m", //LOG_WARNING  yellow
+			"\x1b[91m"  //LOG_ERROR    bright red
+		};
+		static constexpr size_t LogTypeColorLength[] =
+		{
+			7, //"\x1b[90m"
+			0, //""
+			7, //"\x1b[36m"
+			7, //"\x1b[32m"
+			7, //"\x1b[33m"
+			7  //"\x1b[91m"
+		};
+
 		static inline string TrimUTF8(string_view s)
 		{
 			size_t bytes = 0;
@@ -421,14 +495,16 @@ namespace KalaHeaders::KalaLog
 
 		static constexpr const char* LogTypeTag[] =
 		{
+			"VERBOSE | ",
 			"",           //LOG_INFO
 			"DEBUG | ",
 			"SUCCESS | ",
 			"WARNING | ",
 			"ERROR | "
 		};
-		static constexpr array<size_t, 5> LogTypeTagLength = 
+		static constexpr array<size_t, 6> LogTypeTagLength =
 		{
+			10,
 			0, 
 			8, 
 			10, 
@@ -436,13 +512,13 @@ namespace KalaHeaders::KalaLog
 			8
 		};
 
-		static inline const string& GetCachedPrefix(
+		static inline string_view GetCachedPrefix(
 			LogType type,
 			string_view target)
 		{
 			//search existing entries
 
-			for (size_t i = 0; i < prefixSize; ++i)
+			for (size_t i = 0; i < prefixSize(); ++i)
 			{
 				const auto& e = prefixCache()[i];
 				if (e.type == type
@@ -472,15 +548,20 @@ namespace KalaHeaders::KalaLog
 			p[3 + tagLength + targetLength] = ']';
 			p[4 + tagLength + targetLength] = ' ';
 
+			size_t& size  = prefixSize();
+			size_t& clock = prefixClock();
+
 			size_t index{};
-			if (prefixSize < prefixCache().size()) index = prefixSize++;
-			else index = (prefixClock++ % prefixCache().size());
+			if (size < prefixCache().size()) index = size++;
+			else index = (clock++ % prefixCache().size());
 
 			prefixCache()[index] = { type, string(target), std::move(built) };
 			return prefixCache()[index].prefix;
 		}
 
-		//Message length + headroom for tag, date stamp, time stamp and indent
+		//Message length + headroom for tag, date stamp, time stamp, indent, and color codes
+		//Worst case: MAX_MESSAGE_LENGTH + time(20) + date(12) + MAX_INDENT_LENGTH(20)
+		//          + MAX_TAG_LENGTH(50) + brackets/spaces(~20) + color open(7) + reset(4) + newline(1)
 		static inline array<char, MAX_MESSAGE_LENGTH + 256>& logBuffer()
 		{
 			thread_local array<char, MAX_MESSAGE_LENGTH + 256> buffer{};
@@ -493,7 +574,16 @@ namespace KalaHeaders::KalaLog
 			return cache;
 		}
 
-		static inline thread_local size_t prefixSize{};  //total filled cached prefixes
-		static inline thread_local size_t prefixClock{}; //where to overwrite next once the cache is full
+		//Moved into accessor functions to avoid the thread_local static inline member pitfall
+		static inline size_t& prefixSize()
+		{
+			thread_local size_t val{};
+			return val;
+		}
+		static inline size_t& prefixClock()
+		{
+			thread_local size_t val{};
+			return val;
+		}
 	};
 }

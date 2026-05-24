@@ -65,6 +65,7 @@ namespace Cthulhu::Rendering
         gridShader.load(GRID_VERTEX_SHADER, GRID_FRAGMENT_SHADER);
 
         skybox.load(SKYBOX_HDR_PATH);
+        skybox.generateIrradianceMap();
         grid.setupGrid(GRID_SIZE);
 
         // temp setup for whitepointshadow
@@ -105,10 +106,9 @@ namespace Cthulhu::Rendering
         glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
         glBindTexture(GL_TEXTURE_2D, 0);
 
-        basicShader.use();
+                basicShader.use();
         basicShader.setInt("uTexture", 0); // diffuse
         basicShader.setInt("uShadowMap", 1); // directional shadow
-
 
         for (int i = 0; i < MAX_POINT_SHADOW_CASTERS; i++)
         {
@@ -116,6 +116,8 @@ namespace Cthulhu::Rendering
         }
         basicShader.setInt("uMetallicRoughnessTexture", 6);
         basicShader.setInt("uNormalMap", 7);
+        basicShader.setInt("uBRDFLUT", 8); // Setup slot for BRDF LUT now
+        basicShader.setInt("uIrradianceMap", 9);
 
         shadowMap.init(SHADOW_MAP_RESOLUTION, SHADOW_MAP_RESOLUTION);
         for (int i = 0; i < MAX_POINT_SHADOW_CASTERS; i++)
@@ -124,6 +126,58 @@ namespace Cthulhu::Rendering
         }
         shadowMap.setLightDir(sunLight.direction);
 
+        // BRDF LUT Generation
+        Shader brdfShader;
+        brdfShader.load("shaders/brdf.vertex", "shaders/brdf.fragment");
+        
+        glGenTextures(1, &brdfLUTTexture); 
+        glBindTexture(GL_TEXTURE_2D, brdfLUTTexture);
+        glTexImage2D(GL_TEXTURE_2D, 0, GL_RG16F, 512, 512, 0, GL_RG, GL_FLOAT, 0);
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+
+        unsigned int brdfFBO;
+        glGenFramebuffers(1, &brdfFBO);
+        glBindFramebuffer(GL_FRAMEBUFFER, brdfFBO);
+        glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, brdfLUTTexture, 0);
+
+        glViewport(0, 0, 512, 512);
+        brdfShader.use();
+        glClear(GL_COLOR_BUFFER_BIT);
+
+        float quadVertices[] = {
+            // positions        // texcoords
+            -1.0f,  1.0f,      0.0f, 1.0f,
+            -1.0f, -1.0f,      0.0f, 0.0f,
+             1.0f,  1.0f,      1.0f, 1.0f,
+             1.0f, -1.0f,      1.0f, 0.0f,
+        };
+        unsigned int quadVAO, quadVBO;
+        glGenVertexArrays(1, &quadVAO);
+        glGenBuffers(1, &quadVBO);
+        glBindVertexArray(quadVAO);
+        glBindBuffer(GL_ARRAY_BUFFER, quadVBO);
+        glBufferData(GL_ARRAY_BUFFER, sizeof(quadVertices), &quadVertices, GL_STATIC_DRAW);
+        glEnableVertexAttribArray(0);
+        glVertexAttribPointer(0, 2, GL_FLOAT, GL_FALSE, 4 * sizeof(float), (void*)0);
+        glEnableVertexAttribArray(1);
+        glVertexAttribPointer(1, 2, GL_FLOAT, GL_FALSE, 4 * sizeof(float), (void*)(2 * sizeof(float)));
+
+        glDrawArrays(GL_TRIANGLE_STRIP, 0, 4);
+
+        // Cleanup BRDF state
+        glBindFramebuffer(GL_FRAMEBUFFER, 0);
+        glDeleteFramebuffers(1, &brdfFBO);
+        glDeleteVertexArrays(1, &quadVAO);
+        glDeleteBuffers(1, &quadVBO);
+        brdfShader.destroy();
+
+        // Restore viewport and shader state
+        glfwGetFramebufferSize(window, &width, &height);
+        glViewport(0, 0, width, height);
+        basicShader.use(); // Re-bind basic shader so future uniform calls work
     }
 
     void Renderer::addPointLight(const PointLight& light)
@@ -229,6 +283,16 @@ namespace Cthulhu::Rendering
                 glBindTexture(GL_TEXTURE_CUBE_MAP, whitePointShadow); // 1x1 depth=1.0 = no shadow
             }
         }
+
+        // reset to slot 0 before entity loop
+        glActiveTexture(GL_TEXTURE0);
+
+                // Bind IBL textures
+        glActiveTexture(GL_TEXTURE8);
+        glBindTexture(GL_TEXTURE_2D, brdfLUTTexture);
+        
+        glActiveTexture(GL_TEXTURE9);
+        glBindTexture(GL_TEXTURE_CUBE_MAP, skybox.getIrradianceMap());
 
         // reset to slot 0 before entity loop
         glActiveTexture(GL_TEXTURE0);
