@@ -21,18 +21,7 @@ extern JPH::TempAllocatorImpl* getTempAllocator();
 namespace
 {
     JPH::CharacterVirtual* character = nullptr;
-
-    // Physics constants
-    constexpr float gravity = -9.81f;
-    constexpr float jumpVelocity = 5.0f;
-
-    // Player dimensions
-    constexpr float capsuleRadius = 0.3f;
-    constexpr float capsuleHeight = 2.0f;
-
-    // Character controller settings
-    constexpr float maxWalkableSlope = 45.0f;  // degrees
-    constexpr float maxPushStrength = 100.0f;
+    static Cthulhu::Physics::CharacterConfig s_CharacterConfig;
 
     // Current vertical velocity (gravity accumulates here)
     float verticalVelocity = 0.0f;
@@ -44,8 +33,10 @@ namespace
 }
 namespace Cthulhu::Physics
 {
-    void CharacterController::init(glm::vec3 startPosition)
+    void CharacterController::init(glm::vec3 startPosition, const CharacterConfig& config)
     {
+         s_CharacterConfig = config;
+
         JPH::PhysicsSystem* physicsSystem = getPhysicsSystem();
         if (!physicsSystem)
         {
@@ -55,7 +46,7 @@ namespace Cthulhu::Physics
 
         // capsule shape default for all fps games
         // half height is half the cylinder part not including the hemispheres
-        JPH::CapsuleShapeSettings capsuleSettings(capsuleHeight * 0.5f, capsuleRadius);
+        JPH::CapsuleShapeSettings capsuleSettings(s_CharacterConfig.capsuleHeight * 0.5f, s_CharacterConfig.capsuleRadius);
         auto capsuleShape = capsuleSettings.Create();
 
         if (capsuleShape.HasError())
@@ -66,7 +57,7 @@ namespace Cthulhu::Physics
 
         // offset the shape so feet are at y=0 not the center or character sinks into ground
         JPH::RotatedTranslatedShapeSettings offsetSettings(
-            JPH::Vec3(0.0f,capsuleRadius + capsuleHeight * 0.5f,0.0f), 
+            JPH::Vec3(0.0f,s_CharacterConfig.capsuleRadius + s_CharacterConfig.capsuleHeight * 0.5f,0.0f), 
             JPH::Quat::sIdentity(),
             capsuleShape.Get()
         );
@@ -81,8 +72,8 @@ namespace Cthulhu::Physics
 
         // character settings
         JPH::CharacterVirtualSettings settings;
-        settings.mMaxSlopeAngle = JPH::DegreesToRadians(maxWalkableSlope);
-        settings.mMaxStrength = maxPushStrength;                  // how hard it can push
+        settings.mMaxSlopeAngle = JPH::DegreesToRadians(s_CharacterConfig.maxWalkableSlope);
+        settings.mMaxStrength = s_CharacterConfig.maxPushStrength;                  // how hard it can push
         settings.mShape = offsetShape.Get();
         settings.mUp = JPH::Vec3::sAxisY();
         settings.mCharacterPadding = 0.02f;
@@ -118,9 +109,9 @@ namespace Cthulhu::Physics
 
         if (isOnGround) {
             verticalVelocity = 0.0f;
-            if (pendingJump) verticalVelocity = jumpVelocity;
+            if (pendingJump) verticalVelocity = s_CharacterConfig.jumpVelocity;
         } else {
-            verticalVelocity += gravity * fixedDt;
+            verticalVelocity += s_CharacterConfig.gravity * fixedDt;
         }
 
         JPH::Vec3 velocity(pendingMove.x, verticalVelocity, pendingMove.z);
@@ -154,13 +145,13 @@ namespace Cthulhu::Physics
             verticalVelocity = 0.0f;
             if (jump)
             {
-                verticalVelocity = jumpVelocity;
+                verticalVelocity = s_CharacterConfig.jumpVelocity;
             }
         }
         else
         {
             // In air: apply gravity to accumulated vertical velocity
-            verticalVelocity += gravity * deltaTime;
+            verticalVelocity += s_CharacterConfig.gravity * deltaTime;
         }
         // Set velocity: horizontal from input, vertical from our accumulated gravity
         JPH::Vec3 velocity(movementInput.x, verticalVelocity, movementInput.z);

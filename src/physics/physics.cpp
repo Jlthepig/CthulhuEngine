@@ -28,22 +28,7 @@ using KalaHeaders::KalaLog::LogType;
 // I chose 2 layers one for moving objects and one for non moving
 namespace
 {
-    // Physics system configuration
-    constexpr int TEMP_ALLOCATOR_SIZE_MB = 10;
-    constexpr int PHYSICS_THREAD_COUNT = 1;
-    constexpr int MAX_BODIES = 1024;
-    constexpr int MAX_BODY_PAIRS = 1024;
-    constexpr int MAX_CONTACT_CONSTRAINTS = 1024;
-    constexpr float FIXED_TIMESTEP = 1.0f / 60.0f;
-    constexpr int COLLISION_STEPS = 1;
-    constexpr size_t TRACE_BUFFER_SIZE = 1024;
-    
-    static float physicsAccumulator = 0.0f;
-
-    // Ground plane configuration
-    constexpr float GROUND_PLANE_WIDTH = 100.0f;
-    constexpr float GROUND_PLANE_HEIGHT = 0.5f;
-    constexpr float GROUND_PLANE_DEPTH = 100.0f;
+    static Cthulhu::Physics::PhysicsConfig s_PhysicsConfig;
     namespace ObjectLayers
     {
         // assigned to each object or body
@@ -121,6 +106,8 @@ namespace
     JPH::TempAllocatorImpl* tempAllocator = nullptr;
     JPH::JobSystemThreadPool* jobSystem = nullptr;
     JPH::PhysicsSystem* physicsSystem = nullptr;
+
+    static float physicsAccumulator = 0.0f;
 }
 
 // trace callback jolt uses this instead of printf
@@ -128,7 +115,7 @@ static void joltTrace(const char* inFMT, ...)
 {
     va_list list;
     va_start(list, inFMT);
-    char buffer[TRACE_BUFFER_SIZE];
+    char buffer[1024];
     vsnprintf(buffer, sizeof(buffer), inFMT, list);
     va_end(list);
     Log::Print(buffer, "Jolt", LogType::LOG_INFO);
@@ -139,8 +126,9 @@ JPH::TempAllocatorImpl* getTempAllocator() { return tempAllocator; }
 
 namespace Cthulhu::Physics
 {
-    void Physics::init()
-    {
+    void Physics::init(const PhysicsConfig& config)
+    {        
+        s_PhysicsConfig = config;
         // tell jolt how to log and assert   
     JPH::Trace = joltTrace;
     JPH::RegisterDefaultAllocator();
@@ -149,21 +137,21 @@ namespace Cthulhu::Physics
     Log::Print("Jolt types registered successfully", "Physics", LogType::LOG_SUCCESS);
         // temp allocation jolt needs a little bit of memory for calculations
         // 10mb should be good
-        tempAllocator = new JPH::TempAllocatorImpl(TEMP_ALLOCATOR_SIZE_MB * 1024 * 1024);
+        tempAllocator = new JPH::TempAllocatorImpl(s_PhysicsConfig.tempAllocatorSizeMB * 1024 * 1024);
         // job system jolt is able to use multiple threads but for now we'll just use
         // 1 physics thread + main thread
         jobSystem = new JPH::JobSystemThreadPool(
             JPH::cMaxPhysicsJobs,
             JPH::cMaxPhysicsBarriers,
-            PHYSICS_THREAD_COUNT);
+            s_PhysicsConfig.threadCount);
 
         // create the physics system this is the world
         physicsSystem = new JPH::PhysicsSystem();
         physicsSystem->Init(
-        MAX_BODIES,
+        s_PhysicsConfig.maxBodies,
         0,
-        MAX_BODY_PAIRS, 
-        MAX_CONTACT_CONSTRAINTS,
+        s_PhysicsConfig.maxBodyPairs, 
+        s_PhysicsConfig.maxContactConstraints,
         bpLayerInterface,
         objVsBpFilter,
         objLayerPairFilter
@@ -177,19 +165,19 @@ namespace Cthulhu::Physics
     {
         if (!physicsSystem) return;
         physicsAccumulator += deltaTime;
-        if (physicsAccumulator > 0.25f) // avoid spiral of death
-            physicsAccumulator = 0.25f;
+        if (physicsAccumulator > s_PhysicsConfig.maxDeltaTime) // avoid spiral of death
+            physicsAccumulator = s_PhysicsConfig.maxDeltaTime;
 
-        while (physicsAccumulator >= FIXED_TIMESTEP)    
+        while (physicsAccumulator >= s_PhysicsConfig.fixedDeltaTime)    
         {
-            Cthulhu::Physics::CharacterController::fixedUpdate(FIXED_TIMESTEP);
+            Cthulhu::Physics::CharacterController::fixedUpdate(s_PhysicsConfig.fixedDeltaTime);
             physicsSystem->Update(
-                FIXED_TIMESTEP,
-                COLLISION_STEPS,  // collision steps per update
+                s_PhysicsConfig.fixedDeltaTime,
+                s_PhysicsConfig.collisionSteps,  // collision steps per update
                 tempAllocator,
                 jobSystem
             );
-            physicsAccumulator -= FIXED_TIMESTEP;
+            physicsAccumulator -= s_PhysicsConfig.fixedDeltaTime;
         }
         
     }
@@ -315,7 +303,7 @@ namespace Cthulhu::Physics
         JPH::BodyInterface &bodyInterface = physicsSystem->GetBodyInterface();
 
         // create a large thin box to act as the ground plane at y = 0
-        JPH::BoxShapeSettings groundShapeSettings(JPH::Vec3(GROUND_PLANE_WIDTH, GROUND_PLANE_HEIGHT, GROUND_PLANE_DEPTH));
+        JPH::BoxShapeSettings groundShapeSettings(JPH::Vec3(s_PhysicsConfig.groundWidth, s_PhysicsConfig.groundHeight, s_PhysicsConfig.groundDepth));
         auto groundShape = groundShapeSettings.Create();
 
         if (groundShape.HasError())
@@ -327,12 +315,12 @@ namespace Cthulhu::Physics
         // boddy creation settins for pos rot shape layer and motion type
         JPH::BodyCreationSettings groundSettings(
             groundShape.Get(), // shape
-            JPH::Vec3(0.0f, -GROUND_PLANE_HEIGHT, 0.0f), // push it down half its height so top face sits at Y=0
+            JPH::Vec3(0.0f, -s_PhysicsConfig.groundHeight, 0.0f), // push it down half its height so top face sits at Y=0
             JPH::Quat::sIdentity(), // no rotation
             JPH::EMotionType::Static, // motion type never moves
             ObjectLayers::NON_MOVING // coll layer
         );
-        groundSettings.mFriction = 0.8f;
+        groundSettings.mFriction = s_PhysicsConfig.groundFriction;
         bodyInterface.CreateAndAddBody(groundSettings, JPH::EActivation::DontActivate);
 
         Log::Print("Ground plane created", "Physics", LogType::LOG_SUCCESS);
@@ -340,7 +328,7 @@ namespace Cthulhu::Physics
 
     float Physics::getInterpolationAlpha()
     {
-        return physicsAccumulator / FIXED_TIMESTEP;
+        return physicsAccumulator / s_PhysicsConfig.fixedDeltaTime;
     }
 
     void Physics::shutdown()

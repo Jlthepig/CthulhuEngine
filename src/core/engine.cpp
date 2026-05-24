@@ -82,7 +82,8 @@ namespace Cthulhu
         }
 
         Cthulhu::Rendering::RenderConfig renderConfig;
-        Physics::Physics::init();
+        Cthulhu::Physics::PhysicsConfig physicsConfig;
+        Physics::Physics::init(physicsConfig);
         Physics::Physics::createGroundPlane();
         camera = Camera::init();
         Input::init(glfwWindow, resolution);

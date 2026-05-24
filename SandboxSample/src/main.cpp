@@ -60,7 +60,8 @@ int main()
 {
     Cthulhu::Engine::init(GameConfig::WINDOW_TITLE, GameConfig::WINDOW_RESOLUTION);
     Cthulhu::Engine::loadScene(GameConfig::SCENE_PATH);
-    Cthulhu::Physics::CharacterController::init(glm::vec3(0, GameConfig::CHARACTER_START_POSITION.y, 0));
+    Cthulhu::Physics::CharacterConfig charConfig;
+    Cthulhu::Physics::CharacterController::init(glm::vec3(0, GameConfig::CHARACTER_START_POSITION.y, 0), charConfig);
     camera = Cthulhu::Engine::getCamera();
     Cthulhu::Engine::setUpdateCallback(onUpdate);
     Cthulhu::Engine::run();
