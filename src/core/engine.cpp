@@ -66,7 +66,9 @@ namespace Cthulhu
         glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);
 
         // Window creation
-        window = Cthulhu::Core::Window::createWindow(resolution, title);
+        Cthulhu::Core::WindowConfig windowConfig;
+        windowConfig.resolution = resolution; // Passed in from main.cpp
+        window = Cthulhu::Core::Window::createWindow(windowConfig, title);
         glfwWindow = window->getWindow();
         if (glfwWindow == NULL)
         {

@@ -11,16 +11,16 @@ using KalaHeaders::KalaLog::LogType;
 namespace Cthulhu::Core
 {
     static std::vector<unique_ptr<Window>> windowContainer;
-    Window* Window::createWindow(glm::vec2 windowSize,const char* windowTitle)
+    Window* Window::createWindow(const WindowConfig& config, const char* windowTitle)
     {
         unique_ptr<Window> window = std::make_unique<Window>();
-         window->glfWwindow = glfwCreateWindow(windowSize.x, windowSize.y, windowTitle, NULL, NULL);
+         window->glfWwindow = glfwCreateWindow((int)config.resolution.x, (int)config.resolution.y, windowTitle, NULL, NULL);
 
         if (!window) {  Log::Print("FAILED TO CREATE A WINDOW.", "Main", LogType::LOG_ERROR); glfwTerminate(); return nullptr; }
         Window* window_ptr = window.get();
-        window->windowSize = windowSize;
+        window->windowSize = config.resolution;
         glfwMakeContextCurrent( window->glfWwindow);
-        glfwSwapInterval(0);
+        glfwSwapInterval(config.vSync ? 1 : 0); // Enable or disable V-Sync based on config
         glfwSetWindowUserPointer(window->glfWwindow, window_ptr);  // attach this instance
         glfwSetFramebufferSizeCallback( window->glfWwindow, framebuffer_size_callback);
         

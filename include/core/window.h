@@ -1,6 +1,5 @@
 #pragma once
 
-
 #include "glad.h"
 #include "glfw3.h"
 #include "glm.hpp"
@@ -10,15 +9,23 @@
 
 using std::unique_ptr;
 using std::make_unique;
+
 namespace Cthulhu::Scene {class Camera;}
+
 namespace Cthulhu::Core 
 {
+    // Centralized configuration
+    struct WindowConfig
+    {
+        glm::vec2 resolution = glm::vec2(1920.0f, 1080.0f);
+        bool vSync = false; // Currently hardcoded to 0 (off) in window.cpp
+    };
+
     class Window
     {
         public:
         
-
-        static Window* createWindow(glm::vec2 windowSize,const char* windowTitle);
+        static Window* createWindow(const WindowConfig& config, const char* windowTitle);
         void setCamera(Cthulhu::Scene::Camera* cam);
         
         GLFWwindow* getWindow() const;
