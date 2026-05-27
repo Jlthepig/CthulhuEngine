@@ -16,8 +16,7 @@ using KalaHeaders::KalaLog::Log;
 using KalaHeaders::KalaLog::LogType;
 
 namespace JPH { class PhysicsSystem; }
-extern JPH::PhysicsSystem* getPhysicsSystem();
-extern JPH::TempAllocatorImpl* getTempAllocator();
+
 namespace
 {
     JPH::CharacterVirtual* character = nullptr;
@@ -33,11 +32,11 @@ namespace
 }
 namespace Cthulhu::Physics
 {
-    void CharacterController::init(glm::vec3 startPosition, const CharacterConfig& config)
+    void CharacterController::init(glm::vec3 startPosition, const CharacterConfig& config, PhysicsWorld& physicsWorld)
     {
          s_CharacterConfig = config;
 
-        JPH::PhysicsSystem* physicsSystem = getPhysicsSystem();
+        JPH::PhysicsSystem* physicsSystem = physicsWorld.getPhysicsSystem();
         if (!physicsSystem)
         {
             Log::Print("CANNOT CREATE CHARACTER CONTROLLER - PHYSICS NOT INITIALIZED", "CharacterController", LogType::LOG_ERROR);
@@ -98,7 +97,7 @@ namespace Cthulhu::Physics
     }
 
     // This is the new fixed update method that processes queued input for consistent physics behavior.
-    void CharacterController::fixedUpdate(float fixedDt)
+    void CharacterController::fixedUpdate(float fixedDt, PhysicsWorld& physicsWorld)
     {
         if (!character) return;
 
@@ -122,54 +121,14 @@ namespace Cthulhu::Physics
             fixedDt,
             JPH::Vec3(0,0,0),
             s,
-            getPhysicsSystem()->GetDefaultBroadPhaseLayerFilter(0),
-            getPhysicsSystem()->GetDefaultLayerFilter(0),
-            {}, {}, *getTempAllocator()
+            physicsWorld.getPhysicsSystem()->GetDefaultBroadPhaseLayerFilter(0),
+            physicsWorld.getPhysicsSystem()->GetDefaultLayerFilter(0),
+            {}, {}, *physicsWorld.getTempAllocator()
         );
 
         pendingJump = false; // consume
     }
     
-    // This is the old update method that directly applies movement and jump input. It's now deprecated in favor of queueing input and processing it in fixedUpdate for better physics consistency.
-    void CharacterController::update(glm::vec3 movementInput, bool jump, float deltaTime)
-    {
-        if (!character) return;
-
-        // Check ground state
-        auto groundState = character->GetGroundState();
-        bool isOnGround = groundState == JPH::CharacterBase::EGroundState::OnGround;
-
-        // When on ground, reset vertical and apply jump
-        if (isOnGround)
-        {
-            verticalVelocity = 0.0f;
-            if (jump)
-            {
-                verticalVelocity = s_CharacterConfig.jumpVelocity;
-            }
-        }
-        else
-        {
-            // In air: apply gravity to accumulated vertical velocity
-            verticalVelocity += s_CharacterConfig.gravity * deltaTime;
-        }
-        // Set velocity: horizontal from input, vertical from our accumulated gravity
-        JPH::Vec3 velocity(movementInput.x, verticalVelocity, movementInput.z);
-        character->SetLinearVelocity(velocity);
-
-        JPH::CharacterVirtual::ExtendedUpdateSettings updateSettings;
-        character->ExtendedUpdate(
-            deltaTime,
-            JPH::Vec3(0.0f, 0.0f, 0.0f),
-            updateSettings,
-            getPhysicsSystem()->GetDefaultBroadPhaseLayerFilter(0),
-            getPhysicsSystem()->GetDefaultLayerFilter(0),
-            {},
-            {},
-            *getTempAllocator()
-        );
-    }
-
     glm::vec3 CharacterController::getPosition()
     {
         if (!character) return glm::vec3(0.0f);

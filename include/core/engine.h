@@ -1,7 +1,11 @@
 #pragma once
 
 #include "camera.h"
-#include "glm.hpp"
+#include "renderer.h"
+#include "physics.h"
+#include "scene.h"
+#include "sceneLoader.h"
+#include "window.h"
 #include <functional>
 #include <string>
 
@@ -11,13 +15,28 @@ namespace Cthulhu
     {
     public:
         using UpdateCallback = std::function<void(float deltaTime)>;
-        static void init(const char* title, glm::vec2 resolution);
-        static void loadScene(const std::string& path);
-        static void setUpdateCallback(UpdateCallback callback);
-        static void run();
-        static void shutdown();
-        static Cthulhu::Scene::Camera* getCamera();
+        
+        void init(const char* title, glm::vec2 resolution);
+        void loadScene(const std::string& path);
+        void setUpdateCallback(UpdateCallback callback);
+        void run();
+        void shutdown();
+        Cthulhu::Scene::Camera* getCamera();
+        Cthulhu::Physics::PhysicsWorld& getPhysicsWorld() { return physicsWorld; }
+
+    private:
+        // The Engine now OWNS this data
+        Cthulhu::Rendering::Renderer renderer;
+        Cthulhu::Physics::PhysicsWorld physicsWorld;
+        Cthulhu::Scene::Camera* camera = nullptr;
+        Cthulhu::Core::Window* window = nullptr;
+        GLFWwindow* glfwWindow = nullptr;
+        Cthulhu::Scene::Scene scene;
+        Cthulhu::Scene::SceneData sceneData;
+        
+        UpdateCallback gameUpdateCallback = nullptr;
+
+        float deltaTime = 0.0f;
+        float lastFrame = 0.0f;
     };
-    
-    
 }

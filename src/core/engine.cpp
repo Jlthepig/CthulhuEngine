@@ -1,9 +1,6 @@
-
-// standard libraries
 #include "sceneLoader.h"
 #include <cstdlib>
 
-// third party libraries
 #define STB_IMAGE_IMPLEMENTATION
 #include "glad.h"
 #include "glfw3.h"
@@ -11,7 +8,6 @@
 #include "log_utils.hpp"
 #include "Jolt/Jolt.h"
 
-// engine
 #include "engine.h"
 #include "camera.h"
 #include "window.h"
@@ -21,54 +17,26 @@
 #include "physics.h"
 #include "characterController.h"
 
-// engine types
-using Cthulhu::Scene::Camera;
-using Cthulhu::Core::Window;
-using Cthulhu::Core::Input;
-using Cthulhu::Rendering::Renderer;
-using Cthulhu::Physics::Physics;
-using Cthulhu::Physics::CharacterController;
-
 using KalaHeaders::KalaLog::Log;
 using KalaHeaders::KalaLog::LogType;
 
-// Global state
-glm::vec2 resolution;
-float deltaTime = 0.0f;
-float lastFrame = 0.0f;
-
-// Subsystems
-static Renderer renderer;
-static Camera* camera = nullptr;
-static Window* window = nullptr;
-static GLFWwindow* glfwWindow = nullptr;
-static Cthulhu::Scene::Scene scene;
-static Cthulhu::Scene::SceneData sceneData;
-static Cthulhu::Engine::UpdateCallback gameUpdateCallback = nullptr;
-namespace EngineConfig
-{
-    // OpenGL version
-    constexpr int OPENGL_VERSION_MAJOR = 4;
-    constexpr int OPENGL_VERSION_MINOR = 0;
-}
 namespace Cthulhu
 {
     void Engine::init(const char* title, glm::vec2 resolution)
     {
-        // Initialize system
         if (!glfwInit()) 
         {
             Log::Print("CANNOT INITIALIZE GLFW", "ENGINE", LogType::LOG_ERROR);
             exit(1);
         }
-        glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, EngineConfig::OPENGL_VERSION_MAJOR);
-        glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, EngineConfig::OPENGL_VERSION_MINOR);
+        glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 4);
+        glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 0);
         glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);
 
-        // Window creation
         Cthulhu::Core::WindowConfig windowConfig;
-        windowConfig.resolution = resolution; // Passed in from main.cpp
+        windowConfig.resolution = resolution;
         window = Cthulhu::Core::Window::createWindow(windowConfig, title);
+        
         glfwWindow = window->getWindow();
         if (glfwWindow == NULL)
         {
@@ -76,20 +44,21 @@ namespace Cthulhu
             exit(1);
         }
 
-            // Initialize GLAD
         if (!gladLoadGLLoader((GLADloadproc)glfwGetProcAddress))
         {
             Log::Print("FAILED TO INITIALISE GLAD.", "ENGINE", LogType::LOG_ERROR);
             exit(1);
         }
 
-        Cthulhu::Rendering::RenderConfig renderConfig;
         Cthulhu::Physics::PhysicsConfig physicsConfig;
-        Physics::Physics::init(physicsConfig);
-        Physics::Physics::createGroundPlane();
-        camera = Camera::init();
-        Input::init(glfwWindow, resolution);
-        Input::setCamera(camera);
+        physicsWorld.init(physicsConfig);
+        physicsWorld.createGroundPlane();
+
+        camera = Scene::Camera::init();
+        Core::Input::init(glfwWindow, resolution);
+        Core::Input::setCamera(camera); // will be decoupled in Step 3
+
+        Cthulhu::Rendering::RenderConfig renderConfig;
         renderer.init(glfwWindow, camera, renderConfig);
 
         int fbW, fbH;
@@ -101,7 +70,7 @@ namespace Cthulhu
 
     void Engine::loadScene(const std::string &path)
     {
-        sceneData = Cthulhu::Scene::SceneLoader::load(path, scene);
+        sceneData = Scene::SceneLoader::load(path, scene, physicsWorld);
 
         renderer.setDirectionalLight(sceneData.directionalLight);
         for (const auto& light : sceneData.pointLights)
@@ -123,21 +92,20 @@ namespace Cthulhu
     {
        while (!glfwWindowShouldClose(glfwWindow))
        {
-            Input::update();    
+            Core::Input::update();    
         
             float currentFrame = glfwGetTime();
             deltaTime = currentFrame - lastFrame;
             lastFrame = currentFrame;
 
-            Physics::Physics::step(deltaTime);
+            physicsWorld.step(deltaTime);
 
-            // sync physics bodies to entities
             auto& entities = scene.getEntities();
             for (auto& entity : entities)
             {
                 if (entity.hasPhysicsBody)
                 {
-                    auto transform = Physics::Physics::getBodyTransform(entity.physicsBodyId);
+                    auto transform = physicsWorld.getBodyTransform(entity.physicsBodyId);
                     entity.transform.setPosition(transform.position);
                     entity.transform.setRotation(transform.rotation);
                 }
@@ -155,7 +123,7 @@ namespace Cthulhu
 
     void Engine::shutdown()
     {
-        Physics::Physics::shutdown();
+        physicsWorld.shutdown();
         renderer.shutdown();
         scene.clear();
         glfwTerminate();

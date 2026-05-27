@@ -17,6 +17,7 @@ namespace GameConfig
 
 static bool inEditorMode = true;
 static Cthulhu::Scene::Camera* camera = nullptr;
+static Cthulhu::Engine* enginePtr = nullptr;
 
 void onUpdate(float deltaTime)
 {
@@ -49,7 +50,7 @@ void onUpdate(float deltaTime)
         bool jump = Cthulhu::Core::Input::isKeyPressed(GLFW_KEY_SPACE);
 
         Cthulhu::Physics::CharacterController::queueInput(movement, jump);
-        float alpha = Cthulhu::Physics::Physics::getInterpolationAlpha();
+        float alpha = enginePtr->getPhysicsWorld().getInterpolationAlpha();
         glm::vec3 charPos = Cthulhu::Physics::CharacterController::getInterpolationPosition(alpha);
         charPos.y += GameConfig::CAMERA_EYE_HEIGHT_OFFSET;
         camera->setPosition(charPos);
@@ -58,14 +59,21 @@ void onUpdate(float deltaTime)
 
 int main()
 {
-    Cthulhu::Engine::init(GameConfig::WINDOW_TITLE, GameConfig::WINDOW_RESOLUTION);
-    Cthulhu::Engine::loadScene(GameConfig::SCENE_PATH);
+    // Instantiate the Engine!
+    Cthulhu::Engine engine;
+    enginePtr = &engine;
+    
+    engine.init(GameConfig::WINDOW_TITLE, GameConfig::WINDOW_RESOLUTION);
+    engine.loadScene(GameConfig::SCENE_PATH);
+    
     Cthulhu::Physics::CharacterConfig charConfig;
-    Cthulhu::Physics::CharacterController::init(glm::vec3(0, GameConfig::CHARACTER_START_POSITION.y, 0), charConfig);
-    camera = Cthulhu::Engine::getCamera();
-    Cthulhu::Engine::setUpdateCallback(onUpdate);
-    Cthulhu::Engine::run();
+    Cthulhu::Physics::CharacterController::init(glm::vec3(0, GameConfig::CHARACTER_START_POSITION.y, 0), charConfig, engine.getPhysicsWorld());
+    
+    camera = engine.getCamera();
+    engine.setUpdateCallback(onUpdate);
+    engine.run();
+    
     Cthulhu::Physics::CharacterController::destroy();
-    Cthulhu::Engine::shutdown();
+    engine.shutdown();
     return 0;
 }

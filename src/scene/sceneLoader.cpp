@@ -8,7 +8,7 @@ using KalaHeaders::KalaLog::LogType;
 
 namespace Cthulhu::Scene
 {
-    SceneData SceneLoader::load(const std::string& path, Scene& scene)
+    SceneData SceneLoader::load(const std::string& path, Scene& scene, Cthulhu::Physics::PhysicsWorld& physicsWorld)
     {
         SceneData sceneData;
 
@@ -44,13 +44,13 @@ namespace Cthulhu::Scene
 
                 if (p.type == "static")
                 {
-                    entity.physicsBodyId = Physics::Physics::addStaticBox(
+                    entity.physicsBodyId = physicsWorld.addStaticBox(
                         parsedEntity.position, p.halfExtent);
                     entity.hasPhysicsBody = true;
                 }
                 else if (p.type == "dynamic")
                 {
-                    entity.physicsBodyId = Physics::Physics::addDynamicBox(
+                    entity.physicsBodyId = physicsWorld.addDynamicBox(
                         parsedEntity.position, p.halfExtent, p.mass);
                     entity.hasPhysicsBody = true;
                 }
