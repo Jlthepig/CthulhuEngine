@@ -4,16 +4,12 @@
 #include "glad.h"
 #include "glfw3.h"
 #include "glm.hpp"
-
-namespace Cthulhu::Scene {class Camera;}
-
 namespace Cthulhu::Core
 {
     class Input
     {
         public:
         static void init(GLFWwindow* window, glm::vec2 resolution);
-        static void setCamera(Cthulhu::Scene::Camera* cam);
         static GLFWwindow* getWindowHandle();
         static void update();
         
@@ -31,7 +27,6 @@ namespace Cthulhu::Core
 
         private:
         static GLFWwindow* windowHandle;
-        static Cthulhu::Scene::Camera* camera;
         static bool currentKeys[GLFW_KEY_LAST + 1];
         static bool previousKeys[GLFW_KEY_LAST + 1];
         static bool firstMouse;

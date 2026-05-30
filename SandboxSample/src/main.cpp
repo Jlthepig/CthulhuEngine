@@ -20,7 +20,11 @@ static Cthulhu::Scene::Camera* camera = nullptr;
 static Cthulhu::Engine* enginePtr = nullptr;
 
 void onUpdate(float deltaTime)
-{
+{   
+    if (camera) {
+        camera->processMouse(Cthulhu::Core::Input::getMouseDeltaX(), Cthulhu::Core::Input::getMouseDeltaY());
+    }
+
     if (Cthulhu::Core::Input::isKeyPressed(GLFW_KEY_F1))
     {
         inEditorMode = !inEditorMode;

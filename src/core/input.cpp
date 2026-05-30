@@ -7,7 +7,6 @@
 namespace Cthulhu::Core
 {
     GLFWwindow* Input::windowHandle = nullptr; 
-    Cthulhu::Scene::Camera* Input::camera = nullptr;
     bool Input::currentKeys[GLFW_KEY_LAST + 1] = {};
     bool Input::previousKeys[GLFW_KEY_LAST + 1] = {};
     float Input::mouseDeltaX = 0.0f;
@@ -23,11 +22,6 @@ namespace Cthulhu::Core
         
         glfwSetCursorPosCallback(windowHandle,mouse_callback);
         glfwSetMouseButtonCallback(windowHandle, mouse_button_callback);
-    }
-    
-    void Input::setCamera(Cthulhu::Scene::Camera* cam)
-    {
-        camera = cam;
     }
     
     GLFWwindow* Input::getWindowHandle()
@@ -82,11 +76,6 @@ namespace Cthulhu::Core
         mouseDeltaY = yoffset;
         lastX = xpos;
         lastY = ypos;
-
-        if(camera)
-        {
-            camera->processMouse(xoffset,yoffset);
-        }
     }
     
     void Input::mouse_button_callback(GLFWwindow* window, int button, int action, int mods)

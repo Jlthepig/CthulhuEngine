@@ -56,7 +56,6 @@ namespace Cthulhu
 
         camera = Scene::Camera::init();
         Core::Input::init(glfwWindow, resolution);
-        Core::Input::setCamera(camera); // will be decoupled in Step 3
 
         Cthulhu::Rendering::RenderConfig renderConfig;
         renderer.init(glfwWindow, camera, renderConfig);
