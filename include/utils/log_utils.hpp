@@ -234,7 +234,7 @@ namespace KalaHeaders::KalaLog
 				buffer[length++] = '-';
 				buffer[length++] = '0' + (us / 100) % 10;
 				buffer[length++] = '0' + (us / 10) % 10;
-				buffer[length++] = '0' + (us % 100);
+				buffer[length++] = '0' + (us % 10);
 				buffer[length] = '\0';
 
 				break;

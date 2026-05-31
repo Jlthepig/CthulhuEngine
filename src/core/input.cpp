@@ -31,9 +31,6 @@ namespace Cthulhu::Core
     
     void Input::update()
     {
-        mouseDeltaX = 0.0f;
-        mouseDeltaY = 0.0f;
-
         memcpy(previousKeys, currentKeys, sizeof(currentKeys));
 
         for (int i = 0; i<= GLFW_KEY_LAST;i++)
@@ -98,12 +95,16 @@ namespace Cthulhu::Core
     
     float Input::getMouseDeltaX()
     {
-        return mouseDeltaX;
+        float delta = mouseDeltaX;
+        mouseDeltaX = 0.0f; 
+        return delta;
     }
     
     float Input::getMouseDeltaY()
     {
-        return mouseDeltaY;
+        float delta = mouseDeltaY;
+        mouseDeltaY = 0.0f;
+        return delta;
     }
 
     

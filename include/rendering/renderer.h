@@ -51,7 +51,7 @@ namespace Cthulhu::Rendering
         void addPointLight(const PointLight& light);
         void setDirectionalLight(const DirectionalLight& light);
         void setPointLights(const std::vector<PointLight>& lights);
-        void render(float deltaTime);
+        void render(float deltaTime, flecs::world& world);
         void shutdown();
 
         private:

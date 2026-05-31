@@ -1,5 +1,5 @@
 #include "renderer.h"
-#include "entity.h"
+#include "components.h"
 #include "ext/matrix_clip_space.hpp"
 #include "ext/matrix_transform.hpp"
 #include "fwd.hpp"
@@ -161,7 +161,7 @@ namespace Cthulhu::Rendering
         pointLights.push_back(light);
     }
     
-    void Renderer::render(float deltaTime)
+    void Renderer::render(float deltaTime, flecs::world& world)
     {
         int width, height;
         glfwGetFramebufferSize(window, &width, &height);
@@ -180,13 +180,23 @@ namespace Cthulhu::Rendering
 
         // 1. shadow pass
         shadowMap.beginPass();
-        for (auto& entity : scene->getEntities())
-        {
-            if (!entity.active || entity.model == nullptr) continue;
-            glm::mat4 modelMatrix = entity.transform.getModelMatrix(); // once per entity
-            shadowMap.getDepthShader().setMat4("model", modelMatrix);
-            entity.model->draw();
-        }
+        world.each([&](flecs::entity e, Scene::TransformComponent& transform, Scene::MeshComponent& mesh) {
+            if (!mesh.model) return;
+            
+            if (transform.matrixDirty) {
+                transform.cachedModelMatrix = glm::mat4(1.0f);
+                transform.cachedModelMatrix = glm::translate(transform.cachedModelMatrix, transform.position);
+                transform.cachedModelMatrix = glm::rotate(transform.cachedModelMatrix, transform.rotation.x, glm::vec3(1,0,0));
+                transform.cachedModelMatrix = glm::rotate(transform.cachedModelMatrix, transform.rotation.y, glm::vec3(0,1,0));
+                transform.cachedModelMatrix = glm::rotate(transform.cachedModelMatrix, transform.rotation.z, glm::vec3(0,0,1));
+                transform.cachedModelMatrix = glm::scale(transform.cachedModelMatrix, transform.scale);
+                transform.cachedNormalMatrix = glm::transpose(glm::inverse(transform.cachedModelMatrix));
+                transform.matrixDirty = false;
+            }
+
+            shadowMap.getDepthShader().setMat4("model", transform.cachedModelMatrix);
+            mesh.model->draw();
+        });
         shadowMap.endPass();
         int shadowCasters = std::min((int)pointLights.size(), MAX_POINT_SHADOW_CASTERS);
 
@@ -208,13 +218,11 @@ namespace Cthulhu::Rendering
             for (int face = 0; face < 6; face++)
             {
                 pointShadowMaps[i].bindFace(face, captureViews[face]);
-                for (auto& entity : scene->getEntities())
-                {
-                    if (!entity.active || entity.model == nullptr) continue;
-                    glm::mat4 modelMatrix = entity.transform.getModelMatrix(); // once per entity
-                    pointShadowMaps[i].getDepthShader().setMat4("model", modelMatrix);
-                    entity.model->draw();
-                }
+                world.each([&](flecs::entity e, Scene::TransformComponent& transform, Scene::MeshComponent& mesh) {
+                    if (!mesh.model) return;
+                    pointShadowMaps[i].getDepthShader().setMat4("model", transform.cachedModelMatrix);
+                    mesh.model->draw();
+                });
             }
             pointShadowMaps[i].endPass();
         }
@@ -274,56 +282,55 @@ namespace Cthulhu::Rendering
         glActiveTexture(GL_TEXTURE0);
 
         int entityCount = 0;
-        for (auto& entity : scene->getEntities())
-        {
-            if (!entity.active || entity.model == nullptr) continue;
-            glm::mat4 modelMatrix = entity.transform.getModelMatrix();
-            glm::mat4 normalMatrix = entity.transform.getNormalMatrix();
-            Scene::AABB worldBounds = TransformAABB(entity.bounds, modelMatrix);
-            if (!frustum.testAABB(worldBounds)) continue;
+        world.each([&](flecs::entity e, Scene::TransformComponent& transform, Scene::MeshComponent& mesh) {
+            if (!e.has<Scene::TagActive>() || !mesh.model) return;
+            
+            // AABB test
+            Scene::AABB worldBounds = TransformAABB({mesh.boundsMin, mesh.boundsMax}, transform.cachedModelMatrix);
+            if (!frustum.testAABB(worldBounds)) return;
+            
             entityCount++;
 
-            basicShader.setMat4("model", modelMatrix);
-            basicShader.setMat4("uNormalMatrix", normalMatrix);
+            basicShader.setMat4("model", transform.cachedModelMatrix);
+            basicShader.setMat4("uNormalMatrix", transform.cachedNormalMatrix);
 
-            for (size_t meshIdx = 0; meshIdx < entity.model->meshes.size(); meshIdx++)
+            for (size_t meshIdx = 0; meshIdx < mesh.model->meshes.size(); meshIdx++)
             {
-                auto& mesh = entity.model->meshes[meshIdx];
+                auto& modelMesh = mesh.model->meshes[meshIdx];
                 glm::vec4 baseColorFactor(1.0f);
 
-                if (mesh.materialIndex >= 0 && mesh.materialIndex < static_cast<int>(entity.model->materials.size()))
+                if (modelMesh.materialIndex >= 0 && modelMesh.materialIndex < static_cast<int>(mesh.model->materials.size()))
                 {
-                    auto& material = entity.model->materials[mesh.materialIndex];
+                    auto& material = mesh.model->materials[modelMesh.materialIndex];
                     baseColorFactor = material.baseColorFactor;
 
                     basicShader.setFloat("uMetallicFactor", material.metallicFactor);
                     basicShader.setFloat("uRoughnessFactor", material.roughnessFactor);
 
                     if (material.baseColorTextureIndex >= 0 &&
-                        material.baseColorTextureIndex < static_cast<int>(entity.model->textures.size()))
+                        material.baseColorTextureIndex < static_cast<int>(mesh.model->textures.size()))
                     {
-                        // explicitly bind to slot 0 without disturbing other slots
                         glActiveTexture(GL_TEXTURE0);
-                        glBindTexture(GL_TEXTURE_2D, entity.model->textures[material.baseColorTextureIndex].getID());
+                        glBindTexture(GL_TEXTURE_2D, mesh.model->textures[material.baseColorTextureIndex].getID());
                     }
 
                     if (material.metallicRoughnessTextureIndex >= 0 &&
-                        material.metallicRoughnessTextureIndex < static_cast<int>(entity.model->textures.size()))
+                        material.metallicRoughnessTextureIndex < static_cast<int>(mesh.model->textures.size()))
                     {
-                        
                         glActiveTexture(GL_TEXTURE6);
-                        glBindTexture(GL_TEXTURE_2D, entity.model->textures[material.metallicRoughnessTextureIndex].getID());
+                        glBindTexture(GL_TEXTURE_2D, mesh.model->textures[material.metallicRoughnessTextureIndex].getID());
                     }
                     else
                     {
                         glActiveTexture(GL_TEXTURE6);
                         glBindTexture(GL_TEXTURE_2D, defaultDataTexture);
                     }
+                    
                     if (material.normalTextureIndex >= 0 &&
-                        material.normalTextureIndex < static_cast<int>(entity.model->textures.size()))
+                        material.normalTextureIndex < static_cast<int>(mesh.model->textures.size()))
                     {
                         glActiveTexture(GL_TEXTURE7);
-                        glBindTexture(GL_TEXTURE_2D, entity.model->textures[material.normalTextureIndex].getID());
+                        glBindTexture(GL_TEXTURE_2D, mesh.model->textures[material.normalTextureIndex].getID());
                     }
                     else
                     {
@@ -337,16 +344,16 @@ namespace Cthulhu::Rendering
                     basicShader.setFloat("uRoughnessFactor", 1.0f);
                     glActiveTexture(GL_TEXTURE6);
                     glBindTexture(GL_TEXTURE_2D, defaultDataTexture);
-
                     glActiveTexture(GL_TEXTURE7);
                     glBindTexture(GL_TEXTURE_2D, defaultNormalTexture);
                 }
 
                 basicShader.setVec4("uBaseColorFactor", baseColorFactor);
-                totalTriangles += mesh.getIndexCount() / 3;
-                mesh.draw();
+                totalTriangles += modelMesh.getIndexCount() / 3;
+                modelMesh.draw();
             }
-        }
+        });
+
         // 3. grid
         glEnable(GL_BLEND);
         glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);

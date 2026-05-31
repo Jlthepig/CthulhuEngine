@@ -28,46 +28,48 @@ namespace Cthulhu::Scene
         // build entities from parsed data
         for (auto& parsedEntity : parsed->entities)
         {
-            Entity entity;
-            entity.name = parsedEntity.name;
-            entity.model = scene.getOrLoadModel(parsedEntity.modelPath);
-            entity.transform.setPosition(parsedEntity.position);
-            entity.transform.setRotation(parsedEntity.rotation);
-            entity.transform.setScale(parsedEntity.scale);
-            entity.bounds.min = parsedEntity.boundsMin;
-            entity.bounds.max = parsedEntity.boundsMax;
+            auto e = scene.createEntity(parsedEntity.name);
+
+            auto& transform = e.ensure<TransformComponent>();
+            transform.position = parsedEntity.position;
+            transform.rotation = parsedEntity.rotation;
+            transform.scale = parsedEntity.scale;
+            transform.matrixDirty = true;
+
+            if (!parsedEntity.modelPath.empty())
+            {
+                auto& mesh = e.ensure<MeshComponent>();
+                mesh.model = scene.getOrLoadModel(parsedEntity.modelPath);
+                mesh.boundsMin = parsedEntity.boundsMin;
+                mesh.boundsMax = parsedEntity.boundsMax;
+            }
 
             // create a physics body if it is present
             if (parsedEntity.physics.has_value())
             {
                 auto& p = parsedEntity.physics.value();
+                auto& phys = e.ensure<PhysicsComponent>();
+                phys.hasBody = true;
 
                 if (p.type == "static")
                 {
-                    entity.physicsBodyId = physicsWorld.addStaticBox(
+                    phys.bodyId = physicsWorld.addStaticBox(
                         parsedEntity.position, p.halfExtent);
-                    entity.hasPhysicsBody = true;
+                    e.add<TagStatic>();
                 }
                 else if (p.type == "dynamic")
                 {
-                    entity.physicsBodyId = physicsWorld.addDynamicBox(
+                    phys.bodyId = physicsWorld.addDynamicBox(
                         parsedEntity.position, p.halfExtent, p.mass);
-                    entity.hasPhysicsBody = true;
                 }
-                Log::Print("Entity '" + entity.name + "' has physics: " + p.type, "SceneLoader", LogType::LOG_INFO);
             }
 
-            scene.addEntity(entity);
-            Log::Print("Added entity: " + entity.name, "SceneLoader", LogType::LOG_INFO);
+            e.add<TagActive>();
         }
 
         // lights
         sceneData.directionalLight = parsed->directionalLight;
         sceneData.pointLights = parsed->pointLights;
-
-        Log::Print("Scene loaded: " + std::to_string(scene.getEntities().size()) + " entities, "
-            + std::to_string(sceneData.pointLights.size()) + " point lights",
-            "SceneLoader", LogType::LOG_INFO);
 
         return sceneData;
     }

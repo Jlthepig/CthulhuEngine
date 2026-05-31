@@ -1,0 +1,20 @@
+#version 1.0
+#global
+compiler: cl
+standard: c11
+binarytype: static
+binaryname: flecs
+sources: "."
+headers: "."
+
+warninglevel: normal
+
+#profile release-windows
+    buildtype: release
+    buildpath: "build\\release-windows"
+    defines: NDEBUG
+
+#profile debug-windows
+    buildtype: debug
+    buildpath: "build\\debug-windows"
+    defines: _DEBUG

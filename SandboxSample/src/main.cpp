@@ -63,7 +63,7 @@ void onUpdate(float deltaTime)
 
 int main()
 {
-    // Instantiate the Engine!
+    // Instantiate the Engine
     Cthulhu::Engine engine;
     enginePtr = &engine;
     

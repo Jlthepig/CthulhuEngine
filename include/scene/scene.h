@@ -1,24 +1,24 @@
 #pragma once
 
-#include "entity.h"
 #include "model.h"
+#include "components.h"
 #include <cstdint>
-#include <vector>
 #include <string>
 #include <unordered_map>
+#include "flecs.h"
 
 namespace Cthulhu::Scene
 {
     class Scene
     {
     public:
-        Entity& addEntity(Entity entity);
-        std::vector<Entity>& getEntities();
+        flecs::world& getWorld() { return world; }
+        flecs::entity createEntity(const std::string& name = "Entity");
 
         Rendering::Model* getOrLoadModel(const std::string& modelPath);
         void clear();
     private:
-        std::vector<Entity> entities;
+        flecs::world world;
         uint32_t nextId = 0;
         std::unordered_map<std::string, Rendering::Model> modelCache;
     };

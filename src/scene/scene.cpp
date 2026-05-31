@@ -6,16 +6,12 @@ using KalaHeaders::KalaLog::Log;
 using KalaHeaders::KalaLog::LogType;
 namespace Cthulhu::Scene
 {
-    Entity& Scene::addEntity(Entity entity)
-    {   
-        entity.id = nextId++;
-        entities.push_back(std::move(entity));
-        return entities.back();
-    }
-
-    std::vector<Entity>& Scene::getEntities()
+    flecs::entity Scene::createEntity(const std::string& name)
     {
-        return entities;
+        auto e = world.entity(name.c_str());
+        e.set(TransformComponent{});
+        Log::Print("Created entity: " + name, "Scene", LogType::LOG_INFO);
+        return e;
     }
 
     Rendering::Model* Scene::getOrLoadModel(const std::string& path)
@@ -37,7 +33,7 @@ namespace Cthulhu::Scene
 
     void Scene::clear()
     {
-        entities.clear();
+       world.delete_with<TransformComponent>();
 
         for (auto& [path, model] : modelCache)
         {

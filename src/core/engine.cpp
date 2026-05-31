@@ -99,23 +99,23 @@ namespace Cthulhu
 
             physicsWorld.step(deltaTime);
 
-            auto& entities = scene.getEntities();
-            for (auto& entity : entities)
+            scene.getWorld().each([&](flecs::entity e, Scene::TransformComponent& transform, Scene::PhysicsComponent& phys)
             {
-                if (entity.hasPhysicsBody)
+                if (phys.hasBody)
                 {
-                    auto transform = physicsWorld.getBodyTransform(entity.physicsBodyId);
-                    entity.transform.setPosition(transform.position);
-                    entity.transform.setRotation(transform.rotation);
+                    auto bodyTransform = physicsWorld.getBodyTransform(phys.bodyId);
+                    transform.position = bodyTransform.position;
+                    transform.rotation = bodyTransform.rotation;
+                    transform.matrixDirty = true;
                 }
-            }
+            });
 
             if (gameUpdateCallback) 
             {
                 gameUpdateCallback(deltaTime);
             }
 
-            renderer.render(deltaTime);
+            renderer.render(deltaTime, scene.getWorld());
             glfwPollEvents();
        }
     }
