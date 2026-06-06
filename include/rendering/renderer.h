@@ -11,12 +11,20 @@
 #include "skybox.h"
 #include "shadowMap.h"
 #include "pointShadowMap.h"
+#include "model.h"
 #include <vector>
 #include <string>
 
 namespace Cthulhu::Rendering
 {
-    
+    struct Renderable
+    {
+        Model* model = nullptr;
+        glm::mat4 modelMatrix = glm::mat4(1.0f);
+        glm::mat4 normalMatrix = glm::mat4(1.0f);
+        glm::vec3 boundsMin = glm::vec3(-1.0f);
+        glm::vec3 boundsMax = glm::vec3(1.0f);
+    }; 
     struct RenderConfig
     {
         // Camera
@@ -51,7 +59,7 @@ namespace Cthulhu::Rendering
         void addPointLight(const PointLight& light);
         void setDirectionalLight(const DirectionalLight& light);
         void setPointLights(const std::vector<PointLight>& lights);
-        void render(float deltaTime, flecs::world& world);
+        void render(float deltaTime, const std::vector<Renderable>& renderables);
         void shutdown();
 
         private:

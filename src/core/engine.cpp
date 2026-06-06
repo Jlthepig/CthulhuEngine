@@ -1,9 +1,12 @@
+#include "components.h"
+#include "flecs.h"
 #include "sceneLoader.h"
 #include <cstdlib>
 
 #define STB_IMAGE_IMPLEMENTATION
 #include "glad.h"
 #include "glfw3.h"
+#include "ext/matrix_transform.hpp"
 #include "stb_image.h"
 #include "log_utils.hpp"
 #include "Jolt/Jolt.h"
@@ -65,6 +68,39 @@ namespace Cthulhu
         glViewport(0, 0, fbW, fbH);
         
         glfwSetInputMode(glfwWindow, GLFW_CURSOR, GLFW_CURSOR_DISABLED);
+
+        // register physics sync system runs before transform system
+        scene.getWorld().system<Scene::TransformComponent, const Scene::PhysicsComponent>("PhysicsSyncSystem")
+            .each([this](Scene::TransformComponent& transform, const Scene::PhysicsComponent& phys)
+            {
+                if (phys.hasBody)
+                {
+                    auto bodyTransform = physicsWorld.getBodyTransform(phys.bodyId);
+                    transform.position = bodyTransform.position;
+                    transform.rotation = bodyTransform.rotation;
+                    transform.matrixDirty = true;
+                }
+            }
+        );
+
+        // register transform system
+        scene.getWorld().system<Cthulhu::Scene::TransformComponent>("TransformSystem")
+            .each([](Cthulhu::Scene::TransformComponent& transform)
+            {
+                    if (transform.matrixDirty)
+                    {
+                        using namespace glm;
+                        transform.cachedModelMatrix = mat4(1.0f);
+                        transform.cachedModelMatrix = translate(transform.cachedModelMatrix, transform.position);
+                        transform.cachedModelMatrix = rotate(transform.cachedModelMatrix, transform.rotation.x, vec3(1.0f, 0.0f, 0.0f));
+                        transform.cachedModelMatrix = rotate(transform.cachedModelMatrix, transform.rotation.y, vec3(0.0f, 1.0f, 0.0f));
+                        transform.cachedModelMatrix = rotate(transform.cachedModelMatrix, transform.rotation.z, vec3(0.0f, 0.0f, 1.0f));
+                        transform.cachedModelMatrix = scale(transform.cachedModelMatrix, transform.scale);
+                        transform.matrixDirty = false;
+                    }
+                }
+            );
+
     }
 
     void Engine::loadScene(const std::string &path)
@@ -98,15 +134,17 @@ namespace Cthulhu
             lastFrame = currentFrame;
 
             physicsWorld.step(deltaTime);
-
-            scene.getWorld().each([&](flecs::entity e, Scene::TransformComponent& transform, Scene::PhysicsComponent& phys)
-            {
-                if (phys.hasBody)
-                {
-                    auto bodyTransform = physicsWorld.getBodyTransform(phys.bodyId);
-                    transform.position = bodyTransform.position;
-                    transform.rotation = bodyTransform.rotation;
-                    transform.matrixDirty = true;
+            scene.getWorld().progress(deltaTime);
+            std::vector<Rendering::Renderable> renderables;
+            scene.getWorld().each([&](flecs::entity e, const Scene::TransformComponent& transform, const Scene::MeshComponent& mesh) {
+                if (e.has<Scene::TagActive>() && mesh.model) {
+                    renderables.push_back({
+                        mesh.model,
+                        transform.cachedModelMatrix,
+                        transform.cachedNormalMatrix,
+                        mesh.boundsMin,
+                        mesh.boundsMax
+                    });
                 }
             });
 
@@ -115,7 +153,7 @@ namespace Cthulhu
                 gameUpdateCallback(deltaTime);
             }
 
-            renderer.render(deltaTime, scene.getWorld());
+            renderer.render(deltaTime, renderables);
             glfwPollEvents();
        }
     }
