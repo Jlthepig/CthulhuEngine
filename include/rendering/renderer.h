@@ -32,7 +32,7 @@ namespace Cthulhu::Rendering
         float farPlane = 100.0f;
 
         // Shadows
-        int shadowMapResolution = 2048;
+        int shadowMapResolution = 1024;
         float dirLightOrthoSize = 20.0f; // The -20 to 20 range in shadow map
 
         // World

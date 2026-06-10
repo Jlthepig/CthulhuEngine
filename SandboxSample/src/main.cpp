@@ -1,6 +1,8 @@
+#include "components.h"
 #include "engine.h"
 #include "characterController.h"
 #include "camera.h"
+#include "fwd.hpp"
 #include "input.h"
 #include "glfw3.h"
 #include "log_utils.hpp"
@@ -18,6 +20,8 @@ namespace GameConfig
 static bool inEditorMode = true;
 static Cthulhu::Scene::Camera* camera = nullptr;
 static Cthulhu::Engine* enginePtr = nullptr;
+static flecs::entity playerEntity;
+static flecs::entity cameraEntity;
 
 void onUpdate(float deltaTime)
 {   
@@ -54,10 +58,27 @@ void onUpdate(float deltaTime)
         bool jump = Cthulhu::Core::Input::isKeyPressed(GLFW_KEY_SPACE);
 
         Cthulhu::Physics::CharacterController::queueInput(movement, jump);
+
         float alpha = enginePtr->getPhysicsWorld().getInterpolationAlpha();
         glm::vec3 charPos = Cthulhu::Physics::CharacterController::getInterpolationPosition(alpha);
-        charPos.y += GameConfig::CAMERA_EYE_HEIGHT_OFFSET;
-        camera->setPosition(charPos);
+
+        
+        if (playerEntity.is_alive())
+        {
+            auto& transform = playerEntity.get_mut<Cthulhu::Scene::TransformComponent>();
+            transform.position = charPos;
+        }
+
+        if (cameraEntity.is_alive())
+        {
+            const auto* camTransform = cameraEntity.try_get<Cthulhu::Scene::TransformComponent>();
+            if (camTransform)
+            {
+                glm::vec3 globalCamPos = glm::vec3(camTransform->cachedModelMatrix[3]);
+                camera->setPosition(globalCamPos);
+            }
+        }
+
     }
 }
 
@@ -70,6 +91,16 @@ int main()
     engine.init(GameConfig::WINDOW_TITLE, GameConfig::WINDOW_RESOLUTION);
     engine.loadScene(GameConfig::SCENE_PATH);
     
+    playerEntity = engine.getScene().getWorld().entity("Player");
+    playerEntity.set<Cthulhu::Scene::TransformComponent>({glm::vec3(0,GameConfig::CHARACTER_START_POSITION.y,0)});
+    playerEntity.add<Cthulhu::Scene::TagPlayer>();
+    playerEntity.add<Cthulhu::Scene::TagActive>();
+
+    cameraEntity = engine.getScene().getWorld().entity("Camera");
+    cameraEntity.child_of(playerEntity);
+    cameraEntity.set<Cthulhu::Scene::TransformComponent>({glm::vec3(0,GameConfig::CAMERA_EYE_HEIGHT_OFFSET,0)});
+    cameraEntity.add<Cthulhu::Scene::TagActive>();
+
     Cthulhu::Physics::CharacterConfig charConfig;
     Cthulhu::Physics::CharacterController::init(glm::vec3(0, GameConfig::CHARACTER_START_POSITION.y, 0), charConfig, engine.getPhysicsWorld());
     

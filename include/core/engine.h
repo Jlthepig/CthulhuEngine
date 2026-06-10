@@ -23,6 +23,7 @@ namespace Cthulhu
         void shutdown();
         Cthulhu::Scene::Camera* getCamera();
         Cthulhu::Physics::PhysicsWorld& getPhysicsWorld() { return physicsWorld; }
+        Cthulhu::Scene::Scene& getScene() { return scene; }
 
     private:
         // The Engine now OWNS this data
@@ -33,6 +34,7 @@ namespace Cthulhu
         GLFWwindow* glfwWindow = nullptr;
         Cthulhu::Scene::Scene scene;
         Cthulhu::Scene::SceneData sceneData;
+        std::vector<Rendering::Renderable> frameRenderables;
         
         UpdateCallback gameUpdateCallback = nullptr;
 

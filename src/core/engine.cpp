@@ -85,22 +85,29 @@ namespace Cthulhu
 
         // register transform system
         scene.getWorld().system<Cthulhu::Scene::TransformComponent>("TransformSystem")
-            .each([](Cthulhu::Scene::TransformComponent& transform)
+            .each([](flecs::entity e, Cthulhu::Scene::TransformComponent& transform)
             {
-                    if (transform.matrixDirty)
-                    {
-                        using namespace glm;
-                        transform.cachedModelMatrix = mat4(1.0f);
-                        transform.cachedModelMatrix = translate(transform.cachedModelMatrix, transform.position);
-                        transform.cachedModelMatrix = rotate(transform.cachedModelMatrix, transform.rotation.x, vec3(1.0f, 0.0f, 0.0f));
-                        transform.cachedModelMatrix = rotate(transform.cachedModelMatrix, transform.rotation.y, vec3(0.0f, 1.0f, 0.0f));
-                        transform.cachedModelMatrix = rotate(transform.cachedModelMatrix, transform.rotation.z, vec3(0.0f, 0.0f, 1.0f));
-                        transform.cachedModelMatrix = scale(transform.cachedModelMatrix, transform.scale);
-                        transform.matrixDirty = false;
-                    }
-                }
-            );
 
+                glm::mat4 localMatrix = glm::mat4(1.0f);
+                localMatrix = glm::translate(localMatrix, transform.position);
+                localMatrix = glm::rotate(localMatrix, transform.rotation.x, glm::vec3(1.0f, 0.0f, 0.0f));
+                localMatrix = glm::rotate(localMatrix, transform.rotation.y, glm::vec3(0.0f, 1.0f, 0.0f));
+                localMatrix = glm::rotate(localMatrix, transform.rotation.z, glm::vec3(0.0f, 0.0f, 1.0f));
+                localMatrix = glm::scale(localMatrix, transform.scale);
+
+                // combine with parent matrix if it has a parent
+                glm::mat4 globalMatrix = localMatrix;
+                auto parent = e.parent();
+                if (parent.is_alive() && parent.has<Scene::TransformComponent>())
+                {
+                    const auto& parentTransform = parent.get<Scene::TransformComponent>();
+                    globalMatrix = parentTransform.cachedModelMatrix * localMatrix;
+                }
+
+                transform.cachedModelMatrix = globalMatrix;
+                transform.cachedNormalMatrix = glm::transpose(glm::inverse(globalMatrix));
+                    
+            });
     }
 
     void Engine::loadScene(const std::string &path)
@@ -134,11 +141,18 @@ namespace Cthulhu
             lastFrame = currentFrame;
 
             physicsWorld.step(deltaTime);
+
             scene.getWorld().progress(deltaTime);
-            std::vector<Rendering::Renderable> renderables;
+
+            if (gameUpdateCallback) 
+            {
+                gameUpdateCallback(deltaTime);
+            }
+
+            frameRenderables.clear();
             scene.getWorld().each([&](flecs::entity e, const Scene::TransformComponent& transform, const Scene::MeshComponent& mesh) {
                 if (e.has<Scene::TagActive>() && mesh.model) {
-                    renderables.push_back({
+                    frameRenderables.push_back({
                         mesh.model,
                         transform.cachedModelMatrix,
                         transform.cachedNormalMatrix,
@@ -148,12 +162,7 @@ namespace Cthulhu
                 }
             });
 
-            if (gameUpdateCallback) 
-            {
-                gameUpdateCallback(deltaTime);
-            }
-
-            renderer.render(deltaTime, renderables);
+            renderer.render(deltaTime, frameRenderables);
             glfwPollEvents();
        }
     }

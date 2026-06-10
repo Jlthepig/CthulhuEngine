@@ -34,4 +34,5 @@ namespace Cthulhu::Scene
 
     struct TagActive {};
     struct TagStatic {};
+    struct TagPlayer {};
 }
