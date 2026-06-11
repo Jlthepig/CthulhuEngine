@@ -1,6 +1,12 @@
+#include "Jolt/jolt.h"
 #include "physics.h"
 #include "Jolt/Core/Core.h"
 #include "Jolt/Core/IssueReporting.h"
+#include "Jolt/Core/JobSystemThreadPool.h"
+#include "Jolt/Core/TempAllocator.h"
+#include "Jolt/Physics/Collision/BroadPhase/BroadPhaseLayer.h"
+#include "Jolt/Physics/Collision/ContactListener.h"
+#include "Jolt/Physics/PhysicsSystem.h"
 #include "Jolt/RegisterTypes.h"
 #include "Jolt/Physics/Collision/Shape/BoxShape.h"
 #include "Jolt/Physics/Body/BodyCreationSettings.h"
@@ -28,21 +34,67 @@ static void joltTrace(const char* inFMT, ...)
 
 namespace Cthulhu::Physics
 {
+    namespace ObjectLayers
+    {
+        static constexpr JPH::ObjectLayer NON_MOVING = 0;
+        static constexpr JPH::ObjectLayer MOVING = 1;
+        static constexpr JPH::ObjectLayer NUM_LAYER = 2;
+    }
+    namespace BroadPhaseLayers
+    {
+        static constexpr JPH::BroadPhaseLayer NON_MOVING(0);
+        static constexpr JPH::BroadPhaseLayer MOVING(1);
+        static constexpr JPH::uint NUM_LAYER(2);
+    }
+    class BPLayerInterfaceImpl final : public JPH::BroadPhaseLayerInterface
+    {
+    public:
+        virtual JPH::uint GetNumBroadPhaseLayers() const override { return BroadPhaseLayers::NUM_LAYER; }
+        virtual JPH::BroadPhaseLayer GetBroadPhaseLayer(JPH::ObjectLayer layer) const override
+        {
+            if (layer == ObjectLayers::NON_MOVING) return BroadPhaseLayers::NON_MOVING;
+            return BroadPhaseLayers::MOVING;
+        }
+    };
+
+    class ObjVsBPLayerFilterImpl final : public JPH::ObjectVsBroadPhaseLayerFilter
+    {
+    public:
+        virtual bool ShouldCollide(JPH::ObjectLayer objectLayer, JPH::BroadPhaseLayer bpLayer) const override
+        {
+            if (objectLayer == ObjectLayers::NON_MOVING) return bpLayer == BroadPhaseLayers::MOVING;
+            return true;
+        }
+    };
+
+    class ObjLayerPairFilterImpl final : public JPH::ObjectLayerPairFilter
+    {
+    public:
+        virtual bool ShouldCollide(JPH::ObjectLayer layer1, JPH::ObjectLayer layer2) const override
+        {
+            if (layer1 == ObjectLayers::NON_MOVING && layer2 == ObjectLayers::NON_MOVING) return false;
+            return true;
+        }
+    };
+
+    class ContactListenerImpl final : public JPH::ContactListener {};
+
     void PhysicsWorld::init(const PhysicsConfig& config)
     {        
         this->config = config;
-
         JPH::Trace = joltTrace;
         JPH::RegisterDefaultAllocator();
         JPH::Factory::sInstance = new JPH::Factory();
         JPH::RegisterTypes();
-        Log::Print("Jolt types registered successfully", "Physics", LogType::LOG_SUCCESS);
-
+        
         tempAllocator = new JPH::TempAllocatorImpl(this->config.tempAllocatorSizeMB * 1024 * 1024);
-        jobSystem = new JPH::JobSystemThreadPool(
-            JPH::cMaxPhysicsJobs,
-            JPH::cMaxPhysicsBarriers,
-            this->config.threadCount);
+        jobSystem = new JPH::JobSystemThreadPool(JPH::cMaxPhysicsJobs, JPH::cMaxPhysicsBarriers, this->config.threadCount);
+
+        // Allocate the filters
+        bpLayerInterface = new BPLayerInterfaceImpl();
+        objVsBpFilter = new ObjVsBPLayerFilterImpl();
+        objLayerPairFilter = new ObjLayerPairFilterImpl();
+        contactListener = new ContactListenerImpl();
 
         physicsSystem = new JPH::PhysicsSystem();
         physicsSystem->Init(
@@ -50,12 +102,12 @@ namespace Cthulhu::Physics
             0,
             this->config.maxBodyPairs, 
             this->config.maxContactConstraints,
-            bpLayerInterface,
-            objVsBpFilter,
-            objLayerPairFilter
+            *bpLayerInterface,
+            *objVsBpFilter,
+            *objLayerPairFilter
         );
 
-        physicsSystem->SetContactListener(&contactListener);
+        physicsSystem->SetContactListener(contactListener);
         Log::Print("Initialized Jolt Physics System", "Physics", LogType::LOG_INFO);
     }
 
@@ -160,6 +212,12 @@ namespace Cthulhu::Physics
         delete physicsSystem;
         delete jobSystem;
         delete tempAllocator;
+
+        delete bpLayerInterface;
+        delete objVsBpFilter;
+        delete objLayerPairFilter;
+        delete contactListener;
+
         physicsSystem = nullptr;
         jobSystem = nullptr;
         tempAllocator = nullptr;

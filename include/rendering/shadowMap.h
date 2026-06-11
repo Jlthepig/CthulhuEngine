@@ -3,7 +3,7 @@
 #include "glad.h"
 #include "glm.hpp"
 #include "shader.h"
-#include "model.h"
+
 
 namespace Cthulhu::Rendering
 {

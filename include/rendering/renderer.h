@@ -1,7 +1,6 @@
 #pragma once
 
 #include "frustum.h"
-#include "scene.h"
 #include "shader.h"
 #include "grid.h"
 #include "light.h"
@@ -11,10 +10,11 @@
 #include "skybox.h"
 #include "shadowMap.h"
 #include "pointShadowMap.h"
-#include "model.h"
 #include <vector>
 #include <string>
 
+namespace Cthulhu::Scene { class Scene; }      
+namespace Cthulhu::Rendering { struct Model; }
 namespace Cthulhu::Rendering
 {
     struct Renderable

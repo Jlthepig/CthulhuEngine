@@ -3,13 +3,12 @@
 #include "sceneLoader.h"
 #include <cstdlib>
 
-#define STB_IMAGE_IMPLEMENTATION
+ #define STB_IMAGE_IMPLEMENTATION
+#include "stb_image.h"
 #include "glad.h"
 #include "glfw3.h"
 #include "ext/matrix_transform.hpp"
-#include "stb_image.h"
 #include "log_utils.hpp"
-#include "Jolt/Jolt.h"
 
 #include "engine.h"
 #include "camera.h"
@@ -17,8 +16,8 @@
 #include "input.h"
 #include "renderer.h"
 #include "scene.h"
+#include "sceneLoader.h"
 #include "physics.h"
-#include "characterController.h"
 
 using KalaHeaders::KalaLog::Log;
 using KalaHeaders::KalaLog::LogType;
@@ -56,7 +55,7 @@ namespace Cthulhu
         Cthulhu::Physics::PhysicsConfig physicsConfig;
         physicsWorld.init(physicsConfig);
         physicsWorld.createGroundPlane();
-
+        scene = std::make_unique<Cthulhu::Scene::Scene>();
         camera = Scene::Camera::init();
         Core::Input::init(glfwWindow, resolution);
 
@@ -70,7 +69,7 @@ namespace Cthulhu
         glfwSetInputMode(glfwWindow, GLFW_CURSOR, GLFW_CURSOR_DISABLED);
 
         // register physics sync system runs before transform system
-        scene.getWorld().system<Scene::TransformComponent, const Scene::PhysicsComponent>("PhysicsSyncSystem")
+        scene->getWorld().system<Scene::TransformComponent, const Scene::PhysicsComponent>("PhysicsSyncSystem")
             .each([this](Scene::TransformComponent& transform, const Scene::PhysicsComponent& phys)
             {
                 if (phys.hasBody)
@@ -84,7 +83,7 @@ namespace Cthulhu
         );
 
         // register transform system
-        scene.getWorld().system<Cthulhu::Scene::TransformComponent>("TransformSystem")
+        scene->getWorld().system<Cthulhu::Scene::TransformComponent>("TransformSystem")
             .each([](flecs::entity e, Cthulhu::Scene::TransformComponent& transform)
             {
 
@@ -112,7 +111,7 @@ namespace Cthulhu
 
     void Engine::loadScene(const std::string &path)
     {
-        sceneData = Scene::SceneLoader::load(path, scene, physicsWorld);
+        sceneData = Scene::SceneLoader::load(path, *scene, physicsWorld);
 
         renderer.setDirectionalLight(sceneData.directionalLight);
         for (const auto& light : sceneData.pointLights)
@@ -120,7 +119,7 @@ namespace Cthulhu
             renderer.addPointLight(light);
         }
     
-        renderer.setScene(&scene);
+        renderer.setScene(scene.get());
     }
 
     void Engine::setUpdateCallback(UpdateCallback callback)
@@ -142,7 +141,7 @@ namespace Cthulhu
 
             physicsWorld.step(deltaTime);
 
-            scene.getWorld().progress(deltaTime);
+            scene->getWorld().progress(deltaTime);
 
             if (gameUpdateCallback) 
             {
@@ -150,7 +149,7 @@ namespace Cthulhu
             }
 
             frameRenderables.clear();
-            scene.getWorld().each([&](flecs::entity e, const Scene::TransformComponent& transform, const Scene::MeshComponent& mesh) {
+            scene->getWorld().each([&](flecs::entity e, const Scene::TransformComponent& transform, const Scene::MeshComponent& mesh) {
                 if (e.has<Scene::TagActive>() && mesh.model) {
                     frameRenderables.push_back({
                         mesh.model,
@@ -171,7 +170,7 @@ namespace Cthulhu
     {
         physicsWorld.shutdown();
         renderer.shutdown();
-        scene.clear();
+        scene->clear();
         glfwTerminate();
     }
 }

@@ -1,0 +1,21 @@
+#version 1.0
+#global
+compilerlauncher: ccache
+compiler: cl
+standard: c++20
+binarytype: static
+binaryname: stbimage
+sources: "."
+headers: "."
+
+warninglevel: normal
+
+#profile release-windows
+    buildtype: release
+    buildpath: "build/release-windows"
+    
+    
+#profile debug-windows
+    buildtype: debug
+    buildpath: "build/debug-windows"
+    

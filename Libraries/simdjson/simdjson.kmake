@@ -1,0 +1,22 @@
+#version 1.0
+#global
+compilerlauncher: ccache
+compiler: cl
+standard: c++20
+binarytype: static
+binaryname: simdjson
+sources: "."
+headers: "."
+
+compileflags: FS
+warninglevel: normal
+
+#profile release-windows
+    buildtype: release
+    buildpath: "build/release-windows"
+    defines: SIMDJSON_STATIC
+    
+#profile debug-windows
+    buildtype: debug
+    buildpath: "build/debug-windows"
+    defines: SIMDJSON_STATIC, _DEBUG

@@ -1,9 +1,10 @@
 #pragma once
 
 #include "transform.h"
-#include "model.h"
 #include <cstdint>
 #include <string>
+
+namespace Cthulhu::Rendering { struct Model; }
 namespace Cthulhu::Scene 
 {
     struct AABB

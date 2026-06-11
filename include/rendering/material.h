@@ -1,7 +1,6 @@
 #pragma once
 
-#include "fastgltf/types.hpp"
-#include <glm/glm.hpp>
+#include "glm.hpp"
 namespace Cthulhu::Rendering
 {
     struct Material

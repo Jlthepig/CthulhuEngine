@@ -3,16 +3,16 @@
 #include "fwd.hpp"
 #include "glm.hpp"
 #include <cstdint>
-
-// Jolt includes
-#include "Jolt/Jolt.h"
-#include "Jolt/Physics/PhysicsSystem.h"
-#include "Jolt/Core/TempAllocator.h"
-#include "Jolt/Core/JobSystemThreadPool.h"
-#include "Jolt/Physics/Collision/BroadPhase/BroadPhaseLayer.h"
-#include "Jolt/Physics/Collision/ObjectLayer.h"
-#include "Jolt/Physics/Collision/ContactListener.h"
-
+namespace JPH 
+{
+    class PhysicsSystem;
+    class TempAllocatorImpl;
+    class JobSystemThreadPool;
+    class BroadPhaseLayerInterface;
+    class ObjectVsBroadPhaseLayerFilter;
+    class ObjectLayerPairFilter;
+    class ContactListener;
+}
 namespace Cthulhu::Physics
 {
     struct BodyTransform
@@ -36,51 +36,6 @@ namespace Cthulhu::Physics
         float groundDepth = 100.0f;
         float groundFriction = 0.8f;
     };
-
-    // Jolt Layer Implementations
-    namespace ObjectLayers
-    {
-        static constexpr JPH::ObjectLayer MOVING = 0;
-        static constexpr JPH::ObjectLayer NON_MOVING = 1;
-        static constexpr JPH::ObjectLayer NUM_LAYER = 2;
-    }
-    namespace BroadPhaseLayers
-    {
-        static constexpr JPH::BroadPhaseLayer MOVING(0);
-        static constexpr JPH::BroadPhaseLayer NON_MOVING(1);
-        static constexpr JPH::uint NUM_LAYER(2);
-    }
-
-    class BPLayerInterface : public JPH::BroadPhaseLayerInterface
-    {
-    public:
-        virtual JPH::uint GetNumBroadPhaseLayers() const override { return BroadPhaseLayers::NUM_LAYER; }
-        virtual JPH::BroadPhaseLayer GetBroadPhaseLayer(JPH::ObjectLayer layer) const override
-        {
-            if (layer == ObjectLayers::NON_MOVING) return BroadPhaseLayers::NON_MOVING;
-            return BroadPhaseLayers::MOVING;
-        }
-    };
-    class ObjVsBPLayerFilter : public JPH::ObjectVsBroadPhaseLayerFilter
-    {
-    public:
-        virtual bool ShouldCollide(JPH::ObjectLayer objectLayer, JPH::BroadPhaseLayer bpLayer) const override
-        {
-            if (objectLayer == ObjectLayers::NON_MOVING) return bpLayer == BroadPhaseLayers::MOVING;
-            return true;
-        }
-    };
-    class ObjLayerPairFilter : public JPH::ObjectLayerPairFilter
-    {
-    public:
-        virtual bool ShouldCollide(JPH::ObjectLayer layer1, JPH::ObjectLayer layer2) const override
-        {
-            if (layer1 == ObjectLayers::NON_MOVING && layer2 == ObjectLayers::NON_MOVING) return false;
-            return true;
-        }
-    };
-
-    class ContactListener : public JPH::ContactListener {};
     class PhysicsWorld
     {
         public:
@@ -109,9 +64,9 @@ namespace Cthulhu::Physics
             JPH::PhysicsSystem* physicsSystem = nullptr;
 
             // Layer interfaces (Concrete classes, not abstract!)
-            BPLayerInterface bpLayerInterface;
-            ObjVsBPLayerFilter objVsBpFilter;
-            ObjLayerPairFilter objLayerPairFilter;
-            ContactListener contactListener;
+            JPH::BroadPhaseLayerInterface* bpLayerInterface = nullptr;
+            JPH::ObjectVsBroadPhaseLayerFilter* objVsBpFilter = nullptr;
+            JPH::ObjectLayerPairFilter* objLayerPairFilter = nullptr;
+            JPH::ContactListener* contactListener = nullptr;
     };
 }
