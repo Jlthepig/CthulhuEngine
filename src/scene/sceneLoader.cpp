@@ -1,3 +1,4 @@
+#include "pch.h"
 #include "sceneLoader.h"
 #include "jsonParser.h"
 #include "physics.h"

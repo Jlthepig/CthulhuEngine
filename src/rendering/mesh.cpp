@@ -1,3 +1,4 @@
+#include "pch.h"
 #include "mesh.h"
 namespace Cthulhu::Rendering
 {

@@ -1,5 +1,5 @@
+#include "pch.h"
 #include "texture.h"
-
 #include "stb_image.h"
 #include "log_utils.hpp"
 #include "glad.h"

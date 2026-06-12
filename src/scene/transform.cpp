@@ -1,9 +1,7 @@
+#include "pch.h"
 #include "transform.h"
 #include "ext/matrix_transform.hpp"
 #include "fwd.hpp"
-
-
-
 namespace Cthulhu::Scene
 {
     glm::mat4 Transform::getModelMatrix()

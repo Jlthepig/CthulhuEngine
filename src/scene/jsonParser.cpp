@@ -1,3 +1,4 @@
+#include "pch.h"
 #include "jsonParser.h"
 #include "simdjson.h"
 #include "log_utils.hpp"

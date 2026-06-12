@@ -1,14 +1,17 @@
 #pragma once
-#include "camera.h"
-#include "sceneLoader.h"
-#include "renderer.h"
-#include "physics.h"
-#include "window.h"
 #include <functional>
 #include <string>
+#include <memory>
+#include <vector>
+#include "glm.hpp"
 
+#include "renderer.h"
+#include "physics.h"
+#include "sceneLoader.h"
 
-namespace Cthulhu::Scene { class Scene;}
+struct GLFWwindow;
+namespace Cthulhu::Scene { class Scene; class Camera; }
+namespace Cthulhu::Core { class Window; }
 namespace Cthulhu
 {
     class Engine
@@ -27,7 +30,7 @@ namespace Cthulhu
 
     private:
         // The Engine now OWNS this data
-        Cthulhu::Rendering::Renderer renderer;
+        Rendering::Renderer renderer;
         Cthulhu::Physics::PhysicsWorld physicsWorld;
         Cthulhu::Scene::Camera* camera = nullptr;
         Cthulhu::Core::Window* window = nullptr;

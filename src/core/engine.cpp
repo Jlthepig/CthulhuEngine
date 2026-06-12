@@ -1,5 +1,5 @@
+#include "pch.h"
 #include "components.h"
-#include "flecs.h"
 #include "sceneLoader.h"
 #include <cstdlib>
 
@@ -7,7 +7,6 @@
 #include "stb_image.h"
 #include "glad.h"
 #include "glfw3.h"
-#include "ext/matrix_transform.hpp"
 #include "log_utils.hpp"
 
 #include "engine.h"

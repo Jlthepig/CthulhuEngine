@@ -5,11 +5,11 @@ compiler: cl
 standard: c++20 
 
 
-unitybatch: 4
+unitybatch: 6
 binarytype: static
 binaryname: Cthulhu
 sources: "src"
-headers: "Libraries\\GLFW\\include\\GLFW", "Libraries\\GLM", "Libraries\\glad", "Libraries\\Stb_image", "Libraries\\simdjson", "Libraries\\ImGui", "Libraries\\JoltPhysics-5.5.0", "Libraries\\flecs", "Libraries\\FASTTGLTF", "include\\core", "include\\rendering", "include\\scene", "include\\utils", "include\\physics\\"
+headers: "include", "Libraries\\GLFW\\include\\GLFW", "Libraries\\GLM", "Libraries\\glad", "Libraries\\Stb_image", "Libraries\\simdjson", "Libraries\\ImGui", "Libraries\\JoltPhysics-5.5.0", "Libraries\\flecs", "Libraries\\FASTTGLTF", "include\\core", "include\\rendering", "include\\scene", "include\\utils", "include\\physics\\"
 
 customflags: export-compile-commands, export-vscode-sln, unity-build
 
@@ -21,17 +21,17 @@ warninglevel: normal
 #profile release-windows
     buildtype: release
     buildpath: "build\\release-windows"
-    
+    compileflags: FS, MP, Z7, FI"pch.h", Yu"pch.h", Fp"build\\release-windows\\pch.pch"
     
     links: "Libraries\\GLAD\\build\\release-windows\\glad.lib", "Libraries\\GLFW\\build\\release-windows\\glfw3.lib", "Libraries\\FASTTGLTF\\fastgltf\\build\\release-windows\\fastGltf.lib", "Libraries\\ImGui\\build\\release-windows\\imgui.lib", "Libraries\\JoltPhysics-5.5.0\\build\\distribution-windows\\Jolt.lib", "Libraries\\flecs\\build\\release-windows\\flecs.lib"
     
-    defines: _GLFW_WIN32, JPH_ENABLE_ASSERTS
+    defines: _GLFW_WIN32
 
 #profile debug-windows
     buildtype: debug
     buildpath: "build\\debug-windows"
     
-    compileflags: FS, MP, Z7, Od
+    compileflags: FS, MP, Z7, Od, Yu"pch.h", Fp"build\\debug-windows\\pch.pch"
     links: "Libraries\\GLAD\\build\\debug-windows\\glad.lib", "Libraries\\GLFW\\build\\debug-windows\\glfw3.lib", "Libraries\\FASTTGLTF\\fastgltf\\build\\debug-windows\\fastGltf.lib", "Libraries\\ImGui\\build\\debug-windows\\imgui.lib", "Libraries\\JoltPhysics-5.5.0\\build\\debug-windows\\Jolt.lib", "Libraries\\flecs\\build\\debug-windows\\flecs.lib"
     
     

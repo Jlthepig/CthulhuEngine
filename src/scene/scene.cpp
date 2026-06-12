@@ -1,3 +1,4 @@
+#include "pch.h"
 #include "scene.h"
 #include "log_utils.hpp"
 #include "modelLoader.h"

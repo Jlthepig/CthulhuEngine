@@ -1,4 +1,5 @@
 
+#include "pch.h"
 #include "modelLoader.h"
 #include "fastGltf/core.hpp"
 #include "fastGltf/tools.hpp"
