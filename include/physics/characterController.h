@@ -2,8 +2,9 @@
 
 #include "fwd.hpp"
 #include "glm.hpp"
-#include "physics.h"
 
+namespace flecs { struct entity; }
+namespace Cthulhu::Physics { class PhysicsWorld; }
 namespace Cthulhu::Physics
 {
     struct CharacterConfig
@@ -18,14 +19,9 @@ namespace Cthulhu::Physics
     class CharacterController
     {
     public:
-        static void init(glm::vec3 startPosition, const CharacterConfig& config, PhysicsWorld& physicsWorld);
-        static void update(glm::vec3 movementInput, bool jump, float deltaTime); // deprecated, use queueInput + fixedUpdate instead
-        static void queueInput(glm::vec3 movement, bool jump);
-        static void fixedUpdate(float fixedDt, PhysicsWorld& physicsWorld);
-        static glm::vec3 getPosition();
-        static void setPosition(const glm::vec3& pos); 
-        static void resetVerticalVelocity(); 
-        static glm::vec3 getInterpolationPosition(float alpha);
-        static void destroy();
+        static void create(flecs::entity e, glm::vec3 startPosition, const CharacterConfig& config, PhysicsWorld& physicsWorld);
+        static void destroy(flecs::entity e);
+
+        static void teleport(flecs::entity e, const glm::vec3& pos);
     };
 }

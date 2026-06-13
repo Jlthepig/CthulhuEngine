@@ -6,7 +6,6 @@
 #include "input.h"
 #include "glfw3.h"
 #include "log_utils.hpp"
-#include "physics.h"
 namespace GameConfig
 {
     constexpr glm::vec2 WINDOW_RESOLUTION = glm::vec2(1920.0f, 1080.0f);
@@ -38,8 +37,8 @@ void onUpdate(float deltaTime)
         {
             glm::vec3 camPos = camera->getPosition();
             glm:: vec3 feetPos = camPos - glm::vec3(0, GameConfig::CAMERA_EYE_HEIGHT_OFFSET, 0);
-            Cthulhu::Physics::CharacterController::setPosition(feetPos);
-            Cthulhu::Physics::CharacterController::resetVerticalVelocity();
+            
+            Cthulhu::Physics::CharacterController::teleport(playerEntity, feetPos);
 
             if (playerEntity.is_alive())
             {
@@ -72,27 +71,18 @@ void onUpdate(float deltaTime)
 
         bool jump = Cthulhu::Core::Input::isKeyPressed(GLFW_KEY_SPACE);
 
-        Cthulhu::Physics::CharacterController::queueInput(movement, jump);
-
-        float alpha = enginePtr->getPhysicsWorld().getInterpolationAlpha();
-        glm::vec3 charPos = Cthulhu::Physics::CharacterController::getInterpolationPosition(alpha);
-
         
-        if (playerEntity.is_alive())
+        if (playerEntity.has<Cthulhu::Scene::CharacterControllerComponent>())
         {
-            auto& transform = playerEntity.get_mut<Cthulhu::Scene::TransformComponent>();
-            transform.position = charPos;
+            auto& cc = playerEntity.ensure<Cthulhu::Scene::CharacterControllerComponent>();
+            cc.pendingMove = movement;
+            if (jump) cc.pendingJump = true;
         }
 
-        if (cameraEntity.is_alive())
-        {
+        if (cameraEntity.is_alive()) {
             const auto* camTransform = cameraEntity.try_get<Cthulhu::Scene::TransformComponent>();
-            if (camTransform)
-            {
-                glm::vec3 globalCamPos = glm::vec3(camTransform->cachedModelMatrix[3]);
-                camera->setPosition(globalCamPos);
-            }
-        }
+            if (camTransform) camera->setPosition(glm::vec3(camTransform->cachedModelMatrix[3]));
+        }   
 
     }
 }
@@ -117,13 +107,13 @@ int main()
     cameraEntity.add<Cthulhu::Scene::TagActive>();
 
     Cthulhu::Physics::CharacterConfig charConfig;
-    Cthulhu::Physics::CharacterController::init(glm::vec3(0, GameConfig::CHARACTER_START_POSITION.y, 0), charConfig, engine.getPhysicsWorld());
+    Cthulhu::Physics::CharacterController::create(playerEntity, GameConfig::CHARACTER_START_POSITION, charConfig, engine.getPhysicsWorld());
     
     camera = engine.getCamera();
     engine.setUpdateCallback(onUpdate);
     engine.run();
     
-    Cthulhu::Physics::CharacterController::destroy();
+    Cthulhu::Physics::CharacterController::destroy(playerEntity);
     engine.shutdown();
     return 0;
 }

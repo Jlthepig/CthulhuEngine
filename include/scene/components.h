@@ -5,7 +5,7 @@
 
 
 namespace Cthulhu::Rendering { struct Model; }
-
+namespace JPH { class CharacterVirtual; }
 namespace Cthulhu::Scene
 {
     struct TransformComponent
@@ -30,6 +30,18 @@ namespace Cthulhu::Scene
     {
         uint32_t bodyId = 0;
         bool hasBody = false;
+    };
+
+    struct CharacterControllerComponent
+    {
+        JPH::CharacterVirtual* character = nullptr;
+
+        float verticalVelocity = 0.0f;
+        glm::vec3 prevPos = glm::vec3(0.0f);
+        glm::vec3 currentPos = glm::vec3(0.0f);
+
+        glm::vec3 pendingMove = glm::vec3(0.0f);
+        bool pendingJump = false;
     };
 
     struct TagActive {};

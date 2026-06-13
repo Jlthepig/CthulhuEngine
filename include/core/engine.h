@@ -22,6 +22,7 @@ namespace Cthulhu
         void init(const char* title, glm::vec2 resolution);
         void loadScene(const std::string& path);
         void setUpdateCallback(UpdateCallback callback);
+        void processFixedUpdate(float fixedDt);
         void run();
         void shutdown();
         Cthulhu::Scene::Camera* getCamera();

@@ -121,12 +121,12 @@ namespace Cthulhu::Physics
 
         while (physicsAccumulator >= this->config.fixedDeltaTime)    
         {
-            CharacterController::fixedUpdate(this->config.fixedDeltaTime, *this); 
+            if (onFixedUpdate) onFixedUpdate(onFixedUpdateContext, this->config.fixedDeltaTime);
             physicsSystem->Update(
-                this->config.fixedDeltaTime,
-                this->config.collisionSteps,
-                tempAllocator,
-                jobSystem
+            this->config.fixedDeltaTime,
+            this->config.collisionSteps,
+            tempAllocator,
+            jobSystem
             );
             physicsAccumulator -= this->config.fixedDeltaTime;
         }

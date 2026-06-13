@@ -41,6 +41,8 @@ namespace Cthulhu::Physics
         public:
             void init(const PhysicsConfig& config);
             void step(float deltaTime);
+            void (*onFixedUpdate)(void* context, float fixedDt) = nullptr;
+            void* onFixedUpdateContext = nullptr;
             float getInterpolationAlpha();
             void shutdown();
             void createGroundPlane();

@@ -9,6 +9,13 @@
 #include "glfw3.h"
 #include "log_utils.hpp"
 
+#include "Jolt/Jolt.h"
+#include "Jolt/Physics/Character/CharacterVirtual.h"
+#include "Jolt/Physics/PhysicsSystem.h"
+#include "Jolt/Physics/Collision/BroadPhase/BroadPhaseLayer.h"
+#include "Jolt/Physics/Collision/ObjectLayer.h"
+#include "Jolt/Core/TempAllocator.h"
+
 #include "engine.h"
 #include "camera.h"
 #include "window.h"
@@ -21,6 +28,10 @@
 using KalaHeaders::KalaLog::Log;
 using KalaHeaders::KalaLog::LogType;
 
+// Static callback to bridge C-style function pointer to Engine class
+static void physicsFixedUpdateCallback(void* context, float fixedDt) {
+    static_cast<Cthulhu::Engine*>(context)->processFixedUpdate(fixedDt);
+}
 namespace Cthulhu
 {
     void Engine::init(const char* title, glm::vec2 resolution)
@@ -102,7 +113,17 @@ namespace Cthulhu
                 }
                 transform.cachedModelMatrix = globalMatrix;
                 transform.cachedNormalMatrix = glm::transpose(glm::inverse(globalMatrix));
-                    
+            });
+            
+            physicsWorld.onFixedUpdate = physicsFixedUpdateCallback;
+            physicsWorld.onFixedUpdateContext = this;
+
+        scene->getWorld().system<Scene::CharacterControllerComponent, Scene::TransformComponent>("CharacterInterpolationSystem")
+            .each([this](Scene::CharacterControllerComponent& cc, Scene::TransformComponent& transform) 
+            {
+                float alpha = physicsWorld.getInterpolationAlpha();
+                transform.position = glm::mix(cc.prevPos, cc.currentPos, alpha);
+                transform.matrixDirty = true;
             });
     }
 
@@ -119,12 +140,42 @@ namespace Cthulhu
         renderer.setScene(scene.get());
     }
 
-    void Engine::setUpdateCallback(UpdateCallback callback)
+    void Engine::processFixedUpdate(float fixedDt)
     {
-         gameUpdateCallback = callback;
-    }
+            scene->getWorld().each([fixedDt, this](flecs::entity e, Scene::CharacterControllerComponent& cc) {
+            if (!cc.character) return;
 
-    Scene::Camera* Engine::getCamera() { return camera; }
+            JPH::RVec3 joltPos = cc.character->GetPosition();
+            cc.prevPos = glm::vec3(joltPos.GetX(), joltPos.GetY(), joltPos.GetZ());
+
+            bool isOnGround = cc.character->GetGroundState() == JPH::CharacterBase::EGroundState::OnGround;
+            float gravity = -9.81f; 
+            float jumpVel = 5.0f;
+
+            if (isOnGround) {
+                cc.verticalVelocity = 0.0f;
+                if (cc.pendingJump) cc.verticalVelocity = jumpVel;
+            } else {
+                cc.verticalVelocity += gravity * fixedDt;
+            }
+
+            JPH::Vec3 velocity(cc.pendingMove.x, cc.verticalVelocity, cc.pendingMove.z);
+            cc.character->SetLinearVelocity(velocity);
+
+            JPH::CharacterVirtual::ExtendedUpdateSettings s;
+            cc.character->ExtendedUpdate(
+                fixedDt, JPH::Vec3(0, gravity, 0), s,
+                physicsWorld.getPhysicsSystem()->GetDefaultBroadPhaseLayerFilter(1), // MOVING
+                physicsWorld.getPhysicsSystem()->GetDefaultLayerFilter(1),
+                {}, {}, *physicsWorld.getTempAllocator()
+            );
+
+            joltPos = cc.character->GetPosition();
+            cc.currentPos = glm::vec3(joltPos.GetX(), joltPos.GetY(), joltPos.GetZ());
+
+            cc.pendingJump = false;
+        });
+    }
 
     void Engine::run()
     {
@@ -161,6 +212,13 @@ namespace Cthulhu
             glfwPollEvents();
        }
     }
+
+    void Engine::setUpdateCallback(UpdateCallback callback)
+    {
+         gameUpdateCallback = callback;
+    }
+
+    Scene::Camera* Engine::getCamera() { return camera; }
 
     void Engine::shutdown()
     {
