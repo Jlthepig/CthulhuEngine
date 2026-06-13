@@ -80,7 +80,6 @@ namespace Cthulhu
                 }
             }
         );
-
         // register transform system
         scene->getWorld().system<Cthulhu::Scene::TransformComponent>("TransformSystem")
             .each([](flecs::entity e, Cthulhu::Scene::TransformComponent& transform)
@@ -101,7 +100,6 @@ namespace Cthulhu
                     const auto& parentTransform = parent.get<Scene::TransformComponent>();
                     globalMatrix = parentTransform.cachedModelMatrix * localMatrix;
                 }
-
                 transform.cachedModelMatrix = globalMatrix;
                 transform.cachedNormalMatrix = glm::transpose(glm::inverse(globalMatrix));
                     
@@ -159,7 +157,6 @@ namespace Cthulhu
                     });
                 }
             });
-
             renderer.render(deltaTime, frameRenderables);
             glfwPollEvents();
        }

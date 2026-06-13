@@ -116,13 +116,14 @@ namespace Cthulhu::Physics
         JPH::Vec3 velocity(pendingMove.x, verticalVelocity, pendingMove.z);
         character->SetLinearVelocity(velocity);
 
+        JPH::Vec3 gravity(0.0f, s_CharacterConfig.gravity, 0.0f); 
         JPH::CharacterVirtual::ExtendedUpdateSettings s;
         character->ExtendedUpdate(
             fixedDt,
-            JPH::Vec3(0,0,0),
+            gravity,
             s,
-            physicsWorld.getPhysicsSystem()->GetDefaultBroadPhaseLayerFilter(0),
-            physicsWorld.getPhysicsSystem()->GetDefaultLayerFilter(0),
+            physicsWorld.getPhysicsSystem()->GetDefaultBroadPhaseLayerFilter(1),
+            physicsWorld.getPhysicsSystem()->GetDefaultLayerFilter(1),
             {}, {}, *physicsWorld.getTempAllocator()
         );
 
@@ -139,6 +140,19 @@ namespace Cthulhu::Physics
             static_cast<float>(pos.GetY()),
             static_cast<float>(pos.GetZ())
         );
+    }
+
+    void CharacterController::setPosition(const glm::vec3& pos)
+    {
+        if (!character) return;
+
+        character->SetPosition(JPH::RVec3(pos.x, pos.y, pos.z));
+        prevPos = pos; // Update previous position to avoid interpolation issues
+    }
+
+    void CharacterController::resetVerticalVelocity()
+    {
+        verticalVelocity = 0.0f;
     }
 
     glm::vec3 CharacterController::getInterpolationPosition(float alpha)

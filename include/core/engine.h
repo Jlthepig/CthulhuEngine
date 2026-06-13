@@ -29,7 +29,6 @@ namespace Cthulhu
         Cthulhu::Scene::Scene& getScene() { return *scene; }
 
     private:
-        // The Engine now OWNS this data
         Rendering::Renderer renderer;
         Cthulhu::Physics::PhysicsWorld physicsWorld;
         Cthulhu::Scene::Camera* camera = nullptr;

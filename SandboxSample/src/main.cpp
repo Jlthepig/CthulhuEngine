@@ -12,7 +12,7 @@ namespace GameConfig
     constexpr glm::vec2 WINDOW_RESOLUTION = glm::vec2(1920.0f, 1080.0f);
     constexpr const char* WINDOW_TITLE = "Cthulhu Engine";
     constexpr const char* SCENE_PATH = "assets/scenes/test.scene";
-    constexpr glm::vec3 CHARACTER_START_POSITION = glm::vec3(0, 2, 0);
+    constexpr glm::vec3 CHARACTER_START_POSITION = glm::vec3(0, 4, 0);
     constexpr float CAMERA_EYE_HEIGHT_OFFSET = 0.6f;
     constexpr glm::vec3 WORLD_UP = glm::vec3(0.0f, 1.0f, 0.0f);
 }
@@ -33,6 +33,21 @@ void onUpdate(float deltaTime)
     {
         inEditorMode = !inEditorMode;
         KalaHeaders::KalaLog::Log::Print(inEditorMode ? "Switched to Editor Mode" : "Switched to Game Mode", "Game", KalaHeaders::KalaLog::LogType::LOG_INFO);
+
+        if (!inEditorMode)
+        {
+            glm::vec3 camPos = camera->getPosition();
+            glm:: vec3 feetPos = camPos - glm::vec3(0, GameConfig::CAMERA_EYE_HEIGHT_OFFSET, 0);
+            Cthulhu::Physics::CharacterController::setPosition(feetPos);
+            Cthulhu::Physics::CharacterController::resetVerticalVelocity();
+
+            if (playerEntity.is_alive())
+            {
+                auto& transform = playerEntity.get_mut<Cthulhu::Scene::TransformComponent>();
+                transform.position = feetPos;
+                transform.matrixDirty = true;
+            }
+        }
     }
 
     if (inEditorMode)

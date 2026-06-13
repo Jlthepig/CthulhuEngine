@@ -23,6 +23,8 @@ namespace Cthulhu::Physics
         static void queueInput(glm::vec3 movement, bool jump);
         static void fixedUpdate(float fixedDt, PhysicsWorld& physicsWorld);
         static glm::vec3 getPosition();
+        static void setPosition(const glm::vec3& pos); 
+        static void resetVerticalVelocity(); 
         static glm::vec3 getInterpolationPosition(float alpha);
         static void destroy();
     };
