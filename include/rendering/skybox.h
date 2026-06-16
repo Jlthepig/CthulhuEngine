@@ -15,6 +15,8 @@ namespace Cthulhu::Rendering
         void draw(GLFWwindow* window, const glm::mat4& view, const glm::mat4& projection);
         void generateIrradianceMap();
         unsigned int getIrradianceMap() const { return irradianceMap; }
+        void generatePrefilterMap();
+        unsigned int getPrefilterMap() const { return prefilterMap; }
         void destroy();
 
         private:
@@ -23,6 +25,9 @@ namespace Cthulhu::Rendering
         unsigned int captureFBO = 0;
         unsigned int captureRBO = 0;
         unsigned int irradianceMap = 0;
+        unsigned int prefilterMap = 0;   
+        unsigned int cubeVAO = 0;
+        unsigned int cubeVBO = 0;
         Mesh cubeMesh;
         Shader equirectShader;
         Shader skyboxShader;
@@ -30,6 +35,7 @@ namespace Cthulhu::Rendering
         void loadHDR(const std::string& path);
         void convertToCubemap();
         void setupCube();
+        void renderCube();
         bool isLoaded = false;
     };
 

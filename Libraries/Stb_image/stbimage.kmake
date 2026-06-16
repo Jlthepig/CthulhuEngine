@@ -9,7 +9,7 @@ sources: "."
 headers: "."
 
 warninglevel: normal
-
+compileflags: FS
 #profile release-windows
     buildtype: release
     buildpath: "build/release-windows"

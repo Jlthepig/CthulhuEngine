@@ -73,6 +73,7 @@ namespace Cthulhu::Rendering
 
         glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
         glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_R, GL_CLAMP_TO_EDGE);
         glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
         glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
 
@@ -217,6 +218,107 @@ namespace Cthulhu::Rendering
         irradianceShader.destroy();
 
         KalaHeaders::KalaLog::Log::Print("Irradiance map generated", "Skybox", KalaHeaders::KalaLog::LogType::LOG_SUCCESS);
+    }
+
+    void Skybox::renderCube()
+{
+    if (cubeVAO == 0)
+    {
+        float vertices[] = {
+            // back face
+            -1.0f, -1.0f, -1.0f,  1.0f, -1.0f, -1.0f,  1.0f,  1.0f, -1.0f,  1.0f,  1.0f, -1.0f, -1.0f,  1.0f, -1.0f, -1.0f, -1.0f, -1.0f,
+            // front face
+            -1.0f, -1.0f,  1.0f,  1.0f, -1.0f,  1.0f,  1.0f,  1.0f,  1.0f,  1.0f,  1.0f,  1.0f, -1.0f,  1.0f,  1.0f, -1.0f, -1.0f,  1.0f,
+            // left face
+            -1.0f,  1.0f,  1.0f, -1.0f,  1.0f, -1.0f, -1.0f, -1.0f, -1.0f, -1.0f, -1.0f, -1.0f, -1.0f, -1.0f,  1.0f, -1.0f,  1.0f,  1.0f,
+            // right face
+             1.0f,  1.0f,  1.0f,  1.0f, -1.0f, -1.0f,  1.0f,  1.0f, -1.0f,  1.0f, -1.0f, -1.0f,  1.0f, -1.0f,  1.0f,  1.0f,  1.0f,  1.0f,
+            // bottom face
+            -1.0f, -1.0f, -1.0f,  1.0f, -1.0f, -1.0f,  1.0f, -1.0f,  1.0f,  1.0f, -1.0f,  1.0f, -1.0f, -1.0f,  1.0f, -1.0f, -1.0f, -1.0f,
+            // top face
+            -1.0f,  1.0f, -1.0f,  1.0f,  1.0f , 1.0f,  1.0f,  1.0f, -1.0f,  1.0f,  1.0f,  1.0f, -1.0f,  1.0f, -1.0f, -1.0f,  1.0f,  1.0f
+        };
+        glGenVertexArrays(1, &cubeVAO);
+        glGenBuffers(1, &cubeVBO);
+        glBindVertexArray(cubeVAO);
+        glBindBuffer(GL_ARRAY_BUFFER, cubeVBO);
+        glBufferData(GL_ARRAY_BUFFER, sizeof(vertices), vertices, GL_STATIC_DRAW);
+        glEnableVertexAttribArray(0);
+        glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 3 * sizeof(float), (void*)0);
+        glBindVertexArray(0);
+    }
+
+    glBindVertexArray(cubeVAO);
+    glDrawArrays(GL_TRIANGLES, 0, 36);
+    glBindVertexArray(0);
+}
+
+    void Skybox::generatePrefilterMap()
+    {
+
+        glm::mat4 captureProjection = glm::perspective(glm::radians(90.0f), 1.0f, 0.1f, 10.0f);
+        glm::mat4 captureViews[] = {
+            glm::lookAt(glm::vec3(0.0f, 0.0f, 0.0f), glm::vec3( 1.0f,  0.0f,  0.0f), glm::vec3(0.0f, -1.0f,  0.0f)),
+            glm::lookAt(glm::vec3(0.0f, 0.0f, 0.0f), glm::vec3(-1.0f,  0.0f,  0.0f), glm::vec3(0.0f, -1.0f,  0.0f)),
+            glm::lookAt(glm::vec3(0.0f, 0.0f, 0.0f), glm::vec3( 0.0f,  1.0f,  0.0f), glm::vec3(0.0f,  0.0f,  1.0f)),
+            glm::lookAt(glm::vec3(0.0f, 0.0f, 0.0f), glm::vec3( 0.0f, -1.0f,  0.0f), glm::vec3(0.0f,  0.0f, -1.0f)),
+            glm::lookAt(glm::vec3(0.0f, 0.0f, 0.0f), glm::vec3( 0.0f,  0.0f,  1.0f), glm::vec3(0.0f, -1.0f,  0.0f)),
+            glm::lookAt(glm::vec3(0.0f, 0.0f, 0.0f), glm::vec3( 0.0f,  0.0f, -1.0f), glm::vec3(0.0f, -1.0f,  0.0f))
+            };
+
+        glGenTextures(1, &prefilterMap);
+        glBindTexture(GL_TEXTURE_CUBE_MAP, prefilterMap);
+        for (unsigned int i = 0; i < 6; ++i)
+        {
+            // 128x128 is the perfect balance of quality and memory for specular IBL
+            glTexImage2D(GL_TEXTURE_CUBE_MAP_POSITIVE_X + i, 0, GL_RGB16F, 128, 128, 0, GL_RGB, GL_FLOAT, nullptr);
+        }
+        glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+        glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+        glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_WRAP_R, GL_CLAMP_TO_EDGE);
+        
+        // CRITICAL: We need Mipmaps for roughness levels!
+        glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_MIN_FILTER, GL_LINEAR_MIPMAP_LINEAR);
+        glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+        glGenerateMipmap(GL_TEXTURE_CUBE_MAP); 
+
+        Shader prefilterShader;
+        prefilterShader.load("shaders/prefilter.vertex", "shaders/prefilter.fragment");
+        prefilterShader.use();
+        prefilterShader.setInt("environmentMap", 0);
+        prefilterShader.setMat4("projection", captureProjection); // Reuse your existing captureProjection
+
+        glActiveTexture(GL_TEXTURE0);
+        glBindTexture(GL_TEXTURE_CUBE_MAP, cubemapTexture); // Reuse your existing HDR cubemap
+
+        glBindFramebuffer(GL_FRAMEBUFFER, captureFBO); // Reuse your existing FBO
+        
+        unsigned int maxMipLevels = 5;
+        for (unsigned int mip = 0; mip < maxMipLevels; ++mip)
+        {
+            // Shrink the viewport for each mip level
+            unsigned int mipWidth  = static_cast<unsigned int>(128 * std::pow(0.5f, mip));
+            unsigned int mipHeight = static_cast<unsigned int>(128 * std::pow(0.5f, mip));
+            glBindRenderbuffer(GL_RENDERBUFFER, captureRBO);
+            glRenderbufferStorage(GL_RENDERBUFFER, GL_DEPTH_COMPONENT24, mipWidth, mipHeight);
+            glViewport(0, 0, mipWidth, mipHeight);
+
+            float roughness = (float)mip / (float)(maxMipLevels - 1);
+            prefilterShader.setFloat("roughness", roughness);
+
+            for (unsigned int i = 0; i < 6; ++i)
+            {
+                prefilterShader.setMat4("view", captureViews[i]); // Reuse your existing 6 views
+                glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_CUBE_MAP_POSITIVE_X + i, prefilterMap, mip);
+                glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+                
+                renderCube(); // Call your existing cube drawing function
+            }
+        }
+        glBindFramebuffer(GL_FRAMEBUFFER, 0);
+        prefilterShader.destroy();
+        
+        KalaHeaders::KalaLog::Log::Print("Pre-filtered Environment Map generated", "Skybox", KalaHeaders::KalaLog::LogType::LOG_SUCCESS);
     }
 
      void Skybox::draw(GLFWwindow* window, const glm::mat4& view, const glm::mat4& projection)

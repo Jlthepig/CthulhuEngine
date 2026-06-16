@@ -5,10 +5,10 @@ compiler: cl
 standard: c++20
 binarytype: static
 binaryname: fastGltf
-sources: "*.cpp", "..\\simdjson\\simdjson.cpp"
+sources: "*.cpp", "..\\..\\simdjson\\simdjson.cpp"
 
 customflags: export-compile-commands, export-vscode-sln
-headers: "../", "../simdjson"
+headers: "../", "../../simdjson"
 
 #profile release-windows
     buildtype: minsizerel

@@ -44,11 +44,15 @@ namespace Cthulhu::Rendering
         std::string basicFragPath = "shaders/basic.fragment";
         std::string gridVertPath = "shaders/grid.vertex";
         std::string gridFragPath = "shaders/grid.fragment";
-        std::string skyboxHDRPath = "assets/images/hdriTest.hdr";
+        std::string skyboxHDRPath = "assets/images/Test2.hdr";
 
         // IBL
         int irradianceMapSize = 32;
         int brdfLUTSize = 512;
+
+        glm::vec3 fogColor = glm::vec3(0.15f, 0.18f, 0.22f); // Moody blue/grey
+        float fogDensity = 0.02f;
+        float fogHeightFalloff = 0.1f;
     };
 
     class Renderer
@@ -84,6 +88,7 @@ namespace Cthulhu::Rendering
         GLuint defaultDataTexture = 0;
         GLuint defaultNormalTexture = 0;
         GLuint brdfLUTTexture = 0;
+        unsigned int prefilterMap = 0;
         size_t totalTriangles = 0;
     };
 }

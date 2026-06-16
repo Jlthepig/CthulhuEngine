@@ -4,6 +4,7 @@
 #include "components.h"
 #include "ext/matrix_clip_space.hpp"
 #include "ext/matrix_transform.hpp"
+#include "gtc/type_ptr.hpp"
 #include "fwd.hpp"
 #include "mesh.h"
 #include "shader.h"
@@ -44,6 +45,7 @@ namespace Cthulhu::Rendering
 
         skybox.load(config.skyboxHDRPath);
         skybox.generateIrradianceMap();
+        skybox.generatePrefilterMap();
         grid.setupGrid(config.gridSize);
 
         // temp setup for whitepointshadow
@@ -87,7 +89,6 @@ namespace Cthulhu::Rendering
         basicShader.use();
         basicShader.setInt("uTexture", 0); // diffuse
         basicShader.setInt("uShadowMap", 1); // directional shadow
-
         for (int i = 0; i < MAX_POINT_SHADOW_CASTERS; i++)
         {
             basicShader.setInt("uPointShadowMaps[" + std::to_string(i) + "]", 2 + i);
@@ -96,6 +97,7 @@ namespace Cthulhu::Rendering
         basicShader.setInt("uNormalMap", 7);
         basicShader.setInt("uBRDFLUT", 8); // Setup slot for BRDF LUT now
         basicShader.setInt("uIrradianceMap", 9);
+        basicShader.setInt("uPrefilterMap", 10);
 
         shadowMap.init(config.shadowMapResolution, config.shadowMapResolution);
         for (int i = 0; i < MAX_POINT_SHADOW_CASTERS; i++)
@@ -243,6 +245,10 @@ namespace Cthulhu::Rendering
         basicShader.setMat4("projection", projection);
         basicShader.setMat4("view", view);
         basicShader.setMat4("lightSpaceMatrix", shadowMap.getLightSpaceMatrix());
+        
+        basicShader.setVec3("u_FogColor", config.fogColor);
+        basicShader.setFloat("u_FogDensity", config.fogDensity);
+        basicShader.setFloat("u_FogHeightFalloff", config.fogHeightFalloff);
 
         // bind all textures in order: 0=diffuse(per mesh), 1=shadow, 2+=cubemaps
         glActiveTexture(GL_TEXTURE1);
@@ -267,6 +273,9 @@ namespace Cthulhu::Rendering
         
         glActiveTexture(GL_TEXTURE9);
         glBindTexture(GL_TEXTURE_CUBE_MAP, skybox.getIrradianceMap());
+
+        glActiveTexture(GL_TEXTURE10);
+        glBindTexture(GL_TEXTURE_CUBE_MAP, skybox.getPrefilterMap());
 
         // reset to slot 0 before entity loop
         glActiveTexture(GL_TEXTURE0);
@@ -368,6 +377,13 @@ namespace Cthulhu::Rendering
         ImGui::Text("Draw Calls: %d", entityCount + 2);  // +1 grid +1 skybox
         ImGui::Text("Triangles: %zu", totalTriangles);
         ImGui::Text("Shadow Map Resolution: %d", config.shadowMapResolution);
+
+        ImGui::Separator();
+        ImGui::Text("Exponential Height Fog");
+        ImGui::ColorEdit3("Fog Color", glm::value_ptr(config.fogColor));
+        ImGui::SliderFloat("Density", &config.fogDensity, 0.0f, 0.1f, "%.4f");
+        ImGui::SliderFloat("Height Falloff", &config.fogHeightFalloff, 0.0f, 1.0f, "%.3f");
+
         ImGui::End();
         ImGui::Render();
         ImGui_ImplOpenGL3_RenderDrawData(ImGui::GetDrawData());

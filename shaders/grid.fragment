@@ -9,8 +9,10 @@ void main()
 {
     float dist = distance(fragPos, cameraPos);
 
-    float alpha = 1.0 - (dist / fadeDistance);
+    float alpha = 1.0 - smoothstep(fadeDistance * 0.5, fadeDistance, dist);
+
+    float heightFade = 1.0 - smoothstep(5.0, 20.0, abs(fragPos.y - cameraPos.y));
+    alpha *= heightFade;
     
-    alpha = clamp(alpha, 0.0, 1.0);
     FragColor = vec4(1.0, 1.0, 1.0, alpha);
 }

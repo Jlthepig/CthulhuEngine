@@ -12,6 +12,7 @@ uniform sampler2D uNormalMap;
 uniform sampler2D uShadowMap;
 uniform samplerCube uIrradianceMap;
 uniform sampler2D uBRDFLUT;
+uniform samplerCube uPrefilterMap;
 
 uniform vec3 uLightDir;
 uniform vec3 uLightColor;
@@ -19,6 +20,11 @@ uniform float uLightIntensity;
 uniform vec4 uBaseColorFactor;
 uniform float uMetallicFactor;
 uniform float uRoughnessFactor;
+
+uniform vec3 u_FogColor;
+uniform float u_FogDensity;
+uniform float u_FogHeightFalloff;
+
 
 struct PointLight {
     vec3 position;
@@ -170,19 +176,38 @@ void main() {
 
         // 5. Ambient (Diffuse IBL)
         vec3 F = fresnelSchlickRoughness(max(dot(N, V), 0.0), F0, roughness);
-        vec3 kD = (1.0 - F) * (1.0 - metallic);
+        vec3 kS = F;
+        vec3 kD = 1.0 - kS;
+        kD *= 1.0 - metallic;
+        
         vec3 irradiance = texture(uIrradianceMap, N).rgb;
         vec3 diffuse = irradiance * albedo;
-        
-        // Use BRDF LUT for specular ambient
+
+        const float MAX_REFLECTION_LOD = 4.0; // Assuming 5 mip levels (0, 1, 2, 3, 4)
         vec3 R = reflect(-V, N);
-        // Note: We will add the Pre-filtered Environment Map for R in the next step.
-        // For now, we just use the BRDF LUT scaled by the Fresnel.
-        vec2 brdf = texture(uBRDFLUT, vec2(max(dot(N, V), 0.0), roughness)).rg;
-        vec3 specularAmbient = F * brdf.x + brdf.y; // Partial specular IBL
+        vec3 prefilteredColor = textureLod(uPrefilterMap, R, roughness * MAX_REFLECTION_LOD).rgb; 
         
-        vec3 ambient = kD * diffuse + specularAmbient * 0.5; // Temp scale down partial spec
+        float fogDistance = length(uViewPos - FragPos);
+        
+        float distanceFog = 1.0 - exp(-u_FogDensity * fogDistance);
+
+        float heightFog = exp(-max(FragPos.y,0.0) * u_FogHeightFalloff);
+
+        float fogFactor = clamp(distanceFog * heightFog,0.0,1.0);
+
+        
+
+        vec2 brdf = texture(uBRDFLUT, vec2(max(dot(N, V), 0.0), roughness)).rg;
+        vec3 specular = prefilteredColor * (F * brdf.x + brdf.y);
+
+        vec3 ambient = (kD * diffuse + specular); 
         vec3 color = ambient + Lo;
 
-    FragColor = vec4(color, 1.0);
+        color = mix(color,u_FogColor,fogFactor);
+
+        color = color / (color + vec3(1.0));
+
+        color = pow(color, vec3(1.0 / 2.2));
+
+        FragColor = vec4(color, 1.0);
 }

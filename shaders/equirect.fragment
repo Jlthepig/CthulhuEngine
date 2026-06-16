@@ -12,6 +12,7 @@ vec2 sampleSphericalMap(vec3 v)
     vec2 uv = vec2(atan(v.z, v.x), asin(v.y));
     uv *= invAtan;
     uv += 0.5;
+    uv = clamp(uv, vec2(0.001), vec2(0.999)); 
     return uv;
 }
 
@@ -19,5 +20,7 @@ void main()
 {
     vec2 uv = sampleSphericalMap(normalize(localPos));
     vec3 color = texture(equirectangularMap, uv).rgb;
+
+    color = min(color,vec3(10000.0));
     FragColor = vec4(color, 1.0);
 }
