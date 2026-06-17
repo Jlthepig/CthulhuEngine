@@ -21,6 +21,15 @@ namespace Cthulhu::Physics
         glm::vec3 rotation = glm::vec3(0.0f); // euler radians
     };
 
+    struct RaycastHitInfo
+    {
+        bool didHit = false;
+        glm::vec3 position = glm::vec3(0.0f);
+        glm::vec3 normal = glm::vec3(0.0f);
+        float distance = 0.0f;
+        uint32_t bodyId = 0;
+    };
+
     struct PhysicsConfig
     {
         int tempAllocatorSizeMB = 10;
@@ -51,7 +60,8 @@ namespace Cthulhu::Physics
             uint32_t addDynamicBox(glm::vec3 position, glm::vec3 halfextent, float mass);
             BodyTransform getBodyTransform(uint32_t bodyId);
 
-            // Getters for Character Controller
+            RaycastHitInfo raycast(const glm::vec3& origin, const glm::vec3& direction, float maxDistance);
+
             JPH::PhysicsSystem* getPhysicsSystem() const { return physicsSystem; }
             JPH::TempAllocatorImpl* getTempAllocator() const { return tempAllocator; }
             const PhysicsConfig& getConfig() const { return config; }

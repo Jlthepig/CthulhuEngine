@@ -1,5 +1,7 @@
 #include "pch.h"
 #include "Jolt/jolt.h"
+#include "Jolt/Physics/Collision/NarrowPhaseQuery.h"
+#include "Jolt/Math/Real.h"
 #include "physics.h"
 #include "Jolt/Core/Core.h"
 #include "Jolt/Core/IssueReporting.h"
@@ -13,6 +15,10 @@
 #include "Jolt/Physics/Body/BodyCreationSettings.h"
 #include "Jolt/Physics/Body/BodyInterface.h"
 #include "Jolt/Physics/Body/BodyID.h"
+#include "Jolt/Physics/Collision/RayCast.h"
+#include "Jolt/Physics/Collision/CastResult.h"
+#include "Jolt/Physics/Body/Body.h"
+#include "Jolt/Physics/Body//BodyLock.h"
 #include "characterController.h"
 #include "gtc/quaternion.hpp"
 #include "Jolt/Core/Factory.h"
@@ -167,6 +173,59 @@ namespace Cthulhu::Physics
         return bodyId.GetIndexAndSequenceNumber();
     }
 
+    void PhysicsWorld::createGroundPlane()
+    {
+        JPH::BodyInterface &bodyInterface = physicsSystem->GetBodyInterface();
+        JPH::BoxShapeSettings groundShapeSettings(JPH::Vec3(this->config.groundWidth, this->config.groundHeight, this->config.groundDepth));
+        auto groundShape = groundShapeSettings.Create();
+        if (groundShape.HasError()) { /* error */ return; }
+
+        JPH::BodyCreationSettings groundSettings(
+            groundShape.Get(), JPH::Vec3(0.0f, -this->config.groundHeight, 0.0f),
+            JPH::Quat::sIdentity(), JPH::EMotionType::Static, ObjectLayers::NON_MOVING);
+        groundSettings.mFriction = this->config.groundFriction;
+        bodyInterface.CreateAndAddBody(groundSettings, JPH::EActivation::DontActivate);
+    }
+
+        RaycastHitInfo PhysicsWorld::raycast(const glm::vec3& origin, const glm::vec3& direction, float maxDistance)
+        {
+            RaycastHitInfo result;
+            if (!physicsSystem) return result;
+
+            JPH::RRayCast ray;
+            ray.mOrigin = JPH::RVec3(origin.x, origin.y, origin.z);
+            ray.mDirection = JPH::RVec3(direction.x, direction.y, direction.z) * maxDistance;
+
+            JPH::RayCastResult hit;
+
+            // perform query
+            const JPH::NarrowPhaseQuery& query = physicsSystem->GetNarrowPhaseQuery();
+
+            if (query.CastRay(ray, hit))
+            {
+                result.didHit = true;
+                result.distance = hit.mFraction * maxDistance;
+                JPH::RVec3 hitPos = ray.GetPointOnRay(hit.mFraction);
+                result.position = glm::vec3(hitPos.GetX(), hitPos.GetY(), hitPos.GetZ());
+                result.bodyId = hit.mBodyID.GetIndexAndSequenceNumber();
+
+                JPH::BodyLockRead lock(physicsSystem->GetBodyLockInterface(),hit.mBodyID);
+                if (lock.Succeeded())
+                {
+                    const JPH::Body& body = lock.GetBody();
+                    JPH::Vec3 normal = body.GetWorldSpaceSurfaceNormal(hit.mSubShapeID2,hitPos);
+                    result.normal = glm::vec3(normal.GetX(), normal.GetY(), normal.GetZ());
+                }
+            }
+
+            return result;
+        }
+
+    float PhysicsWorld::getInterpolationAlpha()
+    {
+        return physicsAccumulator / this->config.fixedDeltaTime;
+    }
+
     BodyTransform PhysicsWorld::getBodyTransform(uint32_t bodyIdValue)
     {
         BodyTransform result;
@@ -183,25 +242,6 @@ namespace Cthulhu::Physics
         result.rotation = glm::eulerAngles(glmRot);
 
         return result;
-    }
-
-    void PhysicsWorld::createGroundPlane()
-    {
-        JPH::BodyInterface &bodyInterface = physicsSystem->GetBodyInterface();
-        JPH::BoxShapeSettings groundShapeSettings(JPH::Vec3(this->config.groundWidth, this->config.groundHeight, this->config.groundDepth));
-        auto groundShape = groundShapeSettings.Create();
-        if (groundShape.HasError()) { /* error */ return; }
-
-        JPH::BodyCreationSettings groundSettings(
-            groundShape.Get(), JPH::Vec3(0.0f, -this->config.groundHeight, 0.0f),
-            JPH::Quat::sIdentity(), JPH::EMotionType::Static, ObjectLayers::NON_MOVING);
-        groundSettings.mFriction = this->config.groundFriction;
-        bodyInterface.CreateAndAddBody(groundSettings, JPH::EActivation::DontActivate);
-    }
-
-    float PhysicsWorld::getInterpolationAlpha()
-    {
-        return physicsAccumulator / this->config.fixedDeltaTime;
     }
 
     void PhysicsWorld::shutdown()
