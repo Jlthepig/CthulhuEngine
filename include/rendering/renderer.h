@@ -25,6 +25,12 @@ namespace Cthulhu::Rendering
         glm::vec3 boundsMin = glm::vec3(-1.0f);
         glm::vec3 boundsMax = glm::vec3(1.0f);
     }; 
+
+    struct DebugVertex
+    {
+        glm::vec3 pos;
+        glm::vec3 color;
+    };
     struct RenderConfig
     {
         // Camera
@@ -64,12 +70,14 @@ namespace Cthulhu::Rendering
         void setDirectionalLight(const DirectionalLight& light);
         void setPointLights(const std::vector<PointLight>& lights);
         void render(float deltaTime, const std::vector<Renderable>& renderables);
+        void addDebugLine(const glm::vec3& start, const glm::vec3& end, const glm::vec3& color);
         void shutdown();
 
         private:
         RenderConfig config; // Store config here
         Cthulhu::Rendering::Shader basicShader;
         Cthulhu::Rendering::Shader gridShader;
+        Cthulhu::Rendering::Shader lineShader;
         Cthulhu::Rendering::GridLines grid;
         Cthulhu::Rendering::Skybox skybox;
         glm::mat4 projection;
@@ -80,6 +88,7 @@ namespace Cthulhu::Rendering
         static constexpr int MAX_POINT_SHADOW_CASTERS = 4;
         PointLightShadowMap pointShadowMaps[MAX_POINT_SHADOW_CASTERS];
         std::vector<PointLight> pointLights;
+        std::vector<DebugVertex> debugLines;
         ShadowMap shadowMap;
         Cthulhu::Scene::Scene* scene = nullptr;
         Frustum frustum;
@@ -89,6 +98,7 @@ namespace Cthulhu::Rendering
         GLuint defaultNormalTexture = 0;
         GLuint brdfLUTTexture = 0;
         unsigned int prefilterMap = 0;
+        unsigned int lineVAO = 0, lineVBO = 0;
         size_t totalTriangles = 0;
     };
 }

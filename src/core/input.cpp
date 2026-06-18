@@ -10,6 +10,8 @@ namespace Cthulhu::Core
     GLFWwindow* Input::windowHandle = nullptr; 
     bool Input::currentKeys[GLFW_KEY_LAST + 1] = {};
     bool Input::previousKeys[GLFW_KEY_LAST + 1] = {};
+    bool Input::currentMouseButtons[GLFW_MOUSE_BUTTON_LAST + 1] = {};
+    bool Input::previousMouseButtons[GLFW_MOUSE_BUTTON_LAST + 1] = {};
     float Input::mouseDeltaX = 0.0f;
     float Input::mouseDeltaY = 0.0f;
     bool Input::firstMouse = true;
@@ -33,12 +35,16 @@ namespace Cthulhu::Core
     void Input::update()
     {
         memcpy(previousKeys, currentKeys, sizeof(currentKeys));
+        memcpy(previousMouseButtons, currentMouseButtons, sizeof(currentMouseButtons));
 
         for (int i = 0; i<= GLFW_KEY_LAST;i++)
         {
             currentKeys[i] = glfwGetKey(windowHandle, i) == GLFW_PRESS;
         }
-        
+        for (int i = 0; i <= GLFW_MOUSE_BUTTON_LAST; i++)
+        {
+            currentMouseButtons[i] = glfwGetMouseButton(windowHandle, i) == GLFW_PRESS;
+        }
     }
     
     bool Input::isKeyDown(int key)
@@ -56,6 +62,18 @@ namespace Cthulhu::Core
         return previousKeys[key] && !currentKeys[key];
     }
     
+    bool Input::isMouseButtonDown(int button)
+    {
+        if (button < 0 || button > GLFW_MOUSE_BUTTON_LAST) return false;
+        return currentMouseButtons[button];
+    }
+
+    bool Input::isMouseButtonPressed(int button)
+    {
+        if (button < 0 || button > GLFW_MOUSE_BUTTON_LAST) return false;
+        return currentMouseButtons[button] && !previousMouseButtons[button];
+    }
+
     void Input::mouse_callback(GLFWwindow* window, double xposIn, double yposIn)
     {
         float xpos = static_cast<float>(xposIn);

@@ -17,6 +17,9 @@ namespace Cthulhu::Core
         static bool isKeyPressed(int key);
         static bool isKeyReleased(int key);
 
+        static bool isMouseButtonDown(int button);
+        static bool isMouseButtonPressed(int button);
+
         static void mouse_callback(GLFWwindow* window, double xposIn, double yposIn);
         static void mouse_button_callback(GLFWwindow* window, int button, int action, int mods);
 
@@ -29,6 +32,8 @@ namespace Cthulhu::Core
         static GLFWwindow* windowHandle;
         static bool currentKeys[GLFW_KEY_LAST + 1];
         static bool previousKeys[GLFW_KEY_LAST + 1];
+        static bool currentMouseButtons[GLFW_MOUSE_BUTTON_LAST + 1];
+        static bool previousMouseButtons[GLFW_MOUSE_BUTTON_LAST + 1];
         static bool firstMouse;
         static float mouseDeltaX;
         static float mouseDeltaY;

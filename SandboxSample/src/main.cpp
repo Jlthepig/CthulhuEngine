@@ -23,8 +23,6 @@ static flecs::entity cameraEntity;
 
 void onUpdate(void* context, float deltaTime)
 {   
-    Cthulhu::Engine* engine = static_cast<Cthulhu::Engine*>(context);
-
     if (camera) {
         camera->processMouse(Cthulhu::Core::Input::getMouseDeltaX(), Cthulhu::Core::Input::getMouseDeltaY());
     }
@@ -85,7 +83,7 @@ void onUpdate(void* context, float deltaTime)
             if (camTransform) camera->setPosition(glm::vec3(camTransform->cachedModelMatrix[3]));
         }   
         
-        bool  mouseDown = Cthulhu::Core::Input::isKeyDown(GLFW_MOUSE_BUTTON_LEFT);
+        bool mouseDown = Cthulhu::Core::Input::isMouseButtonDown(GLFW_MOUSE_BUTTON_LEFT);
         if (mouseDown)
         {
             auto& wep = cameraEntity.ensure<Cthulhu::Scene::WeaponComponent>();
@@ -96,13 +94,14 @@ void onUpdate(void* context, float deltaTime)
 
 static void onWeaponHit(void* context, const Cthulhu::Physics::RaycastHitInfo& hit)
 {
-    KalaHeaders::KalaLog::Log::Print(
-        "Game received hit at X:" + std::to_string(hit.position.x) + 
-        " Y:" + std::to_string(hit.position.y) + 
-        " Z:" + std::to_string(hit.position.z), 
-        "Game", 
-        KalaHeaders::KalaLog::LogType::LOG_INFO
-    );
+    Cthulhu::Engine* engine = static_cast<Cthulhu::Engine*>(context);
+    KalaHeaders::KalaLog::Log::Print("GAME RECEIVED HIT!", "Game", KalaHeaders::KalaLog::LogType::LOG_SUCCESS);
+
+    glm::vec3 camPos = engine->getCamera()->getPosition();
+    glm::vec3 camFront = engine->getCamera()->getFront(); 
+    glm::vec3 safeStart = camPos + (camFront * 0.5f); 
+    
+    engine->getRenderer().addDebugLine(safeStart, hit.position, glm::vec3(1.0f, 0.0f, 0.0f));
 }
 
 int main()

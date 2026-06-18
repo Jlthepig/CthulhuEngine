@@ -154,6 +154,21 @@ namespace Cthulhu::Rendering
         glDeleteBuffers(1, &quadVBO);
         brdfShader.destroy();
 
+        lineShader.load("shaders/debugLine.vertex", "shaders/debugLine.fragment");
+        glGenVertexArrays(1, &lineVAO);
+        glGenBuffers(1, &lineVBO);
+        glBindVertexArray(lineVAO);
+        glBindBuffer(GL_ARRAY_BUFFER, lineVBO);
+        glBufferData(GL_ARRAY_BUFFER, sizeof(DebugVertex) * 1000, nullptr, GL_DYNAMIC_DRAW);
+
+        glEnableVertexAttribArray(0);
+        glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, sizeof(DebugVertex), (void*)0);
+        glEnableVertexAttribArray(1);
+        glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, sizeof(DebugVertex), (void*)(sizeof(glm::vec3)));
+        
+        glBindVertexArray(0);
+
+
         // Restore viewport and shader state
         glfwGetFramebufferSize(window, &width, &height);
         glViewport(0, 0, width, height);
@@ -367,6 +382,26 @@ namespace Cthulhu::Rendering
         // 4. skybox
         skybox.draw(window, view, projection);
 
+        if(!debugLines.empty())
+        {
+            glDisable(GL_DEPTH_TEST);
+            lineShader.use();
+            lineShader.setMat4("projection",projection);
+            lineShader.setMat4("view", view);
+
+            glBindVertexArray(lineVAO);
+            glBindBuffer(GL_ARRAY_BUFFER,lineVBO);
+            glBufferData(GL_ARRAY_BUFFER, debugLines.size() * sizeof(DebugVertex), debugLines.data(), GL_DYNAMIC_DRAW);
+
+            glLineWidth(3.0f);
+            glDrawArrays(GL_LINES,0,debugLines.size());
+            glLineWidth(1.0f);
+
+            glBindVertexArray(0);
+            glEnable(GL_DEPTH_TEST);
+            debugLines.clear();
+        }
+
         // 5. imgui
         ImGui_ImplOpenGL3_NewFrame();
         ImGui_ImplGlfw_NewFrame();
@@ -430,6 +465,12 @@ namespace Cthulhu::Rendering
 
             Scene::AABB worldBounds{ worldMin, worldMax };
             return worldBounds;
+    }
+
+    void Renderer::addDebugLine(const glm::vec3& start, const glm::vec3& end, const glm::vec3& color) 
+    {
+        debugLines.push_back({start, color});
+        debugLines.push_back({end, color});
     }
 
     void Renderer::setDirectionalLight(const DirectionalLight& light)
