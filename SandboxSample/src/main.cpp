@@ -18,12 +18,13 @@ namespace GameConfig
 
 static bool inEditorMode = true;
 static Cthulhu::Scene::Camera* camera = nullptr;
-static Cthulhu::Engine* enginePtr = nullptr;
 static flecs::entity playerEntity;
 static flecs::entity cameraEntity;
 
-void onUpdate(float deltaTime)
+void onUpdate(void* context, float deltaTime)
 {   
+    Cthulhu::Engine* engine = static_cast<Cthulhu::Engine*>(context);
+
     if (camera) {
         camera->processMouse(Cthulhu::Core::Input::getMouseDeltaX(), Cthulhu::Core::Input::getMouseDeltaY());
     }
@@ -83,16 +84,30 @@ void onUpdate(float deltaTime)
             const auto* camTransform = cameraEntity.try_get<Cthulhu::Scene::TransformComponent>();
             if (camTransform) camera->setPosition(glm::vec3(camTransform->cachedModelMatrix[3]));
         }   
-
+        
+        bool  mouseDown = Cthulhu::Core::Input::isKeyDown(GLFW_MOUSE_BUTTON_LEFT);
+        if (mouseDown)
+        {
+            auto& wep = cameraEntity.ensure<Cthulhu::Scene::WeaponComponent>();
+            wep.wantsToFire = true;
+        }
     }
+}
+
+static void onWeaponHit(void* context, const Cthulhu::Physics::RaycastHitInfo& hit)
+{
+    KalaHeaders::KalaLog::Log::Print(
+        "Game received hit at X:" + std::to_string(hit.position.x) + 
+        " Y:" + std::to_string(hit.position.y) + 
+        " Z:" + std::to_string(hit.position.z), 
+        "Game", 
+        KalaHeaders::KalaLog::LogType::LOG_INFO
+    );
 }
 
 int main()
 {
-    // Instantiate the Engine
     Cthulhu::Engine engine;
-    enginePtr = &engine;
-    
     engine.init(GameConfig::WINDOW_TITLE, GameConfig::WINDOW_RESOLUTION);
     engine.loadScene(GameConfig::SCENE_PATH);
     
@@ -106,10 +121,17 @@ int main()
     cameraEntity.set<Cthulhu::Scene::TransformComponent>({glm::vec3(0,GameConfig::CAMERA_EYE_HEIGHT_OFFSET,0)});
     cameraEntity.add<Cthulhu::Scene::TagActive>();
 
+    Cthulhu::Scene::WeaponComponent playerWeapon;
+    playerWeapon.firerate = 12.0f;
+    playerWeapon.maxRange = 500.0f;
+    cameraEntity.set(playerWeapon);
+
     Cthulhu::Physics::CharacterConfig charConfig;
     Cthulhu::Physics::CharacterController::create(playerEntity, GameConfig::CHARACTER_START_POSITION, charConfig, engine.getPhysicsWorld());
     
     camera = engine.getCamera();
+    
+    engine.setRaycastHitCallback(onWeaponHit, &engine);
     engine.setUpdateCallback(onUpdate);
     engine.run();
     

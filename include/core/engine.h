@@ -1,5 +1,4 @@
 #pragma once
-#include <functional>
 #include <string>
 #include <memory>
 #include <vector>
@@ -17,11 +16,13 @@ namespace Cthulhu
     class Engine
     {
     public:
-        using UpdateCallback = std::function<void(float deltaTime)>;
+        using UpdateCallback = void(*)(void* context, float deltaTime);
+        using RaycastHitCallback = void(*)(void* context, const Physics::RaycastHitInfo& hit);
         
         void init(const char* title, glm::vec2 resolution);
         void loadScene(const std::string& path);
-        void setUpdateCallback(UpdateCallback callback);
+        void setUpdateCallback(UpdateCallback callback, void* context = nullptr);
+        void setRaycastHitCallback(RaycastHitCallback callback, void* context = nullptr);
         void processFixedUpdate(float fixedDt);
         void run();
         void shutdown();
@@ -39,7 +40,10 @@ namespace Cthulhu
         Cthulhu::Scene::SceneData sceneData;
         std::vector<Rendering::Renderable> frameRenderables;
         
-        UpdateCallback gameUpdateCallback = nullptr;
+        UpdateCallback updateCallback = nullptr;
+        void* updateContext = nullptr;
+        RaycastHitCallback raycastHitCallback = nullptr;
+        void* raycastHitContext = nullptr;
 
         float deltaTime = 0.0f;
         float lastFrame = 0.0f;

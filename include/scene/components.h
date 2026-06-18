@@ -44,6 +44,18 @@ namespace Cthulhu::Scene
         bool pendingJump = false;
     };
 
+    struct WeaponComponent
+    {
+        float firerate = 10.0f;     // how fast the gun shoots
+        float maxRange = 100.0f;    // max distance in meters
+
+        // managed by engine
+        float timeSinceLastShot = 0.0;
+
+        // Input (managed by game)
+        bool wantsToFire = false;
+    };
+
     struct TagActive {};
     struct TagStatic {};
     struct TagPlayer {};

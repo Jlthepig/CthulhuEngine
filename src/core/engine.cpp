@@ -1,3 +1,5 @@
+#include "ext/quaternion_geometric.hpp"
+#include "fwd.hpp"
 #include "pch.h"
 #include "components.h"
 #include "sceneLoader.h"
@@ -125,6 +127,39 @@ namespace Cthulhu
                 transform.position = glm::mix(cc.prevPos, cc.currentPos, alpha);
                 transform.matrixDirty = true;
             });
+        
+        scene->getWorld().system<Scene::WeaponComponent, const Scene::TransformComponent>("WeaponSystem")
+            .each([this](flecs::entity e, Scene::WeaponComponent& wep, const Scene::TransformComponent& trans)
+            {
+                // cooldown
+                wep.timeSinceLastShot += deltaTime;
+
+                if (wep.wantsToFire)
+                {
+                    float cooldown = 1.0 / wep.firerate;
+
+                    if (wep.timeSinceLastShot >= cooldown)
+                    {
+                        glm::vec3 origin = glm::vec3(trans.cachedModelMatrix[3]);
+                        glm::vec3 forward = -glm::vec3(trans.cachedModelMatrix[2]);
+                        forward = glm::normalize(forward);
+
+                        Physics::RaycastHitInfo hit = physicsWorld.raycast(origin, forward, wep.maxRange);
+
+                        if (hit.didHit)
+                        {
+                            if (raycastHitCallback)
+                            {
+                                raycastHitCallback(raycastHitContext,hit);
+                            }
+                        }
+
+                        wep.timeSinceLastShot = 0.0f;
+                    }
+
+                    wep.wantsToFire = false;
+                }
+            });
     }
 
     void Engine::loadScene(const std::string &path)
@@ -191,9 +226,9 @@ namespace Cthulhu
 
             scene->getWorld().progress(deltaTime);
 
-            if (gameUpdateCallback) 
+            if (updateCallback) 
             {
-                gameUpdateCallback(deltaTime);
+                updateCallback(updateContext,deltaTime);
             }
 
             frameRenderables.clear();
@@ -213,9 +248,16 @@ namespace Cthulhu
        }
     }
 
-    void Engine::setUpdateCallback(UpdateCallback callback)
+    void Engine::setUpdateCallback(UpdateCallback callback, void* context)
     {
-         gameUpdateCallback = callback;
+        updateCallback = callback;
+        updateContext = context;
+    }
+
+    void Engine::setRaycastHitCallback(RaycastHitCallback callback, void* context)
+    {
+        raycastHitCallback = callback;
+        raycastHitContext = context;
     }
 
     Scene::Camera* Engine::getCamera() { return camera; }
