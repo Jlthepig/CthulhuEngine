@@ -12,18 +12,6 @@
                 "min": [-1.0, -1.0, -1.0],
                 "max": [1.0, 1.0, 1.0]
             }
-        },
-        {
-            "name": "ScifiHelmet",
-            "model": "assets/models/ScifiHelmet.glb",
-            "position": [0.0, 0.0, 0.0],
-            "rotation": [0.0, 0.0, 0.0],
-            "scale": [1.0, 1.0, 1.0],
-            "bounds": {
-                "min": [-1.0, -1.0, -1.0],
-                "max": [1.0, 1.0, 1.0]
-            },
-            "physics" : {"type" : "static", "half_extent" : [0.6,1.0,0.6]}
         }
     ],
 

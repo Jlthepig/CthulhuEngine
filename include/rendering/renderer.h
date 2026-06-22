@@ -91,7 +91,7 @@ namespace Cthulhu::Rendering
         std::vector<DebugVertex> debugLines;
         ShadowMap shadowMap;
         Cthulhu::Scene::Scene* scene = nullptr;
-        Frustum frustum;
+        Scene::Frustum frustum;
         Scene::AABB TransformAABB(const Scene::AABB& localBounds, const glm::mat4& modelMatrix);
         GLuint whitePointShadow = 0;
         GLuint defaultDataTexture = 0;

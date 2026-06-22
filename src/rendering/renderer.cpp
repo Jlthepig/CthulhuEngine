@@ -300,7 +300,7 @@ namespace Cthulhu::Rendering
         {   
             // AABB test
             Scene::AABB worldBounds = TransformAABB({renderable.boundsMin, renderable.boundsMax}, renderable.modelMatrix);
-            if (!frustum.testAABB(worldBounds)) continue;
+            if (!frustum.testAABB(worldBounds.min,worldBounds.max)) continue;
             
             entityCount++;
 
