@@ -17,6 +17,12 @@ namespace Cthulhu::Scene { class Scene; }
 namespace Cthulhu::Rendering { struct Model; }
 namespace Cthulhu::Rendering
 {
+    struct PersistentLine {
+        glm::vec3 start;
+        glm::vec3 end;
+        glm::vec3 color;
+        float lifetime;
+    };
     struct Renderable
     {
         Model* model = nullptr;
@@ -70,7 +76,7 @@ namespace Cthulhu::Rendering
         void setDirectionalLight(const DirectionalLight& light);
         void setPointLights(const std::vector<PointLight>& lights);
         void render(float deltaTime, const std::vector<Renderable>& renderables);
-        void addDebugLine(const glm::vec3& start, const glm::vec3& end, const glm::vec3& color);
+        void addDebugLine(const glm::vec3& start, const glm::vec3& end, const glm::vec3& color,float duration = 0.0f);
         void shutdown();
 
         private:
@@ -89,6 +95,7 @@ namespace Cthulhu::Rendering
         PointLightShadowMap pointShadowMaps[MAX_POINT_SHADOW_CASTERS];
         std::vector<PointLight> pointLights;
         std::vector<DebugVertex> debugLines;
+        std::vector<PersistentLine> persistentLines;
         ShadowMap shadowMap;
         Cthulhu::Scene::Scene* scene = nullptr;
         Scene::Frustum frustum;

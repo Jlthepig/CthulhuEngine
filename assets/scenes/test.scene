@@ -12,42 +12,54 @@
                 "min": [-1.0, -1.0, -1.0],
                 "max": [1.0, 1.0, 1.0]
             }
+        },
+        {
+            "name": "Floor",
+            "model": "assets/models/Floor.glb",
+            "position": [0.0, 0.0, 0.0],
+            "rotation": [0.0, 0.0, 0.0],
+            "scale": [25.0, 1.0, 25.0],
+            "bounds": {
+                "min": [-1.0, -1.0, -1.0],
+                "max": [1.0, 1.0, 1.0]
+            },
+            "physics": {
+                "type": "static",
+                "half_extent": [25.0, 1.0, 25.0]
+            }
         }
     ],
 
     "directional_light": {
-    "direction": [-0.35, -1.0, -0.25],
-    "color": [1.0, 0.98, 0.95],
-    "intensity": 0.7
-},
-
-"point_lights": [
-    {
-        "position": [3.0, 6.0, 3.0],
-        "color": [1.0, 1.0, 1.0],
-        "intensity": 3.5,
-        "constant": 1.0,
-        "linear": 0.07,
-        "quadratic": 0.017
+        "direction": [-0.4, -1.0, -0.3],
+        "color": [1.0, 0.95, 0.85],
+        "intensity": 3.5
     },
 
-    {
-        "position": [-3.0, 5.0, 2.0],
-        "color": [1.0, 1.0, 1.0],
-        "intensity": 1.8,
-        "constant": 1.0,
-        "linear": 0.07,
-        "quadratic": 0.017
-    },
-
-    {
-        "position": [0.0, 5.0, -4.0],
-        "color": [1.0, 1.0, 1.0],
-        "intensity": 1.2,
-        "constant": 1.0,
-        "linear": 0.07,
-        "quadratic": 0.017
-    }
-
+    "point_lights": [
+        {
+            "position": [4.0, 5.5, 4.0],
+            "color": [1.0, 0.9, 0.8],
+            "intensity": 2.5,
+            "constant": 1.0,
+            "linear": 0.07,
+            "quadratic": 0.017
+        },
+        {
+            "position": [-4.0, 4.5, -2.0],
+            "color": [0.8, 0.9, 1.0],
+            "intensity": 2.0,
+            "constant": 1.0,
+            "linear": 0.07,
+            "quadratic": 0.017
+        },
+        {
+            "position": [0.0, 7.0, 0.0],
+            "color": [1.0, 1.0, 1.0],
+            "intensity": 1.5,
+            "constant": 1.0,
+            "linear": 0.07,
+            "quadratic": 0.017
+        }
     ]
 }

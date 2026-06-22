@@ -382,6 +382,28 @@ namespace Cthulhu::Rendering
         // 4. skybox
         skybox.draw(window, view, projection);
 
+        for (size_t i = 0; i < persistentLines.size(); ) 
+        {
+            persistentLines[i].lifetime -= deltaTime;
+            
+            if (persistentLines[i].lifetime <= 0.0f) 
+            {
+                // Line is dead. Swap it with the last element in the array and pop it.
+                // This avoids the massive performance cost of shifting array elements!
+                persistentLines[i] = persistentLines.back();
+                persistentLines.pop_back();
+                // Note: We DO NOT increment 'i' here, because we need to check 
+                // the new line that was just swapped into this index.
+            } 
+            else 
+            {
+                // Line is still alive. Push it to the immediate draw buffer for this frame.
+                debugLines.push_back({persistentLines[i].start, persistentLines[i].color});
+                debugLines.push_back({persistentLines[i].end, persistentLines[i].color});
+                i++;
+            }
+        }
+
         if(!debugLines.empty())
         {
             glDisable(GL_DEPTH_TEST);
@@ -467,10 +489,16 @@ namespace Cthulhu::Rendering
             return worldBounds;
     }
 
-    void Renderer::addDebugLine(const glm::vec3& start, const glm::vec3& end, const glm::vec3& color) 
+    void Renderer::addDebugLine(const glm::vec3& start, const glm::vec3& end, const glm::vec3& color,float duration) 
     {
-        debugLines.push_back({start, color});
-        debugLines.push_back({end, color});
+            if (duration <= 0.0f) {
+            // (disappears next frame)
+            debugLines.push_back({start, color});
+            debugLines.push_back({end, color});
+        } else {
+            // (stays on screen)
+            persistentLines.push_back({start, end, color, duration});
+        }
     }
 
     void Renderer::setDirectionalLight(const DirectionalLight& light)

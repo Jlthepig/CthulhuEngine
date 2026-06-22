@@ -17,12 +17,12 @@ namespace Cthulhu
     {
     public:
         using UpdateCallback = void(*)(void* context, float deltaTime);
-        using RaycastHitCallback = void(*)(void* context, const Physics::RaycastHitInfo& hit);
+        using RaycastCallback = void(*)(void* context, const Physics::RaycastHitInfo& hit);
         
         void init(const char* title, glm::vec2 resolution);
         void loadScene(const std::string& path);
         void setUpdateCallback(UpdateCallback callback, void* context = nullptr);
-        void setRaycastHitCallback(RaycastHitCallback callback, void* context = nullptr);
+        void setRaycastCallback(RaycastCallback callback, void* context = nullptr);
         void processFixedUpdate(float fixedDt);
         void run();
         void shutdown();
@@ -43,8 +43,8 @@ namespace Cthulhu
         
         UpdateCallback updateCallback = nullptr;
         void* updateContext = nullptr;
-        RaycastHitCallback raycastHitCallback = nullptr;
-        void* raycastHitContext = nullptr;
+        RaycastCallback raycastCallback = nullptr;
+        void* raycastContext = nullptr;
 
         float deltaTime = 0.0f;
         float lastFrame = 0.0f;

@@ -92,16 +92,17 @@ void onUpdate(void* context, float deltaTime)
     }
 }
 
-static void onWeaponHit(void* context, const Cthulhu::Physics::RaycastHitInfo& hit)
+static void onWeaponRaycast(void* context, const Cthulhu::Physics::RaycastHitInfo& hit)
 {
     Cthulhu::Engine* engine = static_cast<Cthulhu::Engine*>(context);
-    KalaHeaders::KalaLog::Log::Print("GAME RECEIVED HIT!", "Game", KalaHeaders::KalaLog::LogType::LOG_SUCCESS);
-
+    
     glm::vec3 camPos = engine->getCamera()->getPosition();
     glm::vec3 camFront = engine->getCamera()->getFront(); 
     glm::vec3 safeStart = camPos + (camFront * 0.5f); 
     
-    engine->getRenderer().addDebugLine(safeStart, hit.position, glm::vec3(1.0f, 0.0f, 0.0f));
+    glm::vec3 lineColor = hit.didHit ? glm::vec3(0.0f, 1.0f, 0.0f) : glm::vec3(1.0f, 0.0f, 0.0f);
+
+    engine->getRenderer().addDebugLine(safeStart, hit.position, lineColor,1.0f);
 }
 
 int main()
@@ -130,7 +131,7 @@ int main()
     
     camera = engine.getCamera();
     
-    engine.setRaycastHitCallback(onWeaponHit, &engine);
+    engine.setRaycastCallback(onWeaponRaycast, &engine);
     engine.setUpdateCallback(onUpdate);
     engine.run();
     

@@ -146,14 +146,16 @@ namespace Cthulhu
 
                         Physics::RaycastHitInfo hit = physicsWorld.raycast(origin, forward, wep.maxRange);
 
-                        if (hit.didHit)
+                        if (!hit.didHit)
                         {
-                            if (raycastHitCallback)
-                            {
-                                raycastHitCallback(raycastHitContext,hit);
-                            }
+                            hit.position = origin + (forward * wep.maxRange);
+                            hit.distance = wep.maxRange;
                         }
 
+                        if (raycastCallback)
+                        {
+                            raycastCallback(raycastContext,hit);
+                        }
                         wep.timeSinceLastShot = 0.0f;
                     }
 
@@ -254,10 +256,10 @@ namespace Cthulhu
         updateContext = context;
     }
 
-    void Engine::setRaycastHitCallback(RaycastHitCallback callback, void* context)
+    void Engine::setRaycastCallback(RaycastCallback callback, void* context)
     {
-        raycastHitCallback = callback;
-        raycastHitContext = context;
+        raycastCallback = callback;
+        raycastContext = context;
     }
 
     Scene::Camera* Engine::getCamera() { return camera; }
