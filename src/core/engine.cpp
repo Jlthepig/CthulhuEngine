@@ -128,8 +128,8 @@ namespace Cthulhu
                 transform.matrixDirty = true;
             });
         
-        scene->getWorld().system<Scene::WeaponComponent, const Scene::TransformComponent>("WeaponSystem")
-            .each([this](flecs::entity e, Scene::WeaponComponent& wep, const Scene::TransformComponent& trans)
+        scene->getWorld().system<Scene::WeaponComponent, const Scene::TransformComponent,const Scene::CameraComponent>("WeaponSystem")
+            .each([this](flecs::entity e, Scene::WeaponComponent& wep, const Scene::TransformComponent& trans, const Scene::CameraComponent& cam)
             {
                 // cooldown
                 wep.timeSinceLastShot += deltaTime;
@@ -141,7 +141,7 @@ namespace Cthulhu
                     if (wep.timeSinceLastShot >= cooldown)
                     {
                         glm::vec3 origin = glm::vec3(trans.cachedModelMatrix[3]);
-                        glm::vec3 forward = -glm::vec3(trans.cachedModelMatrix[2]);
+                        glm::vec3 forward = glm::normalize(cam.front);
                         forward = glm::normalize(forward);
 
                         Physics::RaycastHitInfo hit = physicsWorld.raycast(origin, forward, wep.maxRange);

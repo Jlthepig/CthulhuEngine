@@ -24,6 +24,8 @@ namespace Cthulhu::Scene
         glm::vec3 getFront() const { return front; }
         float getFov() const;
         
+        void addRecoil(float pitchKick, float yawSpread);
+        void updateRecoil(float deltaTime);
 
         private:
         bool firstMouse = true;
@@ -36,6 +38,7 @@ namespace Cthulhu::Scene
         glm::vec3 front;
         glm::vec3 up;
 
+        glm::vec2 currentRecoil = glm::vec2(0.0f);
         void updateFrontVector();
     };
 }

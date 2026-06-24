@@ -1,5 +1,7 @@
 #pragma once
 
+#include "camera.h"
+#include "fwd.hpp"
 #include "glm.hpp"
 #include <cstdint>
 
@@ -8,6 +10,11 @@ namespace Cthulhu::Rendering { struct Model; }
 namespace JPH { class CharacterVirtual; }
 namespace Cthulhu::Scene
 {
+
+    struct CameraComponent
+    {
+        glm::vec3 front = glm::vec3(0.0f, 0.0f, -1.0f);
+    };
     struct TransformComponent
     {
         glm::vec3 position{0.0f};

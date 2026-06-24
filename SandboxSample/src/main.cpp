@@ -25,6 +25,7 @@ void onUpdate(void* context, float deltaTime)
 {   
     if (camera) {
         camera->processMouse(Cthulhu::Core::Input::getMouseDeltaX(), Cthulhu::Core::Input::getMouseDeltaY());
+        camera->updateRecoil(deltaTime);
     }
 
     if (Cthulhu::Core::Input::isKeyPressed(GLFW_KEY_F1))
@@ -79,8 +80,11 @@ void onUpdate(void* context, float deltaTime)
         }
 
         if (cameraEntity.is_alive()) {
-            const auto* camTransform = cameraEntity.try_get<Cthulhu::Scene::TransformComponent>();
-            if (camTransform) camera->setPosition(glm::vec3(camTransform->cachedModelMatrix[3]));
+            const auto* camTrans = cameraEntity.try_get<Cthulhu::Scene::TransformComponent>();
+            if (camTrans) camera->setPosition(glm::vec3(camTrans->cachedModelMatrix[3]));
+
+            auto& camComp = cameraEntity.ensure<Cthulhu::Scene::CameraComponent>();
+            camComp.front = camera->getFront();
         }   
         
         bool mouseDown = Cthulhu::Core::Input::isMouseButtonDown(GLFW_MOUSE_BUTTON_LEFT);
@@ -103,6 +107,7 @@ static void onWeaponRaycast(void* context, const Cthulhu::Physics::RaycastHitInf
     glm::vec3 lineColor = hit.didHit ? glm::vec3(0.0f, 1.0f, 0.0f) : glm::vec3(1.0f, 0.0f, 0.0f);
 
     engine->getRenderer().addDebugLine(safeStart, hit.position, lineColor,1.0f);
+    engine->getCamera()->addRecoil(1.2f, 0.2f);
 }
 
 int main()
