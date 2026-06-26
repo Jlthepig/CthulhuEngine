@@ -4,6 +4,7 @@
 #include "camera.h"
 #include "fwd.hpp"
 #include "input.h"
+#include "audio.h"
 #include "glfw3.h"
 #include "log_utils.hpp"
 namespace GameConfig
@@ -108,6 +109,7 @@ static void onWeaponRaycast(void* context, const Cthulhu::Physics::RaycastHitInf
 
     engine->getRenderer().addDebugLine(safeStart, hit.position, lineColor,1.0f);
     engine->getCamera()->addRecoil(1.2f, 0.2f);
+    Cthulhu::Core::Audio::playSound("assets/audio/gunshot.mp3");
 }
 
 int main()

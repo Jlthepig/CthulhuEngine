@@ -1,8 +1,8 @@
-#include "ext/quaternion_geometric.hpp"
-#include "fwd.hpp"
+
 #include "pch.h"
 #include "components.h"
 #include "sceneLoader.h"
+#include "fwd.hpp"
 #include <cstdlib>
 
  #define STB_IMAGE_IMPLEMENTATION
@@ -22,6 +22,7 @@
 #include "camera.h"
 #include "window.h"
 #include "input.h"
+#include "audio.h"
 #include "renderer.h"
 #include "scene.h"
 #include "sceneLoader.h"
@@ -70,7 +71,7 @@ namespace Cthulhu
         scene = std::make_unique<Cthulhu::Scene::Scene>();
         camera = Scene::Camera::init();
         Core::Input::init(glfwWindow, resolution);
-
+        Core::Audio::init();
         Cthulhu::Rendering::RenderConfig renderConfig;
         renderer.init(glfwWindow, camera, renderConfig);
 
@@ -79,7 +80,7 @@ namespace Cthulhu
         glViewport(0, 0, fbW, fbH);
         
         glfwSetInputMode(glfwWindow, GLFW_CURSOR, GLFW_CURSOR_DISABLED);
-
+        
         // register physics sync system runs before transform system
         scene->getWorld().system<Scene::TransformComponent, const Scene::PhysicsComponent>("PhysicsSyncSystem")
             .each([this](Scene::TransformComponent& transform, const Scene::PhysicsComponent& phys)
@@ -265,7 +266,8 @@ namespace Cthulhu
     Scene::Camera* Engine::getCamera() { return camera; }
 
     void Engine::shutdown()
-    {
+    {   
+        Core::Audio::shutdown();
         physicsWorld.shutdown();
         renderer.shutdown();
         scene->clear();
