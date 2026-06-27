@@ -5,7 +5,7 @@ compiler: clang-cl
 standard: c++20 
 
 
-unitybatch: 6
+unitybatch: 8
 binarytype: static
 binaryname: Cthulhu
 sources: "src"

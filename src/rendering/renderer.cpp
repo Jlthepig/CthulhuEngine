@@ -180,7 +180,7 @@ namespace Cthulhu::Rendering
         pointLights.push_back(light);
     }
     
-    void Renderer::render(float deltaTime, const std::vector<Renderable>& renderables)
+    void Renderer::render(float fps, float deltaTime, const std::vector<Renderable>& renderables)
     {
         int width, height;
         glfwGetFramebufferSize(window, &width, &height);
@@ -429,7 +429,7 @@ namespace Cthulhu::Rendering
         ImGui_ImplGlfw_NewFrame();
         ImGui::NewFrame();
         ImGui::Begin("Debug");
-        ImGui::Text("FPS: %.1f", 1.0f / deltaTime);
+        ImGui::Text("FPS: %.1f", fps);
         ImGui::Text("Entities: %d", entityCount);
         ImGui::Text("Draw Calls: %d", entityCount + 2);  // +1 grid +1 skybox
         ImGui::Text("Triangles: %zu", totalTriangles);

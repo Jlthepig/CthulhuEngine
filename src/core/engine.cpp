@@ -65,6 +65,8 @@ namespace Cthulhu
             exit(1);
         }
 
+        glfwSwapInterval(0);
+
         Cthulhu::Physics::PhysicsConfig physicsConfig;
         physicsWorld.init(physicsConfig);
         physicsWorld.createGroundPlane();
@@ -217,39 +219,48 @@ namespace Cthulhu
 
     void Engine::run()
     {
-       while (!glfwWindowShouldClose(glfwWindow))
-       {
-            Core::Input::update();    
-        
-            float currentFrame = glfwGetTime();
-            deltaTime = currentFrame - lastFrame;
-            lastFrame = currentFrame;
+        lastFrame = (float)glfwGetTime();
+        while (!glfwWindowShouldClose(glfwWindow))
+        {
+                double currentFrame = (float)glfwGetTime();
+                deltaTime = (float) (currentFrame - lastFrame);
+                lastFrame = currentFrame;
+                fpsTimer += deltaTime;
+                frameCount++;
 
-            physicsWorld.step(deltaTime);
-
-            scene->getWorld().progress(deltaTime);
-
-            if (updateCallback) 
-            {
-                updateCallback(updateContext,deltaTime);
-            }
-
-            frameRenderables.clear();
-            scene->getWorld().each([&](flecs::entity e, const Scene::TransformComponent& transform, const Scene::MeshComponent& mesh) {
-                if (e.has<Scene::TagActive>() && mesh.model) {
-                    frameRenderables.push_back({
-                        mesh.model,
-                        transform.cachedModelMatrix,
-                        transform.cachedNormalMatrix,
-                        mesh.boundsMin,
-                        mesh.boundsMax
-                    });
+                if (fpsTimer >= 1.0f) 
+                {
+                    displayFPS = (float)frameCount / fpsTimer;
+                    frameCount = 0;
+                    fpsTimer = 0.0f;
                 }
-            });
-            renderer.render(deltaTime, frameRenderables);
-            glfwPollEvents();
-       }
+                Core::Input::update();    
+                physicsWorld.step(deltaTime);
+                scene->getWorld().progress(deltaTime);
+
+                if (updateCallback) 
+                {
+                    updateCallback(updateContext, deltaTime);
+                }
+
+                frameRenderables.clear();
+                scene->getWorld().each([&](flecs::entity e, const Scene::TransformComponent& transform, const Scene::MeshComponent& mesh) {
+                    if (e.has<Scene::TagActive>() && mesh.model) {
+                        frameRenderables.push_back({
+                            mesh.model,
+                            transform.cachedModelMatrix,
+                            transform.cachedNormalMatrix,
+                            mesh.boundsMin,
+                            mesh.boundsMax
+                        });
+                    }
+                });
+
+                renderer.render(displayFPS, deltaTime, frameRenderables);
+                glfwPollEvents();
+        }
     }
+
 
     void Engine::setUpdateCallback(UpdateCallback callback, void* context)
     {
