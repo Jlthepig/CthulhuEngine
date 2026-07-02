@@ -104,7 +104,6 @@ namespace Cthulhu::Rendering
         GLuint defaultDataTexture = 0;
         GLuint defaultNormalTexture = 0;
         GLuint brdfLUTTexture = 0;
-        unsigned int prefilterMap = 0;
         unsigned int lineVAO = 0, lineVBO = 0;
         size_t totalTriangles = 0;
     };

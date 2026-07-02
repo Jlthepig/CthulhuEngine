@@ -74,7 +74,7 @@ namespace Cthulhu::Core
         return currentMouseButtons[button] && !previousMouseButtons[button];
     }
 
-    void Input::mouse_callback(GLFWwindow* window, double xposIn, double yposIn)
+    void Input::mouse_callback([[maybe_unused]] GLFWwindow* window, double xposIn, double yposIn)
     {
         float xpos = static_cast<float>(xposIn);
         float ypos = static_cast<float>(yposIn);
@@ -94,7 +94,7 @@ namespace Cthulhu::Core
         lastY = ypos;
     }
     
-    void Input::mouse_button_callback(GLFWwindow* window, int button, int action, int mods)
+    void Input::mouse_button_callback(GLFWwindow* window, int button, int action, [[maybe_unused]] int mods)
     {
         if (button == GLFW_MOUSE_BUTTON_LEFT && action == GLFW_PRESS)
         {

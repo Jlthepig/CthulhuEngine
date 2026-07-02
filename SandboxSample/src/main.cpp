@@ -22,7 +22,7 @@ static Cthulhu::Scene::Camera* camera = nullptr;
 static flecs::entity playerEntity;
 static flecs::entity cameraEntity;
 
-void onUpdate(void* context, float deltaTime)
+void onUpdate([[maybe_unused]] void* context, float deltaTime)
 {   
     if (camera) {
         camera->processMouse(Cthulhu::Core::Input::getMouseDeltaX(), Cthulhu::Core::Input::getMouseDeltaY());

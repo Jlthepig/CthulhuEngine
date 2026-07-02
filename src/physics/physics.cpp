@@ -1,5 +1,5 @@
 #include "pch.h"
-#include "Jolt/jolt.h"
+#include "Jolt/Jolt.h"
 #include "Jolt/Physics/Collision/NarrowPhaseQuery.h"
 #include "Jolt/Math/Real.h"
 #include "physics.h"
@@ -45,7 +45,6 @@ namespace Cthulhu::Physics
     {
         static constexpr JPH::ObjectLayer NON_MOVING = 0;
         static constexpr JPH::ObjectLayer MOVING = 1;
-        static constexpr JPH::ObjectLayer NUM_LAYER = 2;
     }
     namespace BroadPhaseLayers
     {

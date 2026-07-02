@@ -28,7 +28,6 @@ namespace Cthulhu::Scene
         void updateRecoil(float deltaTime);
 
         private:
-        bool firstMouse = true;
         float yaw;
         float pitch;
         float speed;

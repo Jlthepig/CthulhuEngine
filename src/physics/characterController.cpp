@@ -1,7 +1,7 @@
 #include "characterController.h"
 #include "components.h"
 #include "physics.h"
-
+#include "flecs.h"
 // Jolt Includes
 #include "Jolt/Jolt.h"
 #include "Jolt/Physics/Character/CharacterVirtual.h"

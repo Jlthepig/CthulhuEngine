@@ -168,7 +168,6 @@ namespace Cthulhu::Rendering
         
         glBindVertexArray(0);
 
-
         // Restore viewport and shader state
         glfwGetFramebufferSize(window, &width, &height);
         glViewport(0, 0, width, height);

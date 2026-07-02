@@ -65,8 +65,6 @@ namespace Cthulhu
             exit(1);
         }
 
-        glfwSwapInterval(0);
-
         Cthulhu::Physics::PhysicsConfig physicsConfig;
         physicsWorld.init(physicsConfig);
         physicsWorld.createGroundPlane();
@@ -124,7 +122,7 @@ namespace Cthulhu
             physicsWorld.onFixedUpdateContext = this;
 
         scene->getWorld().system<Scene::CharacterControllerComponent, Scene::TransformComponent>("CharacterInterpolationSystem")
-            .each([this](Scene::CharacterControllerComponent& cc, Scene::TransformComponent& transform) 
+            .each([this]([[maybe_unused]] flecs::entity e, Scene::CharacterControllerComponent& cc, Scene::TransformComponent& transform) 
             {
                 float alpha = physicsWorld.getInterpolationAlpha();
                 transform.position = glm::mix(cc.prevPos, cc.currentPos, alpha);
@@ -132,7 +130,7 @@ namespace Cthulhu
             });
         
         scene->getWorld().system<Scene::WeaponComponent, const Scene::TransformComponent,const Scene::CameraComponent>("WeaponSystem")
-            .each([this](flecs::entity e, Scene::WeaponComponent& wep, const Scene::TransformComponent& trans, const Scene::CameraComponent& cam)
+            .each([this]([[maybe_unused]] flecs::entity e, Scene::WeaponComponent& wep, const Scene::TransformComponent& trans, const Scene::CameraComponent& cam)
             {
                 // cooldown
                 wep.timeSinceLastShot += deltaTime;
@@ -182,7 +180,7 @@ namespace Cthulhu
 
     void Engine::processFixedUpdate(float fixedDt)
     {
-            scene->getWorld().each([fixedDt, this](flecs::entity e, Scene::CharacterControllerComponent& cc) {
+            scene->getWorld().each([fixedDt, this]([[maybe_unused]] flecs::entity e, Scene::CharacterControllerComponent& cc) {
             if (!cc.character) return;
 
             JPH::RVec3 joltPos = cc.character->GetPosition();
@@ -260,7 +258,6 @@ namespace Cthulhu
                 glfwPollEvents();
         }
     }
-
 
     void Engine::setUpdateCallback(UpdateCallback callback, void* context)
     {

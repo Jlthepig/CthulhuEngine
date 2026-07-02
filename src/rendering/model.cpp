@@ -6,10 +6,10 @@ namespace Cthulhu::Rendering
     {
         for (auto& Mesh : meshes)
         {
-            if (Mesh.materialIndex >= 0 && Mesh.materialIndex < materials.size())
+            if (Mesh.materialIndex >= 0 && Mesh.materialIndex < std::ssize(materials))
             {
                 auto& material = materials[Mesh.materialIndex];
-                if (material.baseColorTextureIndex >= 0 && material.baseColorTextureIndex < (int)textures.size())
+                if (material.baseColorTextureIndex >= 0 && material.baseColorTextureIndex < std::ssize(textures))
                 {
                     textures[material.baseColorTextureIndex].bind(0);
                 }
