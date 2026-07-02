@@ -5,6 +5,7 @@
 #include "fwd.hpp"
 #include "input.h"
 #include "audio.h"
+#include "window.h"
 #include "glfw3.h"
 #include "log_utils.hpp"
 namespace GameConfig
@@ -18,12 +19,15 @@ namespace GameConfig
 }
 
 static bool inEditorMode = true;
+static bool isFullscreen = false;
 static Cthulhu::Scene::Camera* camera = nullptr;
 static flecs::entity playerEntity;
 static flecs::entity cameraEntity;
 
 void onUpdate([[maybe_unused]] void* context, float deltaTime)
 {   
+    Cthulhu::Engine* engine = static_cast<Cthulhu::Engine*>(context);
+
     if (camera) {
         camera->processMouse(Cthulhu::Core::Input::getMouseDeltaX(), Cthulhu::Core::Input::getMouseDeltaY());
         camera->updateRecoil(deltaTime);
@@ -47,6 +51,21 @@ void onUpdate([[maybe_unused]] void* context, float deltaTime)
                 transform.position = feetPos;
                 transform.matrixDirty = true;
             }
+        }
+    }
+
+    if (Cthulhu::Core::Input::isKeyPressed(GLFW_KEY_F11))
+    {
+        isFullscreen = !isFullscreen;
+        if (isFullscreen)
+        {
+            engine->getWindow()->setWindowMode(Cthulhu::Core::WindowMode::ExclusiveFullscreen);
+            KalaHeaders::KalaLog::Log::Print("Switched to Fullscreen Mode", "Game", KalaHeaders::KalaLog::LogType::LOG_INFO);
+        }
+        else
+        {
+            engine->getWindow()->setWindowMode(Cthulhu::Core::WindowMode::Windowed);
+            KalaHeaders::KalaLog::Log::Print("Switched to Windowed Mode", "Game", KalaHeaders::KalaLog::LogType::LOG_INFO);
         }
     }
 
@@ -139,7 +158,7 @@ int main()
     camera = engine.getCamera();
     
     engine.setRaycastCallback(onWeaponRaycast, &engine);
-    engine.setUpdateCallback(onUpdate);
+    engine.setUpdateCallback(onUpdate,&engine);
     engine.run();
     
     Cthulhu::Physics::CharacterController::destroy(playerEntity);

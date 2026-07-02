@@ -27,6 +27,7 @@ namespace Cthulhu
         void run();
         void shutdown();
         Cthulhu::Scene::Camera* getCamera();
+        Cthulhu::Core::Window* getWindow() { return window; }
         Cthulhu::Rendering::Renderer& getRenderer() {return renderer;}
         Cthulhu::Physics::PhysicsWorld& getPhysicsWorld() { return physicsWorld; }
         Cthulhu::Scene::Scene& getScene() { return *scene; }

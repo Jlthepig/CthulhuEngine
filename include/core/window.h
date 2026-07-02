@@ -11,21 +11,26 @@ using std::unique_ptr;
 using std::make_unique;
 
 namespace Cthulhu::Scene {class Camera;}
-
 namespace Cthulhu::Core 
 {
-    // Centralized configuration
+    enum class WindowMode
+    {
+        Windowed,
+        Borderless,
+        ExclusiveFullscreen
+    };
     struct WindowConfig
     {
         glm::vec2 resolution = glm::vec2(1920.0f, 1080.0f);
+        WindowMode initialMode = WindowMode::Windowed;
         bool vSync = false; // Currently hardcoded to 0 (off) in window.cpp
     };
-
     class Window
     {
         public:
         
         static Window* createWindow(const WindowConfig& config, const char* windowTitle);
+        void setWindowMode(WindowMode newMode);
         void setCamera(Cthulhu::Scene::Camera* cam);
         
         GLFWwindow* getWindow() const;
@@ -42,5 +47,13 @@ namespace Cthulhu::Core
         bool firstMouse = true;
         float lastX = windowSize.x/2.0f;
         float lastY = windowSize.y/2.0f;
+
+        WindowMode currentMode = WindowMode::Windowed;
+        int cachedX = 0;
+        int cachedY = 0;
+        int cachedWidth = 0;
+        int cachedHeight = 0;
+
+        GLFWmonitor* getCurrentMonitor() const;
     };
 }
