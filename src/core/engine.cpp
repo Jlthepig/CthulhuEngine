@@ -233,6 +233,7 @@ namespace Cthulhu
                     fpsTimer = 0.0f;
                 }
                 Core::Input::update();    
+                Core::Audio::update();
                 physicsWorld.step(deltaTime);
                 scene->getWorld().progress(deltaTime);
 
