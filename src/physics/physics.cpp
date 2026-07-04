@@ -114,7 +114,7 @@ namespace Cthulhu::Physics
         );
 
         physicsSystem->SetContactListener(contactListener);
-        Log::Print("Initialized Jolt Physics System", "Physics", LogType::LOG_INFO);
+        Log::Print("Initialized Jolt Physics System", "Physics", LogType::LOG_SUCCESS);
     }
 
     void PhysicsWorld::step(float deltaTime)
@@ -261,5 +261,7 @@ namespace Cthulhu::Physics
         physicsSystem = nullptr;
         jobSystem = nullptr;
         tempAllocator = nullptr;
+
+        Log::Print("Jolt Physics System Shutdown Successfully.", "Physics", LogType::LOG_SUCCESS);
     }
 }

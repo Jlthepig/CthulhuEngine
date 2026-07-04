@@ -1,7 +1,6 @@
 #pragma  once
-#include <vector>
-
-struct ma_sound;
+#include <cstdint>
+#include <string>
 namespace Cthulhu::Core
 {
     class Audio
@@ -10,8 +9,9 @@ namespace Cthulhu::Core
         static void init();
         static void update();
         static void shutdown();
-        static void playSound(const char* filePath, float volume = 1.0f);
+        static uint32_t playSound2D(const std::string& filePath, float volume = 1.0f, bool loop = false);
+        static void stopSound(uint32_t soundId);
         private:
-        static std::vector<ma_sound*> activeSounds;
+        static uint32_t nextInstanceId;
     };
 }

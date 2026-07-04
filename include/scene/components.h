@@ -4,13 +4,25 @@
 #include "fwd.hpp"
 #include "glm.hpp"
 #include <cstdint>
+#include <string>
 
 
 namespace Cthulhu::Rendering { struct Model; }
 namespace JPH { class CharacterVirtual; }
 namespace Cthulhu::Scene
 {
+    struct AudioSourceComponent
+    {
+        std::string filePath;
+        float volume = 1.0f;
+        bool loop = false;
 
+        bool playTrigger = false;
+        bool stopTrigger = false;
+
+        bool isPlaying = false;
+        uint32_t soundInstanceId = 0; // tracked by audio system
+    };
     struct CameraComponent
     {
         glm::vec3 front = glm::vec3(0.0f, 0.0f, -1.0f);

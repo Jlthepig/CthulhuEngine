@@ -4,7 +4,10 @@
 #include "glfw3.h"
 #include <cstring>
 #include <vector>
+#include "log_utils.hpp"
 
+using KalaHeaders::KalaLog::Log;
+using KalaHeaders::KalaLog::LogType;
 namespace Cthulhu::Core
 {
     GLFWwindow* Input::windowHandle = nullptr; 
@@ -25,6 +28,7 @@ namespace Cthulhu::Core
         
         glfwSetCursorPosCallback(windowHandle,mouse_callback);
         glfwSetMouseButtonCallback(windowHandle, mouse_button_callback);
+        Log::Print("Input system initialized successfully", "ENGINE", LogType::LOG_SUCCESS);
     }
     
     GLFWwindow* Input::getWindowHandle()

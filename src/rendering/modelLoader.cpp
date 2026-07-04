@@ -276,9 +276,6 @@ namespace Cthulhu::Rendering
                     }
                 );
 
-                Log::Print("Mesh bounds min: " + std::to_string(meshMin.x) + ", " + std::to_string(meshMin.y) + ", " + std::to_string(meshMin.z), "ModelLoader", LogType::LOG_INFO);
-                Log::Print("Mesh bounds max: " + std::to_string(meshMax.x) + ", " + std::to_string(meshMax.y) + ", " + std::to_string(meshMax.z), "ModelLoader", LogType::LOG_INFO);
-
                 attributes.push_back({0,3,currentOffset});
                 currentOffset +=3 *sizeof(float);
 
@@ -402,16 +399,8 @@ namespace Cthulhu::Rendering
                         indexdata[index] = idx;
                     }
                     );
-
-                   
                 }
-
                     unsigned int stride = currentOffset;
-                    Log::Print("Vertex count: " + std::to_string(posAccessor.count), "ModelLoader", LogType::LOG_INFO);
-                    Log::Print("Index count: " + std::to_string(indexdata.size()), "ModelLoader", LogType::LOG_INFO);
-                    Log::Print("Stride: " + std::to_string(stride), "ModelLoader", LogType::LOG_INFO);
-                    Log::Print("Attributes: " + std::to_string(attributes.size()), "ModelLoader", LogType::LOG_INFO);
-
                     Mesh newMesh;
                     newMesh.setup(vertexData, indexdata, attributes, stride);
 
@@ -428,7 +417,6 @@ namespace Cthulhu::Rendering
                     model.meshes.push_back(std::move(newMesh));
             }
         }
-        Log::Print("Meshes: " + std::to_string(model.meshes.size()) + " Textures: " + std::to_string(model.textures.size()), "ModelLoader", LogType::LOG_INFO);
         return model;
     };
 }

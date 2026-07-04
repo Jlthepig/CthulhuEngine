@@ -14,6 +14,8 @@
 #include "imgui_impl_glfw.h"
 #include "imgui_impl_opengl3.h"
 
+using KalaHeaders::KalaLog::Log;
+using KalaHeaders::KalaLog::LogType;
 namespace Cthulhu::Rendering
 {
     void Renderer::setScene(Cthulhu::Scene::Scene* scene)
@@ -172,6 +174,8 @@ namespace Cthulhu::Rendering
         glfwGetFramebufferSize(window, &width, &height);
         glViewport(0, 0, width, height);
         basicShader.use(); // Re-bind basic shader so future uniform calls work
+
+        Log::Print("Renderer Initialized Successfully", "ENGINE", LogType::LOG_SUCCESS);
     }
 
     void Renderer::addPointLight(const PointLight& light)
@@ -457,6 +461,7 @@ namespace Cthulhu::Rendering
         ImGui_ImplOpenGL3_Shutdown();
         ImGui_ImplGlfw_Shutdown();
         ImGui::DestroyContext();
+        Log::Print("Renderer shutdown successfully", "ENGINE", LogType::LOG_SUCCESS);
     }
     
     Scene::AABB Renderer::TransformAABB(const Scene::AABB& localBounds, const glm::mat4& modelMatrix)

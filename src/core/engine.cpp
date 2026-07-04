@@ -44,6 +44,10 @@ namespace Cthulhu
             Log::Print("CANNOT INITIALIZE GLFW", "ENGINE", LogType::LOG_ERROR);
             exit(1);
         }
+        else
+        {
+            Log::Print("GLFW INITIALIZED SUCCESSFULLY", "ENGINE", LogType::LOG_SUCCESS);
+        }
         glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 4);
         glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 0);
         glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);
@@ -58,11 +62,19 @@ namespace Cthulhu
             Log::Print("WINDOW IS NULL", "ENGINE", LogType::LOG_ERROR);
             exit(1);
         }
+        else
+        {
+            Log::Print("WINDOW CREATED SUCCESSFULLY", "ENGINE", LogType::LOG_SUCCESS);
+        }
 
         if (!gladLoadGLLoader((GLADloadproc)glfwGetProcAddress))
         {
             Log::Print("FAILED TO INITIALISE GLAD.", "ENGINE", LogType::LOG_ERROR);
             exit(1);
+        }
+        else
+        {
+            Log::Print("GLAD INITIALISED SUCCESSFULLY", "ENGINE", LogType::LOG_SUCCESS);
         }
 
         Cthulhu::Physics::PhysicsConfig physicsConfig;
@@ -163,6 +175,40 @@ namespace Cthulhu
                     wep.wantsToFire = false;
                 }
             });
+
+            // procces audio system
+            scene->getWorld().system<Scene::AudioSourceComponent>("AudioSystem")
+                .each([]([[maybe_unused]] flecs::entity e, Scene::AudioSourceComponent& audio)
+                {
+                    if (audio.playTrigger)
+                    {
+                        if (audio.isPlaying && audio.soundInstanceId != 0)
+                        {
+                            Core::Audio::stopSound(audio.soundInstanceId);
+                        }
+                        audio.soundInstanceId = Core::Audio::playSound2D(audio.filePath, audio.volume, audio.loop);
+                        audio.isPlaying = (audio.soundInstanceId != 0);
+                        audio.playTrigger = false;
+                    }
+                    if (audio.stopTrigger && audio.isPlaying)
+                    {
+                        Core::Audio::stopSound(audio.soundInstanceId);
+                        audio.isPlaying = false;
+                        audio.soundInstanceId = 0;
+                        audio.stopTrigger = false;
+                    }
+                });
+
+                // safety check if audio entity is destroyed, stop the sound
+                scene->getWorld().observer<Scene::AudioSourceComponent>("AudioCleanupObserver")
+                    .event(flecs::OnRemove)
+                    .each([]([[maybe_unused]] flecs::entity e, Scene::AudioSourceComponent& audio)
+                    {
+                        if (audio.isPlaying && audio.soundInstanceId != 0)
+                        {
+                            Core::Audio::stopSound(audio.soundInstanceId);
+                        }
+                    });
     }
 
     void Engine::loadScene(const std::string &path)

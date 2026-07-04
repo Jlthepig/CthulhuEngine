@@ -66,6 +66,10 @@ namespace Cthulhu::Rendering
             Log::Print("FAILED TO LOAD HDR: " + path, "Skybox", LogType::LOG_ERROR);
             return;
         }
+        else
+        {
+            Log::Print("HDR LOADED SUCCESSFULLY: " + path, "Skybox", LogType::LOG_SUCCESS);
+        }
         
         glGenTextures(1, &hdrTexture);
         glBindTexture(GL_TEXTURE_2D, hdrTexture);

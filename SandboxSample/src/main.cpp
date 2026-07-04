@@ -128,7 +128,7 @@ static void onWeaponRaycast(void* context, const Cthulhu::Physics::RaycastHitInf
 
     engine->getRenderer().addDebugLine(safeStart, hit.position, lineColor,1.0f);
     engine->getCamera()->addRecoil(1.2f, 0.2f);
-    Cthulhu::Core::Audio::playSound("assets/audio/gunshot.wav", 0.5f);
+    Cthulhu::Core::Audio::playSound2D("assets/audio/gunshot.wav", 0.5f,false);
 }
 
 int main()

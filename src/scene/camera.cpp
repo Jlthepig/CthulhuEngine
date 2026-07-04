@@ -32,6 +32,7 @@ namespace Cthulhu::Scene
 
         cameraContainer.push_back(std::move(camera));
         return camera_ptr;
+        Log::Print("CAMERA INITIALIZED SUCCESSFULLY", "ENGINE", LogType::LOG_SUCCESS);
     }
 
 
