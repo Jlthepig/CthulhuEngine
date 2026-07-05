@@ -1,6 +1,7 @@
 #pragma once
 
 #include "frustum.h"
+#include "material.h"
 #include "shader.h"
 #include "grid.h"
 #include "light.h"
@@ -10,7 +11,7 @@
 #include "skybox.h"
 #include "shadowMap.h"
 #include "pointShadowMap.h"
-#include "sceneUniforms.h"
+#include "texture.h"
 #include <vector>
 #include <string>
 
@@ -109,5 +110,8 @@ namespace Cthulhu::Rendering
         size_t totalTriangles = 0;
 
         unsigned int sceneUBO = 0;
+
+        void bindMaterial(const Material& material, const std::vector<Texture>& modelTextures);
+        void bindDefaultMaterial();
     };
 }

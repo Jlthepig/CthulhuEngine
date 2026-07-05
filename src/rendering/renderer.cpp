@@ -7,6 +7,7 @@
 #include "gtc/type_ptr.hpp"
 #include "fwd.hpp"
 #include "mesh.h"
+#include "sceneUniforms.h"
 #include "shader.h"
 #include "shadowMap.h"
 #include "log_utils.hpp"
@@ -187,7 +188,59 @@ namespace Cthulhu::Rendering
     {
         pointLights.push_back(light);
     }
-    
+
+    void Renderer::bindDefaultMaterial()
+    {
+        basicShader.setVec4("uBaseColorFactor", glm::vec4(1.0f));
+        basicShader.setFloat("uMetallicFactor", 0.0f);
+        basicShader.setFloat("uRoughnessFactor", 1.0f);
+        glActiveTexture(GL_TEXTURE0);
+        glBindTexture(GL_TEXTURE_2D, defaultDataTexture);
+        glActiveTexture(GL_TEXTURE6);
+        glBindTexture(GL_TEXTURE_2D, defaultDataTexture);
+        glActiveTexture(GL_TEXTURE7);
+        glBindTexture(GL_TEXTURE_2D, defaultNormalTexture);
+
+    }
+
+    void Renderer::bindMaterial(const Material& material, const std::vector<Texture>& modelTextures)
+    {
+        basicShader.setVec4("uBaseColorFactor", material.baseColorFactor);
+        basicShader.setFloat("uMetallicFactor", material.metallicFactor);
+        basicShader.setFloat("uRoughnessFactor", material.roughnessFactor);
+
+        glActiveTexture(GL_TEXTURE0); // base colour
+        if (material.baseColorTextureIndex >= 0 && material.baseColorTextureIndex < static_cast<int>(modelTextures.size()))
+        {
+            glBindTexture(GL_TEXTURE_2D, modelTextures[material.baseColorTextureIndex].getID());
+        }
+        else
+        {
+            glBindTexture(GL_TEXTURE_2D, defaultDataTexture);
+        }
+
+        glActiveTexture(GL_TEXTURE6); // metallic roughness
+        if (material.metallicRoughnessTextureIndex >= 0 && material.metallicRoughnessTextureIndex < static_cast<int>(modelTextures.size()))
+        {
+            glBindTexture(GL_TEXTURE_2D, modelTextures[material.metallicRoughnessTextureIndex].getID());
+        }
+        else
+        {
+            glBindTexture(GL_TEXTURE_2D, defaultDataTexture);
+        }
+
+        glActiveTexture(GL_TEXTURE7); // normal map
+        if (material.normalTextureIndex >= 0 && material.normalTextureIndex < static_cast<int>(modelTextures.size()))
+        {
+            glBindTexture(GL_TEXTURE_2D, modelTextures[material.normalTextureIndex].getID());
+        }
+        else
+        {
+            glBindTexture(GL_TEXTURE_2D, defaultNormalTexture);
+        }
+
+    }
+
     void Renderer::render(float fps, float deltaTime, const std::vector<Renderable>& renderables)
     {
         int width, height;
@@ -324,58 +377,15 @@ namespace Cthulhu::Rendering
             for (size_t meshIdx = 0; meshIdx < renderable.model->meshes.size(); meshIdx++)
             {
                 auto& modelMesh = renderable.model->meshes[meshIdx];
-                glm::vec4 baseColorFactor(1.0f);
 
                 if (modelMesh.materialIndex >= 0 && modelMesh.materialIndex < static_cast<int>(renderable.model->materials.size()))
                 {
-                    auto& material = renderable.model->materials[modelMesh.materialIndex];
-                    baseColorFactor = material.baseColorFactor;
-
-                    basicShader.setFloat("uMetallicFactor", material.metallicFactor);
-                    basicShader.setFloat("uRoughnessFactor", material.roughnessFactor);
-
-                    if (material.baseColorTextureIndex >= 0 &&
-                        material.baseColorTextureIndex < static_cast<int>(renderable.model->textures.size()))
-                    {
-                        glActiveTexture(GL_TEXTURE0);
-                        glBindTexture(GL_TEXTURE_2D, renderable.model->textures[material.baseColorTextureIndex].getID());
-                    }
-
-                    if (material.metallicRoughnessTextureIndex >= 0 &&
-                        material.metallicRoughnessTextureIndex < static_cast<int>(renderable.model->textures.size()))
-                    {
-                        glActiveTexture(GL_TEXTURE6);
-                        glBindTexture(GL_TEXTURE_2D, renderable.model->textures[material.metallicRoughnessTextureIndex].getID());
-                    }
-                    else
-                    {
-                        glActiveTexture(GL_TEXTURE6);
-                        glBindTexture(GL_TEXTURE_2D, defaultDataTexture);
-                    }
-                    
-                    if (material.normalTextureIndex >= 0 &&
-                        material.normalTextureIndex < static_cast<int>(renderable.model->textures.size()))
-                    {
-                        glActiveTexture(GL_TEXTURE7);
-                        glBindTexture(GL_TEXTURE_2D, renderable.model->textures[material.normalTextureIndex].getID());
-                    }
-                    else
-                    {
-                        glActiveTexture(GL_TEXTURE7);
-                        glBindTexture(GL_TEXTURE_2D, defaultNormalTexture);
-                    }
+                    bindMaterial(renderable.model->materials[modelMesh.materialIndex], renderable.model->textures);
                 }
                 else
                 {
-                    basicShader.setFloat("uMetallicFactor", 0.0f);
-                    basicShader.setFloat("uRoughnessFactor", 1.0f);
-                    glActiveTexture(GL_TEXTURE6);
-                    glBindTexture(GL_TEXTURE_2D, defaultDataTexture);
-                    glActiveTexture(GL_TEXTURE7);
-                    glBindTexture(GL_TEXTURE_2D, defaultNormalTexture);
+                    bindDefaultMaterial();
                 }
-
-                basicShader.setVec4("uBaseColorFactor", baseColorFactor);
                 totalTriangles += modelMesh.getIndexCount() / 3;
                 modelMesh.draw();
             }
