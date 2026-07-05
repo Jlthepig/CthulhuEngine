@@ -1,4 +1,4 @@
-#version 400 core
+#version 430 core
 out vec4 FragColor;
 
 in vec2 TexCoord;
@@ -6,26 +6,7 @@ in vec3 FragPos;
 in mat3 TBN;
 in vec4 FragPosLightSpace;
 
-uniform sampler2D uTexture;
-uniform sampler2D uMetallicRoughnessTexture;
-uniform sampler2D uNormalMap;
-uniform sampler2D uShadowMap;
-uniform samplerCube uIrradianceMap;
-uniform sampler2D uBRDFLUT;
-uniform samplerCube uPrefilterMap;
-
-uniform vec3 uLightDir;
-uniform vec3 uLightColor;
-uniform float uLightIntensity;
-uniform vec4 uBaseColorFactor;
-uniform float uMetallicFactor;
-uniform float uRoughnessFactor;
-
-uniform vec3 u_FogColor;
-uniform float u_FogDensity;
-uniform float u_FogHeightFalloff;
-
-
+// SCENE UBO 
 struct PointLight {
     vec3 position;
     vec3 color;
@@ -35,20 +16,48 @@ struct PointLight {
     float quadratic;
 };
 
-#define MAX_POINT_LIGHTS 8
-uniform PointLight uPointLights[MAX_POINT_LIGHTS];
-uniform int uPointLightCount;
+layout(std140, binding = 0) uniform SceneData {
+    mat4 view;
+    mat4 projection;
+    vec3 viewPos;
+    
+    vec3 lightDir;
+    float lightIntensity;
+    float fogDensity;
+    float fogHeightFalloff;
+    int pointLightCount;
+    
+    vec3 lightColor;
+    vec3 fogColor;
+    int pointShadowCount;
+    float pointShadowFarPlane;
+    int pad1;
+    int pad2;
+    
+    PointLight pointLights[8];
+};
+
+// MATERIAL UNIFORMS
+uniform sampler2D uTexture;
+uniform sampler2D uMetallicRoughnessTexture;
+uniform sampler2D uNormalMap;
+uniform sampler2D uShadowMap;
+
+uniform samplerCube uIrradianceMap;
+uniform sampler2D uBRDFLUT;
+uniform samplerCube uPrefilterMap;
+
+uniform vec4 uBaseColorFactor;
+uniform float uMetallicFactor;
+uniform float uRoughnessFactor;
 
 #define MAX_POINT_SHADOW_CASTERS 4
 uniform samplerCube uPointShadowMaps[MAX_POINT_SHADOW_CASTERS];
-uniform float uPointShadowFarPlane;
-uniform int uPointShadowCount;
-
-uniform vec3 uViewPos;
 
 const float PI = 3.14159265359;
 
-// PBR Functions
+// PBR and Shadow Helper Functions
+
 float DistributionGGX(vec3 N, vec3 H, float roughness) {
     float a = roughness * roughness;
     float a2 = a * a;
@@ -60,7 +69,7 @@ float DistributionGGX(vec3 N, vec3 H, float roughness) {
 
 float GeometrySchlickGGX(float NdotV, float roughness) {
     float r = (roughness + 1.0);
-    float k = (r * r) / 8.0; // Direct lighting remap
+    float k = (r * r) / 8.0; 
     return NdotV / (NdotV * (1.0 - k) + k + 0.0000001);
 }
 
@@ -78,11 +87,11 @@ vec3 fresnelSchlickRoughness(float cosTheta, vec3 F0, float roughness) {
     return F0 + (max(vec3(1.0 - roughness), F0) - F0) * pow(clamp(1.0 - cosTheta, 0.0, 1.0), 5.0);
 }
 
-// Shadow Functions
 float calculateShadow(vec4 fragPosLightSpace, vec3 norm, vec3 lightDir) {
     vec3 projCoords = fragPosLightSpace.xyz / fragPosLightSpace.w;
     projCoords = projCoords * 0.5 + 0.5;
     if (projCoords.z > 1.0) return 0.0;
+    
     float shadow = 0.0;
     vec2 texelSize = 1.0 / textureSize(uShadowMap, 0);
     for (int x = -1; x <= 1; x++) {
@@ -95,13 +104,15 @@ float calculateShadow(vec4 fragPosLightSpace, vec3 norm, vec3 lightDir) {
     return shadow / 9.0;
 }
 
+// Main logic
 void main() {
     // Normal Mapping Calculation
     vec3 normalMap = texture(uNormalMap, TexCoord).rgb;
-    normalMap = normalMap * 2.0 - 1.0; // Remap from [0,1] to [-1,1]
-    vec3 N = normalize(TBN * normalMap); // Transform to World Space
+    normalMap = normalMap * 2.0 - 1.0; 
+    vec3 N = normalize(TBN * normalMap); 
 
-    vec3 V = normalize(uViewPos - FragPos);
+    // Pulled directly from UBO
+    vec3 V = normalize(viewPos - FragPos);
 
     // 1. Material Properties
     vec3 albedo = texture(uTexture, TexCoord).rgb * uBaseColorFactor.rgb;
@@ -117,11 +128,11 @@ void main() {
 
     // 3. Directional Light
     {
-        vec3 L = normalize(-uLightDir);
+        vec3 L = normalize(-lightDir);
         vec3 H = normalize(V + L);
         
         float shadow = calculateShadow(FragPosLightSpace, N, L);
-        vec3 radiance = uLightColor * uLightIntensity * (1.0 - shadow);
+        vec3 radiance = lightColor * lightIntensity * (1.0 - shadow);
 
         float NDF = DistributionGGX(N, H, roughness);
         float G = GeometrySmith(N, V, L, roughness);
@@ -140,23 +151,23 @@ void main() {
     }
 
     // 4. Point Lights
-    for (int i = 0; i < uPointLightCount; i++) {
-        vec3 L = normalize(uPointLights[i].position - FragPos);
+    for (int i = 0; i < pointLightCount; i++) {
+        vec3 L = normalize(pointLights[i].position - FragPos);
         vec3 H = normalize(V + L);
         
-        float dist = length(uPointLights[i].position - FragPos);
-        float attenuation = 1.0 / (uPointLights[i].constant + uPointLights[i].linear * dist + uPointLights[i].quadratic * (dist * dist));
+        float dist = length(pointLights[i].position - FragPos);
+        float attenuation = 1.0 / (pointLights[i].constant + pointLights[i].linear * dist + pointLights[i].quadratic * (dist * dist));
         
         float pshadow = 0.0;
-        if (i < uPointShadowCount) {
-            vec3 fragToLight = FragPos - uPointLights[i].position;
+        if (i < pointShadowCount) {
+            vec3 fragToLight = FragPos - pointLights[i].position;
             float currentDepth = length(fragToLight);
-            float closestDepth = texture(uPointShadowMaps[i], normalize(fragToLight)).r * uPointShadowFarPlane;
+            float closestDepth = texture(uPointShadowMaps[i], normalize(fragToLight)).r * pointShadowFarPlane;
             float bias = currentDepth * 0.01;
             pshadow = currentDepth - bias > closestDepth ? 1.0 : 0.0;
         }
 
-        vec3 radiance = uPointLights[i].color * uPointLights[i].intensity * attenuation * (1.0 - pshadow);
+        vec3 radiance = pointLights[i].color * pointLights[i].intensity * attenuation * (1.0 - pshadow);
 
         float NDF = DistributionGGX(N, H, roughness);
         float G = GeometrySmith(N, V, L, roughness);
@@ -174,40 +185,36 @@ void main() {
         Lo += (kD * albedo / PI + specular) * radiance * NdotL;
     }
 
-        // 5. Ambient (Diffuse IBL)
-        vec3 F = fresnelSchlickRoughness(max(dot(N, V), 0.0), F0, roughness);
-        vec3 kS = F;
-        vec3 kD = 1.0 - kS;
-        kD *= 1.0 - metallic;
-        
-        vec3 irradiance = texture(uIrradianceMap, N).rgb;
-        vec3 diffuse = irradiance * albedo;
+    // 5. Ambient (Diffuse IBL)
+    vec3 F = fresnelSchlickRoughness(max(dot(N, V), 0.0), F0, roughness);
+    vec3 kS = F;
+    vec3 kD = 1.0 - kS;
+    kD *= 1.0 - metallic;
+    
+    vec3 irradiance = texture(uIrradianceMap, N).rgb;
+    vec3 diffuse = irradiance * albedo;
 
-        const float MAX_REFLECTION_LOD = 4.0; // Assuming 5 mip levels (0, 1, 2, 3, 4)
-        vec3 R = reflect(-V, N);
-        vec3 prefilteredColor = textureLod(uPrefilterMap, R, roughness * MAX_REFLECTION_LOD).rgb; 
-        
-        float fogDistance = length(uViewPos - FragPos);
-        
-        float distanceFog = 1.0 - exp(-u_FogDensity * fogDistance);
+    const float MAX_REFLECTION_LOD = 4.0; 
+    vec3 R = reflect(-V, N);
+    vec3 prefilteredColor = textureLod(uPrefilterMap, R, roughness * MAX_REFLECTION_LOD).rgb; 
+    
+    // Fog Calculation
+    float fogDistance = length(viewPos - FragPos);
+    float distanceFog = 1.0 - exp(-fogDensity * fogDistance);
+    float heightFog = exp(-max(FragPos.y, 0.0) * fogHeightFalloff);
+    float fogFactor = clamp(distanceFog * heightFog, 0.0, 1.0);
 
-        float heightFog = exp(-max(FragPos.y,0.0) * u_FogHeightFalloff);
+    vec2 brdf = texture(uBRDFLUT, vec2(max(dot(N, V), 0.0), roughness)).rg;
+    vec3 specular = prefilteredColor * (F * brdf.x + brdf.y);
 
-        float fogFactor = clamp(distanceFog * heightFog,0.0,1.0);
+    vec3 ambient = (kD * diffuse + specular); 
+    vec3 color = ambient + Lo;
 
-        
+    color = mix(color, fogColor, fogFactor);
 
-        vec2 brdf = texture(uBRDFLUT, vec2(max(dot(N, V), 0.0), roughness)).rg;
-        vec3 specular = prefilteredColor * (F * brdf.x + brdf.y);
+    // Tone mapping and Gamma correction
+    color = color / (color + vec3(1.0));
+    color = pow(color, vec3(1.0 / 2.2));
 
-        vec3 ambient = (kD * diffuse + specular); 
-        vec3 color = ambient + Lo;
-
-        color = mix(color,u_FogColor,fogFactor);
-
-        color = color / (color + vec3(1.0));
-
-        color = pow(color, vec3(1.0 / 2.2));
-
-        FragColor = vec4(color, 1.0);
+    FragColor = vec4(color, 1.0);
 }

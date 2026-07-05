@@ -1,4 +1,4 @@
-#version 400 core
+#version 430 core
 layout (location = 0) in vec3 aPos;
 layout (location = 1) in vec3 aNormal;
 layout (location = 2) in vec2 aTexCoord;
@@ -9,9 +9,37 @@ out vec3 FragPos;
 out mat3 TBN;
 out vec4 FragPosLightSpace;
 
+struct PointLight {
+    vec3 position;
+    vec3 color;
+    float intensity;
+    float constant;
+    float linear;
+    float quadratic;
+};
+
+layout(std140, binding = 0) uniform SceneData {
+    mat4 view;
+    mat4 projection;
+    vec3 viewPos;
+    
+    vec3 lightDir;
+    float lightIntensity;
+    float fogDensity;
+    float fogHeightFalloff;
+    int pointLightCount;
+    
+    vec3 lightColor;
+    vec3 fogColor;
+    int pointShadowCount;
+    float pointShadowFarPlane;
+    int pad1;
+    int pad2;
+    
+    PointLight pointLights[8];
+};
+
 uniform mat4 model;
-uniform mat4 view;
-uniform mat4 projection;
 uniform mat4 lightSpaceMatrix;
 uniform mat4 uNormalMatrix;
 

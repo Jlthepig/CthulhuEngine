@@ -30,7 +30,7 @@ namespace Cthulhu::Rendering
         IMGUI_CHECKVERSION();
         ImGui::CreateContext();
         ImGui_ImplGlfw_InitForOpenGL(window, true);
-        ImGui_ImplOpenGL3_Init("#version 400"); // Updated to match GL 4.0
+        ImGui_ImplOpenGL3_Init("#version 430"); // Updated to match GL 4.3
 
         this->camera = camera;
         this->window = window;
@@ -175,6 +175,11 @@ namespace Cthulhu::Rendering
         glViewport(0, 0, width, height);
         basicShader.use(); // Re-bind basic shader so future uniform calls work
 
+        glGenBuffers(1, &sceneUBO);
+        glBindBuffer(GL_UNIFORM_BUFFER, sceneUBO);
+        glBufferData(GL_UNIFORM_BUFFER, sizeof(SceneUniforms), nullptr, GL_DYNAMIC_DRAW);
+        glBindBufferBase(GL_UNIFORM_BUFFER, 0, sceneUBO);
+        glBindBuffer(GL_UNIFORM_BUFFER, 0);
         Log::Print("Renderer Initialized Successfully", "ENGINE", LogType::LOG_SUCCESS);
     }
 
@@ -236,37 +241,43 @@ namespace Cthulhu::Rendering
             }
             pointShadowMaps[i].endPass();
         }
-
         // 2. main pass
         glViewport(0, 0, width, height);
         glClearColor(config.clearColor.r, config.clearColor.g, config.clearColor.b, config.clearColor.a);
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
-
         basicShader.use();
-        basicShader.setInt("uPointShadowCount", shadowCasters);
-        basicShader.setFloat("uPointShadowFarPlane", config.farPlane);
-        basicShader.setVec3("uLightDir", sunLight.direction);
-        basicShader.setVec3("uLightColor", sunLight.color);
-        basicShader.setFloat("uLightIntensity", sunLight.intensity);
-        basicShader.setInt("uPointLightCount", (int)pointLights.size());
-        for (int i = 0; i < (int)pointLights.size(); i++)
+
+        SceneUniforms uboData;
+        uboData.view = view;
+        uboData.projection = projection;
+        uboData.viewPos = camera->getPosition();
+
+        uboData.lightDir = sunLight.direction;
+        uboData.lightColor = sunLight.color;
+        uboData.lightIntensity = sunLight.intensity;
+
+        uboData.fogColor = config.fogColor;
+        uboData.fogDensity = config.fogDensity;
+        uboData.fogHeightFalloff = config.fogHeightFalloff;
+
+        uboData.pointLightCount = (int)pointLights.size();
+        uboData.pointShadowCount = shadowCasters;
+        uboData.pointShadowfarPlane = config.farPlane;
+
+        for (int i = 0; i < uboData.pointLightCount; i++)
         {
-            std::string base = "uPointLights[" + std::to_string(i) + "].";
-            basicShader.setVec3(base + "position", pointLights[i].position);
-            basicShader.setVec3(base + "color", pointLights[i].color);
-            basicShader.setFloat(base + "intensity", pointLights[i].intensity);
-            basicShader.setFloat(base + "constant", pointLights[i].constant);
-            basicShader.setFloat(base + "linear", pointLights[i].linear);
-            basicShader.setFloat(base + "quadratic", pointLights[i].quadratic);
+            uboData.pointLights[i].position = pointLights[i].position;
+            uboData.pointLights[i].color = pointLights[i].color;
+            uboData.pointLights[i].intensity = pointLights[i].intensity;
+            uboData.pointLights[i].constant = pointLights[i].constant;
+            uboData.pointLights[i].linear = pointLights[i].linear;
+            uboData.pointLights[i].quadratic = pointLights[i].quadratic;
         }
-        basicShader.setVec3("uViewPos", camera->getPosition());
-        basicShader.setMat4("projection", projection);
-        basicShader.setMat4("view", view);
+        // upload to gpu in one call
+        glBindBuffer(GL_UNIFORM_BUFFER, sceneUBO);
+        glBufferSubData(GL_UNIFORM_BUFFER, 0, sizeof(SceneUniforms), &uboData);
+        glBindBuffer(GL_UNIFORM_BUFFER, 0);
         basicShader.setMat4("lightSpaceMatrix", shadowMap.getLightSpaceMatrix());
-        
-        basicShader.setVec3("u_FogColor", config.fogColor);
-        basicShader.setFloat("u_FogDensity", config.fogDensity);
-        basicShader.setFloat("u_FogHeightFalloff", config.fogHeightFalloff);
 
         // bind all textures in order: 0=diffuse(per mesh), 1=shadow, 2+=cubemaps
         glActiveTexture(GL_TEXTURE1);
@@ -374,9 +385,6 @@ namespace Cthulhu::Rendering
         glEnable(GL_BLEND);
         glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
         gridShader.use();
-        gridShader.setVec3("cameraPos", camera->getPosition());
-        gridShader.setMat4("projection", projection);
-        gridShader.setMat4("view", view);
         glm::mat4 gridModel = glm::mat4(1.0f);
         gridShader.setMat4("model", gridModel);
         grid.draw();
@@ -416,7 +424,8 @@ namespace Cthulhu::Rendering
 
             glBindVertexArray(lineVAO);
             glBindBuffer(GL_ARRAY_BUFFER,lineVBO);
-            glBufferData(GL_ARRAY_BUFFER, debugLines.size() * sizeof(DebugVertex), debugLines.data(), GL_DYNAMIC_DRAW);
+            glBufferData(GL_ARRAY_BUFFER, debugLines.size() * sizeof(DebugVertex), nullptr, GL_DYNAMIC_DRAW);
+            glBufferSubData(GL_ARRAY_BUFFER, 0, debugLines.size() * sizeof(DebugVertex), debugLines.data());
 
             glLineWidth(3.0f);
             glDrawArrays(GL_LINES,0,debugLines.size());

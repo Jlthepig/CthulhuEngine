@@ -1,17 +1,27 @@
-#version 400 core
+#version 430 core
 out vec4 FragColor;
 
 in vec3 fragPos;
 
-uniform vec3 cameraPos;
+// Pull camera position directly from the global Scene UBO
+layout(std140, binding = 0) uniform SceneData {
+    mat4 view;
+    mat4 projection;
+    vec3 viewPos;
+    
+    // Remaining UBO members omitted since grid only needs viewPos
+    // The GPU still reads the full block, but we only declare what we use
+};
+
 uniform float fadeDistance = 40.0;
+
 void main()
 {
-    float dist = distance(fragPos, cameraPos);
+    float dist = distance(fragPos, viewPos);
 
     float alpha = 1.0 - smoothstep(fadeDistance * 0.5, fadeDistance, dist);
 
-    float heightFade = 1.0 - smoothstep(5.0, 20.0, abs(fragPos.y - cameraPos.y));
+    float heightFade = 1.0 - smoothstep(5.0, 20.0, abs(fragPos.y - viewPos.y));
     alpha *= heightFade;
     
     FragColor = vec4(1.0, 1.0, 1.0, alpha);

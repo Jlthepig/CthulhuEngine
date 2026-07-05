@@ -1,16 +1,19 @@
-#version 400 core
+#version 430 core
 layout (location = 0) in vec3 aPos;
 
 out vec3 localPos;
 
-uniform mat4 projection;
-uniform mat4 view;
+// Pull camera matrices directly from the global Scene UBO
+layout(std140, binding = 0) uniform SceneData {
+    mat4 view;
+    mat4 projection;
+};
 
 void main()
 {
     localPos = aPos;
-    // remove translation from view matrix
+    // Remove translation from view matrix so skybox follows camera
     vec4 clipPos = projection * mat4(mat3(view)) * vec4(aPos, 1.0);
-    // force depth to 1.0 so skybox is always behind everything
+    // Force depth to 1.0 so skybox is always behind everything
     gl_Position = clipPos.xyww;
 }

@@ -10,6 +10,7 @@
 #include "skybox.h"
 #include "shadowMap.h"
 #include "pointShadowMap.h"
+#include "sceneUniforms.h"
 #include <vector>
 #include <string>
 
@@ -106,5 +107,7 @@ namespace Cthulhu::Rendering
         GLuint brdfLUTTexture = 0;
         unsigned int lineVAO = 0, lineVBO = 0;
         size_t totalTriangles = 0;
+
+        unsigned int sceneUBO = 0;
     };
 }
