@@ -3,9 +3,6 @@
 compilerlauncher: ccache
 compiler: clang-cl
 standard: c++20 
-
-
-
 binarytype: static
 binaryname: Cthulhu
 sources: "src"

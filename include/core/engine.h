@@ -31,6 +31,10 @@ namespace Cthulhu
         Cthulhu::Rendering::Renderer& getRenderer() {return renderer;}
         Cthulhu::Physics::PhysicsWorld& getPhysicsWorld() { return physicsWorld; }
         Cthulhu::Scene::Scene& getScene() { return *scene; }
+        float getDeltaTime() const { return deltaTime; }
+        void triggerRaycastCallback(const Physics::RaycastHitInfo& hit) {
+            if (raycastCallback) {raycastCallback(raycastContext, hit);}
+        }
 
     private:
         Rendering::Renderer renderer;
