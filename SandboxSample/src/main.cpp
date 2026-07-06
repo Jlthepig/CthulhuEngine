@@ -35,10 +35,11 @@ void onUpdate([[maybe_unused]] void* context, float deltaTime)
 
     if (Cthulhu::Core::Input::isKeyPressed(GLFW_KEY_F1))
     {
-        inEditorMode = !inEditorMode;
+        bool newMode = !engine->isInEditorMode();
+        engine->setEditorMode(newMode);
         KalaHeaders::KalaLog::Log::Print(inEditorMode ? "Switched to Editor Mode" : "Switched to Game Mode", "Game", KalaHeaders::KalaLog::LogType::LOG_INFO);
 
-        if (!inEditorMode)
+        if (!newMode)
         {
             glm::vec3 camPos = camera->getPosition();
             glm:: vec3 feetPos = camPos - glm::vec3(0, GameConfig::CAMERA_EYE_HEIGHT_OFFSET, 0);

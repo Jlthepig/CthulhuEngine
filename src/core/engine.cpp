@@ -1,22 +1,25 @@
-
 #include "pch.h"
+
 #include "components.h"
 #include "sceneLoader.h"
 #include "fwd.hpp"
-#include <cstdlib>
+#include "trigonometric.hpp"
 
- #define STB_IMAGE_IMPLEMENTATION
+#include <>
+
+#define STB_IMAGE_IMPLEMENTATION
 #include "stb_image.h"
+
 #include "glad.h"
 #include "glfw3.h"
 #include "log_utils.hpp"
 
 #include "Jolt/Jolt.h"
-#include "Jolt/Physics/Character/CharacterVirtual.h"
+#include "Jolt/Core/TempAllocator.h"
 #include "Jolt/Physics/PhysicsSystem.h"
+#include "Jolt/Physics/Character/CharacterVirtual.h"
 #include "Jolt/Physics/Collision/BroadPhase/BroadPhaseLayer.h"
 #include "Jolt/Physics/Collision/ObjectLayer.h"
-#include "Jolt/Core/TempAllocator.h"
 
 #include "engine.h"
 #include "camera.h"
@@ -33,188 +36,288 @@ using KalaHeaders::KalaLog::Log;
 using KalaHeaders::KalaLog::LogType;
 
 // Static callback to bridge C-style function pointer to Engine class
-static void physicsFixedUpdateCallback(void* context, float fixedDt) {
+static void physicsFixedUpdateCallback(void* context, float fixedDt)
+{
     static_cast<Cthulhu::Engine*>(context)->processFixedUpdate(fixedDt);
 }
+
 namespace Cthulhu
 {
-    void Engine::init(const char* title, glm::vec2 resolution)
+
+void Engine::init(const char* title, glm::vec2 resolution)
+{
+    if (!glfwInit())
     {
-        if (!glfwInit()) 
-        {
-            Log::Print("CANNOT INITIALIZE GLFW", "ENGINE", LogType::LOG_ERROR);
-            exit(1);
-        }
-        else
-        {
-            Log::Print("GLFW INITIALIZED SUCCESSFULLY", "ENGINE", LogType::LOG_SUCCESS);
-        }
-        glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 4);
-        glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 3);
-        glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);
-
-        Cthulhu::Core::WindowConfig windowConfig;
-        windowConfig.resolution = resolution;
-        window = Cthulhu::Core::Window::createWindow(windowConfig, title);
-        
-        glfwWindow = window->getWindow();
-        if (glfwWindow == NULL)
-        {
-            Log::Print("WINDOW IS NULL", "ENGINE", LogType::LOG_ERROR);
-            exit(1);
-        }
-        else
-        {
-            Log::Print("WINDOW CREATED SUCCESSFULLY", "ENGINE", LogType::LOG_SUCCESS);
-        }
-
-        if (!gladLoadGLLoader((GLADloadproc)glfwGetProcAddress))
-        {
-            Log::Print("FAILED TO INITIALISE GLAD.", "ENGINE", LogType::LOG_ERROR);
-            exit(1);
-        }
-        else
-        {
-            Log::Print("GLAD INITIALISED SUCCESSFULLY", "ENGINE", LogType::LOG_SUCCESS);
-        }
-
-        Cthulhu::Physics::PhysicsConfig physicsConfig;
-        physicsWorld.init(physicsConfig);
-        physicsWorld.createGroundPlane();
-        scene = std::make_unique<Cthulhu::Scene::Scene>();
-        camera = Scene::Camera::init();
-        Core::Input::init(glfwWindow, resolution);
-        Core::Audio::init();
-        Cthulhu::Rendering::RenderConfig renderConfig;
-        renderer.init(glfwWindow, camera, renderConfig);
-
-        int fbW, fbH;
-        glfwGetFramebufferSize(glfwWindow, &fbW, &fbH);
-        glViewport(0, 0, fbW, fbH);
-        
-        glfwSetInputMode(glfwWindow, GLFW_CURSOR, GLFW_CURSOR_DISABLED);
-
-        Scene::RegisterCoreSystems(scene->getWorld(), this);
-
-        physicsWorld.onFixedUpdate = physicsFixedUpdateCallback;
-        physicsWorld.onFixedUpdateContext = this;
+        Log::Print("CANNOT INITIALIZE GLFW", "ENGINE", LogType::LOG_ERROR);
+        exit(1);
+    }
+    else
+    {
+        Log::Print("GLFW INITIALIZED SUCCESSFULLY", "ENGINE", LogType::LOG_SUCCESS);
     }
 
-    void Engine::loadScene(const std::string &path)
-    {
-        sceneData = Scene::SceneLoader::load(path, *scene, physicsWorld);
+    glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 4);
+    glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 3);
+    glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);
 
-        renderer.setDirectionalLight(sceneData.directionalLight);
-        for (const auto& light : sceneData.pointLights)
-        {
-            renderer.addPointLight(light);
-        }
-    
-        renderer.setScene(scene.get());
+    Cthulhu::Core::WindowConfig windowConfig;
+    windowConfig.resolution = resolution;
+
+    window = Cthulhu::Core::Window::createWindow(windowConfig, title);
+
+    glfwWindow = window->getWindow();
+
+    if (glfwWindow == NULL)
+    {
+        Log::Print("WINDOW IS NULL", "ENGINE", LogType::LOG_ERROR);
+        exit(1);
+    }
+    else
+    {
+        Log::Print("WINDOW CREATED SUCCESSFULLY", "ENGINE", LogType::LOG_SUCCESS);
     }
 
-    void Engine::processFixedUpdate(float fixedDt)
+    if (!gladLoadGLLoader((GLADloadproc)glfwGetProcAddress))
     {
-            scene->getWorld().each([fixedDt, this]([[maybe_unused]] flecs::entity e, Scene::CharacterControllerComponent& cc) {
-            if (!cc.character) return;
+        Log::Print("FAILED TO INITIALISE GLAD.", "ENGINE", LogType::LOG_ERROR);
+        exit(1);
+    }
+    else
+    {
+        Log::Print("GLAD INITIALISED SUCCESSFULLY", "ENGINE", LogType::LOG_SUCCESS);
+    }
+
+    Cthulhu::Physics::PhysicsConfig physicsConfig;
+    physicsWorld.init(physicsConfig);
+    physicsWorld.createGroundPlane();
+
+    scene = std::make_unique<Cthulhu::Scene::Scene>();
+
+    Core::Input::init(glfwWindow, resolution);
+    Core::Audio::init();
+
+    Cthulhu::Rendering::RenderConfig renderConfig;
+    renderer.init(glfwWindow, camera, renderConfig);
+
+    camera = Scene::Camera::init();
+
+    int fbW, fbH;
+    glfwGetFramebufferSize(glfwWindow, &fbW, &fbH);
+
+    float aspect = (float)fbW / (float)fbH;
+
+    editorCamera = new Editor::EditorCamera(
+        glm::radians(60.0f),
+        aspect,
+        0.1f,
+        1000.0f
+    );
+
+    glViewport(0, 0, fbW, fbH);
+
+    renderer.setEditorCamera(editorCamera);
+    renderer.setEditorMode(inEditorMode);
+
+    Scene::RegisterCoreSystems(scene->getWorld(), this);
+
+    physicsWorld.onFixedUpdate = physicsFixedUpdateCallback;
+    physicsWorld.onFixedUpdateContext = this;
+}
+
+void Engine::loadScene(const std::string& path)
+{
+    sceneData = Scene::SceneLoader::load(path, *scene, physicsWorld);
+
+    renderer.setDirectionalLight(sceneData.directionalLight);
+
+    for (const auto& light : sceneData.pointLights)
+    {
+        renderer.addPointLight(light);
+    }
+
+    renderer.setScene(scene.get());
+}
+
+void Engine::processFixedUpdate(float fixedDt)
+{
+    scene->getWorld().each(
+        [fixedDt, this](
+            [[maybe_unused]] flecs::entity e,
+            Scene::CharacterControllerComponent& cc)
+        {
+            if (!cc.character)
+                return;
 
             JPH::RVec3 joltPos = cc.character->GetPosition();
-            cc.prevPos = glm::vec3(joltPos.GetX(), joltPos.GetY(), joltPos.GetZ());
 
-            bool isOnGround = cc.character->GetGroundState() == JPH::CharacterBase::EGroundState::OnGround;
-            float gravity = -9.81f; 
+            cc.prevPos = glm::vec3(
+                joltPos.GetX(),
+                joltPos.GetY(),
+                joltPos.GetZ()
+            );
+
+            bool isOnGround =
+                cc.character->GetGroundState() ==
+                JPH::CharacterBase::EGroundState::OnGround;
+
+            float gravity = -9.81f;
             float jumpVel = 5.0f;
 
-            if (isOnGround) {
+            if (isOnGround)
+            {
                 cc.verticalVelocity = 0.0f;
-                if (cc.pendingJump) cc.verticalVelocity = jumpVel;
-            } else {
+
+                if (cc.pendingJump)
+                    cc.verticalVelocity = jumpVel;
+            }
+            else
+            {
                 cc.verticalVelocity += gravity * fixedDt;
             }
 
-            JPH::Vec3 velocity(cc.pendingMove.x, cc.verticalVelocity, cc.pendingMove.z);
+            JPH::Vec3 velocity(
+                cc.pendingMove.x,
+                cc.verticalVelocity,
+                cc.pendingMove.z
+            );
+
             cc.character->SetLinearVelocity(velocity);
 
             JPH::CharacterVirtual::ExtendedUpdateSettings s;
+
             cc.character->ExtendedUpdate(
-                fixedDt, JPH::Vec3(0, gravity, 0), s,
-                physicsWorld.getPhysicsSystem()->GetDefaultBroadPhaseLayerFilter(1), // MOVING
+                fixedDt,
+                JPH::Vec3(0, gravity, 0),
+                s,
+                physicsWorld.getPhysicsSystem()->GetDefaultBroadPhaseLayerFilter(1),
                 physicsWorld.getPhysicsSystem()->GetDefaultLayerFilter(1),
-                {}, {}, *physicsWorld.getTempAllocator()
+                {},
+                {},
+                *physicsWorld.getTempAllocator()
             );
 
             joltPos = cc.character->GetPosition();
-            cc.currentPos = glm::vec3(joltPos.GetX(), joltPos.GetY(), joltPos.GetZ());
+
+            cc.currentPos = glm::vec3(
+                joltPos.GetX(),
+                joltPos.GetY(),
+                joltPos.GetZ()
+            );
 
             cc.pendingJump = false;
         });
-    }
+}
 
-    void Engine::run()
+void Engine::run()
+{
+    lastFrame = (float)glfwGetTime();
+
+    while (!glfwWindowShouldClose(glfwWindow))
     {
-        lastFrame = (float)glfwGetTime();
-        while (!glfwWindowShouldClose(glfwWindow))
+        double currentFrame = (float)glfwGetTime();
+
+        deltaTime = (float)(currentFrame - lastFrame);
+        lastFrame = currentFrame;
+
+        fpsTimer += deltaTime;
+        frameCount++;
+
+        if (fpsTimer >= 1.0f)
         {
-                double currentFrame = (float)glfwGetTime();
-                deltaTime = (float) (currentFrame - lastFrame);
-                lastFrame = currentFrame;
-                fpsTimer += deltaTime;
-                frameCount++;
-
-                if (fpsTimer >= 1.0f) 
-                {
-                    displayFPS = (float)frameCount / fpsTimer;
-                    frameCount = 0;
-                    fpsTimer = 0.0f;
-                }
-                Core::Input::update();    
-                Core::Audio::update();
-                physicsWorld.step(deltaTime);
-                scene->getWorld().progress(deltaTime);
-
-                if (updateCallback) 
-                {
-                    updateCallback(updateContext, deltaTime);
-                }
-
-                frameRenderables.clear();
-                scene->getWorld().each([&](flecs::entity e, const Scene::TransformComponent& transform, const Scene::MeshComponent& mesh) {
-                    if (e.has<Scene::TagActive>() && mesh.model) {
-                        frameRenderables.push_back({
-                            mesh.model,
-                            transform.cachedModelMatrix,
-                            transform.cachedNormalMatrix,
-                            mesh.boundsMin,
-                            mesh.boundsMax
-                        });
-                    }
-                });
-
-                renderer.render(displayFPS, deltaTime, frameRenderables);
-                glfwPollEvents();
+            displayFPS = (float)frameCount / fpsTimer;
+            frameCount = 0;
+            fpsTimer = 0.0f;
         }
-    }
 
-    void Engine::setUpdateCallback(UpdateCallback callback, void* context)
+        Core::Input::update();
+
+        if (inEditorMode && editorCamera != nullptr)
+        {
+            editorCamera->update(deltaTime);
+        }
+
+        Core::Audio::update();
+
+        physicsWorld.step(deltaTime);
+        scene->getWorld().progress(deltaTime);
+
+        if (updateCallback)
+        {
+            updateCallback(updateContext, deltaTime);
+        }
+
+        frameRenderables.clear();
+
+        scene->getWorld().each(
+            [&](flecs::entity e,
+                const Scene::TransformComponent& transform,
+                const Scene::MeshComponent& mesh)
+            {
+                if (e.has<Scene::TagActive>() && mesh.model)
+                {
+                    frameRenderables.push_back(
+                    {
+                        mesh.model,
+                        transform.cachedModelMatrix,
+                        transform.cachedNormalMatrix,
+                        mesh.boundsMin,
+                        mesh.boundsMax
+                    });
+                }
+            });
+
+        renderer.render(
+            displayFPS,
+            deltaTime,
+            frameRenderables
+        );
+
+        glfwPollEvents();
+    }
+}
+
+void Engine::setUpdateCallback(UpdateCallback callback, void* context)
+{
+    updateCallback = callback;
+    updateContext = context;
+}
+
+void Engine::setRaycastCallback(RaycastCallback callback, void* context)
+{
+    raycastCallback = callback;
+    raycastContext = context;
+}
+
+void Engine::setEditorMode(bool isEditor)
+{
+    inEditorMode = isEditor;
+    renderer.setEditorMode(isEditor);
+
+    // Unlock cursor in Editor, lock it in Game
+    if (inEditorMode)
     {
-        updateCallback = callback;
-        updateContext = context;
+        glfwSetInputMode(glfwWindow, GLFW_CURSOR, GLFW_CURSOR_NORMAL);
     }
-
-    void Engine::setRaycastCallback(RaycastCallback callback, void* context)
+    else
     {
-        raycastCallback = callback;
-        raycastContext = context;
+        glfwSetInputMode(glfwWindow, GLFW_CURSOR, GLFW_CURSOR_DISABLED);
     }
+}
 
-    Scene::Camera* Engine::getCamera() { return camera; }
+Scene::Camera* Engine::getCamera()
+{
+    return camera;
+}
 
-    void Engine::shutdown()
-    {   
-        Core::Audio::shutdown();
-        physicsWorld.shutdown();
-        renderer.shutdown();
-        scene->clear();
-        glfwTerminate();
-    }
+void Engine::shutdown()
+{
+    Core::Audio::shutdown();
+    physicsWorld.shutdown();
+    renderer.shutdown();
+
+    scene->clear();
+
+    glfwTerminate();
+}
+
 }

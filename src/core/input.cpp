@@ -17,6 +17,7 @@ namespace Cthulhu::Core
     bool Input::previousMouseButtons[GLFW_MOUSE_BUTTON_LAST + 1] = {};
     float Input::mouseDeltaX = 0.0f;
     float Input::mouseDeltaY = 0.0f;
+    float Input::scrollDelta = 0.0f;
     bool Input::firstMouse = true;
     float Input::lastX = 0.0f;
     float Input::lastY = 0.0f;
@@ -28,6 +29,7 @@ namespace Cthulhu::Core
         
         glfwSetCursorPosCallback(windowHandle,mouse_callback);
         glfwSetMouseButtonCallback(windowHandle, mouse_button_callback);
+        glfwSetScrollCallback(windowHandle, scroll_callback);
         Log::Print("Input system initialized successfully", "ENGINE", LogType::LOG_SUCCESS);
     }
     
@@ -105,6 +107,11 @@ namespace Cthulhu::Core
             glfwSetInputMode(window, GLFW_CURSOR, GLFW_CURSOR_DISABLED);
         }
     }
+
+    void Input::scroll_callback([[maybe_unused]]GLFWwindow *window, [[maybe_unused]] double xoffset, double yoffset)
+    {
+        scrollDelta += static_cast<float>(yoffset);
+    }
     
     float Input::getMouseX()
     {
@@ -130,5 +137,11 @@ namespace Cthulhu::Core
         return delta;
     }
 
+    float Input::getScrollDelta()
+    {
+        float delta = scrollDelta;
+        scrollDelta = 0.0f;
+        return delta;
+    }
     
 }
