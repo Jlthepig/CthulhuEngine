@@ -1,4 +1,4 @@
-#include "editorCamera.h"
+#include "pch.h"
 #include "model.h"
 #include "renderer.h"
 #include "components.h"
@@ -19,9 +19,6 @@ using KalaHeaders::KalaLog::Log;
 using KalaHeaders::KalaLog::LogType;
 namespace Cthulhu::Rendering
 {
-    void Renderer::setEditorCamera(Editor::EditorCamera* cam) { editorCamera = cam; }
-    void Renderer::setEditorMode(bool isEditor) { inEditorMode = isEditor; }
-    
     void Renderer::setScene(Cthulhu::Scene::Scene* scene)
     {
         this->scene = scene;
@@ -251,6 +248,16 @@ namespace Cthulhu::Rendering
 
         totalTriangles = 0;
 
+        if (camera != nullptr)
+        {
+            projection = glm::perspective(camera->getFov(),
+            (float)width / (float)height,
+            config.nearPlane, config.farPlane);
+            view = camera->getViewMatrix();
+        }
+
+        frustum.extractFromMatrix(projection * view);
+
         // 1. shadow pass
         shadowMap.beginPass();
         for (const auto& renderable : renderables)
@@ -293,31 +300,10 @@ namespace Cthulhu::Rendering
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
         basicShader.use();
 
-        glm::mat4 view, projection;
-        glm::vec3 camPos;
-
-        if (inEditorMode && editorCamera != nullptr) 
-        {
-            view = editorCamera->getViewMatrix();
-            projection = editorCamera->getProjectionMatrix();
-            camPos = editorCamera->getPosition();
-        } 
-        else if (camera != nullptr) 
-        {
-            projection = glm::perspective(camera->getFov(),
-            (float)width / (float)height,
-            config.nearPlane, config.farPlane);
-            view = camera->getViewMatrix();
-            camPos = camera->getPosition();
-        }
-
-        frustum.extractFromMatrix(projection * view);
-
-
         SceneUniforms uboData;
         uboData.view = view;
         uboData.projection = projection;
-        uboData.viewPos = camPos;
+        uboData.viewPos = camera->getPosition();
 
         uboData.lightDir = sunLight.direction;
         uboData.lightColor = sunLight.color;

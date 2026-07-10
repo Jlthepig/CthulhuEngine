@@ -17,7 +17,6 @@
 
 namespace Cthulhu::Scene { class Scene; }      
 namespace Cthulhu::Rendering { struct Model; }
-namespace Cthulhu::Editor { class EditorCamera; }
 namespace Cthulhu::Rendering
 {
     struct PersistentLine {
@@ -74,15 +73,12 @@ namespace Cthulhu::Rendering
     {
         public:
         void setScene(Cthulhu::Scene::Scene* scene);
+        void init(GLFWwindow* window, Scene::Camera* camera, const RenderConfig& config);
+        void addPointLight(const PointLight& light);
         void setDirectionalLight(const DirectionalLight& light);
         void setPointLights(const std::vector<PointLight>& lights);
-        void setEditorCamera(Editor::EditorCamera* cam);
-        void setEditorMode(bool isEditor);
-
-        void init(GLFWwindow* window, Scene::Camera* camera, const RenderConfig& config);
         void render(float fps, float deltaTime, const std::vector<Renderable>& renderables);
         void addDebugLine(const glm::vec3& start, const glm::vec3& end, const glm::vec3& color,float duration = 0.0f);
-        void addPointLight(const PointLight& light);
         void shutdown();
 
         private:
@@ -92,9 +88,9 @@ namespace Cthulhu::Rendering
         Cthulhu::Rendering::Shader lineShader;
         Cthulhu::Rendering::GridLines grid;
         Cthulhu::Rendering::Skybox skybox;
+        glm::mat4 projection;
+        glm::mat4 view;
         Scene::Camera* camera = nullptr;
-        Editor::EditorCamera* editorCamera = nullptr;
-        bool inEditorMode = true;
         GLFWwindow* window = nullptr;
         DirectionalLight sunLight;
         static constexpr int MAX_POINT_SHADOW_CASTERS = 4;
@@ -117,6 +113,5 @@ namespace Cthulhu::Rendering
 
         void bindMaterial(const Material& material, const std::vector<Texture>& modelTextures);
         void bindDefaultMaterial();
-        
     };
 }

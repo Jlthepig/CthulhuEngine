@@ -6,7 +6,7 @@ standard: c++20
 binarytype: static
 binaryname: Cthulhu
 sources: "src"
-headers: "include", "Libraries\\GLFW\\include\\GLFW", "Libraries\\GLM", "Libraries\\glad", "Libraries\\Stb_image", "Libraries\\simdjson", "Libraries\\ImGui", "Libraries\\JoltPhysics-5.5.0", "Libraries\\flecs", "Libraries\\FASTTGLTF", "Libraries\\miniaudio", "include\\core", "include\\rendering", "include\\scene", "include\\utils", "include\\physics\\", "include\\editor\\"
+headers: "include", "Libraries\\GLFW\\include\\GLFW", "Libraries\\GLM", "Libraries\\glad", "Libraries\\Stb_image", "Libraries\\simdjson", "Libraries\\ImGui", "Libraries\\JoltPhysics-5.5.0", "Libraries\\flecs", "Libraries\\FASTTGLTF", "Libraries\\miniaudio", "include\\core", "include\\rendering", "include\\scene", "include\\utils", "include\\physics\\"
 
 customflags: export-compile-commands, export-vscode-sln, warnings-as-errors
 
