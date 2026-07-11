@@ -12,7 +12,13 @@ struct GLFWwindow;
 namespace Cthulhu::Scene { class Scene; class Camera; }
 namespace Cthulhu::Core { class Window; }
 namespace Cthulhu
-{
+{   
+    enum SimulationState
+    {
+        Running,
+        Paused,
+        Stepping,
+    };
     class Engine
     {
     public:
@@ -26,6 +32,12 @@ namespace Cthulhu
         void processFixedUpdate(float fixedDt);
         void run();
         void shutdown();
+
+        void setSimulationState(SimulationState state) {simState = state;}
+        SimulationState getSimulationState() const {return simState;}
+        // single frame queue reverts back to paused after consumption
+        void stepSimulation() {simState = SimulationState::Stepping;}
+
         Cthulhu::Scene::Camera* getCamera();
         Cthulhu::Core::Window* getWindow() { return window; }
         Cthulhu::Rendering::Renderer& getRenderer() {return renderer;}
@@ -50,6 +62,8 @@ namespace Cthulhu
         void* updateContext = nullptr;
         RaycastCallback raycastCallback = nullptr;
         void* raycastContext = nullptr;
+
+        SimulationState simState = SimulationState::Running;
 
         float deltaTime = 0.0f;
         double lastFrame = 0.0f;

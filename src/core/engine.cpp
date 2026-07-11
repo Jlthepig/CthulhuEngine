@@ -169,8 +169,23 @@ namespace Cthulhu
                 }
                 Core::Input::update();    
                 Core::Audio::update();
-                physicsWorld.step(deltaTime);
-                scene->getWorld().progress(deltaTime);
+
+                switch (simState)
+                {
+                    case Cthulhu::SimulationState::Running:
+                        physicsWorld.step(deltaTime);
+                        scene->getWorld().progress(deltaTime);
+                        break;
+
+                    case Cthulhu::SimulationState::Stepping:
+                        physicsWorld.step(deltaTime);
+                        scene->getWorld().progress(deltaTime);
+                        simState = SimulationState::Paused;
+                        break;
+                    
+                    case Cthulhu::SimulationState::Paused:
+                        break;
+                }
 
                 if (updateCallback) 
                 {
