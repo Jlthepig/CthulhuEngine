@@ -33,10 +33,10 @@ namespace Cthulhu
         void run();
         void shutdown();
 
-        void setSimulationState(SimulationState state) {simState = state;}
+        void setSimulationState(SimulationState state);
         SimulationState getSimulationState() const {return simState;}
         // single frame queue reverts back to paused after consumption
-        void stepSimulation() {simState = SimulationState::Stepping;}
+        void stepSimulation();
 
         Cthulhu::Scene::Camera* getCamera();
         Cthulhu::Core::Window* getWindow() { return window; }
@@ -64,6 +64,8 @@ namespace Cthulhu
         void* raycastContext = nullptr;
 
         SimulationState simState = SimulationState::Running;
+        void applySimStateToSystems(); // toggle systems based on the simState
+        
 
         float deltaTime = 0.0f;
         double lastFrame = 0.0f;

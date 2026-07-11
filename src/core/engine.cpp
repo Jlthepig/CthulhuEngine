@@ -1,6 +1,6 @@
 
-#include "pch.h"
 #include "components.h"
+#include "flecs.h"
 #include "sceneLoader.h"
 #include "fwd.hpp"
 #include <cstdlib>
@@ -150,6 +150,41 @@ namespace Cthulhu
         });
     }
 
+    void Engine::applySimStateToSystems()
+    {
+        if (!scene) return;
+        bool gameActive = (simState == SimulationState::Running || simState == SimulationState::Stepping);
+        auto& world = scene->getWorld();
+
+        // game systems disabled in editor
+        auto toggle = [&](const char* name)
+        {
+            flecs::entity system = world.lookup(name);
+            if (system)
+            {
+                if (gameActive) system.enable();
+                else system.disable();
+            }
+        };
+
+        toggle("PhysicsSyncSystem");
+        toggle("CharacterInterpolationSystem");
+        toggle("WeaponSystem");
+        toggle("AudioSystem");
+    }
+
+    void Engine::setSimulationState(SimulationState state)
+    {
+        simState = state;
+        applySimStateToSystems();
+    }   
+
+    void Engine::stepSimulation()
+    {
+        simState = SimulationState::Stepping;
+        applySimStateToSystems();
+    }
+
     void Engine::run()
     {
         lastFrame = (float)glfwGetTime();
@@ -170,21 +205,19 @@ namespace Cthulhu
                 Core::Input::update();    
                 Core::Audio::update();
 
-                switch (simState)
+                if (simState == SimulationState::Running || simState == SimulationState::Stepping)
                 {
-                    case Cthulhu::SimulationState::Running:
-                        physicsWorld.step(deltaTime);
-                        scene->getWorld().progress(deltaTime);
-                        break;
+                    physicsWorld.step(deltaTime);
+                }
 
-                    case Cthulhu::SimulationState::Stepping:
-                        physicsWorld.step(deltaTime);
-                        scene->getWorld().progress(deltaTime);
-                        simState = SimulationState::Paused;
-                        break;
-                    
-                    case Cthulhu::SimulationState::Paused:
-                        break;
+                // ecs systems are always progressing
+                // the game systems are automatically handled by applySimStateToSystems()
+                scene->getWorld().progress(deltaTime);
+
+                if (simState == SimulationState::Stepping)
+                {
+                    simState = SimulationState::Paused;
+                    applySimStateToSystems();
                 }
 
                 if (updateCallback) 
