@@ -1,9 +1,7 @@
 #include "pch.h"
 #include "input.h"
-#include "camera.h"
 #include "glfw3.h"
 #include <cstring>
-#include <vector>
 #include "log_utils.hpp"
 
 using KalaHeaders::KalaLog::Log;

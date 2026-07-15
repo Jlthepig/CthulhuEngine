@@ -55,7 +55,6 @@ namespace Cthulhu
         Cthulhu::Core::Window* window = nullptr;
         GLFWwindow* glfwWindow = nullptr;
         std::unique_ptr<Cthulhu::Scene::Scene> scene; 
-        Cthulhu::Scene::SceneData sceneData;
         std::vector<Rendering::Renderable> frameRenderables;
         
         UpdateCallback updateCallback = nullptr;

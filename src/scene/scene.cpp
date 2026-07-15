@@ -1,3 +1,4 @@
+#include "light.h"
 #include "pch.h"
 #include "scene.h"
 #include "log_utils.hpp"
@@ -42,6 +43,10 @@ namespace Cthulhu::Scene
         }
         modelCache.clear();
         nextId = 0;
+
+        directionalLight = Rendering::DirectionalLight{};
+        pointLights.clear();
+        
         Log::Print("Scene cleared", "Scene", LogType::LOG_INFO);
     }
 }

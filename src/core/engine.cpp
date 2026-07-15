@@ -102,10 +102,10 @@ namespace Cthulhu
 
     void Engine::loadScene(const std::string &path)
     {
-        sceneData = Scene::SceneLoader::load(path, *scene, physicsWorld);
+        Scene::SceneLoader::load(path, *scene, physicsWorld);
 
-        renderer.setDirectionalLight(sceneData.directionalLight);
-        for (const auto& light : sceneData.pointLights)
+        renderer.setDirectionalLight(scene->getDirectionalLight());
+        for (const auto& light : scene->getPointLights())
         {
             renderer.addPointLight(light);
         }

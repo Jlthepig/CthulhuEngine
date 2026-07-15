@@ -9,22 +9,19 @@ using KalaHeaders::KalaLog::LogType;
 
 namespace Cthulhu::Scene
 {
-    SceneData SceneLoader::load(const std::string& path, Scene& scene, Cthulhu::Physics::PhysicsWorld& physicsWorld)
+    void SceneLoader::load(const std::string& path, Scene& scene, Cthulhu::Physics::PhysicsWorld& physicsWorld)
     {
-        SceneData sceneData;
-
         // parse the raw JSON - simdjson is isolated in jsonParser.cpp
         auto parsed = JsonParser::parseScene(path);
         if (!parsed.has_value())
         {
             Log::Print("FAILED TO LOAD SCENE: " + path, "SceneLoader", LogType::LOG_ERROR);
-            return sceneData;
+            return;
         }
 
         scene.clear();
 
-        sceneData.name = parsed->name;
-        Log::Print("Loading scene: " + sceneData.name, "SceneLoader", LogType::LOG_INFO);
+        Log::Print("Loading scene: " + parsed->name, "SceneLoader", LogType::LOG_INFO);
 
         // build entities from parsed data
         for (auto& parsedEntity : parsed->entities)
@@ -69,9 +66,11 @@ namespace Cthulhu::Scene
         }
 
         // lights
-        sceneData.directionalLight = parsed->directionalLight;
-        sceneData.pointLights = parsed->pointLights;
+        scene.setDirectionalLight(parsed->directionalLight);
+        for (auto& pl :parsed->pointLights)
+        {
+            scene.addPointLight(pl);
+        }
 
-        return sceneData;
     }
 }
