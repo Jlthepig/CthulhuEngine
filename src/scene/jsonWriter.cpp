@@ -37,28 +37,41 @@ namespace Cthulhu::Scene
         struct JsonWriter
         {
             std::ostringstream oss;
-            bool firstObj = true, firstArr = true;
+            int depth = 0; int indentWidth = 4;
+            std::vector<bool> firstStack;
+            bool pretty = true;
 
-            void beginObject() { oss << "{"; firstObj = true; }
-            void endObject()   { oss << "}"; }
-            void beginArray()  { oss << "["; firstArr = true; }
-            void endArray()    { oss << "]"; }
+            int writeIndent()
+            {
+                if (pretty)
+                {
+                    oss << "\n" << std::string(depth * indentWidth, ' ');
+                    return depth * indentWidth + 1;
+                }
+                return 0;
+            }
+
+            void beginObject() { oss << "{"; depth++; firstStack.push_back(true); }
+            void endObject() { depth--; writeIndent(); oss << "}"; firstStack.pop_back(); }
+            void beginArray()  { oss << "["; depth++; firstStack.push_back(true); }
+            void endArray()  { depth--; writeIndent(); oss << "]"; firstStack.pop_back(); }
 
             void key(const std::string& k) {
-                if (!firstObj) oss << ",";
-                firstObj = false;
-                oss << "\"" << escapeJson(k) << "\":";
+                if (!firstStack.back()) {oss << ","; writeIndent();}
+                else writeIndent();
+                firstStack.back() = false;
+                oss << "\"" << escapeJson(k) << "\": ";
             }
-            void value(float v)  { oss << std::setprecision(9) << v; }
+            void value(float v)  { oss << std::setprecision(7) << v; }
             void value(int v)    { oss << v; }
             void value(bool b)   { oss << (b ? "true" : "false"); }
             void value(const std::string& s) { oss << "\"" << escapeJson(s) << "\""; }
 
-            void commaArr() { if (!firstArr) oss << ","; firstArr = false; }
+            void commaArr() { if (!firstStack.back()) {oss << ","; writeIndent();} firstStack.back() = false; }
 
             void vec3(const std::string& k, const glm::vec3& v) {
                 key(k); beginArray();
-                value(v.x); oss << ","; value(v.y); oss << ","; value(v.z);
+                value(v.x); oss << ", "; value(v.y); oss << ", "; value(v.z);
                 endArray();
             }
         };
