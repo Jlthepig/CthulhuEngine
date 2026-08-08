@@ -7,7 +7,6 @@ namespace Cthulhu::Rendering
     {
         if (fbo != 0 || colorTexture != 0 || depthRBO != 0)
         {
-            KalaHeaders::KalaLog::Log::Print("Framebuffer already created, destroy first!", "Framebuffer", KalaHeaders::KalaLog::LogType::LOG_WARNING);
             return;
         }
         this->width = width;
@@ -76,8 +75,14 @@ namespace Cthulhu::Rendering
         }
         else 
         {
-            destroy();
-            create(width, height);
+            this->width = width;
+            this->height = height;
+            glBindTexture(GL_TEXTURE_2D, colorTexture);
+            glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA8, width, height, 0, GL_RGBA, GL_UNSIGNED_BYTE, nullptr);
+            glBindRenderbuffer(GL_RENDERBUFFER, depthRBO);
+            glRenderbufferStorage(GL_RENDERBUFFER, GL_DEPTH_COMPONENT24, width, height);
+            glBindTexture(GL_TEXTURE_2D, 0);
+            glBindRenderbuffer(GL_RENDERBUFFER, 0);
         }
     }
 
@@ -93,6 +98,9 @@ namespace Cthulhu::Rendering
         glDeleteFramebuffers(1, &fbo);
         glDeleteTextures(1, &colorTexture);
         glDeleteRenderbuffers(1, &depthRBO);
+        fbo = 0;
+        colorTexture = 0;
+        depthRBO = 0;
     }
 
     GLuint Framebuffer::getColorTexture() const

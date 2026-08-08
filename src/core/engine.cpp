@@ -225,7 +225,13 @@ namespace Cthulhu
                     updateCallback(updateContext, deltaTime);
                 }
 
+                int fbw, fbh;
+                glfwGetFramebufferSize(glfwWindow, &fbw, &fbh);
+
                 frameRenderables.clear();
+                if (fbw > 0 && fbh > 0 && scene)
+                {
+                   
                 scene->getWorld().each([&](flecs::entity e, const Scene::TransformComponent& transform, const Scene::MeshComponent& mesh) {
                     if (e.has<Scene::TagActive>() && mesh.model) {
                         frameRenderables.push_back({
@@ -238,7 +244,10 @@ namespace Cthulhu
                     }
                 });
 
-                renderer.render(displayFPS, deltaTime, frameRenderables);
+                renderer.render(fbw, fbh, displayFPS, deltaTime, frameRenderables);
+                }
+
+                glfwSwapBuffers(glfwWindow);
                 glfwPollEvents();
         }
     }

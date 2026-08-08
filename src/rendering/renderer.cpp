@@ -39,7 +39,7 @@ namespace Cthulhu::Rendering
          int width, height;
         glfwGetFramebufferSize(window, &width, &height);
         sceneFramebuffer.create(width, height);
-        
+
         glEnable(GL_DEPTH_TEST);
         glEnable(GL_CULL_FACE);
         
@@ -172,11 +172,6 @@ namespace Cthulhu::Rendering
         
         glBindVertexArray(0);
 
-        // Restore viewport and shader state
-        glfwGetFramebufferSize(window, &width, &height);
-        glViewport(0, 0, width, height);
-        basicShader.use(); // Re-bind basic shader so future uniform calls work
-
         glGenBuffers(1, &sceneUBO);
         glBindBuffer(GL_UNIFORM_BUFFER, sceneUBO);
         glBufferData(GL_UNIFORM_BUFFER, sizeof(SceneUniforms), nullptr, GL_DYNAMIC_DRAW);
@@ -242,11 +237,8 @@ namespace Cthulhu::Rendering
 
     }
 
-    void Renderer::render(float fps, float deltaTime, const std::vector<Renderable>& renderables)
+    void Renderer::render(unsigned int width, unsigned int height, float fps, float deltaTime, const std::vector<Renderable>& renderables)
     {
-        int width, height;
-        glfwGetFramebufferSize(window, &width, &height);
-
         if (width == 0 || height == 0) {return;} 
         sceneFramebuffer.resize(width, height);
         
@@ -302,7 +294,7 @@ namespace Cthulhu::Rendering
         //bind scene framebuffer for main pass
         sceneFramebuffer.bind();
 
-        // 2. main pass
+        // main pass
         glClearColor(config.clearColor.r, config.clearColor.g, config.clearColor.b, config.clearColor.a);
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
@@ -478,7 +470,6 @@ namespace Cthulhu::Rendering
         ImGui::Render();
         ImGui_ImplOpenGL3_RenderDrawData(ImGui::GetDrawData());
 
-        glfwSwapBuffers(window);
     }
     
     void Renderer::shutdown()

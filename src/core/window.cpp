@@ -23,7 +23,6 @@ namespace Cthulhu::Core
         glfwMakeContextCurrent( window->glfWwindow);
         glfwSwapInterval(config.vSync ? 1 : 0); // Enable or disable V-Sync based on config
         glfwSetWindowUserPointer(window->glfWwindow, window_ptr);  // attach this instance
-        glfwSetFramebufferSizeCallback( window->glfWwindow, framebuffer_size_callback);
 
         windowContainer.push_back(std::move(window));
         return window_ptr;
@@ -70,7 +69,6 @@ namespace Cthulhu::Core
         currentMode = newMode;
         int fbWidth, fbHeight;
         glfwGetFramebufferSize(glfWwindow, &fbWidth, &fbHeight);
-        framebuffer_size_callback(glfWwindow, fbWidth, fbHeight);
     }
     
     float Window::getWidth()
@@ -117,8 +115,4 @@ namespace Cthulhu::Core
         return glfwGetPrimaryMonitor();
     }
 
-    void Window::framebuffer_size_callback([[maybe_unused]] GLFWwindow* window, int width, int height)
-    {
-        glViewport(0, 0, width, height);
-    }
 }
