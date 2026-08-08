@@ -72,6 +72,30 @@ namespace Cthulhu::Scene
                 entity.physics = physics;
             }
 
+            auto weaponResult = entityJson["weapon"].get_object();
+            if (!weaponResult.error())
+            {
+                auto wj = weaponResult.value();
+                ParsedWeapon w;
+                auto fr = wj["firerate"].get_double(); if (!fr.error()) w.firerate = static_cast<float>(fr.value());
+                auto mr = wj["maxrange"].get_double(); if (!mr.error()) w.maxRange = static_cast<float>(mr.value());
+                entity.weapon = w;
+            }
+
+            auto audioResult = entityJson["audio"].get_object();
+            if (!audioResult.error())
+            {
+                auto aj = audioResult.value();
+                ParsedAudio a;
+                a.file = std::string(aj["file"].get_string().value());
+                auto vol = aj["volume"].get_double(); if (!vol.error()) a.volume = static_cast<float>(vol.value());
+                auto lp = aj["loop"].get_bool();       if (!lp.error()) a.loop = lp.value();
+                entity.audio = a;
+            }
+
+            auto playerVal = entityJson["player"].get_bool();
+            if (!playerVal.error()) entity.player = playerVal.value();
+
             result.entities.push_back(entity);
         }
 

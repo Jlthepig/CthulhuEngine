@@ -9,6 +9,18 @@
 
 namespace Cthulhu::Scene
 {
+    struct ParsedWeapon
+    {
+        float firerate = 10.0f;
+        float maxRange = 100.0f;
+    };
+
+    struct ParsedAudio
+    {
+        std::string file;
+        float volume = 1.0f;
+        bool loop = false;
+    };
     struct ParsedPhysics
     {
         std::string type;
@@ -25,6 +37,9 @@ namespace Cthulhu::Scene
         glm::vec3 boundsMin = glm::vec3(-1.0f);
         glm::vec3 boundsMax = glm::vec3(1.0f);
         std::optional<ParsedPhysics> physics;
+        std::optional<ParsedWeapon> weapon;
+        std::optional<ParsedAudio> audio;
+        bool player = false;
     };
 
     struct ParsedScene
@@ -34,7 +49,6 @@ namespace Cthulhu::Scene
         Rendering::DirectionalLight directionalLight;
         std::vector<Rendering::PointLight> pointLights;
     };
-
     class JsonParser
     {
     public:

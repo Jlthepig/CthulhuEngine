@@ -15,6 +15,7 @@ namespace Cthulhu::Scene
     {
     public:
         flecs::world& getWorld() { return world; }
+        const flecs::world& getWorld() const { return world; }
         flecs::entity createEntity(const std::string& name = "Entity");
 
         Rendering::Model* getOrLoadModel(const std::string& modelPath);
@@ -26,7 +27,12 @@ namespace Cthulhu::Scene
         const Rendering::DirectionalLight& getDirectionalLight() const {return directionalLight;}
         const std::vector<Rendering::PointLight> getPointLights() const {return pointLights;}
 
+        void setName(const std::string& n) { name = n; }
+        const std::string& getName() const { return name; }
+
     private:
+        std::string name;
+        
         flecs::world world;
         uint32_t nextId = 0;
         std::unordered_map<std::string, Rendering::Model> modelCache;

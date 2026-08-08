@@ -41,6 +41,7 @@ namespace Cthulhu::Scene
     struct MeshComponent
     {
         Cthulhu::Rendering::Model* model = nullptr;
+        std::string modelPath;
         glm::vec3 boundsMin = glm::vec3(-1.0f);
         glm::vec3 boundsMax = glm::vec3(1.0f);
     };
@@ -49,6 +50,9 @@ namespace Cthulhu::Scene
     {
         uint32_t bodyId = 0;
         bool hasBody = false;
+        std::string type = "static";
+        glm::vec3 halfExtent = glm::vec3(0.5f);
+        float mass = 1.0f;
     };
 
     struct CharacterControllerComponent

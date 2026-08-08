@@ -6,6 +6,7 @@
 #include "input.h"
 #include "audio.h"
 #include "window.h"
+#include "jsonWriter.h"
 #include "glfw3.h"
 #include "log_utils.hpp"
 namespace GameConfig
@@ -136,6 +137,8 @@ int main()
     Cthulhu::Engine engine;
     engine.init(GameConfig::WINDOW_TITLE, GameConfig::WINDOW_RESOLUTION);
     engine.loadScene(GameConfig::SCENE_PATH);
+    Cthulhu::Scene::SceneWriter::writeScene(engine.getScene(), "assets/scenes/test_out.scene");
+
     
     playerEntity = engine.getScene().getWorld().entity("Player");
     playerEntity.set<Cthulhu::Scene::TransformComponent>({glm::vec3(0,GameConfig::CHARACTER_START_POSITION.y,0)});
