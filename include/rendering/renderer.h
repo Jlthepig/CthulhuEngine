@@ -1,5 +1,6 @@
 #pragma once
 
+#include "framebuffer.h"
 #include "frustum.h"
 #include "material.h"
 #include "shader.h"
@@ -88,6 +89,7 @@ namespace Cthulhu::Rendering
         Cthulhu::Rendering::Shader lineShader;
         Cthulhu::Rendering::GridLines grid;
         Cthulhu::Rendering::Skybox skybox;
+        Cthulhu::Rendering::Framebuffer sceneFramebuffer;
         glm::mat4 projection;
         glm::mat4 view;
         Scene::Camera* camera = nullptr;

@@ -38,7 +38,8 @@ namespace Cthulhu::Rendering
         
          int width, height;
         glfwGetFramebufferSize(window, &width, &height);
-
+        sceneFramebuffer.create(width, height);
+        
         glEnable(GL_DEPTH_TEST);
         glEnable(GL_CULL_FACE);
         
@@ -246,6 +247,9 @@ namespace Cthulhu::Rendering
         int width, height;
         glfwGetFramebufferSize(window, &width, &height);
 
+        if (width == 0 || height == 0) {return;} 
+        sceneFramebuffer.resize(width, height);
+        
         totalTriangles = 0;
 
         if (camera != nullptr)
@@ -294,10 +298,14 @@ namespace Cthulhu::Rendering
             }
             pointShadowMaps[i].endPass();
         }
+
+        //bind scene framebuffer for main pass
+        sceneFramebuffer.bind();
+
         // 2. main pass
-        glViewport(0, 0, width, height);
         glClearColor(config.clearColor.r, config.clearColor.g, config.clearColor.b, config.clearColor.a);
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+
         basicShader.use();
 
         SceneUniforms uboData;
@@ -330,6 +338,7 @@ namespace Cthulhu::Rendering
         glBindBuffer(GL_UNIFORM_BUFFER, sceneUBO);
         glBufferSubData(GL_UNIFORM_BUFFER, 0, sizeof(SceneUniforms), &uboData);
         glBindBuffer(GL_UNIFORM_BUFFER, 0);
+
         basicShader.setMat4("lightSpaceMatrix", shadowMap.getLightSpaceMatrix());
 
         // bind all textures in order: 0=diffuse(per mesh), 1=shadow, 2+=cubemaps
@@ -365,7 +374,6 @@ namespace Cthulhu::Rendering
         int entityCount = 0;
         for (const auto& renderable : renderables)        
         {   
-            // AABB test
             Scene::AABB worldBounds = TransformAABB({renderable.boundsMin, renderable.boundsMax}, renderable.modelMatrix);
             if (!frustum.testAABB(worldBounds.min,worldBounds.max)) continue;
             
@@ -389,9 +397,9 @@ namespace Cthulhu::Rendering
                 totalTriangles += modelMesh.getIndexCount() / 3;
                 modelMesh.draw();
             }
-        };
+        }
 
-        // 3. grid
+        // grid
         glEnable(GL_BLEND);
         glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
         gridShader.use();
@@ -400,8 +408,8 @@ namespace Cthulhu::Rendering
         grid.draw();
         glDisable(GL_BLEND);
 
-        // 4. skybox
-        skybox.draw(window, view, projection);
+        // skybox
+        skybox.draw(view, projection);
 
         for (size_t i = 0; i < persistentLines.size(); ) 
         {
@@ -409,12 +417,8 @@ namespace Cthulhu::Rendering
             
             if (persistentLines[i].lifetime <= 0.0f) 
             {
-                // Line is dead. Swap it with the last element in the array and pop it.
-                // This avoids the massive performance cost of shifting array elements!
                 persistentLines[i] = persistentLines.back();
                 persistentLines.pop_back();
-                // Note: We DO NOT increment 'i' here, because we need to check 
-                // the new line that was just swapped into this index.
             } 
             else 
             {
@@ -446,7 +450,14 @@ namespace Cthulhu::Rendering
             debugLines.clear();
         }
 
-        // 5. imgui
+        sceneFramebuffer.unbind();
+
+        glViewport(0, 0, width, height);
+        glClearColor(0.0f, 0.0f, 0.0f, 1.0f);
+        glClear(GL_COLOR_BUFFER_BIT);
+
+        sceneFramebuffer.blitToScreen(width, height);
+        //imgui
         ImGui_ImplOpenGL3_NewFrame();
         ImGui_ImplGlfw_NewFrame();
         ImGui::NewFrame();

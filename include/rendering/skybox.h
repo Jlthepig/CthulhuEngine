@@ -12,7 +12,7 @@ namespace Cthulhu::Rendering
 
         public:
         void load(const std::string& hdrPath);
-        void draw(GLFWwindow* window, const glm::mat4& view, const glm::mat4& projection);
+        void draw(const glm::mat4& view, const glm::mat4& projection);
         void generateIrradianceMap();
         unsigned int getIrradianceMap() const { return irradianceMap; }
         void generatePrefilterMap();

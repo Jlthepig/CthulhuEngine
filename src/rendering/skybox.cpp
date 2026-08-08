@@ -325,12 +325,8 @@ namespace Cthulhu::Rendering
         KalaHeaders::KalaLog::Log::Print("Pre-filtered Environment Map generated", "Skybox", KalaHeaders::KalaLog::LogType::LOG_SUCCESS);
     }
 
-     void Skybox::draw(GLFWwindow* window, [[maybe_unused]] const glm::mat4& view, [[maybe_unused]] const glm::mat4& projection)
+     void Skybox::draw([[maybe_unused]] const glm::mat4& view, [[maybe_unused]] const glm::mat4& projection)
     {
-        // restore viewport to window size before drawing
-         int width, height;
-        glfwGetFramebufferSize(window, &width, &height);
-        glViewport(0, 0, width, height);
         glDepthFunc(GL_LEQUAL);
         skyboxShader.use();
         skyboxShader.setInt("environmentMap", 0);
