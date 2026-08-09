@@ -23,10 +23,14 @@ namespace Cthulhu::Core
         static void mouse_callback(GLFWwindow* window, double xposIn, double yposIn);
         static void mouse_button_callback(GLFWwindow* window, int button, int action, int mods);
 
+        static void scroll_callback(GLFWwindow* window, double xoffset, double yoffset);
+
+
         static float getMouseX();
         static float getMouseY();
         static float getMouseDeltaX();
         static float getMouseDeltaY();
+        static float getScrollDeltaY();
 
         private:
         static GLFWwindow* windowHandle;
@@ -39,5 +43,6 @@ namespace Cthulhu::Core
         static float mouseDeltaY;
         static float lastX;
         static float lastY;
+        static float scrollDeltaY;
     };
 }

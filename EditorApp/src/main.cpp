@@ -5,6 +5,7 @@
 #include "log_utils.hpp"
 
 static bool isFullscreen = false;
+static const float zoomSpeed = 350.0f;
 static Cthulhu::Scene::Camera* camera = nullptr;
 
 void onUpdate([[maybe_unused]] void* context, [[maybe_unused]] float deltaTime)
@@ -26,15 +27,27 @@ void onUpdate([[maybe_unused]] void* context, [[maybe_unused]] float deltaTime)
         }
     }
 
+    float scrollDeltaY = Cthulhu::Core::Input::getScrollDeltaY();
+
     if (camera && Cthulhu::Core::Input::isMouseButtonDown(GLFW_MOUSE_BUTTON_2))
     {
         glfwSetInputMode(engine->getWindow()->getWindow(), GLFW_CURSOR, GLFW_CURSOR_DISABLED);
         camera->processMouse(Cthulhu::Core::Input::getMouseDeltaX(), Cthulhu::Core::Input::getMouseDeltaY());
         camera->processKeyboard(deltaTime);
+        if (scrollDeltaY != 0.0f)
+        {
+           camera->addSpeed(    scrollDeltaY * zoomSpeed * deltaTime);
+        }
     }
     else
     {
         glfwSetInputMode(engine->getWindow()->getWindow(), GLFW_CURSOR, GLFW_CURSOR_NORMAL);
+    }
+
+    
+    if (scrollDeltaY != 0.0f && camera && !Cthulhu::Core::Input::isMouseButtonDown(GLFW_MOUSE_BUTTON_2))
+    {
+        camera->setPosition(camera->getPosition() + camera->getFront() * scrollDeltaY * zoomSpeed * deltaTime);  
     }
     
 }
