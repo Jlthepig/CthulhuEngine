@@ -1,3 +1,6 @@
+<img width="1000" height="500" alt="image" src="https://github.com/user-attachments/assets/6eb22c1a-5b1a-4fed-8f5c-548693e3a9f9" />
+
+
 # What is Cthulhu?
 
 Cthulhu is a custom 3D game engine written in **C++** for the sole purpose of building **first-person shooter games**.
