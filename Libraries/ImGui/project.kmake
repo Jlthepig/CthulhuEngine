@@ -1,7 +1,7 @@
 #version 1.0
 #global
 compileflags: FS
-compiler: cl
+compiler: clang-cl
 standard: c++20
 binarytype: static
 binaryname: imgui

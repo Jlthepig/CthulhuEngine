@@ -10,6 +10,7 @@ headers: "..\\Libraries\\GLFW\\include\\GLFW", "..\\Libraries\\GLM", "..\\Librar
 
 customflags: export-compile-commands, export-vscode-sln, warnings-as-errors
 
+linkflags: DEFAULTLIB:dbghelp.lib, DEFAULTLIB:ws2_32.lib
 links: opengl32
 compileflags: FS
 

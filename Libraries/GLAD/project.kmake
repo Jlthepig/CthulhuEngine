@@ -1,14 +1,13 @@
 #version 1.0
 #global
-compileflags: FS
-compiler: cl
+compiler: clang-cl
 standard: c++20
 binarytype: static
-binaryname: fastGltf
-sources: "*.cpp", "..\\..\\simdjson\\simdjson.cpp"
+binaryname: glad
+sources: "glad.c"
 
 customflags: export-compile-commands, export-vscode-sln
-headers: "../", "../../simdjson"
+headers: "."
 
 #profile release-windows
     buildtype: minsizerel
@@ -18,4 +17,4 @@ headers: "../", "../../simdjson"
     buildtype: debug
     buildpath: "build/debug-windows"
 
-//vcvars64.bat && kalamake --compile fastgltf.kmake debug-windows && vcvars64.bat && kalamake --compile fastgltf.kmake release-windows
+// vcvars64.bat && kalamake --compile glad.kmake debug-windows && vcvars64.bat && kalamake --compile glad.kmake release-windows

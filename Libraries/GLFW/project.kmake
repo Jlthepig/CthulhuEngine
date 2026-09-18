@@ -1,6 +1,6 @@
 #version 1.0
 #global
-compiler: cl
+compiler: clang-cl
 standard: c17
 binarytype: static
 binaryname: glfw3

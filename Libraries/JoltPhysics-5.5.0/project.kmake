@@ -1,7 +1,7 @@
 #version 1.0
 #global
 compilerlauncher: ccache
-compiler: cl
+compiler: clang-cl
 standard: c++20
 binarytype: static
 binaryname: Jolt
@@ -19,6 +19,6 @@ warninglevel: normal
 
     defines: JPH_ENABLE_ASSERTS
 
-#profile distribution-windows
+#profile release-windows
     buildtype: release
     buildpath: "build\\distribution-windows"
