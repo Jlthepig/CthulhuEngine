@@ -78,7 +78,7 @@ namespace Cthulhu::Rendering
         void addPointLight(const PointLight& light);
         void setDirectionalLight(const DirectionalLight& light);
         void setPointLights(const std::vector<PointLight>& lights);
-        void render(unsigned int width, unsigned int height, float fps, float deltaTime, const std::vector<Renderable>& renderables);
+        void render(unsigned int width, unsigned int height, float deltaTime, const std::vector<Renderable>& renderables);
         void addDebugLine(const glm::vec3& start, const glm::vec3& end, const glm::vec3& color,float duration = 0.0f);
         void shutdown();
 
@@ -109,8 +109,6 @@ namespace Cthulhu::Rendering
         GLuint defaultNormalTexture = 0;
         GLuint brdfLUTTexture = 0;
         unsigned int lineVAO = 0, lineVBO = 0;
-        size_t totalTriangles = 0;
-
         unsigned int sceneUBO = 0;
 
         void bindMaterial(const Material& material, const std::vector<Texture>& modelTextures);

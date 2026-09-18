@@ -193,15 +193,7 @@ namespace Cthulhu
                 double currentFrame = (float)glfwGetTime();
                 deltaTime = (float) (currentFrame - lastFrame);
                 lastFrame = currentFrame;
-                fpsTimer += deltaTime;
-                frameCount++;
-
-                if (fpsTimer >= 1.0f) 
-                {
-                    displayFPS = (float)frameCount / fpsTimer;
-                    frameCount = 0;
-                    fpsTimer = 0.0f;
-                }
+                
                 Core::Input::update();    
                 Core::Audio::update();
 
@@ -244,7 +236,7 @@ namespace Cthulhu
                     }
                 });
 
-                renderer.render(fbw, fbh, displayFPS, deltaTime, frameRenderables);
+                renderer.render(fbw, fbh, deltaTime, frameRenderables);
                 }
 
                 glfwSwapBuffers(glfwWindow);

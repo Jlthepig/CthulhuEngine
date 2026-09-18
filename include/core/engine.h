@@ -68,8 +68,5 @@ namespace Cthulhu
 
         float deltaTime = 0.0f;
         double lastFrame = 0.0f;
-        double fpsTimer = 0.0f;
-        int frameCount = 0;
-        float displayFPS = 0.0f;
     };
 }

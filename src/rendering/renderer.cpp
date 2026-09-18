@@ -1,19 +1,14 @@
-#include "pch.h"
 #include "model.h"
 #include "renderer.h"
 #include "components.h"
 #include "ext/matrix_clip_space.hpp"
 #include "ext/matrix_transform.hpp"
-#include "gtc/type_ptr.hpp"
 #include "fwd.hpp"
 #include "mesh.h"
 #include "sceneUniforms.h"
 #include "shader.h"
 #include "shadowMap.h"
 #include "log_utils.hpp"
-#include "imgui.h"
-#include "imgui_impl_glfw.h"
-#include "imgui_impl_opengl3.h"
 
 using KalaHeaders::KalaLog::Log;
 using KalaHeaders::KalaLog::LogType;
@@ -27,11 +22,6 @@ namespace Cthulhu::Rendering
     void Renderer::init(GLFWwindow* window, Scene::Camera* camera, const RenderConfig& config)
     {
         this->config = config; // Store config for later use
-
-        IMGUI_CHECKVERSION();
-        ImGui::CreateContext();
-        ImGui_ImplGlfw_InitForOpenGL(window, true);
-        ImGui_ImplOpenGL3_Init("#version 430"); // Updated to match GL 4.3
 
         this->camera = camera;
         this->window = window;
@@ -237,12 +227,10 @@ namespace Cthulhu::Rendering
 
     }
 
-    void Renderer::render(unsigned int width, unsigned int height, float fps, float deltaTime, const std::vector<Renderable>& renderables)
+    void Renderer::render(unsigned int width, unsigned int height, float deltaTime, const std::vector<Renderable>& renderables)
     {
         if (width == 0 || height == 0) {return;} 
         sceneFramebuffer.resize(width, height);
-        
-        totalTriangles = 0;
 
         if (camera != nullptr)
         {
@@ -363,13 +351,10 @@ namespace Cthulhu::Rendering
         // reset to slot 0 before entity loop
         glActiveTexture(GL_TEXTURE0);
 
-        int entityCount = 0;
         for (const auto& renderable : renderables)        
         {   
             Scene::AABB worldBounds = TransformAABB({renderable.boundsMin, renderable.boundsMax}, renderable.modelMatrix);
             if (!frustum.testAABB(worldBounds.min,worldBounds.max)) continue;
-            
-            entityCount++;
 
             basicShader.setMat4("model", renderable.modelMatrix);
             basicShader.setMat4("uNormalMatrix", renderable.normalMatrix);
@@ -386,7 +371,6 @@ namespace Cthulhu::Rendering
                 {
                     bindDefaultMaterial();
                 }
-                totalTriangles += modelMesh.getIndexCount() / 3;
                 modelMesh.draw();
             }
         }
@@ -449,27 +433,6 @@ namespace Cthulhu::Rendering
         glClear(GL_COLOR_BUFFER_BIT);
 
         sceneFramebuffer.blitToScreen(width, height);
-        //imgui
-        ImGui_ImplOpenGL3_NewFrame();
-        ImGui_ImplGlfw_NewFrame();
-        ImGui::NewFrame();
-        ImGui::Begin("Debug");
-        ImGui::Text("FPS: %.1f", fps);
-        ImGui::Text("Entities: %d", entityCount);
-        ImGui::Text("Draw Calls: %d", entityCount + 2);  // +1 grid +1 skybox
-        ImGui::Text("Triangles: %zu", totalTriangles);
-        ImGui::Text("Shadow Map Resolution: %d", config.shadowMapResolution);
-
-        ImGui::Separator();
-        ImGui::Text("Exponential Height Fog");
-        ImGui::ColorEdit3("Fog Color", glm::value_ptr(config.fogColor));
-        ImGui::SliderFloat("Density", &config.fogDensity, 0.0f, 0.1f, "%.4f");
-        ImGui::SliderFloat("Height Falloff", &config.fogHeightFalloff, 0.0f, 1.0f, "%.3f");
-
-        ImGui::End();
-        ImGui::Render();
-        ImGui_ImplOpenGL3_RenderDrawData(ImGui::GetDrawData());
-
     }
     
     void Renderer::shutdown()
@@ -479,9 +442,6 @@ namespace Cthulhu::Rendering
         basicShader.destroy();
         skybox.destroy();
 
-        ImGui_ImplOpenGL3_Shutdown();
-        ImGui_ImplGlfw_Shutdown();
-        ImGui::DestroyContext();
         Log::Print("Renderer shutdown successfully", "ENGINE", LogType::LOG_SUCCESS);
     }
     
