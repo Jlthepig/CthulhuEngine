@@ -1,9 +1,8 @@
 
-#include "shadowMap.h"
-#include "log_utils.hpp"
 #include "ext/matrix_clip_space.hpp"
 #include "ext/matrix_transform.hpp"
 
+#include "shadowMap.h"
 namespace Cthulhu::Rendering
 {
     void ShadowMap::init(unsigned int width, unsigned int height, const std::filesystem::path& engineResourceRoot)

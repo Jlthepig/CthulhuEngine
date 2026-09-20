@@ -2,7 +2,10 @@
 
 #include <filesystem>
 
+#include <vec3.hpp>
+#include <mat4x4.hpp>
 #include "glad.h"
+
 #include "shader.h"
 namespace Cthulhu::Rendering
 {

@@ -1,4 +1,6 @@
+#include "gtc/type_ptr.hpp"
 
+#include "fileReader.h"
 #include "shader.h"
 #include "log_utils.hpp"
 
@@ -6,15 +8,21 @@ using KalaHeaders::KalaLog::Log;
 using KalaHeaders::KalaLog::LogType;
 
 namespace Cthulhu::Rendering {
-    void Shader::load(const std::string& vertexPath, const std::string& fragmentPath) {
+    bool Shader::load(const std::string& vertexPath, const std::string& fragmentPath) {
         if (isLoaded) {
             Log::Print("SHADER IS ALREADY LOADED, DESTROY BEFORE RELOADING: " + vertexPath + " | " + fragmentPath, "Shader", LogType::LOG_WARNING);
-            return;
+            return false;
         }
 
         uniformCache.clear();
         std::string vertexShaderSource = Utils::FileReader::readFile(vertexPath);
         std::string fragmentShaderSource = Utils::FileReader::readFile(fragmentPath);
+
+        if (vertexShaderSource.empty() || fragmentShaderSource.empty())
+        {
+            Log::Print("SHADER SOURCE FILE IS EMPTY OR MISSING: " + vertexPath + " | " + fragmentPath, "Shader", LogType::LOG_ERROR);
+            return false;
+        }
 
         unsigned int vertexShader;
         unsigned int fragmentShader;
@@ -26,6 +34,11 @@ namespace Cthulhu::Rendering {
         glShaderSource(vertexShader, 1, &rawVertex, NULL);
         glCompileShader(vertexShader);
 
+        // Fragment Shader
+        fragmentShader = glCreateShader(GL_FRAGMENT_SHADER);
+        glShaderSource(fragmentShader, 1, &rawFragment, NULL);
+        glCompileShader(fragmentShader);
+
         GLint success;
         GLchar infoLog[512];
 
@@ -34,20 +47,22 @@ namespace Cthulhu::Rendering {
             Log::Print("VERTEX SHADER COMPILE FAILED: " + vertexPath, "Shader", LogType::LOG_ERROR);
             glGetShaderInfoLog(vertexShader, 512, NULL, infoLog);
             printf("%s\n", infoLog);
+
+            glDeleteShader(vertexShader);
+            return false;
         } else {
             Log::Print("VERTEX SHADER COMPILE SUCCESS: " + vertexPath, "Shader", LogType::LOG_SUCCESS);
         }
-
-        // Fragment Shader
-        fragmentShader = glCreateShader(GL_FRAGMENT_SHADER);
-        glShaderSource(fragmentShader, 1, &rawFragment, NULL);
-        glCompileShader(fragmentShader);
 
         glGetShaderiv(fragmentShader, GL_COMPILE_STATUS, &success);
         if (!success) {
             Log::Print("FRAGMENT SHADER COMPILE FAILED: " + fragmentPath, "Shader", LogType::LOG_ERROR);
             glGetShaderInfoLog(fragmentShader, 512, NULL, infoLog);
             printf("%s\n", infoLog);
+
+            glDeleteShader(vertexShader);
+            glDeleteShader(fragmentShader);
+            return false;
         } else {
             Log::Print("FRAGMENT SHADER COMPILE SUCCESS: " + fragmentPath, "Shader", LogType::LOG_SUCCESS);
         }
@@ -63,13 +78,23 @@ namespace Cthulhu::Rendering {
             Log::Print("SHADER PROGRAM LINKING FAILED: " + vertexPath + " | " + fragmentPath, "ShaderProgram", LogType::LOG_ERROR);
             glGetProgramInfoLog(shaderProgram, 512, NULL, infoLog);
             printf("%s\n", infoLog);
+
+            glDeleteShader(vertexShader);
+            glDeleteShader(fragmentShader);
+
+            glDeleteProgram(shaderProgram);
+            shaderProgram = 0;
+
+            return false;
         } else {
             Log::Print("SHADER PROGRAM LINKING SUCCESS ID: " + std::to_string(shaderProgram) + " (" + vertexPath + ")", "ShaderProgram", LogType::LOG_SUCCESS);
         }
 
         glDeleteShader(vertexShader);
         glDeleteShader(fragmentShader);
+        
         isLoaded = true;
+        return true;
     }
 
     void Shader::use() {
@@ -90,15 +115,15 @@ namespace Cthulhu::Rendering {
     }
 
     void Shader::setMat4(const std::string& name, const glm::mat4& matrix) {
-        glUniformMatrix4fv(getUniformLocation(name), 1, GL_FALSE, &matrix[0][0]);
+        glUniformMatrix4fv(getUniformLocation(name), 1, GL_FALSE, glm::value_ptr(matrix));
     }
 
     void Shader::setVec3(const std::string& name, const glm::vec3& value) {
-        glUniform3fv(getUniformLocation(name), 1, &value[0]);
+        glUniform3fv(getUniformLocation(name), 1, glm::value_ptr(value));
     }
 
     void Shader::setVec4(const std::string& name, const glm::vec4& value) {
-        glUniform4fv(getUniformLocation(name), 1, &value[0]);
+        glUniform4fv(getUniformLocation(name), 1, glm::value_ptr(value));
     }
 
     void Shader::setFloat(const std::string& name, float value) {

@@ -1,8 +1,10 @@
+#include <vec3.hpp>
+#include <mat4x4.hpp>
+#include <trigonometric.hpp>
+#include "ext/matrix_clip_space.hpp"
 
 #include "pointShadowMap.h"
 #include "log_utils.hpp"
-#include "ext/matrix_clip_space.hpp"
-
 namespace Cthulhu::Rendering
 {
     void PointLightShadowMap::init(unsigned int width, unsigned int height, const std::filesystem::path& engineResourceRoot)
