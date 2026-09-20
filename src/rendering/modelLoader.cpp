@@ -1,15 +1,3 @@
-
-#include "pch.h"
-#include "modelLoader.h"
-#include "fastgltf/core.hpp"
-#include "fastgltf/tools.hpp"
-#include "fastgltf/glm_element_traits.hpp"
-#include "fastgltf/types.hpp"
-#include "fwd.hpp"
-#include "log_utils.hpp"
-#include "mesh.h"
-#include "material.h"
-#include <algorithm>
 #include <cstddef>
 #include <cfloat>
 #include <type_traits>
@@ -18,6 +6,15 @@
 #include <vector>
 #include <unordered_map>
 
+#include "modelLoader.h"
+#include "fastgltf/core.hpp"
+#include "fastgltf/tools.hpp"
+#include "fastgltf/glm_element_traits.hpp"
+#include "fastgltf/types.hpp"
+#include "fwd.hpp"
+#include "mesh.h"
+#include "material.h"
+#include "log_utils.hpp"
 
 using KalaHeaders::KalaLog::Log;
 using KalaHeaders::KalaLog::LogType;

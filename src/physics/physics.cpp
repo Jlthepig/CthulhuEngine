@@ -1,4 +1,3 @@
-#include "pch.h"
 #include "Jolt/Jolt.h"
 #include "Jolt/Physics/Collision/NarrowPhaseQuery.h"
 #include "Jolt/Math/Real.h"

@@ -1,4 +1,4 @@
-#include "pch.h"
+
 #include "model.h"
 namespace Cthulhu::Rendering
 {

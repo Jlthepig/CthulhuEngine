@@ -1,4 +1,4 @@
-#include "pch.h"
+
 #include "skybox.h"
 #include "stb_image.h"
 #include "log_utils.hpp"

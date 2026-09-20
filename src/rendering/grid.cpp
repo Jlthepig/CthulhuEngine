@@ -1,12 +1,8 @@
-#include "pch.h"
-#include "fwd.hpp"
-#include "glad.h"
-#include "glfw3.h"
-#include "glm.hpp"
-#include <algorithm>
 #include <vector>
-#include "grid.h"
 
+#include "glad.h"
+
+#include "grid.h"
 namespace Cthulhu::Rendering
 {
     void GridLines::setupGrid(int size)

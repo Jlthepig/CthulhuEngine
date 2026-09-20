@@ -1,7 +1,7 @@
-#include "pch.h"
+#include <cstring>
+
 #include "input.h"
 #include "glfw3.h"
-#include <cstring>
 #include "log_utils.hpp"
 
 using KalaHeaders::KalaLog::Log;

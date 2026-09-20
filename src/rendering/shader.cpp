@@ -1,4 +1,4 @@
-#include "pch.h"
+
 #include "shader.h"
 #include "log_utils.hpp"
 
