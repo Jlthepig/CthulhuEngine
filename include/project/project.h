@@ -4,7 +4,7 @@
 
 #include <filesystem>
 #include <optional>
-
+#include <string_view>
 namespace Cthulhu::Project
 {
     class Project
@@ -26,6 +26,8 @@ namespace Cthulhu::Project
             {
                 return projectFilePath;
             }
+
+            std::optional<std::filesystem::path> resolveResourcePath(std::string_view resourcePath) const;
 
         private:
 
