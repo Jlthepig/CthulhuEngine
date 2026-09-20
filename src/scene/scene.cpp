@@ -1,5 +1,4 @@
 #include "light.h"
-#include "pch.h"
 #include "scene.h"
 #include "log_utils.hpp"
 #include "modelLoader.h"
@@ -16,20 +15,20 @@ namespace Cthulhu::Scene
         return e;
     }
 
-    Rendering::Model* Scene::getOrLoadModel(const std::string& path)
+    Rendering::Model* Scene::getOrLoadModel(const std::string& resourcePath, const std::filesystem::path& fileSystemPath)
     {
-        auto it = modelCache.find(path);
+        auto it = modelCache.find(resourcePath);
         if (it != modelCache.end())
         {
-            Log::Print("Resuing model from cache: " + path,"Scene", LogType::LOG_INFO);
+            Log::Print("Resuing model from cache: " + resourcePath,"Scene", LogType::LOG_INFO);
             return &it->second;
         }
         else
         {
-            Log::Print("Loading model from file: " + path,"Scene", LogType::LOG_INFO);
-            Rendering::Model model = Rendering::ModelLoader::loadGltf(path);
-            modelCache[path] = std::move(model);
-            return &modelCache[path];
+            Log::Print("Loading model from file: " + resourcePath,"Scene", LogType::LOG_INFO);
+            Rendering::Model model = Rendering::ModelLoader::loadGltf(fileSystemPath.string());
+            modelCache[resourcePath] = std::move(model);
+            return &modelCache[resourcePath];
         }
     }
 

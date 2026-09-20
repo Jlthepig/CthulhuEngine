@@ -21,7 +21,12 @@ namespace Cthulhu::Rendering
 
     void Renderer::init(GLFWwindow* window, Scene::Camera* camera, const RenderConfig& config)
     {
-        this->config = config; // Store config for later use
+        this->config = config;
+
+        auto enginePath = [&config](const std::filesystem::path& relative)
+        {
+            return (config.engineResourceRoot / relative).lexically_normal().string();
+        };
 
         this->camera = camera;
         this->window = window;
@@ -34,10 +39,10 @@ namespace Cthulhu::Rendering
         glEnable(GL_CULL_FACE);
         
 
-        basicShader.load(config.basicVertPath, config.basicFragPath);
-        gridShader.load(config.gridVertPath, config.gridFragPath);
+        basicShader.load(enginePath("shaders/basic.vertex"), enginePath("shaders/basic.fragment"));
+        gridShader.load(enginePath("shaders/grid.vertex"), enginePath("shaders/grid.fragment"));
 
-        skybox.load(config.skyboxHDRPath);
+        skybox.load(config.engineResourceRoot, config.engineResourceRoot / "images/Test2.hdr");
         skybox.generateIrradianceMap();
         skybox.generatePrefilterMap();
         grid.setupGrid(config.gridSize);
@@ -93,16 +98,16 @@ namespace Cthulhu::Rendering
         basicShader.setInt("uIrradianceMap", 9);
         basicShader.setInt("uPrefilterMap", 10);
 
-        shadowMap.init(config.shadowMapResolution, config.shadowMapResolution);
+        shadowMap.init(config.shadowMapResolution, config.shadowMapResolution, config.engineResourceRoot);
         for (int i = 0; i < MAX_POINT_SHADOW_CASTERS; i++)
         {
-            pointShadowMaps[i].init(config.shadowMapResolution, config.shadowMapResolution);
+            pointShadowMaps[i].init(config.shadowMapResolution, config.shadowMapResolution, config.engineResourceRoot);
         }
         shadowMap.setLightDir(sunLight.direction);
 
         // BRDF LUT Generation
         Shader brdfShader;
-        brdfShader.load("shaders/brdf.vertex", "shaders/brdf.fragment");
+        brdfShader.load(enginePath("shaders/brdf.vertex"), enginePath("shaders/brdf.fragment"));
         
         glGenTextures(1, &brdfLUTTexture); 
         glBindTexture(GL_TEXTURE_2D, brdfLUTTexture);
@@ -148,7 +153,7 @@ namespace Cthulhu::Rendering
         glDeleteBuffers(1, &quadVBO);
         brdfShader.destroy();
 
-        lineShader.load("shaders/debugLine.vertex", "shaders/debugLine.fragment");
+        lineShader.load(enginePath("shaders/debugLine.vertex"), enginePath("shaders/debugLine.fragment"));
         glGenVertexArrays(1, &lineVAO);
         glGenBuffers(1, &lineVBO);
         glBindVertexArray(lineVAO);

@@ -1,12 +1,14 @@
 #pragma once
 
-#include "model.h"
-#include "light.h"
-#include "components.h"
 #include <cstdint>
 #include <string>
 #include <unordered_map>
 #include <vector>
+#include <filesystem>
+
+#include "model.h"
+#include "light.h"
+#include "components.h"
 #include "flecs.h"
 
 namespace Cthulhu::Scene
@@ -18,7 +20,7 @@ namespace Cthulhu::Scene
         const flecs::world& getWorld() const { return world; }
         flecs::entity createEntity(const std::string& name = "Entity");
 
-        Rendering::Model* getOrLoadModel(const std::string& modelPath);
+        Rendering::Model* getOrLoadModel(const std::string& resourcePath, const std::filesystem::path& fileSystemPath);
         void clear();
 
         void setDirectionalLight(const Rendering::DirectionalLight& light) {directionalLight = light;}

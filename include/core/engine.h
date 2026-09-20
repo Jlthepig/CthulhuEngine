@@ -63,6 +63,7 @@ namespace Cthulhu
 
     private:
         std::optional<Cthulhu::Project::Project> project;
+        std::filesystem::path engineResourceRoot;
 
         Rendering::Renderer renderer;
         Physics::PhysicsWorld physicsWorld;

@@ -87,7 +87,7 @@ namespace Cthulhu::Scene
             });
 
             world.system<AudioSourceComponent>("AudioSystem")
-                .each([]([[maybe_unused]] flecs::entity e, AudioSourceComponent& audio)
+                .each([engineContext]([[maybe_unused]] flecs::entity e, AudioSourceComponent& audio)
                 {
                     if (audio.playTrigger)
                     {
@@ -95,7 +95,24 @@ namespace Cthulhu::Scene
                         {
                             Core::Audio::stopSound(audio.soundInstanceId);
                         }
-                        audio.soundInstanceId = Core::Audio::playSound2D(audio.filePath, audio.volume, audio.loop);
+
+                        const auto* activeProject = engineContext->getProject();
+
+                        if (!activeProject)
+                        {
+                            audio.playTrigger = false;
+                            return;
+                        }
+
+                        auto resolvedAudioPath = activeProject->resolveResourcePath(audio.filePath);
+
+                        if (!resolvedAudioPath)
+                        {
+                            audio.playTrigger = false;
+                            return;
+                        }
+
+                        audio.soundInstanceId = Core::Audio::playSound2D(resolvedAudioPath->string(), audio.volume, audio.loop);
                         audio.isPlaying = (audio.soundInstanceId != 0);
                         audio.playTrigger = false;
                     }

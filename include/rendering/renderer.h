@@ -1,5 +1,9 @@
 #pragma once
 
+#include <vector>
+#include <string>
+#include <filesystem>
+
 #include "framebuffer.h"
 #include "frustum.h"
 #include "material.h"
@@ -13,8 +17,6 @@
 #include "shadowMap.h"
 #include "pointShadowMap.h"
 #include "texture.h"
-#include <vector>
-#include <string>
 
 namespace Cthulhu::Scene { class Scene; }      
 namespace Cthulhu::Rendering { struct Model; }
@@ -54,12 +56,8 @@ namespace Cthulhu::Rendering
         float gridSize = 256.0f;
         glm::vec4 clearColor = glm::vec4(0.2f, 0.3f, 0.3f, 1.0f);
 
-        // Paths
-        std::string basicVertPath = "shaders/basic.vertex";
-        std::string basicFragPath = "shaders/basic.fragment";
-        std::string gridVertPath = "shaders/grid.vertex";
-        std::string gridFragPath = "shaders/grid.fragment";
-        std::string skyboxHDRPath = "assets/images/Test2.hdr";
+        // engine resources root
+        std::filesystem::path engineResourceRoot;
 
         // IBL
         int irradianceMapSize = 32;

@@ -1,16 +1,15 @@
 #pragma once
 
+#include <filesystem>
+
 #include "glad.h"
-#include "glm.hpp"
 #include "shader.h"
-
-
 namespace Cthulhu::Rendering
 {
     class ShadowMap
     {
         public:
-        void init(unsigned int width, unsigned int height);
+        void init(unsigned int width, unsigned int height, const std::filesystem::path& engineResourceRoot);
         void beginPass();
         void endPass();
         void destroy();

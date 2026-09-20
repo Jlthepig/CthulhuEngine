@@ -5,7 +5,7 @@
 
 namespace Cthulhu::Rendering
 {
-    void PointLightShadowMap::init(unsigned int width, unsigned int height)
+    void PointLightShadowMap::init(unsigned int width, unsigned int height, const std::filesystem::path& engineResourceRoot)
     {
         shadowWidth = width;
         shadowHeight = height;
@@ -49,7 +49,7 @@ namespace Cthulhu::Rendering
         }
         glBindFramebuffer(GL_FRAMEBUFFER, 0);
 
-        depthShader.load("shaders/point_depth.vertex", "shaders/point_depth.fragment");
+       depthShader.load((engineResourceRoot / "shaders/depth.vertex").string(), (engineResourceRoot / "shaders/depth.fragment").string());
     }
 
     void PointLightShadowMap::beginPass(glm::vec3 lightPos, float nearPlane, float farPlane)

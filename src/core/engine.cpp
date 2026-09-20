@@ -16,6 +16,7 @@
 #include "Jolt/Core/TempAllocator.h"
 
 #include "engine.h"
+#include "applicationPaths.h"
 #include "camera.h"
 #include "window.h"
 #include "input.h"
@@ -54,6 +55,22 @@ namespace Cthulhu
         project = std::move(*openedProject);
 
         const auto& projectConfig = project->getConfig();
+
+        auto executableDirectory = Core::getExecutableDirectory();
+
+        if (!executableDirectory)
+        {
+            Log::Print("FAILED TO DETERMINE EXECUTABLE DIRECTORY","ENGINE",LogType::LOG_ERROR);
+            return false;
+        }
+
+        engineResourceRoot = *executableDirectory / "EngineResources";
+
+        if (!std::filesystem::is_directory(engineResourceRoot))
+        {
+            Log::Print("ENGINE RESOURCE DIRECTORY NOT FOUND: " + engineResourceRoot.string(),"ENGINE",LogType::LOG_ERROR);
+            return false;
+        }
 
         glm::vec2 resolution(static_cast<float>(projectConfig.windowWidth), static_cast<float>(projectConfig.windowHeight));
 
@@ -101,6 +118,8 @@ namespace Cthulhu
         Cthulhu::Physics::PhysicsConfig physicsConfig;
         Cthulhu::Rendering::RenderConfig renderConfig;
 
+        renderConfig.engineResourceRoot = engineResourceRoot;
+
         physicsWorld.init(physicsConfig);
         physicsWorld.createGroundPlane();
 
@@ -139,7 +158,7 @@ namespace Cthulhu
 
         if (!resolvedPath) {return;}
 
-        Scene::SceneLoader::load(resolvedPath->string(), *scene, physicsWorld);
+        Scene::SceneLoader::load(resolvedPath->string(), *scene, physicsWorld, *project);
 
         renderer.setDirectionalLight(scene->getDirectionalLight());
         for (const auto& light : scene->getPointLights())

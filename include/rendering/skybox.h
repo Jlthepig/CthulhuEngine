@@ -1,17 +1,18 @@
 #pragma once
 
+#include <string>
+#include <filesystem>
+
 #include "glad.h"
-#include "glm.hpp"
 #include "shader.h"
 #include "mesh.h"
-#include <string>
 namespace Cthulhu::Rendering
 {
     class Skybox
     {
 
         public:
-        void load(const std::string& hdrPath);
+        void load(const std::filesystem::path& engineRoot, const std::filesystem::path& hdrPath);
         void draw(const glm::mat4& view, const glm::mat4& projection);
         void generateIrradianceMap();
         unsigned int getIrradianceMap() const { return irradianceMap; }
@@ -28,6 +29,7 @@ namespace Cthulhu::Rendering
         unsigned int prefilterMap = 0;   
         unsigned int cubeVAO = 0;
         unsigned int cubeVBO = 0;
+
         Mesh cubeMesh;
         Shader equirectShader;
         Shader skyboxShader;
@@ -36,6 +38,9 @@ namespace Cthulhu::Rendering
         void convertToCubemap();
         void setupCube();
         void renderCube();
+
+        std::filesystem::path engineResourceRoot;
+
         bool isLoaded = false;
     };
 

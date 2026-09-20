@@ -6,7 +6,7 @@
 
 namespace Cthulhu::Rendering
 {
-    void ShadowMap::init(unsigned int width, unsigned int height)
+    void ShadowMap::init(unsigned int width, unsigned int height, const std::filesystem::path& engineResourceRoot)
     {
         shadowWidth = width;
         shadowHeight = height;
@@ -33,7 +33,7 @@ namespace Cthulhu::Rendering
         glBindFramebuffer(GL_FRAMEBUFFER, 0);
 
         // load depth shader
-        depthShader.load("shaders/depth.vertex", "shaders/depth.fragment");
+        depthShader.load((engineResourceRoot / "shaders/depth.vertex").string(), (engineResourceRoot / "shaders/depth.fragment").string());
     }
 
     void ShadowMap::setLightDir(const glm::vec3& direction)

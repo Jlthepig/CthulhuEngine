@@ -1,8 +1,9 @@
 #include "components.h"
-#include "pch.h"
 #include "sceneLoader.h"
 #include "jsonParser.h"
 #include "physics.h"
+#include "project.h"
+
 #include "log_utils.hpp"
 
 using KalaHeaders::KalaLog::Log;
@@ -10,7 +11,7 @@ using KalaHeaders::KalaLog::LogType;
 
 namespace Cthulhu::Scene
 {
-    void SceneLoader::load(const std::string& path, Scene& scene, Cthulhu::Physics::PhysicsWorld& physicsWorld)
+    void SceneLoader::load(const std::string& path, Scene& scene, Cthulhu::Physics::PhysicsWorld& physicsWorld, const Cthulhu::Project::Project& project)
     {
         auto parsed = JsonParser::parseScene(path); // the parsed information provided by the json parser
         if (!parsed.has_value())
@@ -38,8 +39,16 @@ namespace Cthulhu::Scene
 
             if (!parsedEntity.modelPath.empty())
             {
+                auto resolvedModelPath = project.resolveResourcePath(parsedEntity.modelPath);
+
+                if (!resolvedModelPath)
+                {
+                    Log::Print("FAILED TO RESOLVE MODEL RESOURCE: " + parsedEntity.modelPath, "SceneLoader", LogType::LOG_ERROR);
+                    continue;
+                }
+
                 auto& mesh = e.ensure<MeshComponent>();
-                mesh.model = scene.getOrLoadModel(parsedEntity.modelPath);
+                mesh.model = scene.getOrLoadModel(parsedEntity.modelPath, *resolvedModelPath);
                 mesh.modelPath = parsedEntity.modelPath;
                 mesh.boundsMin = parsedEntity.boundsMin;
                 mesh.boundsMax = parsedEntity.boundsMax;

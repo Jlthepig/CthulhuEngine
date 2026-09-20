@@ -140,7 +140,7 @@ namespace Cthulhu::Rendering
         glBindFramebuffer(GL_FRAMEBUFFER, 0);
     }
 
-    void Skybox::load(const std::string& hdrPath)
+    void Skybox::load(const std::filesystem::path& engineRoot, const std::filesystem::path& hdrPath)
     {
         if (isLoaded)
         {
@@ -160,10 +160,12 @@ namespace Cthulhu::Rendering
 
         cubeMesh.setup(verts, indices, attrs, 3 * sizeof(float));
 
-        equirectShader.load("shaders/equirect.vertex", "shaders/equirect.fragment");
-        skyboxShader.load("shaders/skybox.vertex", "shaders/skybox.fragment");
+        engineResourceRoot = engineRoot;
 
-        loadHDR(hdrPath);
+        equirectShader.load( (engineResourceRoot / "shaders/equirect.vertex").string(), (engineResourceRoot / "shaders/equirect.fragment").string());
+        skyboxShader.load((engineResourceRoot / "shaders/skybox.vertex").string(), (engineResourceRoot / "shaders/skybox.fragment").string());
+
+        loadHDR(hdrPath.string());
         convertToCubemap();
 
         isLoaded = true;
@@ -172,7 +174,7 @@ namespace Cthulhu::Rendering
     void Skybox::generateIrradianceMap()
     {
         Shader irradianceShader;
-        irradianceShader.load("shaders/irradiance.vertex", "shaders/irradiance.fragment");
+       irradianceShader.load((engineResourceRoot / "shaders/irradiance.vertex").string(),(engineResourceRoot / "shaders/irradiance.fragment").string());
 
         // create irradiance map 32x32
         glGenTextures(1, &irradianceMap);
@@ -287,7 +289,7 @@ namespace Cthulhu::Rendering
         glGenerateMipmap(GL_TEXTURE_CUBE_MAP); 
 
         Shader prefilterShader;
-        prefilterShader.load("shaders/prefilter.vertex", "shaders/prefilter.fragment");
+        prefilterShader.load((engineResourceRoot / "shaders/prefilter.vertex").string(),(engineResourceRoot / "shaders/prefilter.fragment").string());
         prefilterShader.use();
         prefilterShader.setInt("environmentMap", 0);
         prefilterShader.setMat4("projection", captureProjection); // Reuse your existing captureProjection

@@ -1,6 +1,7 @@
 #pragma once
 
-#include "glm.hpp"
+#include <filesystem>
+
 #include "shader.h"
 
 namespace Cthulhu::Rendering
@@ -8,7 +9,7 @@ namespace Cthulhu::Rendering
     class PointLightShadowMap
     {
     public:
-        void init(unsigned int width, unsigned int height);
+        void init(unsigned int width, unsigned int height, const std::filesystem::path& engineResourceRoot);
         void beginPass(glm::vec3 lightPos, float nearPlane, float farPlane);
         void bindFace(int face, const glm::mat4& viewMatrix);
         void endPass();
