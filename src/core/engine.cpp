@@ -1,11 +1,8 @@
 
-#include "components.h"
-#include "flecs.h"
-#include "sceneLoader.h"
 #include "fwd.hpp"
 #include <cstdlib>
 
- #define STB_IMAGE_IMPLEMENTATION
+#define STB_IMAGE_IMPLEMENTATION
 #include "stb_image.h"
 #include "glad.h"
 #include "glfw3.h"
@@ -28,6 +25,9 @@
 #include "systemRegistry.h"
 #include "sceneLoader.h"
 #include "physics.h"
+#include "components.h"
+#include "flecs.h"
+#include "sceneLoader.h"
 
 using KalaHeaders::KalaLog::Log;
 using KalaHeaders::KalaLog::LogType;
@@ -38,30 +38,46 @@ static void physicsFixedUpdateCallback(void* context, float fixedDt) {
 }
 namespace Cthulhu
 {
-    void Engine::init(const char* title, glm::vec2 resolution)
+    bool Engine::init(const std::filesystem::path& projectFilePath)
     {
+        auto openedProject = Cthulhu::Project::Project::open(projectFilePath);
+
+        if (!openedProject)
+        {
+            Log::Print("FAILED TO OPEN PROJECT", "ENGINE", LogType::LOG_ERROR);
+            return false;
+        }
+
+        project = std::move(*openedProject);
+
+        const auto& projectConfig = project->getConfig();
+
+        glm::vec2 resolution(static_cast<float>(projectConfig.windowWidth), static_cast<float>(projectConfig.windowHeight));
+
         if (!glfwInit()) 
         {
             Log::Print("CANNOT INITIALIZE GLFW", "ENGINE", LogType::LOG_ERROR);
-            exit(1);
+            return false;
         }
         else
         {
             Log::Print("GLFW INITIALIZED SUCCESSFULLY", "ENGINE", LogType::LOG_SUCCESS);
         }
+
         glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 4);
         glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 3);
         glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);
 
         Cthulhu::Core::WindowConfig windowConfig;
         windowConfig.resolution = resolution;
-        window = Cthulhu::Core::Window::createWindow(windowConfig, title);
+        window = Cthulhu::Core::Window::createWindow(windowConfig, projectConfig.name.c_str());
         
         glfwWindow = window->getWindow();
         if (glfwWindow == NULL)
         {
             Log::Print("WINDOW IS NULL", "ENGINE", LogType::LOG_ERROR);
-            exit(1);
+            glfwTerminate();
+            return false;
         }
         else
         {
@@ -71,7 +87,8 @@ namespace Cthulhu
         if (!gladLoadGLLoader((GLADloadproc)glfwGetProcAddress))
         {
             Log::Print("FAILED TO INITIALISE GLAD.", "ENGINE", LogType::LOG_ERROR);
-            exit(1);
+            glfwTerminate();
+            return false;
         }
         else
         {
@@ -79,13 +96,17 @@ namespace Cthulhu
         }
 
         Cthulhu::Physics::PhysicsConfig physicsConfig;
+        Cthulhu::Rendering::RenderConfig renderConfig;
+
         physicsWorld.init(physicsConfig);
         physicsWorld.createGroundPlane();
-        scene = std::make_unique<Cthulhu::Scene::Scene>();
+
+        scene = std::make_unique<Scene::Scene>();
         camera = Scene::Camera::init();
+
         Core::Input::init(glfwWindow, resolution);
         Core::Audio::init();
-        Cthulhu::Rendering::RenderConfig renderConfig;
+
         renderer.init(glfwWindow, camera, renderConfig);
 
         int fbW, fbH;
@@ -98,11 +119,24 @@ namespace Cthulhu
 
         physicsWorld.onFixedUpdate = physicsFixedUpdateCallback;
         physicsWorld.onFixedUpdateContext = this;
+
+        Log::Print("ENGINE INITIALIZED FOR PROJECT: " + projectConfig.name, "ENGINE", LogType::LOG_SUCCESS);
+        return true;
     }
 
-    void Engine::loadScene(const std::string &path)
+    void Engine::loadScene(std::string_view resourcePath)
     {
-        Scene::SceneLoader::load(path, *scene, physicsWorld);
+        if (!project)
+        {
+            Log::Print("CANNOT LOAD SCENE WITHOUT AN ACTIVE PROJECT", "ENGINE", LogType::LOG_ERROR);
+            return;
+        }
+
+        auto resolvedPath = project->resolveResourcePath(resourcePath);
+
+        if (!resolvedPath) {return;}
+
+        Scene::SceneLoader::load(resolvedPath->string(), *scene, physicsWorld);
 
         renderer.setDirectionalLight(scene->getDirectionalLight());
         for (const auto& light : scene->getPointLights())
@@ -256,8 +290,6 @@ namespace Cthulhu
         raycastContext = context;
     }
 
-    Scene::Camera* Engine::getCamera() { return camera; }
-
     void Engine::shutdown()
     {   
         Core::Audio::shutdown();
@@ -265,5 +297,6 @@ namespace Cthulhu
         renderer.shutdown();
         scene->clear();
         glfwTerminate();
+        project.reset();
     }
 }

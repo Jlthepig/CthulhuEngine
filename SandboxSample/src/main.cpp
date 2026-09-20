@@ -11,8 +11,6 @@
 #include "log_utils.hpp"
 namespace GameConfig
 {
-    constexpr glm::vec2 WINDOW_RESOLUTION = glm::vec2(1920.0f, 1080.0f);
-    constexpr const char* WINDOW_TITLE = "Cthulhu Engine";
     constexpr const char* SCENE_PATH = "assets/scenes/test.scene";
     constexpr glm::vec3 CHARACTER_START_POSITION = glm::vec3(0, 4, 0);
     constexpr float CAMERA_EYE_HEIGHT_OFFSET = 0.6f;
@@ -135,7 +133,12 @@ static void onWeaponRaycast(void* context, const Cthulhu::Physics::RaycastHitInf
 int main()
 {
     Cthulhu::Engine engine;
-    engine.init(GameConfig::WINDOW_TITLE, GameConfig::WINDOW_RESOLUTION);
+    
+    if (!engine.init("project.cthulhu"))
+    {
+        return 1;
+    }
+
     engine.loadScene(GameConfig::SCENE_PATH);
     Cthulhu::Scene::SceneWriter::writeScene(engine.getScene(), "assets/scenes/test_out.scene");
 

@@ -1,12 +1,14 @@
 #pragma once
-#include <string>
+
+#include <string_view>
 #include <memory>
 #include <vector>
-#include "glm.hpp"
+#include <filesystem>
+#include <optional>
 
 #include "renderer.h"
 #include "physics.h"
-#include "sceneLoader.h"
+#include "project.h"
 
 struct GLFWwindow;
 namespace Cthulhu::Scene { class Scene; class Camera; }
@@ -25,8 +27,8 @@ namespace Cthulhu
         using UpdateCallback = void(*)(void* context, float deltaTime);
         using RaycastCallback = void(*)(void* context, const Physics::RaycastHitInfo& hit);
         
-        void init(const char* title, glm::vec2 resolution);
-        void loadScene(const std::string& path);
+        bool init(const std::filesystem::path& projectFilePath);
+        void loadScene(std::string_view resourcePath);
         void setUpdateCallback(UpdateCallback callback, void* context = nullptr);
         void setRaycastCallback(RaycastCallback callback, void* context = nullptr);
         void processFixedUpdate(float fixedDt);
@@ -38,27 +40,37 @@ namespace Cthulhu
         // single frame queue reverts back to paused after consumption
         void stepSimulation();
 
-        Cthulhu::Scene::Camera* getCamera();
-        Cthulhu::Core::Window* getWindow() { return window; }
-        Cthulhu::Rendering::Renderer& getRenderer() {return renderer;}
-        Cthulhu::Physics::PhysicsWorld& getPhysicsWorld() { return physicsWorld; }
-        Cthulhu::Scene::Scene& getScene() { return *scene; }
+        Scene::Camera* getCamera() {return camera;}
+        Core::Window* getWindow() {return window;}
+
+        Rendering::Renderer& getRenderer() {return renderer;}
+        Physics::PhysicsWorld& getPhysicsWorld() { return physicsWorld; }
+        Scene::Scene& getScene() { return *scene; }
+        
+        const Project::Project* getProject() const {return project ? &*project : nullptr;}
+
         float getDeltaTime() const { return deltaTime; }
+
         void triggerRaycastCallback(const Physics::RaycastHitInfo& hit) {
             if (raycastCallback) {raycastCallback(raycastContext, hit);}
         }
 
     private:
+        std::optional<Cthulhu::Project::Project> project;
+
         Rendering::Renderer renderer;
-        Cthulhu::Physics::PhysicsWorld physicsWorld;
-        Cthulhu::Scene::Camera* camera = nullptr;
-        Cthulhu::Core::Window* window = nullptr;
+        Physics::PhysicsWorld physicsWorld;
+
+        Scene::Camera* camera = nullptr;
+        Core::Window* window = nullptr;
         GLFWwindow* glfwWindow = nullptr;
+
         std::unique_ptr<Cthulhu::Scene::Scene> scene; 
         std::vector<Rendering::Renderable> frameRenderables;
         
         UpdateCallback updateCallback = nullptr;
         void* updateContext = nullptr;
+
         RaycastCallback raycastCallback = nullptr;
         void* raycastContext = nullptr;
 
