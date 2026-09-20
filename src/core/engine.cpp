@@ -38,6 +38,9 @@ static void physicsFixedUpdateCallback(void* context, float fixedDt) {
 }
 namespace Cthulhu
 {
+    Engine::Engine() = default;
+    Engine::~Engine() = default;
+
     bool Engine::init(const std::filesystem::path& projectFilePath)
     {
         auto openedProject = Cthulhu::Project::Project::open(projectFilePath);

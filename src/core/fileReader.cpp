@@ -16,7 +16,7 @@ namespace Cthulhu::Utils
 
         if (!input.is_open())
         {
-            Log::Print("FILE MISSING DOUBLE CHECK PATH!","File",LogType::LOG_ERROR);
+            Log::Print("FILE MISSING DOUBLE CHECK PATH: " + file,"File",LogType::LOG_ERROR);
             return "";
         }
 

@@ -27,6 +27,12 @@ namespace Cthulhu
         using UpdateCallback = void(*)(void* context, float deltaTime);
         using RaycastCallback = void(*)(void* context, const Physics::RaycastHitInfo& hit);
         
+        Engine();
+        ~Engine();
+
+        Engine(const Engine&) = delete;
+        Engine& operator=(const Engine&) = delete;
+
         bool init(const std::filesystem::path& projectFilePath);
         void loadScene(std::string_view resourcePath);
         void setUpdateCallback(UpdateCallback callback, void* context = nullptr);
