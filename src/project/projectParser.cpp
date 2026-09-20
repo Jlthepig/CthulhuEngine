@@ -3,12 +3,17 @@
 
 #include <charconv>
 #include <cctype>
+#include <cstdint>
 #include <fstream>
-#include <limits>
+#include <string>
 #include <string_view>
 
+using KalaHeaders::KalaLog::Log;
+using KalaHeaders::KalaLog::LogType;
 namespace Cthulhu::Project
 {
+    static constexpr uint32_t MAX_WINDOW_DIMENSION = 16384;
+
     static std::string_view trim(std::string_view text)
     {
         while (!text.empty() &&
@@ -29,16 +34,31 @@ namespace Cthulhu::Project
     static std::string_view stripComment(std::string_view line)
     {
         bool insideString = false;
+        bool escaping = false;
 
         for (size_t i = 0; i < line.size(); ++i)
         {
-            if (line[i] == '"' &&
-                (i == 0 || line[i - 1] != '\\'))
+            const char c = line[i];
+
+            if (escaping)
             {
-                insideString = !insideString;
+                escaping = false;
+                continue;
             }
 
-            if (line[i] == '#' && !insideString)
+            if (insideString && c == '\\')
+            {
+                escaping = true;
+                continue;
+            }
+
+            if (c == '"')
+            {
+                insideString = !insideString;
+                continue;
+            }
+
+            if (c == '#' && !insideString)
             {
                 return line.substr(0, i);
             }
@@ -61,8 +81,8 @@ namespace Cthulhu::Project
         value.remove_prefix(1);
         value.remove_suffix(1);
 
-        output.clear();
-        output.reserve(value.size());
+        std::string result;
+        result.reserve(value.size());
 
         bool escaping = false;
 
@@ -72,24 +92,11 @@ namespace Cthulhu::Project
             {
                 switch (c)
                 {
-                    case '"':
-                        output += '"';
-                        break;
-
-                    case '\\':
-                        output += '\\';
-                        break;
-
-                    case 'n':
-                        output += '\n';
-                        break;
-
-                    case 't':
-                        output += '\t';
-                        break;
-
-                    default:
-                        return false;
+                    case '"':  result += '"';  break;
+                    case '\\': result += '\\'; break;
+                    case 'n':  result += '\n'; break;
+                    case 't':  result += '\t'; break;
+                    default:   return false;
                 }
 
                 escaping = false;
@@ -102,10 +109,21 @@ namespace Cthulhu::Project
                 continue;
             }
 
-            output += c;
+            if (c == '"')
+            {
+                return false;
+            }
+
+            result += c;
         }
 
-        return !escaping;
+        if (escaping)
+        {
+            return false;
+        }
+
+        output = std::move(result);
+        return true;
     }
 
     static bool parseUInt32(std::string_view value, uint32_t& output)
@@ -134,17 +152,51 @@ namespace Cthulhu::Project
         return true;
     }
 
+    enum class ProjectKey
+    {
+        Name,
+        WindowWidth,
+        WindowHeight,
+        MainScene,
+        Unknown
+    };
+
+    static ProjectKey classifyKey(std::string_view key)
+    {
+        if (key == "name")         return ProjectKey::Name;
+        if (key == "windowWidth")  return ProjectKey::WindowWidth;
+        if (key == "windowHeight") return ProjectKey::WindowHeight;
+        if (key == "mainScene")    return ProjectKey::MainScene;
+        return ProjectKey::Unknown;
+    }
+
+    static bool parseWindowDimension(std::string_view keyName, std::string_view value, size_t lineNumber, bool alreadyFound, uint32_t& output)
+    {
+        if (alreadyFound)
+        {
+            Log::Print("DUPLICATE PROJECT SETTING '" + std::string(keyName) + "' ON LINE " + std::to_string(lineNumber), "ProjectParser", LogType::LOG_ERROR);
+            return false;
+        }
+
+        uint32_t parsed = 0;
+
+        if (!parseUInt32(value, parsed) || parsed == 0 || parsed > MAX_WINDOW_DIMENSION)
+        {
+            Log::Print("INVALID '" + std::string(keyName) + "' ON LINE " + std::to_string(lineNumber) + " (EXPECTED 1-" + std::to_string(MAX_WINDOW_DIMENSION) + ")", "ProjectParser", LogType::LOG_ERROR);
+            return false;
+        }
+
+        output = parsed;
+        return true;
+    }
+
     std::optional<ProjectConfig> ProjectParser::parse(const std::string& path)
     {
         std::ifstream file(path);
 
         if (!file.is_open())
         {
-            KalaHeaders::KalaLog::Log::Print(
-                "FAILED TO OPEN PROJECT FILE: " + path,
-                "ProjectParser",
-                KalaHeaders::KalaLog::LogType::LOG_ERROR);
-
+            Log::Print("FAILED TO OPEN PROJECT FILE: " + path, "ProjectParser", LogType::LOG_ERROR);
             return std::nullopt;
         }
 
@@ -153,6 +205,7 @@ namespace Cthulhu::Project
         bool foundName = false;
         bool foundWindowWidth = false;
         bool foundWindowHeight = false;
+        bool foundMainScene = false;
 
         std::string line;
         size_t lineNumber = 0;
@@ -161,7 +214,18 @@ namespace Cthulhu::Project
         {
             ++lineNumber;
 
-            std::string_view view = stripComment(line);
+            std::string_view view = line;
+
+            if (lineNumber == 1 &&
+                view.size() >= 3 &&
+                static_cast<unsigned char>(view[0]) == 0xEF &&
+                static_cast<unsigned char>(view[1]) == 0xBB &&
+                static_cast<unsigned char>(view[2]) == 0xBF)
+            {
+                view.remove_prefix(3);
+            }
+
+            view = stripComment(view);
             view = trim(view);
 
             if (view.empty())
@@ -169,116 +233,131 @@ namespace Cthulhu::Project
                 continue;
             }
 
-            size_t equalsPosition = view.find('=');
+            const size_t equalsPosition = view.find('=');
 
             if (equalsPosition == std::string_view::npos)
             {
-                KalaHeaders::KalaLog::Log::Print(
-                    "EXPECTED '=' ON LINE " + std::to_string(lineNumber),
-                    "ProjectParser",
-                    KalaHeaders::KalaLog::LogType::LOG_ERROR);
-
+                Log::Print("EXPECTED '=' ON LINE " + std::to_string(lineNumber), "ProjectParser", LogType::LOG_ERROR);
                 return std::nullopt;
             }
 
-            std::string_view key =
-                trim(view.substr(0, equalsPosition));
+            const std::string_view key = trim(view.substr(0, equalsPosition));
 
-            std::string_view value =
-                trim(view.substr(equalsPosition + 1));
+            const std::string_view value =trim(view.substr(equalsPosition + 1));
 
             if (key.empty() || value.empty())
             {
-                KalaHeaders::KalaLog::Log::Print(
-                    "INVALID PROJECT SETTING ON LINE " +
-                        std::to_string(lineNumber),
-                    "ProjectParser",
-                    KalaHeaders::KalaLog::LogType::LOG_ERROR);
-
+                Log::Print("INVALID PROJECT SETTING ON LINE " + std::to_string(lineNumber), "ProjectParser", LogType::LOG_ERROR);
                 return std::nullopt;
             }
 
-            if (key == "name")
+            switch (classifyKey(key))
             {
-                if (foundName)
+                case ProjectKey::Name:
                 {
-                    KalaHeaders::KalaLog::Log::Print(
-                        "DUPLICATE PROJECT SETTING 'name'",
-                        "ProjectParser",
-                        KalaHeaders::KalaLog::LogType::LOG_ERROR);
+                    if (foundName)
+                    {
+                        Log::Print("DUPLICATE PROJECT SETTING 'name' ON LINE " + std::to_string(lineNumber), "ProjectParser", LogType::LOG_ERROR);
+                        return std::nullopt;
+                    }
 
-                    return std::nullopt;
+                    std::string name;
+
+                    if (!parseString(value, name))
+                    {
+                        Log::Print("INVALID STRING FOR 'name' ON LINE " + std::to_string(lineNumber), "ProjectParser", LogType::LOG_ERROR);
+                        return std::nullopt;
+                    }
+
+                    config.name = std::move(name);
+                    foundName = true;
+                    break;
                 }
 
-                if (!parseString(value, config.name))
+                case ProjectKey::WindowWidth:
                 {
-                    KalaHeaders::KalaLog::Log::Print(
-                        "INVALID STRING FOR 'name' ON LINE " +
-                            std::to_string(lineNumber),
-                        "ProjectParser",
-                        KalaHeaders::KalaLog::LogType::LOG_ERROR);
+                    if (!parseWindowDimension("windowWidth", value, lineNumber,foundWindowWidth,config.windowWidth))
+                    {
+                        return std::nullopt;
+                    }
 
-                    return std::nullopt;
+                    foundWindowWidth = true;
+                    break;
                 }
 
-                foundName = true;
-            }
-            else if (key == "windowWidth")
-            {
-                if (foundWindowWidth ||
-                    !parseUInt32(value, config.windowWidth) ||
-                    config.windowWidth == 0)
+                case ProjectKey::WindowHeight:
                 {
-                    KalaHeaders::KalaLog::Log::Print(
-                        "INVALID 'windowWidth' ON LINE " +
-                            std::to_string(lineNumber),
-                        "ProjectParser",
-                        KalaHeaders::KalaLog::LogType::LOG_ERROR);
+                    if (!parseWindowDimension("windowHeight", value, lineNumber,foundWindowHeight, config.windowHeight))
+                    {
+                        return std::nullopt;
+                    }
 
-                    return std::nullopt;
+                    foundWindowHeight = true;
+                    break;
                 }
 
-                foundWindowWidth = true;
-            }
-            else if (key == "windowHeight")
-            {
-                if (foundWindowHeight ||
-                    !parseUInt32(value, config.windowHeight) ||
-                    config.windowHeight == 0)
+                case ProjectKey::MainScene:
                 {
-                    KalaHeaders::KalaLog::Log::Print(
-                        "INVALID 'windowHeight' ON LINE " +
-                            std::to_string(lineNumber),
-                        "ProjectParser",
-                        KalaHeaders::KalaLog::LogType::LOG_ERROR);
+                    if (foundMainScene)
+                    {
+                        Log::Print("DUPLICATE PROJECT SETTING 'mainScene' ON LINE " + std::to_string(lineNumber), "ProjectParser", LogType::LOG_ERROR);
+                        return std::nullopt;
+                    }
 
-                    return std::nullopt;
+                    std::string mainScene;
+
+                    if (!parseString(value, mainScene))
+                    {
+                        Log::Print("INVALID STRING FOR 'mainScene' ON LINE " + std::to_string(lineNumber), "ProjectParser", LogType::LOG_ERROR);
+                        return std::nullopt;
+                    }
+
+                    if (mainScene.empty())
+                    {
+                        Log::Print("'mainScene' CANNOT BE EMPTY. REMOVE THE SETTING IF NO MAIN SCENE IS CONFIGURED.", "ProjectParser", LogType::LOG_ERROR);
+                        return std::nullopt;
+                    }
+
+                    if (!mainScene.starts_with("res://"))
+                    {
+                        Log::Print("'mainScene' MUST USE A 'res://' RESOURCE PATH", "ProjectParser", LogType::LOG_ERROR);
+                        return std::nullopt;
+                    }
+
+                    config.mainScene = std::move(mainScene);
+                    foundMainScene = true;
+                    break;
                 }
 
-                foundWindowHeight = true;
-            }
-
-            else
-            {
-                KalaHeaders::KalaLog::Log::Print(
-                    "UNKNOWN PROJECT SETTING '" +
-                        std::string(key) +
-                        "' ON LINE " +
-                        std::to_string(lineNumber),
-                    "ProjectParser",
-                    KalaHeaders::KalaLog::LogType::LOG_ERROR);
-
-                return std::nullopt;
+                case ProjectKey::Unknown:
+                default:
+                {
+                    Log::Print("UNKNOWN PROJECT SETTING '" + std::string(key) + "' ON LINE " + std::to_string(lineNumber), "ProjectParser", LogType::LOG_ERROR);
+                    return std::nullopt;
+                }
             }
         }
 
         if (!foundName || !foundWindowWidth || !foundWindowHeight)
         {
-            KalaHeaders::KalaLog::Log::Print(
-                "PROJECT FILE IS MISSING REQUIRED SETTINGS",
-                "ProjectParser",
-                KalaHeaders::KalaLog::LogType::LOG_ERROR);
+            std::string missing;
 
+            if (!foundName)
+            {
+                missing += " name";
+            }
+
+            if (!foundWindowWidth)
+            {
+                missing += " windowWidth";
+            }
+
+            if (!foundWindowHeight)
+            {
+                missing += " windowHeight";
+            }
+
+            Log::Print("PROJECT FILE IS MISSING REQUIRED SETTINGS:" + missing, "ProjectParser", LogType::LOG_ERROR);
             return std::nullopt;
         }
 

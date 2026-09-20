@@ -26,6 +26,16 @@ namespace Cthulhu::Project
             {
                 return projectFilePath;
             }
+            
+            const std::optional<std::string>& getMainScene() const
+            {
+                return config.mainScene;
+            }
+
+            bool hasMainScene() const
+            {
+                return config.mainScene.has_value();
+            }
 
             std::optional<std::filesystem::path> resolveResourcePath(std::string_view resourcePath) const;
 
