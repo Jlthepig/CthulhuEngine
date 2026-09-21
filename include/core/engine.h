@@ -36,18 +36,26 @@ namespace Cthulhu
         using RaycastCallback = void(*)(void* context, const Physics::RaycastHitInfo& hit);
         
         Engine() = default;
-        ~Engine() {shutdown();}
+        ~Engine();
 
         Engine(const Engine&) = delete;
         Engine& operator=(const Engine&) = delete;
 
         bool init(const std::filesystem::path& projectFilePath);
-        bool loadScene(std::string_view resourcePath);
-        void setUpdateCallback(UpdateCallback callback, void* context = nullptr);
-        void setRaycastCallback(RaycastCallback callback, void* context = nullptr);
-        void processFixedUpdate(float fixedDt);
         void run();
         void shutdown();
+
+        bool loadScene(std::string_view resourcePath);
+        bool createEmptyScene(const std::string& name = "Untitled");
+        void unloadScene();
+
+        void setUpdateCallback(UpdateCallback callback, void* context = nullptr);
+        void setRaycastCallback(RaycastCallback callback, void* context = nullptr);
+        void triggerRaycastCallback(const Physics::RaycastHitInfo& hit) {
+            if (raycastCallback) {raycastCallback(raycastContext, hit);}
+        }
+
+        void processFixedUpdate(float fixedDt);
 
         EngineState getState() const {return state;}
         bool isInitialized() const {return state != EngineState::Uninitialized;}
@@ -61,15 +69,25 @@ namespace Cthulhu
 
         Rendering::Renderer& getRenderer() {return renderer;}
         Physics::PhysicsWorld& getPhysicsWorld() { return physicsWorld; }
-        Scene::Scene& getScene() { return *scene; }
+        
+        Scene::Scene* getActiveScene()
+        {
+            return activeScene.get();
+        }
+
+        const Scene::Scene* getActiveScene() const
+        {
+            return activeScene.get();
+        }
+
+        bool hasActiveScene() const
+        {
+            return activeScene != nullptr;
+        }
         
         const Project::Project* getProject() const {return project ? &*project : nullptr;}
 
         float getDeltaTime() const { return deltaTime; }
-
-        void triggerRaycastCallback(const Physics::RaycastHitInfo& hit) {
-            if (raycastCallback) {raycastCallback(raycastContext, hit);}
-        }
 
     private:
         std::optional<Cthulhu::Project::Project> project;
@@ -82,7 +100,10 @@ namespace Cthulhu
         Core::Window* window = nullptr;
         GLFWwindow* glfwWindow = nullptr;
 
-        std::unique_ptr<Cthulhu::Scene::Scene> scene; 
+        std::unique_ptr<Scene::Scene> createSceneInstance();
+        void activateScene(std::unique_ptr<Scene::Scene> newScene);
+
+        std::unique_ptr<Cthulhu::Scene::Scene> activeScene; 
         std::vector<Rendering::Renderable> frameRenderables;
         
         UpdateCallback updateCallback = nullptr;

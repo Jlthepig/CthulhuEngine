@@ -54,10 +54,10 @@ namespace Cthulhu::Physics
             void* onFixedUpdateContext = nullptr;
             float getInterpolationAlpha();
             void shutdown();
-            void createGroundPlane();
 
             uint32_t addStaticBox(glm::vec3 position, glm::vec3 halfExtent);
             uint32_t addDynamicBox(glm::vec3 position, glm::vec3 halfextent, float mass);
+            void removeBody(uint32_t bodyId);
             BodyTransform getBodyTransform(uint32_t bodyId);
 
             RaycastHitInfo raycast(const glm::vec3& origin, const glm::vec3& direction, float maxDistance);

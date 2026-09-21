@@ -22,8 +22,6 @@ namespace Cthulhu::Scene
 
         scene.setName(parsed->name);
 
-        scene.clear();
-
         Log::Print("Loading scene: " + parsed->name, "SceneLoader", LogType::LOG_INFO);
 
         // build entities from parsed information
