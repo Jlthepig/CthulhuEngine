@@ -11,13 +11,13 @@ using KalaHeaders::KalaLog::LogType;
 
 namespace Cthulhu::Scene
 {
-    void SceneLoader::load(const std::string& path, Scene& scene, Cthulhu::Physics::PhysicsWorld& physicsWorld, const Cthulhu::Project::Project& project)
+    bool SceneLoader::load(const std::string& path, Scene& scene, Cthulhu::Physics::PhysicsWorld& physicsWorld, const Cthulhu::Project::Project& project)
     {
         auto parsed = JsonParser::parseScene(path); // the parsed information provided by the json parser
         if (!parsed.has_value())
         {
             Log::Print("FAILED TO LOAD SCENE: " + path, "SceneLoader", LogType::LOG_ERROR);
-            return;
+            return false;
         }
 
         scene.setName(parsed->name);
@@ -104,5 +104,6 @@ namespace Cthulhu::Scene
             scene.addPointLight(pl);
         }
 
+        return true;
     }
 }

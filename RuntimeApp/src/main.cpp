@@ -52,7 +52,11 @@ int main(int argc, char* argv[])
         return 1;
     }
 
-    engine.loadScene(*project->getMainScene());
+    if (!engine.loadScene(*project->getMainScene()))
+    {
+        Log::Print("FAILED TO LOAD PROJECT MAIN SCENE", "Runtime",LogType::LOG_ERROR);
+        return 1;
+    }
 
     engine.run();
     engine.shutdown();

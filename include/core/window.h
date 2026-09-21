@@ -39,6 +39,7 @@ namespace Cthulhu::Core
         static void mouse_callback(GLFWwindow* window, double xposIn, double yposIn);
         static void mouse_button_callback(GLFWwindow* window, int button, int action, int mods);
 
+        static void destroyAll();
         private:
         GLFWwindow* glfWwindow = nullptr;
         Cthulhu::Scene::Camera* camera = nullptr;

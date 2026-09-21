@@ -15,6 +15,14 @@ namespace Cthulhu::Scene { class Scene; class Camera; }
 namespace Cthulhu::Core { class Window; }
 namespace Cthulhu
 {   
+    enum class EngineState
+    {
+        Uninitialized,
+        Initialized,
+        Running,
+        ShuttingDown
+    };
+
     enum SimulationState
     {
         Running,
@@ -27,23 +35,25 @@ namespace Cthulhu
         using UpdateCallback = void(*)(void* context, float deltaTime);
         using RaycastCallback = void(*)(void* context, const Physics::RaycastHitInfo& hit);
         
-        Engine();
-        ~Engine();
+        Engine() = default;
+        ~Engine() {shutdown();}
 
         Engine(const Engine&) = delete;
         Engine& operator=(const Engine&) = delete;
 
         bool init(const std::filesystem::path& projectFilePath);
-        void loadScene(std::string_view resourcePath);
+        bool loadScene(std::string_view resourcePath);
         void setUpdateCallback(UpdateCallback callback, void* context = nullptr);
         void setRaycastCallback(RaycastCallback callback, void* context = nullptr);
         void processFixedUpdate(float fixedDt);
         void run();
         void shutdown();
 
+        EngineState getState() const {return state;}
+        bool isInitialized() const {return state != EngineState::Uninitialized;}
+
         void setSimulationState(SimulationState state);
         SimulationState getSimulationState() const {return simState;}
-        // single frame queue reverts back to paused after consumption
         void stepSimulation();
 
         Scene::Camera* getCamera() {return camera;}
@@ -80,6 +90,12 @@ namespace Cthulhu
 
         RaycastCallback raycastCallback = nullptr;
         void* raycastContext = nullptr;
+
+        EngineState state = EngineState::Uninitialized;
+        bool glfwInitialized = false;
+        bool physicsInitialized = false;
+        bool audioInitialized = false;
+        bool rendererInitialized = false;
 
         SimulationState simState = SimulationState::Running;
         void applySimStateToSystems(); // toggle systems based on the simState

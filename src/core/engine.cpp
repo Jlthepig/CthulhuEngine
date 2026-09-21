@@ -44,6 +44,12 @@ namespace Cthulhu
 
     bool Engine::init(const std::filesystem::path& projectFilePath)
     {
+        if (state != EngineState::Uninitialized)
+        {
+            Log::Print(" ENGINE IS ALREADY INITIALISED", "ENGINE", LogType::LOG_ERROR);
+            return false;
+        }
+
         auto openedProject = Cthulhu::Project::Project::open(projectFilePath);
 
         if (!openedProject)
@@ -82,6 +88,7 @@ namespace Cthulhu
         else
         {
             Log::Print("GLFW INITIALIZED SUCCESSFULLY", "ENGINE", LogType::LOG_SUCCESS);
+            glfwInitialized = true;
         }
 
         glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 4);
@@ -90,13 +97,21 @@ namespace Cthulhu
 
         Cthulhu::Core::WindowConfig windowConfig;
         windowConfig.resolution = resolution;
+
         window = Cthulhu::Core::Window::createWindow(windowConfig, projectConfig.name.c_str());
         
+        if (!window)
+        {
+            Log::Print("FAILED TO CREATE WINDOW", "ENGINE", LogType::LOG_ERROR);
+            shutdown();
+            return false;
+        }
+
         glfwWindow = window->getWindow();
         if (glfwWindow == NULL)
         {
-            Log::Print("WINDOW IS NULL", "ENGINE", LogType::LOG_ERROR);
-            glfwTerminate();
+            Log::Print("WINDOW DOES NOT CONTAIN A VALID GLFW WINDOW", "ENGINE", LogType::LOG_ERROR);
+            shutdown();
             return false;
         }
         else
@@ -107,7 +122,7 @@ namespace Cthulhu
         if (!gladLoadGLLoader((GLADloadproc)glfwGetProcAddress))
         {
             Log::Print("FAILED TO INITIALISE GLAD.", "ENGINE", LogType::LOG_ERROR);
-            glfwTerminate();
+            shutdown();
             return false;
         }
         else
@@ -121,15 +136,17 @@ namespace Cthulhu
         renderConfig.engineResourceRoot = engineResourceRoot;
 
         physicsWorld.init(physicsConfig);
-        physicsWorld.createGroundPlane();
+        physicsInitialized = true;
 
         scene = std::make_unique<Scene::Scene>();
         camera = Scene::Camera::init();
 
         Core::Input::init(glfwWindow, resolution);
         Core::Audio::init();
+        audioInitialized = true;
 
         renderer.init(glfwWindow, camera, renderConfig);
+        rendererInitialized = true;
 
         int fbW, fbH;
         glfwGetFramebufferSize(glfwWindow, &fbW, &fbH);
@@ -143,30 +160,30 @@ namespace Cthulhu
         physicsWorld.onFixedUpdateContext = this;
 
         Log::Print("ENGINE INITIALIZED FOR PROJECT: " + projectConfig.name, "ENGINE", LogType::LOG_SUCCESS);
+        state = EngineState::Initialized;
         return true;
     }
 
-    void Engine::loadScene(std::string_view resourcePath)
+    bool Engine::loadScene(std::string_view resourcePath)
     {
-        if (!project)
+        if (!project || !scene)
         {
             Log::Print("CANNOT LOAD SCENE WITHOUT AN ACTIVE PROJECT", "ENGINE", LogType::LOG_ERROR);
-            return;
+            return false;
         }
 
         auto resolvedPath = project->resolveResourcePath(resourcePath);
 
-        if (!resolvedPath) {return;}
+        if (!resolvedPath) {return false;}
 
-        Scene::SceneLoader::load(resolvedPath->string(), *scene, physicsWorld, *project);
+        if (!Scene::SceneLoader::load(resolvedPath->string(), *scene, physicsWorld, *project)) {return false;}
 
         renderer.setDirectionalLight(scene->getDirectionalLight());
-        for (const auto& light : scene->getPointLights())
-        {
-            renderer.addPointLight(light);
-        }
+        renderer.setPointLights(scene->getPointLights());
     
         renderer.setScene(scene.get());
+
+        return true;
     }
 
     void Engine::processFixedUpdate(float fixedDt)
@@ -243,6 +260,20 @@ namespace Cthulhu
 
     void Engine::run()
     {
+        if (state != EngineState::Initialized)
+        {
+            Log::Print(" ENGINE MUST BE INITIALISED BEFORE RUNNING", "ENGINE", LogType::LOG_ERROR);
+            return;
+        }
+
+        if (!glfwWindow || !scene)
+        {
+            Log::Print(" ENGINE RUNTIME STATE IS INVALID", "ENGINE", LogType::LOG_ERROR);
+            return;
+        }
+
+        state = EngineState::Running;
+
         lastFrame = (float)glfwGetTime();
         while (!glfwWindowShouldClose(glfwWindow))
         {
@@ -298,6 +329,8 @@ namespace Cthulhu
                 glfwSwapBuffers(glfwWindow);
                 glfwPollEvents();
         }
+
+        state = EngineState::Initialized;
     }
 
     void Engine::setUpdateCallback(UpdateCallback callback, void* context)
@@ -314,11 +347,59 @@ namespace Cthulhu
 
     void Engine::shutdown()
     {   
-        Core::Audio::shutdown();
-        physicsWorld.shutdown();
-        renderer.shutdown();
-        scene->clear();
-        glfwTerminate();
+        if (state == EngineState::ShuttingDown) {return;}
+        if (state == EngineState::Initialized && !glfwInitialized) {return;}
+
+        state = EngineState::ShuttingDown;
+
+        updateCallback = nullptr;
+        updateContext = nullptr;
+
+        raycastCallback = nullptr;
+        raycastContext = nullptr;
+
+        if (scene)
+        {
+            scene->clear();
+            scene.reset();
+        }
+
+        if (rendererInitialized)
+        {
+            renderer.shutdown();
+            rendererInitialized = false;
+        }
+
+        if (audioInitialized)
+        {
+            Core::Audio::shutdown();
+            audioInitialized = false;
+        }
+
+        if (physicsInitialized)
+        {
+            physicsWorld.shutdown();
+            physicsInitialized = false;
+        }
+
+        camera = nullptr;
+        window = nullptr;
+        glfwWindow = nullptr;
+
         project.reset();
+
+        if (glfwInitialized)
+        {
+            glfwTerminate();
+            Core::Window::destroyAll();
+            glfwInitialized = false;
+        }
+        
+        frameRenderables.clear();
+
+        deltaTime = 0.0f;
+        lastFrame = 0.0;
+        
+        state = EngineState::Uninitialized;
     }
 }

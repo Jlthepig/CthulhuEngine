@@ -114,4 +114,18 @@ namespace Cthulhu::Core
         return glfwGetPrimaryMonitor();
     }
 
+    void Window::destroyAll()
+    {
+        for (auto& window : windowContainer)
+        {
+            if (window && window->glfWwindow)
+            {
+                glfwDestroyWindow(window->glfWwindow);
+                window->glfWwindow = nullptr;
+            }
+        }
+
+        windowContainer.clear();
+    }
+
 }

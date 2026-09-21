@@ -82,6 +82,22 @@ namespace Cthulhu::Project
 
         root = root.lexically_normal();
 
+        const bool rootAlreadyExisted =std::filesystem::exists(root);
+
+        auto rollback = [&]()
+        {
+            std::error_code cleanupError;
+
+            std::filesystem::remove(root / "project.cthulhu",cleanupError);
+
+            std::filesystem::remove_all(root / ".cthulhu",cleanupError);
+
+            if (!rootAlreadyExisted)
+            {
+                std::filesystem::remove(root,cleanupError);
+            }
+        };
+
         if (std::filesystem::exists(root, error))
         {
             if (error || !std::filesystem::is_directory(root))
@@ -110,6 +126,7 @@ namespace Cthulhu::Project
         if (!std::filesystem::create_directories(internalDirectoy, error) || error)
         {
             Log::Print("FAILED TO CREATE .cthulhu DIRECTORY" , "Project", LogType::LOG_ERROR);
+            rollback();
             return std::nullopt;
         }
 
@@ -117,6 +134,7 @@ namespace Cthulhu::Project
 
         if (!ProjectWriter::write(projectFile, config))
         {
+            rollback();
             return std::nullopt;
         }
 
@@ -125,6 +143,7 @@ namespace Cthulhu::Project
         if (!project)
         {
             Log::Print("PROJECT WAS CREATED BUT CANNOT BE OPENED" , "Project", LogType::LOG_ERROR);
+            rollback();
             return std::nullopt;
         }
 
@@ -184,6 +203,25 @@ namespace Cthulhu::Project
         project.config = std::move(*parsedConfig);
         project.projectFilePath = absolutePath;
         project.rootPath = absolutePath.parent_path();
+
+        const auto internalDirectory = project.rootPath / ".cthulhu";
+
+        std::filesystem::create_directories(internalDirectory, error);
+
+        if (error)
+        {
+            Log::Print("FAILED TO CREATE PROJECT INTERNAL DIRECTORY: " + internalDirectory.string(),"Project",LogType::LOG_ERROR);
+            return std::nullopt;
+        }
+
+        if (project.config.mainScene)
+        {
+            if (!project.resolveResourcePath(*project.config.mainScene))
+            {
+                Log::Print("INVALID MAIN SCENE RESOURCE PATH: " +*project.config.mainScene,"Project",LogType::LOG_ERROR);
+                return std::nullopt;
+            }
+        }
 
         Log::Print("PROJECT OPENED: " + project.config.name, "Project",LogType::LOG_SUCCESS);
         return project;
