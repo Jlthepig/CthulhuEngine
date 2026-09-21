@@ -6,224 +6,222 @@
 
 using namespace KalaHeaders::KalaLog;
 
-namespace Cthulhu::Project 
-{
-    static bool isInsideProjectRoot(const std::filesystem::path& root, const std::filesystem::path& path) 
-    {
-        auto relative = path.lexically_normal().lexically_relative(root.lexically_normal());
-        
-        if (relative.empty()) return false; 
-        
-        return *relative.begin() != "..";
-    }
+namespace Cthulhu::Project {
+static bool isInsideProjectRoot(const std::filesystem::path &root,
+                                const std::filesystem::path &path) {
+  auto relative =
+      path.lexically_normal().lexically_relative(root.lexically_normal());
 
-    std::optional<std::filesystem::path> Project::resolveResourcePath(std::string_view resourcePath) const
-    {
-        constexpr std::string_view prefix = "res://";
+  if (relative.empty())
+    return false;
 
-        if (!resourcePath.starts_with(prefix))
-        {
-            Log::Print("RESOURCE PATH MUST START WITH 'res://': " + std::string(resourcePath), "Project",LogType::LOG_ERROR);
-            return std::nullopt;
-        }
-
-        std::string_view relativePart = resourcePath.substr(prefix.size());
-
-        if (relativePart.empty())
-        {
-            return rootPath;
-        }
-
-        std::filesystem::path relativePath {std::string(relativePart)};
-
-        if (relativePath.is_absolute() || relativePath.has_root_name() || relativePath.has_root_directory())
-        {
-            Log::Print("INVALID RESOURCE PATH: " + std::string(resourcePath), "Project",LogType::LOG_ERROR);
-            return std::nullopt;
-        }
-
-        std::filesystem::path resolved = (rootPath / relativePath).lexically_normal();
-
-        if (!isInsideProjectRoot(rootPath, resolved))
-        {
-            Log::Print("RESOURCE PATH ESCAPES PROJECT ROOT: " + std::string(resourcePath), "Project",LogType::LOG_ERROR);
-            return std::nullopt;
-        }
-
-        return resolved;
-
-    }
-
-    std::optional<Project> Project::createProject(const std::filesystem::path &requestedRoot, const ProjectConfig &config)
-    {
-        if (config.name.empty())
-        {
-            Log::Print("PROJECT NAME CANNOT BE EMPTY","Project", LogType::LOG_ERROR);
-            return std::nullopt;
-        }
-
-        uint32_t maxWindowDimension = ProjectParser::getMaxWindowDimension();
-
-        if (config.windowWidth == 0 || config.windowHeight == 0 || config.windowWidth > maxWindowDimension || config.windowHeight > maxWindowDimension)
-        {
-            Log::Print("INVALID WINDOW DIMENSIONS","Project", LogType::LOG_ERROR);
-            return std::nullopt;
-        }
-
-        std::error_code error;
-
-        auto root = std::filesystem::absolute(requestedRoot, error);
-
-        if (error)
-        {
-            Log::Print("FAILED TO RESOLVE PROJECT DIRECTOY: " + requestedRoot.string(),"Project", LogType::LOG_ERROR);
-            return std::nullopt;
-        }
-
-        root = root.lexically_normal();
-
-        const bool rootAlreadyExisted =std::filesystem::exists(root);
-
-        auto rollback = [&]()
-        {
-            std::error_code cleanupError;
-
-            std::filesystem::remove(root / "project.cthulhu",cleanupError);
-
-            std::filesystem::remove_all(root / ".cthulhu",cleanupError);
-
-            if (!rootAlreadyExisted)
-            {
-                std::filesystem::remove(root,cleanupError);
-            }
-        };
-
-        if (std::filesystem::exists(root, error))
-        {
-            if (error || !std::filesystem::is_directory(root))
-            {
-                Log::Print("PROJECT DESTINATION IS NOT A VALID DIRECTORY: " + root.string(),"Project", LogType::LOG_ERROR);
-                return std::nullopt;
-            }
-
-            if (!std::filesystem::is_empty(root,error) || error)
-            {
-                Log::Print("PROJECT DIRECTORY MUST BE EMPTY: " + root.string(),"Project", LogType::LOG_ERROR);
-                return std::nullopt;
-            }
-        }
-        else 
-        {
-            if (!std::filesystem::create_directories(root, error) || error)
-            {
-                Log::Print("FAILED TO CREATE PROJECT DIRECTORY: " + root.string(),"Project", LogType::LOG_ERROR);
-                return std::nullopt;
-            }
-        }
-
-        const auto internalDirectoy = root / ".cthulhu";
-
-        if (!std::filesystem::create_directories(internalDirectoy, error) || error)
-        {
-            Log::Print("FAILED TO CREATE .cthulhu DIRECTORY" , "Project", LogType::LOG_ERROR);
-            rollback();
-            return std::nullopt;
-        }
-
-        const auto projectFile = root / "project.cthulhu";
-
-        if (!ProjectWriter::write(projectFile, config))
-        {
-            rollback();
-            return std::nullopt;
-        }
-
-        auto project = Project::open(projectFile);
-
-        if (!project)
-        {
-            Log::Print("PROJECT WAS CREATED BUT CANNOT BE OPENED" , "Project", LogType::LOG_ERROR);
-            rollback();
-            return std::nullopt;
-        }
-
-         Log::Print("PROJECT WAS CREATED SUCCESSFULLY: " + config.name, "Project", LogType::LOG_SUCCESS);
-         return project;
-    }
-
-
-    std::optional<Project> Project::open(const std::filesystem::path& projectFilePath)
-    {
-        std::error_code error;
-
-        std::filesystem::path absolutePath = std::filesystem::absolute(projectFilePath,error);
-
-        if (error)
-        {
-            Log::Print("FAILED TO RESOLVE PROJECT PATH: " + projectFilePath.string(),"Project", LogType::LOG_ERROR);
-            return std::nullopt;
-        }
-
-        absolutePath = absolutePath.lexically_normal();
-
-        std::filesystem::path canonicalProjectFile = std::filesystem::canonical(absolutePath, error);
-
-        if (error)
-        {
-            Log::Print(
-                "FAILED TO CANONICALIZE PROJECT PATH: " + absolutePath.string(),
-                "Project",
-                LogType::LOG_ERROR);
-
-            return std::nullopt;
-        }
-
-        absolutePath = std::move(canonicalProjectFile);
-
-        if (absolutePath.filename() != "project.cthulhu")
-        {
-            Log::Print("PROJECT FILE MUST BE NAMED 'project.cthulhu'", "Project",LogType::LOG_ERROR);
-            return std::nullopt;
-        }
-
-        if (!std::filesystem::is_regular_file(absolutePath, error) || error)
-        {
-            Log::Print("PROJECT FILE DOES NOT EXIST: " + absolutePath.string(), "Project",LogType::LOG_ERROR);
-            return std::nullopt;
-        }
-
-        auto parsedConfig = ProjectParser::parse(absolutePath.string());
-
-        if (!parsedConfig)
-        {
-            return std::nullopt;
-        }
-
-        Project project;
-        project.config = std::move(*parsedConfig);
-        project.projectFilePath = absolutePath;
-        project.rootPath = absolutePath.parent_path();
-
-        const auto internalDirectory = project.rootPath / ".cthulhu";
-
-        std::filesystem::create_directories(internalDirectory, error);
-
-        if (error)
-        {
-            Log::Print("FAILED TO CREATE PROJECT INTERNAL DIRECTORY: " + internalDirectory.string(),"Project",LogType::LOG_ERROR);
-            return std::nullopt;
-        }
-
-        if (project.config.mainScene)
-        {
-            if (!project.resolveResourcePath(*project.config.mainScene))
-            {
-                Log::Print("INVALID MAIN SCENE RESOURCE PATH: " +*project.config.mainScene,"Project",LogType::LOG_ERROR);
-                return std::nullopt;
-            }
-        }
-
-        Log::Print("PROJECT OPENED: " + project.config.name, "Project",LogType::LOG_SUCCESS);
-        return project;
-    }
+  return *relative.begin() != "..";
 }
+
+std::optional<std::filesystem::path>
+Project::resolveResourcePath(std::string_view resourcePath) const {
+  constexpr std::string_view prefix = "res://";
+
+  if (!resourcePath.starts_with(prefix)) {
+    Log::Print("RESOURCE PATH MUST START WITH 'res://': " +
+                   std::string(resourcePath),
+               "Project", LogType::LOG_ERROR);
+    return std::nullopt;
+  }
+
+  std::string_view relativePart = resourcePath.substr(prefix.size());
+
+  if (relativePart.empty()) {
+    return rootPath;
+  }
+
+  std::filesystem::path relativePath{std::string(relativePart)};
+
+  if (relativePath.is_absolute() || relativePath.has_root_name() ||
+      relativePath.has_root_directory()) {
+    Log::Print("INVALID RESOURCE PATH: " + std::string(resourcePath), "Project",
+               LogType::LOG_ERROR);
+    return std::nullopt;
+  }
+
+  std::filesystem::path resolved = (rootPath / relativePath).lexically_normal();
+
+  if (!isInsideProjectRoot(rootPath, resolved)) {
+    Log::Print("RESOURCE PATH ESCAPES PROJECT ROOT: " +
+                   std::string(resourcePath),
+               "Project", LogType::LOG_ERROR);
+    return std::nullopt;
+  }
+
+  return resolved;
+}
+
+std::optional<Project>
+Project::createProject(const std::filesystem::path &requestedRoot,
+                       const ProjectConfig &config) {
+  if (config.name.empty()) {
+    Log::Print("PROJECT NAME CANNOT BE EMPTY", "Project", LogType::LOG_ERROR);
+    return std::nullopt;
+  }
+
+  uint32_t maxWindowDimension = ProjectParser::getMaxWindowDimension();
+
+  if (config.windowWidth == 0 || config.windowHeight == 0 ||
+      config.windowWidth > maxWindowDimension ||
+      config.windowHeight > maxWindowDimension) {
+    Log::Print("INVALID WINDOW DIMENSIONS", "Project", LogType::LOG_ERROR);
+    return std::nullopt;
+  }
+
+  std::error_code error;
+
+  auto root = std::filesystem::absolute(requestedRoot, error);
+
+  if (error) {
+    Log::Print("FAILED TO RESOLVE PROJECT DIRECTOY: " + requestedRoot.string(),
+               "Project", LogType::LOG_ERROR);
+    return std::nullopt;
+  }
+
+  root = root.lexically_normal();
+
+  const bool rootAlreadyExisted = std::filesystem::exists(root);
+
+  auto rollback = [&]() {
+    std::error_code cleanupError;
+
+    std::filesystem::remove(root / "project.cthulhu", cleanupError);
+
+    std::filesystem::remove_all(root / ".cthulhu", cleanupError);
+
+    if (!rootAlreadyExisted) {
+      std::filesystem::remove(root, cleanupError);
+    }
+  };
+
+  if (std::filesystem::exists(root, error)) {
+    if (error || !std::filesystem::is_directory(root)) {
+      Log::Print("PROJECT DESTINATION IS NOT A VALID DIRECTORY: " +
+                     root.string(),
+                 "Project", LogType::LOG_ERROR);
+      return std::nullopt;
+    }
+
+    if (!std::filesystem::is_empty(root, error) || error) {
+      Log::Print("PROJECT DIRECTORY MUST BE EMPTY: " + root.string(), "Project",
+                 LogType::LOG_ERROR);
+      return std::nullopt;
+    }
+  } else {
+    if (!std::filesystem::create_directories(root, error) || error) {
+      Log::Print("FAILED TO CREATE PROJECT DIRECTORY: " + root.string(),
+                 "Project", LogType::LOG_ERROR);
+      return std::nullopt;
+    }
+  }
+
+  const auto internalDirectoy = root / ".cthulhu";
+
+  if (!std::filesystem::create_directories(internalDirectoy, error) || error) {
+    Log::Print("FAILED TO CREATE .cthulhu DIRECTORY", "Project",
+               LogType::LOG_ERROR);
+    rollback();
+    return std::nullopt;
+  }
+
+  const auto projectFile = root / "project.cthulhu";
+
+  if (!ProjectWriter::write(projectFile, config)) {
+    rollback();
+    return std::nullopt;
+  }
+
+  auto project = Project::open(projectFile);
+
+  if (!project) {
+    Log::Print("PROJECT WAS CREATED BUT CANNOT BE OPENED", "Project",
+               LogType::LOG_ERROR);
+    rollback();
+    return std::nullopt;
+  }
+
+  Log::Print("PROJECT WAS CREATED SUCCESSFULLY: " + config.name, "Project",
+             LogType::LOG_SUCCESS);
+  return project;
+}
+
+std::optional<Project>
+Project::open(const std::filesystem::path &projectFilePath) {
+  std::error_code error;
+
+  std::filesystem::path absolutePath =
+      std::filesystem::absolute(projectFilePath, error);
+
+  if (error) {
+    Log::Print("FAILED TO RESOLVE PROJECT PATH: " + projectFilePath.string(),
+               "Project", LogType::LOG_ERROR);
+    return std::nullopt;
+  }
+
+  absolutePath = absolutePath.lexically_normal();
+
+  std::filesystem::path canonicalProjectFile =
+      std::filesystem::canonical(absolutePath, error);
+
+  if (error) {
+    Log::Print("FAILED TO CANONICALIZE PROJECT PATH: " + absolutePath.string(),
+               "Project", LogType::LOG_ERROR);
+
+    return std::nullopt;
+  }
+
+  absolutePath = std::move(canonicalProjectFile);
+
+  if (absolutePath.filename() != "project.cthulhu") {
+    Log::Print("PROJECT FILE MUST BE NAMED 'project.cthulhu'", "Project",
+               LogType::LOG_ERROR);
+    return std::nullopt;
+  }
+
+  if (!std::filesystem::is_regular_file(absolutePath, error) || error) {
+    Log::Print("PROJECT FILE DOES NOT EXIST: " + absolutePath.string(),
+               "Project", LogType::LOG_ERROR);
+    return std::nullopt;
+  }
+
+  auto parsedConfig = ProjectParser::parse(absolutePath.string());
+
+  if (!parsedConfig) {
+    return std::nullopt;
+  }
+
+  Project project;
+  project.config = std::move(*parsedConfig);
+  project.projectFilePath = absolutePath;
+  project.rootPath = absolutePath.parent_path();
+
+  const auto internalDirectory = project.rootPath / ".cthulhu";
+
+  std::filesystem::create_directories(internalDirectory, error);
+
+  if (error) {
+    Log::Print("FAILED TO CREATE PROJECT INTERNAL DIRECTORY: " +
+                   internalDirectory.string(),
+               "Project", LogType::LOG_ERROR);
+    return std::nullopt;
+  }
+
+  if (project.config.mainScene) {
+    if (!project.resolveResourcePath(*project.config.mainScene)) {
+      Log::Print("INVALID MAIN SCENE RESOURCE PATH: " +
+                     *project.config.mainScene,
+                 "Project", LogType::LOG_ERROR);
+      return std::nullopt;
+    }
+  }
+
+  Log::Print("PROJECT OPENED: " + project.config.name, "Project",
+             LogType::LOG_SUCCESS);
+  return project;
+}
+} // namespace Cthulhu::Project
