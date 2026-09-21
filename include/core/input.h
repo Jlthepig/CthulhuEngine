@@ -6,43 +6,42 @@
 #include "glm.hpp"
 namespace Cthulhu::Core
 {
-    class Input
-    {
-        public:
-        static void init(GLFWwindow* window, glm::vec2 resolution);
-        static GLFWwindow* getWindowHandle();
-        static void update();
-        
-        static bool isKeyDown(int key);
-        static bool isKeyPressed(int key);
-        static bool isKeyReleased(int key);
+class Input
+{
+  public:
+    static void init(GLFWwindow *window, glm::vec2 resolution);
+    static GLFWwindow *getWindowHandle();
+    static void update();
 
-        static bool isMouseButtonDown(int button);
-        static bool isMouseButtonPressed(int button);
+    static bool isKeyDown(int key);
+    static bool isKeyPressed(int key);
+    static bool isKeyReleased(int key);
 
-        static void mouse_callback(GLFWwindow* window, double xposIn, double yposIn);
-        static void mouse_button_callback(GLFWwindow* window, int button, int action, int mods);
+    static bool isMouseButtonDown(int button);
+    static bool isMouseButtonPressed(int button);
 
-        static void scroll_callback(GLFWwindow* window, double xoffset, double yoffset);
+    static void mouse_callback(GLFWwindow *window, double xposIn, double yposIn);
+    static void mouse_button_callback(GLFWwindow *window, int button, int action, int mods);
 
+    static void scroll_callback(GLFWwindow *window, double xoffset, double yoffset);
 
-        static float getMouseX();
-        static float getMouseY();
-        static float getMouseDeltaX();
-        static float getMouseDeltaY();
-        static float getScrollDeltaY();
+    static float getMouseX();
+    static float getMouseY();
+    static float getMouseDeltaX();
+    static float getMouseDeltaY();
+    static float getScrollDeltaY();
 
-        private:
-        static GLFWwindow* windowHandle;
-        static bool currentKeys[GLFW_KEY_LAST + 1];
-        static bool previousKeys[GLFW_KEY_LAST + 1];
-        static bool currentMouseButtons[GLFW_MOUSE_BUTTON_LAST + 1];
-        static bool previousMouseButtons[GLFW_MOUSE_BUTTON_LAST + 1];
-        static bool firstMouse;
-        static float mouseDeltaX;
-        static float mouseDeltaY;
-        static float lastX;
-        static float lastY;
-        static float scrollDeltaY;
-    };
-}
+  private:
+    static GLFWwindow *windowHandle;
+    static bool currentKeys[GLFW_KEY_LAST + 1];
+    static bool previousKeys[GLFW_KEY_LAST + 1];
+    static bool currentMouseButtons[GLFW_MOUSE_BUTTON_LAST + 1];
+    static bool previousMouseButtons[GLFW_MOUSE_BUTTON_LAST + 1];
+    static bool firstMouse;
+    static float mouseDeltaX;
+    static float mouseDeltaY;
+    static float lastX;
+    static float lastY;
+    static float scrollDeltaY;
+};
+} // namespace Cthulhu::Core

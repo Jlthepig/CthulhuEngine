@@ -7,18 +7,17 @@
 
 namespace Cthulhu::Project
 {
-    class ProjectParser
+class ProjectParser
+{
+  public:
+    static std::optional<ProjectConfig> parse(const std::string &path);
+
+    static constexpr uint32_t getMaxWindowDimension()
     {
-        public:
-            static std::optional<ProjectConfig> parse(const std::string& path);
+        return MAX_WINDOW_DIMENSION;
+    }
 
-            static constexpr uint32_t getMaxWindowDimension()
-            {
-                return MAX_WINDOW_DIMENSION;
-            }
-            
-        private:
-            static constexpr uint32_t MAX_WINDOW_DIMENSION = 16384;
-
-    };
-}
+  private:
+    static constexpr uint32_t MAX_WINDOW_DIMENSION = 16384;
+};
+} // namespace Cthulhu::Project

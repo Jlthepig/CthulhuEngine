@@ -28,253 +28,260 @@
 using KalaHeaders::KalaLog::Log;
 using KalaHeaders::KalaLog::LogType;
 
-static void joltTrace(const char *inFMT, ...) {
-  va_list list;
-  va_start(list, inFMT);
-  char buffer[1024];
-  vsnprintf(buffer, sizeof(buffer), inFMT, list);
-  va_end(list);
-  Log::Print(buffer, "Jolt", LogType::LOG_INFO);
+static void joltTrace(const char *inFMT, ...)
+{
+    va_list list;
+    va_start(list, inFMT);
+    char buffer[1024];
+    vsnprintf(buffer, sizeof(buffer), inFMT, list);
+    va_end(list);
+    Log::Print(buffer, "Jolt", LogType::LOG_INFO);
 }
 
-namespace Cthulhu::Physics {
-namespace ObjectLayers {
+namespace Cthulhu::Physics
+{
+namespace ObjectLayers
+{
 static constexpr JPH::ObjectLayer NON_MOVING = 0;
 static constexpr JPH::ObjectLayer MOVING = 1;
 } // namespace ObjectLayers
-namespace BroadPhaseLayers {
+namespace BroadPhaseLayers
+{
 static constexpr JPH::BroadPhaseLayer NON_MOVING(0);
 static constexpr JPH::BroadPhaseLayer MOVING(1);
 static constexpr JPH::uint NUM_LAYER(2);
 } // namespace BroadPhaseLayers
-class BPLayerInterfaceImpl final : public JPH::BroadPhaseLayerInterface {
-public:
-  virtual JPH::uint GetNumBroadPhaseLayers() const override {
-    return BroadPhaseLayers::NUM_LAYER;
-  }
-  virtual JPH::BroadPhaseLayer
-  GetBroadPhaseLayer(JPH::ObjectLayer layer) const override {
-    if (layer == ObjectLayers::NON_MOVING)
-      return BroadPhaseLayers::NON_MOVING;
-    return BroadPhaseLayers::MOVING;
-  }
-};
-
-class ObjVsBPLayerFilterImpl final : public JPH::ObjectVsBroadPhaseLayerFilter {
-public:
-  virtual bool ShouldCollide(JPH::ObjectLayer objectLayer,
-                             JPH::BroadPhaseLayer bpLayer) const override {
-    if (objectLayer == ObjectLayers::NON_MOVING)
-      return bpLayer == BroadPhaseLayers::MOVING;
-    return true;
-  }
-};
-
-class ObjLayerPairFilterImpl final : public JPH::ObjectLayerPairFilter {
-public:
-  virtual bool ShouldCollide(JPH::ObjectLayer layer1,
-                             JPH::ObjectLayer layer2) const override {
-    if (layer1 == ObjectLayers::NON_MOVING &&
-        layer2 == ObjectLayers::NON_MOVING)
-      return false;
-    return true;
-  }
-};
-
-class ContactListenerImpl final : public JPH::ContactListener {};
-
-void PhysicsWorld::init(const PhysicsConfig &config) {
-  this->config = config;
-  JPH::Trace = joltTrace;
-  JPH::RegisterDefaultAllocator();
-  JPH::Factory::sInstance = new JPH::Factory();
-  JPH::RegisterTypes();
-
-  tempAllocator = new JPH::TempAllocatorImpl(this->config.tempAllocatorSizeMB *
-                                             1024 * 1024);
-  jobSystem = new JPH::JobSystemThreadPool(
-      JPH::cMaxPhysicsJobs, JPH::cMaxPhysicsBarriers, this->config.threadCount);
-
-  // Allocate the filters
-  bpLayerInterface = new BPLayerInterfaceImpl();
-  objVsBpFilter = new ObjVsBPLayerFilterImpl();
-  objLayerPairFilter = new ObjLayerPairFilterImpl();
-  contactListener = new ContactListenerImpl();
-
-  physicsSystem = new JPH::PhysicsSystem();
-  physicsSystem->Init(this->config.maxBodies, 0, this->config.maxBodyPairs,
-                      this->config.maxContactConstraints, *bpLayerInterface,
-                      *objVsBpFilter, *objLayerPairFilter);
-
-  physicsSystem->SetContactListener(contactListener);
-  Log::Print("Initialized Jolt Physics System", "Physics",
-             LogType::LOG_SUCCESS);
-}
-
-void PhysicsWorld::step(float deltaTime) {
-  if (!physicsSystem)
-    return;
-  physicsAccumulator += deltaTime;
-  if (physicsAccumulator > this->config.maxDeltaTime)
-    physicsAccumulator = this->config.maxDeltaTime;
-
-  while (physicsAccumulator >= this->config.fixedDeltaTime) {
-    if (onFixedUpdate)
-      onFixedUpdate(onFixedUpdateContext, this->config.fixedDeltaTime);
-    physicsSystem->Update(this->config.fixedDeltaTime,
-                          this->config.collisionSteps, tempAllocator,
-                          jobSystem);
-    physicsAccumulator -= this->config.fixedDeltaTime;
-  }
-}
-
-uint32_t PhysicsWorld::addStaticBox(glm::vec3 position, glm::vec3 halfExtent) {
-  if (!physicsSystem) { /* error */
-    return 0;
-  }
-  JPH::BodyInterface &bodyInterface = physicsSystem->GetBodyInterface();
-  JPH::BoxShapeSettings shapeSettings(
-      JPH::Vec3(halfExtent.x, halfExtent.y, halfExtent.z));
-  auto shapeResult = shapeSettings.Create();
-  if (shapeResult.HasError()) { /* error */
-    return 0;
-  }
-
-  JPH::BodyCreationSettings bodySettings(
-      shapeResult.Get(), JPH::RVec3(position.x, position.y, position.z),
-      JPH::Quat::sIdentity(), JPH::EMotionType::Static,
-      ObjectLayers::NON_MOVING);
-
-  JPH::BodyID bodyId = bodyInterface.CreateAndAddBody(
-      bodySettings, JPH::EActivation::DontActivate);
-  return bodyId.GetIndexAndSequenceNumber();
-}
-
-uint32_t PhysicsWorld::addDynamicBox(glm::vec3 position, glm::vec3 halfExtent,
-                                     float mass) {
-  if (!physicsSystem) { /* error */
-    return 0;
-  }
-  JPH::BodyInterface &bodyInterface = physicsSystem->GetBodyInterface();
-  JPH::BoxShapeSettings shapeSettings(
-      JPH::Vec3(halfExtent.x, halfExtent.y, halfExtent.z));
-  auto shapeResult = shapeSettings.Create();
-  if (shapeResult.HasError()) { /* error */
-    return 0;
-  }
-
-  JPH::BodyCreationSettings bodySettings(
-      shapeResult.Get(), JPH::RVec3(position.x, position.y, position.z),
-      JPH::Quat::sIdentity(), JPH::EMotionType::Dynamic, ObjectLayers::MOVING);
-
-  bodySettings.mOverrideMassProperties =
-      JPH::EOverrideMassProperties::CalculateInertia;
-  bodySettings.mMassPropertiesOverride.mMass = mass;
-
-  JPH::BodyID bodyId =
-      bodyInterface.CreateAndAddBody(bodySettings, JPH::EActivation::Activate);
-  return bodyId.GetIndexAndSequenceNumber();
-}
-
-RaycastHitInfo PhysicsWorld::raycast(const glm::vec3 &origin,
-                                     const glm::vec3 &direction,
-                                     float maxDistance) {
-  RaycastHitInfo result;
-  if (!physicsSystem)
-    return result;
-
-  JPH::RRayCast ray;
-  ray.mOrigin = JPH::RVec3(origin.x, origin.y, origin.z);
-  ray.mDirection =
-      JPH::RVec3(direction.x, direction.y, direction.z) * maxDistance;
-
-  JPH::RayCastResult hit;
-
-  // perform query
-  const JPH::NarrowPhaseQuery &query = physicsSystem->GetNarrowPhaseQuery();
-
-  if (query.CastRay(ray, hit)) {
-    result.didHit = true;
-    result.distance = hit.mFraction * maxDistance;
-    JPH::RVec3 hitPos = ray.GetPointOnRay(hit.mFraction);
-    result.position = glm::vec3(hitPos.GetX(), hitPos.GetY(), hitPos.GetZ());
-    result.bodyId = hit.mBodyID.GetIndexAndSequenceNumber();
-
-    JPH::BodyLockRead lock(physicsSystem->GetBodyLockInterface(), hit.mBodyID);
-    if (lock.Succeeded()) {
-      const JPH::Body &body = lock.GetBody();
-      JPH::Vec3 normal =
-          body.GetWorldSpaceSurfaceNormal(hit.mSubShapeID2, hitPos);
-      result.normal = glm::vec3(normal.GetX(), normal.GetY(), normal.GetZ());
+class BPLayerInterfaceImpl final : public JPH::BroadPhaseLayerInterface
+{
+  public:
+    virtual JPH::uint GetNumBroadPhaseLayers() const override
+    {
+        return BroadPhaseLayers::NUM_LAYER;
     }
-  }
+    virtual JPH::BroadPhaseLayer GetBroadPhaseLayer(JPH::ObjectLayer layer) const override
+    {
+        if (layer == ObjectLayers::NON_MOVING)
+            return BroadPhaseLayers::NON_MOVING;
+        return BroadPhaseLayers::MOVING;
+    }
+};
 
-  return result;
+class ObjVsBPLayerFilterImpl final : public JPH::ObjectVsBroadPhaseLayerFilter
+{
+  public:
+    virtual bool ShouldCollide(JPH::ObjectLayer objectLayer, JPH::BroadPhaseLayer bpLayer) const override
+    {
+        if (objectLayer == ObjectLayers::NON_MOVING)
+            return bpLayer == BroadPhaseLayers::MOVING;
+        return true;
+    }
+};
+
+class ObjLayerPairFilterImpl final : public JPH::ObjectLayerPairFilter
+{
+  public:
+    virtual bool ShouldCollide(JPH::ObjectLayer layer1, JPH::ObjectLayer layer2) const override
+    {
+        if (layer1 == ObjectLayers::NON_MOVING && layer2 == ObjectLayers::NON_MOVING)
+            return false;
+        return true;
+    }
+};
+
+class ContactListenerImpl final : public JPH::ContactListener
+{
+};
+
+void PhysicsWorld::init(const PhysicsConfig &config)
+{
+    this->config = config;
+    JPH::Trace = joltTrace;
+    JPH::RegisterDefaultAllocator();
+    JPH::Factory::sInstance = new JPH::Factory();
+    JPH::RegisterTypes();
+
+    tempAllocator = new JPH::TempAllocatorImpl(this->config.tempAllocatorSizeMB * 1024 * 1024);
+    jobSystem = new JPH::JobSystemThreadPool(JPH::cMaxPhysicsJobs, JPH::cMaxPhysicsBarriers, this->config.threadCount);
+
+    // Allocate the filters
+    bpLayerInterface = new BPLayerInterfaceImpl();
+    objVsBpFilter = new ObjVsBPLayerFilterImpl();
+    objLayerPairFilter = new ObjLayerPairFilterImpl();
+    contactListener = new ContactListenerImpl();
+
+    physicsSystem = new JPH::PhysicsSystem();
+    physicsSystem->Init(this->config.maxBodies, 0, this->config.maxBodyPairs, this->config.maxContactConstraints,
+                        *bpLayerInterface, *objVsBpFilter, *objLayerPairFilter);
+
+    physicsSystem->SetContactListener(contactListener);
+    Log::Print("Initialized Jolt Physics System", "Physics", LogType::LOG_SUCCESS);
 }
 
-float PhysicsWorld::getInterpolationAlpha() {
-  return physicsAccumulator / this->config.fixedDeltaTime;
+void PhysicsWorld::step(float deltaTime)
+{
+    if (!physicsSystem)
+        return;
+    physicsAccumulator += deltaTime;
+    if (physicsAccumulator > this->config.maxDeltaTime)
+        physicsAccumulator = this->config.maxDeltaTime;
+
+    while (physicsAccumulator >= this->config.fixedDeltaTime)
+    {
+        if (onFixedUpdate)
+            onFixedUpdate(onFixedUpdateContext, this->config.fixedDeltaTime);
+        physicsSystem->Update(this->config.fixedDeltaTime, this->config.collisionSteps, tempAllocator, jobSystem);
+        physicsAccumulator -= this->config.fixedDeltaTime;
+    }
 }
 
-BodyTransform PhysicsWorld::getBodyTransform(uint32_t bodyIdValue) {
-  BodyTransform result;
-  if (!physicsSystem)
+uint32_t PhysicsWorld::addStaticBox(glm::vec3 position, glm::vec3 halfExtent)
+{
+    if (!physicsSystem)
+    { /* error */
+        return 0;
+    }
+    JPH::BodyInterface &bodyInterface = physicsSystem->GetBodyInterface();
+    JPH::BoxShapeSettings shapeSettings(JPH::Vec3(halfExtent.x, halfExtent.y, halfExtent.z));
+    auto shapeResult = shapeSettings.Create();
+    if (shapeResult.HasError())
+    { /* error */
+        return 0;
+    }
+
+    JPH::BodyCreationSettings bodySettings(shapeResult.Get(), JPH::RVec3(position.x, position.y, position.z),
+                                           JPH::Quat::sIdentity(), JPH::EMotionType::Static, ObjectLayers::NON_MOVING);
+
+    JPH::BodyID bodyId = bodyInterface.CreateAndAddBody(bodySettings, JPH::EActivation::DontActivate);
+    return bodyId.GetIndexAndSequenceNumber();
+}
+
+uint32_t PhysicsWorld::addDynamicBox(glm::vec3 position, glm::vec3 halfExtent, float mass)
+{
+    if (!physicsSystem)
+    { /* error */
+        return 0;
+    }
+    JPH::BodyInterface &bodyInterface = physicsSystem->GetBodyInterface();
+    JPH::BoxShapeSettings shapeSettings(JPH::Vec3(halfExtent.x, halfExtent.y, halfExtent.z));
+    auto shapeResult = shapeSettings.Create();
+    if (shapeResult.HasError())
+    { /* error */
+        return 0;
+    }
+
+    JPH::BodyCreationSettings bodySettings(shapeResult.Get(), JPH::RVec3(position.x, position.y, position.z),
+                                           JPH::Quat::sIdentity(), JPH::EMotionType::Dynamic, ObjectLayers::MOVING);
+
+    bodySettings.mOverrideMassProperties = JPH::EOverrideMassProperties::CalculateInertia;
+    bodySettings.mMassPropertiesOverride.mMass = mass;
+
+    JPH::BodyID bodyId = bodyInterface.CreateAndAddBody(bodySettings, JPH::EActivation::Activate);
+    return bodyId.GetIndexAndSequenceNumber();
+}
+
+RaycastHitInfo PhysicsWorld::raycast(const glm::vec3 &origin, const glm::vec3 &direction, float maxDistance)
+{
+    RaycastHitInfo result;
+    if (!physicsSystem)
+        return result;
+
+    JPH::RRayCast ray;
+    ray.mOrigin = JPH::RVec3(origin.x, origin.y, origin.z);
+    ray.mDirection = JPH::RVec3(direction.x, direction.y, direction.z) * maxDistance;
+
+    JPH::RayCastResult hit;
+
+    // perform query
+    const JPH::NarrowPhaseQuery &query = physicsSystem->GetNarrowPhaseQuery();
+
+    if (query.CastRay(ray, hit))
+    {
+        result.didHit = true;
+        result.distance = hit.mFraction * maxDistance;
+        JPH::RVec3 hitPos = ray.GetPointOnRay(hit.mFraction);
+        result.position = glm::vec3(hitPos.GetX(), hitPos.GetY(), hitPos.GetZ());
+        result.bodyId = hit.mBodyID.GetIndexAndSequenceNumber();
+
+        JPH::BodyLockRead lock(physicsSystem->GetBodyLockInterface(), hit.mBodyID);
+        if (lock.Succeeded())
+        {
+            const JPH::Body &body = lock.GetBody();
+            JPH::Vec3 normal = body.GetWorldSpaceSurfaceNormal(hit.mSubShapeID2, hitPos);
+            result.normal = glm::vec3(normal.GetX(), normal.GetY(), normal.GetZ());
+        }
+    }
+
     return result;
-
-  JPH::BodyInterface &bodyInterface = physicsSystem->GetBodyInterface();
-  JPH::BodyID bodyId(bodyIdValue);
-
-  JPH::RVec3 pos = bodyInterface.GetPosition(bodyId);
-  JPH::Quat rot = bodyInterface.GetRotation(bodyId);
-
-  result.position =
-      glm::vec3(static_cast<float>(pos.GetX()), static_cast<float>(pos.GetY()),
-                static_cast<float>(pos.GetZ()));
-  glm::quat glmRot(rot.GetW(), rot.GetX(), rot.GetY(), rot.GetZ());
-  result.rotation = glm::eulerAngles(glmRot);
-
-  return result;
 }
 
-void PhysicsWorld::removeBody(uint32_t bodyIdValue) {
-  if (!physicsSystem) {
-    return;
-  }
-
-  JPH::BodyID bodyId(bodyIdValue);
-
-  if (bodyId.IsInvalid()) {
-    return;
-  }
-
-  auto &bodyInterface = physicsSystem->GetBodyInterface();
-
-  if (bodyInterface.IsAdded(bodyId)) {
-    bodyInterface.RemoveBody(bodyId);
-  }
-
-  bodyInterface.DestroyBody(bodyId);
+float PhysicsWorld::getInterpolationAlpha()
+{
+    return physicsAccumulator / this->config.fixedDeltaTime;
 }
 
-void PhysicsWorld::shutdown() {
-  JPH::UnregisterTypes();
-  delete JPH::Factory::sInstance;
-  JPH::Factory::sInstance = nullptr;
+BodyTransform PhysicsWorld::getBodyTransform(uint32_t bodyIdValue)
+{
+    BodyTransform result;
+    if (!physicsSystem)
+        return result;
 
-  delete physicsSystem;
-  delete jobSystem;
-  delete tempAllocator;
+    JPH::BodyInterface &bodyInterface = physicsSystem->GetBodyInterface();
+    JPH::BodyID bodyId(bodyIdValue);
 
-  delete bpLayerInterface;
-  delete objVsBpFilter;
-  delete objLayerPairFilter;
-  delete contactListener;
+    JPH::RVec3 pos = bodyInterface.GetPosition(bodyId);
+    JPH::Quat rot = bodyInterface.GetRotation(bodyId);
 
-  physicsSystem = nullptr;
-  jobSystem = nullptr;
-  tempAllocator = nullptr;
+    result.position =
+        glm::vec3(static_cast<float>(pos.GetX()), static_cast<float>(pos.GetY()), static_cast<float>(pos.GetZ()));
+    glm::quat glmRot(rot.GetW(), rot.GetX(), rot.GetY(), rot.GetZ());
+    result.rotation = glm::eulerAngles(glmRot);
 
-  Log::Print("Jolt Physics System Shutdown Successfully.", "Physics",
-             LogType::LOG_SUCCESS);
+    return result;
+}
+
+void PhysicsWorld::removeBody(uint32_t bodyIdValue)
+{
+    if (!physicsSystem)
+    {
+        return;
+    }
+
+    JPH::BodyID bodyId(bodyIdValue);
+
+    if (bodyId.IsInvalid())
+    {
+        return;
+    }
+
+    auto &bodyInterface = physicsSystem->GetBodyInterface();
+
+    if (bodyInterface.IsAdded(bodyId))
+    {
+        bodyInterface.RemoveBody(bodyId);
+    }
+
+    bodyInterface.DestroyBody(bodyId);
+}
+
+void PhysicsWorld::shutdown()
+{
+    JPH::UnregisterTypes();
+    delete JPH::Factory::sInstance;
+    JPH::Factory::sInstance = nullptr;
+
+    delete physicsSystem;
+    delete jobSystem;
+    delete tempAllocator;
+
+    delete bpLayerInterface;
+    delete objVsBpFilter;
+    delete objLayerPairFilter;
+    delete contactListener;
+
+    physicsSystem = nullptr;
+    jobSystem = nullptr;
+    tempAllocator = nullptr;
+
+    Log::Print("Jolt Physics System Shutdown Successfully.", "Physics", LogType::LOG_SUCCESS);
 }
 } // namespace Cthulhu::Physics

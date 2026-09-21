@@ -1,45 +1,69 @@
 #pragma once
 
 #include <cstdint>
+#include <filesystem>
 #include <string>
 #include <unordered_map>
 #include <vector>
-#include <filesystem>
 
-#include "model.h"
-#include "light.h"
 #include "components.h"
 #include "flecs.h"
+#include "light.h"
+#include "model.h"
 
 namespace Cthulhu::Scene
 {
-    class Scene
+class Scene
+{
+  public:
+    flecs::world &getWorld()
     {
-    public:
-        flecs::world& getWorld() { return world; }
-        const flecs::world& getWorld() const { return world; }
-        flecs::entity createEntity(const std::string& name = "Entity");
+        return world;
+    }
+    const flecs::world &getWorld() const
+    {
+        return world;
+    }
+    flecs::entity createEntity(const std::string &name = "Entity");
 
-        Rendering::Model* getOrLoadModel(const std::string& resourcePath, const std::filesystem::path& fileSystemPath);
-        void clear();
+    Rendering::Model *getOrLoadModel(const std::string &resourcePath, const std::filesystem::path &fileSystemPath);
+    void clear();
 
-        void setDirectionalLight(const Rendering::DirectionalLight& light) {directionalLight = light;}
-        void addPointLight(const Rendering::PointLight& light) {pointLights.push_back(light);}
+    void setDirectionalLight(const Rendering::DirectionalLight &light)
+    {
+        directionalLight = light;
+    }
+    void addPointLight(const Rendering::PointLight &light)
+    {
+        pointLights.push_back(light);
+    }
 
-        const Rendering::DirectionalLight& getDirectionalLight() const {return directionalLight;}
-        const std::vector<Rendering::PointLight> getPointLights() const {return pointLights;}
+    const Rendering::DirectionalLight &getDirectionalLight() const
+    {
+        return directionalLight;
+    }
+    const std::vector<Rendering::PointLight> getPointLights() const
+    {
+        return pointLights;
+    }
 
-        void setName(const std::string& n) { name = n; }
-        const std::string& getName() const { return name; }
+    void setName(const std::string &n)
+    {
+        name = n;
+    }
+    const std::string &getName() const
+    {
+        return name;
+    }
 
-    private:
-        std::string name;
-        
-        flecs::world world;
-        uint32_t nextId = 0;
-        std::unordered_map<std::string, Rendering::Model> modelCache;
+  private:
+    std::string name;
 
-        Rendering::DirectionalLight directionalLight;
-        std::vector<Rendering::PointLight> pointLights;
-    };
-}
+    flecs::world world;
+    uint32_t nextId = 0;
+    std::unordered_map<std::string, Rendering::Model> modelCache;
+
+    Rendering::DirectionalLight directionalLight;
+    std::vector<Rendering::PointLight> pointLights;
+};
+} // namespace Cthulhu::Scene

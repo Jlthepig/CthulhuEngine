@@ -4,9 +4,9 @@
 #include <string>
 namespace Cthulhu::Rendering
 {
-    class ModelLoader
-    {
-        public:
-        static Model loadGltf(const std::string& path);
-    };
-}
+class ModelLoader
+{
+  public:
+    static Model loadGltf(const std::string &path);
+};
+} // namespace Cthulhu::Rendering

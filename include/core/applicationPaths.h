@@ -5,5 +5,5 @@
 
 namespace Cthulhu::Core
 {
-    std::optional<std::filesystem::path> getExecutableDirectory();
+std::optional<std::filesystem::path> getExecutableDirectory();
 }

@@ -19,378 +19,390 @@
 using KalaHeaders::KalaLog::Log;
 using KalaHeaders::KalaLog::LogType;
 
-namespace Cthulhu::Rendering {
-Model ModelLoader::loadGltf(const std::string &path) {
-  Model model;
+namespace Cthulhu::Rendering
+{
+Model ModelLoader::loadGltf(const std::string &path)
+{
+    Model model;
 
-  // recieve raw data from file and place it into a data buffer
-  auto data = fastgltf::GltfDataBuffer::FromPath(path);
-  if (data.error() != fastgltf::Error::None) {
-    Log::Print("FAILED TO LOAD GLTF FILE " + path, "ModelLoader",
-               LogType::LOG_ERROR);
-    return model;
-  }
-
-  // create  a parser and parse the raw data/file
-  fastgltf::Parser parser(
-      fastgltf::Extensions::KHR_materials_unlit |
-      fastgltf::Extensions::KHR_texture_transform |
-      fastgltf::Extensions::KHR_materials_specular |
-      fastgltf::Extensions::KHR_materials_ior |
-      fastgltf::Extensions::KHR_materials_emissive_strength |
-      fastgltf::Extensions::KHR_materials_sheen |
-      fastgltf::Extensions::KHR_materials_transmission |
-      fastgltf::Extensions::KHR_materials_volume |
-      fastgltf::Extensions::KHR_materials_clearcoat);
-  auto asset = parser.loadGltfBinary(data.get(), path);
-  if (asset.error() != fastgltf::Error::None) {
-    Log::Print("FAILED TO PARSE GLTF " + path + " Error: " +
-                   std::string(fastgltf::getErrorMessage(asset.error())),
-               "ModelLoader", LogType::LOG_ERROR);
-    return model;
-  }
-
-  fastgltf::Asset &gltf = asset.get();
-  // pass 1 load materials and textures
-  std::unordered_map<int, int>
-      imageToTexture; // from gltf texture index to our texture index in
-                      // model.textures
-
-  for (size_t matIdx = 0; matIdx < gltf.materials.size(); ++matIdx) {
-    auto &gltfMaterial = gltf.materials[matIdx];
-    Material material;
-
-    // base color factor default to white
-    material.baseColorFactor =
-        glm::vec4(gltfMaterial.pbrData.baseColorFactor[0],
-                  gltfMaterial.pbrData.baseColorFactor[1],
-                  gltfMaterial.pbrData.baseColorFactor[2],
-                  gltfMaterial.pbrData.baseColorFactor[3]);
-
-    if (gltfMaterial.pbrData.baseColorTexture.has_value()) {
-      auto &textureInfo = gltfMaterial.pbrData.baseColorTexture.value();
-      auto &gltfTexture = gltf.textures[textureInfo.textureIndex];
-
-      if (gltfTexture.imageIndex.has_value()) {
-        int imageIdx = static_cast<int>(gltfTexture.imageIndex.value());
-
-        // check if we already loaded this specific texture
-        auto it = imageToTexture.find(imageIdx);
-        if (it != imageToTexture.end()) {
-          // reuse  a existing texture
-          material.baseColorTextureIndex = it->second;
-        } else {
-          auto &image = gltf.images[imageIdx];
-          Texture newTexture;
-
-          std::visit(
-              [&](auto &source) {
-                using T = std::decay_t<decltype(source)>;
-                if constexpr (std::is_same_v<T,
-                                             fastgltf::sources::BufferView>) {
-                  auto &bufferView = gltf.bufferViews[source.bufferViewIndex];
-                  auto &buffer = gltf.buffers[bufferView.bufferIndex];
-
-                  std::visit(
-                      [&](auto &bufferSource) {
-                        using BT = std::decay_t<decltype(bufferSource)>;
-                        if constexpr (std::is_same_v<
-                                          BT, fastgltf::sources::Array>) {
-
-                          const unsigned char *data =
-                              reinterpret_cast<const unsigned char *>(
-                                  bufferSource.bytes.data() +
-                                  bufferView.byteOffset);
-                          newTexture.loadFromMemory(
-                              data, static_cast<int>(bufferView.byteLength));
-                        }
-                      },
-                      buffer.data);
-                }
-
-                else if constexpr (std::is_same_v<T, fastgltf::sources::URI>) {
-                  Log::Print("TEXTURE IS URI - NOT SUPPORTED YET",
-                             "ModelLoader", LogType::LOG_WARNING);
-                } else {
-                  Log::Print("TEXTURE FORMAT NOT HANDLED", "ModelLoader",
-                             LogType::LOG_WARNING);
-                }
-              },
-              image.data);
-
-          int textureIndex = static_cast<int>(model.textures.size());
-          model.textures.push_back(std::move(newTexture));
-          imageToTexture[imageIdx] = textureIndex;
-          material.baseColorTextureIndex = textureIndex;
-        }
-      }
-    }
-    material.metallicFactor = gltfMaterial.pbrData.metallicFactor;
-    material.roughnessFactor = gltfMaterial.pbrData.roughnessFactor;
-
-    if (gltfMaterial.pbrData.metallicRoughnessTexture.has_value()) {
-      auto &mrTextureInfo =
-          gltfMaterial.pbrData.metallicRoughnessTexture.value();
-      auto &gltfTexture = gltf.textures[mrTextureInfo.textureIndex];
-
-      if (gltfTexture.imageIndex.has_value()) {
-        int imageIdx = static_cast<int>(gltfTexture.imageIndex.value());
-
-        auto it = imageToTexture.find(imageIdx);
-        if (it != imageToTexture.end()) {
-
-          material.metallicRoughnessTextureIndex = it->second;
-        } else {
-          auto &image = gltf.images[imageIdx];
-          Texture newTexture;
-
-          std::visit(
-              [&](auto &source) {
-                using T = std::decay_t<decltype(source)>;
-                if constexpr (std::is_same_v<T,
-                                             fastgltf::sources::BufferView>) {
-                  auto &bufferView = gltf.bufferViews[source.bufferViewIndex];
-                  auto &buffer = gltf.buffers[bufferView.bufferIndex];
-
-                  std::visit(
-                      [&](auto &bufferSource) {
-                        using BT = std::decay_t<decltype(bufferSource)>;
-                        if constexpr (std::is_same_v<
-                                          BT, fastgltf::sources::Array>) {
-
-                          const unsigned char *data =
-                              reinterpret_cast<const unsigned char *>(
-                                  bufferSource.bytes.data() +
-                                  bufferView.byteOffset);
-                          newTexture.loadFromMemory(
-                              data, static_cast<int>(bufferView.byteLength),
-                              false);
-                        }
-                      },
-                      buffer.data);
-                }
-
-                else if constexpr (std::is_same_v<T, fastgltf::sources::URI>) {
-                  Log::Print("METALLIC/ROUGHNESS URI - NOT SUPPORTED YET",
-                             "ModelLoader", LogType::LOG_WARNING);
-                } else {
-                  Log::Print("METALLIC/ROUGHNESS TEXTURE FORMAT NOT HANDLED",
-                             "ModelLoader", LogType::LOG_WARNING);
-                }
-              },
-              image.data);
-
-          int textureIndex = static_cast<int>(model.textures.size());
-          model.textures.push_back(std::move(newTexture));
-          imageToTexture[imageIdx] = textureIndex;
-          material.metallicRoughnessTextureIndex = textureIndex;
-        }
-      }
-    }
-    if (gltfMaterial.normalTexture.has_value()) {
-      auto &normTextureInfo = gltfMaterial.normalTexture.value();
-      auto &gltfTexture = gltf.textures[normTextureInfo.textureIndex];
-
-      if (gltfTexture.imageIndex.has_value()) {
-        int imageIdx = static_cast<int>(gltfTexture.imageIndex.value());
-
-        auto it = imageToTexture.find(imageIdx);
-        if (it != imageToTexture.end()) {
-          material.normalTextureIndex = it->second;
-        } else {
-          auto &image = gltf.images[imageIdx];
-          Texture newTexture;
-
-          std::visit(
-              [&](auto &source) {
-                using T = std::decay_t<decltype(source)>;
-                if constexpr (std::is_same_v<T,
-                                             fastgltf::sources::BufferView>) {
-                  auto &bufferView = gltf.bufferViews[source.bufferViewIndex];
-                  auto &buffer = gltf.buffers[bufferView.bufferIndex];
-
-                  std::visit(
-                      [&](auto &bufferSource) {
-                        using BT = std::decay_t<decltype(bufferSource)>;
-                        if constexpr (std::is_same_v<
-                                          BT, fastgltf::sources::Array>) {
-
-                          const unsigned char *data =
-                              reinterpret_cast<const unsigned char *>(
-                                  bufferSource.bytes.data() +
-                                  bufferView.byteOffset);
-                          newTexture.loadFromMemory(
-                              data, static_cast<int>(bufferView.byteLength),
-                              false);
-                        }
-                      },
-                      buffer.data);
-                }
-              },
-              image.data);
-
-          int textureIndex = static_cast<int>(model.textures.size());
-          model.textures.push_back(std::move(newTexture));
-          imageToTexture[imageIdx] = textureIndex;
-          material.normalTextureIndex = textureIndex;
-        }
-      }
+    // recieve raw data from file and place it into a data buffer
+    auto data = fastgltf::GltfDataBuffer::FromPath(path);
+    if (data.error() != fastgltf::Error::None)
+    {
+        Log::Print("FAILED TO LOAD GLTF FILE " + path, "ModelLoader", LogType::LOG_ERROR);
+        return model;
     }
 
-    model.materials.push_back(std::move(material));
-  }
+    // create  a parser and parse the raw data/file
+    fastgltf::Parser parser(fastgltf::Extensions::KHR_materials_unlit | fastgltf::Extensions::KHR_texture_transform |
+                            fastgltf::Extensions::KHR_materials_specular | fastgltf::Extensions::KHR_materials_ior |
+                            fastgltf::Extensions::KHR_materials_emissive_strength |
+                            fastgltf::Extensions::KHR_materials_sheen |
+                            fastgltf::Extensions::KHR_materials_transmission |
+                            fastgltf::Extensions::KHR_materials_volume | fastgltf::Extensions::KHR_materials_clearcoat);
+    auto asset = parser.loadGltfBinary(data.get(), path);
+    if (asset.error() != fastgltf::Error::None)
+    {
+        Log::Print("FAILED TO PARSE GLTF " + path + " Error: " + std::string(fastgltf::getErrorMessage(asset.error())),
+                   "ModelLoader", LogType::LOG_ERROR);
+        return model;
+    }
 
-  // pass 2 load meshes
-  for (auto &mesh : gltf.meshes) {
-    for (auto &primitive : mesh.primitives) {
-      std::vector<float> vertexData;
-      std::vector<unsigned int> indexdata;
-      std::vector<Mesh::vertexAttribute> attributes;
-      unsigned int currentOffset = 0;
-      // find pos data
-      auto *positionIt = primitive.findAttribute("POSITION");
-      if (positionIt == primitive.attributes.end())
-        continue;
+    fastgltf::Asset &gltf = asset.get();
+    // pass 1 load materials and textures
+    std::unordered_map<int, int> imageToTexture; // from gltf texture index to our texture index in
+                                                 // model.textures
 
-      auto &posAccessor = gltf.accessors[positionIt->accessorIndex];
-      vertexData.resize(posAccessor.count * 3);
+    for (size_t matIdx = 0; matIdx < gltf.materials.size(); ++matIdx)
+    {
+        auto &gltfMaterial = gltf.materials[matIdx];
+        Material material;
 
-      glm::vec3 meshMin(FLT_MAX);
-      glm::vec3 meshMax(-FLT_MAX);
+        // base color factor default to white
+        material.baseColorFactor =
+            glm::vec4(gltfMaterial.pbrData.baseColorFactor[0], gltfMaterial.pbrData.baseColorFactor[1],
+                      gltfMaterial.pbrData.baseColorFactor[2], gltfMaterial.pbrData.baseColorFactor[3]);
 
-      fastgltf::iterateAccessorWithIndex<glm::vec3>(
-          gltf, posAccessor, [&](glm::vec3 pos, size_t index) {
-            meshMin = glm::min(meshMin, pos);
-            meshMax = glm::max(meshMax, pos);
+        if (gltfMaterial.pbrData.baseColorTexture.has_value())
+        {
+            auto &textureInfo = gltfMaterial.pbrData.baseColorTexture.value();
+            auto &gltfTexture = gltf.textures[textureInfo.textureIndex];
 
-            vertexData[index * 3 + 0] = pos.x;
-            vertexData[index * 3 + 1] = pos.y;
-            vertexData[index * 3 + 2] = pos.z;
-          });
+            if (gltfTexture.imageIndex.has_value())
+            {
+                int imageIdx = static_cast<int>(gltfTexture.imageIndex.value());
 
-      attributes.push_back({0, 3, currentOffset});
-      currentOffset += 3 * sizeof(float);
+                // check if we already loaded this specific texture
+                auto it = imageToTexture.find(imageIdx);
+                if (it != imageToTexture.end())
+                {
+                    // reuse  a existing texture
+                    material.baseColorTextureIndex = it->second;
+                }
+                else
+                {
+                    auto &image = gltf.images[imageIdx];
+                    Texture newTexture;
 
-      // find normal data
-      auto *normalIt = primitive.findAttribute("NORMAL");
-      if (normalIt != primitive.attributes.end()) {
-        auto &normAccessor = gltf.accessors[normalIt->accessorIndex];
-        unsigned int currentFloats = currentOffset / sizeof(float);
-        unsigned int newFloats = currentFloats + 3;
-        // vertexdata has only space for pos so we need to expand to have space
-        // for normals too basically make 6 floats instead of 3, 3 for pos and 3
-        // for normals
-        std::vector<float> expanded(posAccessor.count * newFloats);
+                    std::visit(
+                        [&](auto &source) {
+                            using T = std::decay_t<decltype(source)>;
+                            if constexpr (std::is_same_v<T, fastgltf::sources::BufferView>)
+                            {
+                                auto &bufferView = gltf.bufferViews[source.bufferViewIndex];
+                                auto &buffer = gltf.buffers[bufferView.bufferIndex];
 
-        // get already existing pos and put into the new expanded layout
-        for (size_t i = 0; i < posAccessor.count; i++) {
-          for (unsigned int j = 0; j < currentFloats; j++) {
-            expanded[i * newFloats + j] = vertexData[i * currentFloats + j];
-          }
+                                std::visit(
+                                    [&](auto &bufferSource) {
+                                        using BT = std::decay_t<decltype(bufferSource)>;
+                                        if constexpr (std::is_same_v<BT, fastgltf::sources::Array>)
+                                        {
+
+                                            const unsigned char *data = reinterpret_cast<const unsigned char *>(
+                                                bufferSource.bytes.data() + bufferView.byteOffset);
+                                            newTexture.loadFromMemory(data, static_cast<int>(bufferView.byteLength));
+                                        }
+                                    },
+                                    buffer.data);
+                            }
+
+                            else if constexpr (std::is_same_v<T, fastgltf::sources::URI>)
+                            {
+                                Log::Print("TEXTURE IS URI - NOT SUPPORTED YET", "ModelLoader", LogType::LOG_WARNING);
+                            }
+                            else
+                            {
+                                Log::Print("TEXTURE FORMAT NOT HANDLED", "ModelLoader", LogType::LOG_WARNING);
+                            }
+                        },
+                        image.data);
+
+                    int textureIndex = static_cast<int>(model.textures.size());
+                    model.textures.push_back(std::move(newTexture));
+                    imageToTexture[imageIdx] = textureIndex;
+                    material.baseColorTextureIndex = textureIndex;
+                }
+            }
+        }
+        material.metallicFactor = gltfMaterial.pbrData.metallicFactor;
+        material.roughnessFactor = gltfMaterial.pbrData.roughnessFactor;
+
+        if (gltfMaterial.pbrData.metallicRoughnessTexture.has_value())
+        {
+            auto &mrTextureInfo = gltfMaterial.pbrData.metallicRoughnessTexture.value();
+            auto &gltfTexture = gltf.textures[mrTextureInfo.textureIndex];
+
+            if (gltfTexture.imageIndex.has_value())
+            {
+                int imageIdx = static_cast<int>(gltfTexture.imageIndex.value());
+
+                auto it = imageToTexture.find(imageIdx);
+                if (it != imageToTexture.end())
+                {
+
+                    material.metallicRoughnessTextureIndex = it->second;
+                }
+                else
+                {
+                    auto &image = gltf.images[imageIdx];
+                    Texture newTexture;
+
+                    std::visit(
+                        [&](auto &source) {
+                            using T = std::decay_t<decltype(source)>;
+                            if constexpr (std::is_same_v<T, fastgltf::sources::BufferView>)
+                            {
+                                auto &bufferView = gltf.bufferViews[source.bufferViewIndex];
+                                auto &buffer = gltf.buffers[bufferView.bufferIndex];
+
+                                std::visit(
+                                    [&](auto &bufferSource) {
+                                        using BT = std::decay_t<decltype(bufferSource)>;
+                                        if constexpr (std::is_same_v<BT, fastgltf::sources::Array>)
+                                        {
+
+                                            const unsigned char *data = reinterpret_cast<const unsigned char *>(
+                                                bufferSource.bytes.data() + bufferView.byteOffset);
+                                            newTexture.loadFromMemory(data, static_cast<int>(bufferView.byteLength),
+                                                                      false);
+                                        }
+                                    },
+                                    buffer.data);
+                            }
+
+                            else if constexpr (std::is_same_v<T, fastgltf::sources::URI>)
+                            {
+                                Log::Print("METALLIC/ROUGHNESS URI - NOT SUPPORTED YET", "ModelLoader",
+                                           LogType::LOG_WARNING);
+                            }
+                            else
+                            {
+                                Log::Print("METALLIC/ROUGHNESS TEXTURE FORMAT NOT HANDLED", "ModelLoader",
+                                           LogType::LOG_WARNING);
+                            }
+                        },
+                        image.data);
+
+                    int textureIndex = static_cast<int>(model.textures.size());
+                    model.textures.push_back(std::move(newTexture));
+                    imageToTexture[imageIdx] = textureIndex;
+                    material.metallicRoughnessTextureIndex = textureIndex;
+                }
+            }
+        }
+        if (gltfMaterial.normalTexture.has_value())
+        {
+            auto &normTextureInfo = gltfMaterial.normalTexture.value();
+            auto &gltfTexture = gltf.textures[normTextureInfo.textureIndex];
+
+            if (gltfTexture.imageIndex.has_value())
+            {
+                int imageIdx = static_cast<int>(gltfTexture.imageIndex.value());
+
+                auto it = imageToTexture.find(imageIdx);
+                if (it != imageToTexture.end())
+                {
+                    material.normalTextureIndex = it->second;
+                }
+                else
+                {
+                    auto &image = gltf.images[imageIdx];
+                    Texture newTexture;
+
+                    std::visit(
+                        [&](auto &source) {
+                            using T = std::decay_t<decltype(source)>;
+                            if constexpr (std::is_same_v<T, fastgltf::sources::BufferView>)
+                            {
+                                auto &bufferView = gltf.bufferViews[source.bufferViewIndex];
+                                auto &buffer = gltf.buffers[bufferView.bufferIndex];
+
+                                std::visit(
+                                    [&](auto &bufferSource) {
+                                        using BT = std::decay_t<decltype(bufferSource)>;
+                                        if constexpr (std::is_same_v<BT, fastgltf::sources::Array>)
+                                        {
+
+                                            const unsigned char *data = reinterpret_cast<const unsigned char *>(
+                                                bufferSource.bytes.data() + bufferView.byteOffset);
+                                            newTexture.loadFromMemory(data, static_cast<int>(bufferView.byteLength),
+                                                                      false);
+                                        }
+                                    },
+                                    buffer.data);
+                            }
+                        },
+                        image.data);
+
+                    int textureIndex = static_cast<int>(model.textures.size());
+                    model.textures.push_back(std::move(newTexture));
+                    imageToTexture[imageIdx] = textureIndex;
+                    material.normalTextureIndex = textureIndex;
+                }
+            }
         }
 
-        // read the normals into the expanded layout
+        model.materials.push_back(std::move(material));
+    }
 
-        fastgltf::iterateAccessorWithIndex<glm::vec3>(
-            gltf, normAccessor, [&](glm::vec3 norm, size_t index) {
-              expanded[index * newFloats + currentFloats] = norm.x;
-              expanded[index * newFloats + currentFloats + 1] = norm.y;
-              expanded[index * newFloats + currentFloats + 2] = norm.z;
+    // pass 2 load meshes
+    for (auto &mesh : gltf.meshes)
+    {
+        for (auto &primitive : mesh.primitives)
+        {
+            std::vector<float> vertexData;
+            std::vector<unsigned int> indexdata;
+            std::vector<Mesh::vertexAttribute> attributes;
+            unsigned int currentOffset = 0;
+            // find pos data
+            auto *positionIt = primitive.findAttribute("POSITION");
+            if (positionIt == primitive.attributes.end())
+                continue;
+
+            auto &posAccessor = gltf.accessors[positionIt->accessorIndex];
+            vertexData.resize(posAccessor.count * 3);
+
+            glm::vec3 meshMin(FLT_MAX);
+            glm::vec3 meshMax(-FLT_MAX);
+
+            fastgltf::iterateAccessorWithIndex<glm::vec3>(gltf, posAccessor, [&](glm::vec3 pos, size_t index) {
+                meshMin = glm::min(meshMin, pos);
+                meshMax = glm::max(meshMax, pos);
+
+                vertexData[index * 3 + 0] = pos.x;
+                vertexData[index * 3 + 1] = pos.y;
+                vertexData[index * 3 + 2] = pos.z;
             });
 
-        vertexData = std::move(expanded);
-        attributes.push_back({1, 3, currentOffset});
-        currentOffset += 3 * sizeof(float);
-      }
+            attributes.push_back({0, 3, currentOffset});
+            currentOffset += 3 * sizeof(float);
 
-      auto tangentIt = primitive.findAttribute("TANGENT");
-      if (tangentIt != primitive.attributes.end()) {
-        auto &tanAccessor = gltf.accessors[tangentIt->accessorIndex];
-        unsigned int currentFloats = currentOffset / sizeof(float);
-        unsigned int newFloats = currentFloats + 4; // tangents are vec4
-        std::vector<float> expanded(posAccessor.count * newFloats);
+            // find normal data
+            auto *normalIt = primitive.findAttribute("NORMAL");
+            if (normalIt != primitive.attributes.end())
+            {
+                auto &normAccessor = gltf.accessors[normalIt->accessorIndex];
+                unsigned int currentFloats = currentOffset / sizeof(float);
+                unsigned int newFloats = currentFloats + 3;
+                // vertexdata has only space for pos so we need to expand to have space
+                // for normals too basically make 6 floats instead of 3, 3 for pos and 3
+                // for normals
+                std::vector<float> expanded(posAccessor.count * newFloats);
 
-        // copy existing data
-        for (size_t i = 0; i < posAccessor.count; i++) {
-          for (unsigned int j = 0; j < currentFloats; j++) {
-            expanded[i * newFloats + j] = vertexData[i * currentFloats + j];
-          }
-        }
+                // get already existing pos and put into the new expanded layout
+                for (size_t i = 0; i < posAccessor.count; i++)
+                {
+                    for (unsigned int j = 0; j < currentFloats; j++)
+                    {
+                        expanded[i * newFloats + j] = vertexData[i * currentFloats + j];
+                    }
+                }
 
-        fastgltf::iterateAccessorWithIndex<glm::vec4>(
-            gltf, tanAccessor, [&](glm::vec4 tan, size_t index) {
-              expanded[index * newFloats + currentFloats] = tan.x;
-              expanded[index * newFloats + currentFloats + 1] = tan.y;
-              expanded[index * newFloats + currentFloats + 2] = tan.z;
-              expanded[index * newFloats + currentFloats + 3] = tan.w;
-            });
+                // read the normals into the expanded layout
 
-        vertexData = std::move(expanded);
-        attributes.push_back({3, 4, currentOffset});
-        currentOffset += 4 * sizeof(float);
-      }
+                fastgltf::iterateAccessorWithIndex<glm::vec3>(gltf, normAccessor, [&](glm::vec3 norm, size_t index) {
+                    expanded[index * newFloats + currentFloats] = norm.x;
+                    expanded[index * newFloats + currentFloats + 1] = norm.y;
+                    expanded[index * newFloats + currentFloats + 2] = norm.z;
+                });
 
-      auto *textureIt = primitive.findAttribute("TEXCOORD_0");
-      auto *texture1It = primitive.findAttribute("TEXCOORD_1");
-      Log::Print("Has TEXCOORD_0: " +
-                     std::to_string(textureIt != primitive.attributes.end()),
-                 "ModelLoader", LogType::LOG_INFO);
-      Log::Print("Has TEXCOORD_1: " +
-                     std::to_string(texture1It != primitive.attributes.end()),
-                 "ModelLoader", LogType::LOG_INFO);
-      if (textureIt != primitive.attributes.end()) {
-        auto &uvAccessor = gltf.accessors[textureIt->accessorIndex];
-        // how many floats per vertex currently?
-        unsigned int currentFloats = currentOffset / sizeof(float);
-        unsigned int newFloats = currentFloats + 2;
-
-        std::vector<float> expanded(posAccessor.count * newFloats);
-
-        // copy the exisiting data into the new layout that supports texcoord
-        for (size_t i = 0; i < posAccessor.count; i++) {
-          for (unsigned int j = 0; j < currentFloats; j++) {
-            expanded[i * newFloats + j] = vertexData[i * currentFloats + j];
-          }
-        }
-
-        fastgltf::iterateAccessorWithIndex<glm::vec2>(
-            gltf, uvAccessor,
-            [&](glm::vec2 uv, size_t index) {
-              expanded[index * newFloats + currentFloats] = uv.x;
-              expanded[index * newFloats + currentFloats + 1] = uv.y;
+                vertexData = std::move(expanded);
+                attributes.push_back({1, 3, currentOffset});
+                currentOffset += 3 * sizeof(float);
             }
 
-        );
+            auto tangentIt = primitive.findAttribute("TANGENT");
+            if (tangentIt != primitive.attributes.end())
+            {
+                auto &tanAccessor = gltf.accessors[tangentIt->accessorIndex];
+                unsigned int currentFloats = currentOffset / sizeof(float);
+                unsigned int newFloats = currentFloats + 4; // tangents are vec4
+                std::vector<float> expanded(posAccessor.count * newFloats);
 
-        vertexData = std::move(expanded);
-        attributes.push_back({2, 2, currentOffset});
-        currentOffset += 2 * sizeof(float);
-      }
+                // copy existing data
+                for (size_t i = 0; i < posAccessor.count; i++)
+                {
+                    for (unsigned int j = 0; j < currentFloats; j++)
+                    {
+                        expanded[i * newFloats + j] = vertexData[i * currentFloats + j];
+                    }
+                }
 
-      if (primitive.indicesAccessor.has_value()) {
-        auto &indexAccessor = gltf.accessors[primitive.indicesAccessor.value()];
-        indexdata.resize(indexAccessor.count);
+                fastgltf::iterateAccessorWithIndex<glm::vec4>(gltf, tanAccessor, [&](glm::vec4 tan, size_t index) {
+                    expanded[index * newFloats + currentFloats] = tan.x;
+                    expanded[index * newFloats + currentFloats + 1] = tan.y;
+                    expanded[index * newFloats + currentFloats + 2] = tan.z;
+                    expanded[index * newFloats + currentFloats + 3] = tan.w;
+                });
 
-        fastgltf::iterateAccessorWithIndex<unsigned int>(
-            gltf, indexAccessor,
-            [&](unsigned int idx, size_t index) { indexdata[index] = idx; });
-      }
-      unsigned int stride = currentOffset;
-      Mesh newMesh;
-      newMesh.setup(vertexData, indexdata, attributes, stride);
+                vertexData = std::move(expanded);
+                attributes.push_back({3, 4, currentOffset});
+                currentOffset += 4 * sizeof(float);
+            }
 
-      Texture newTexture;
-      if (primitive.materialIndex.has_value()) {
-        int gltfMatIdx = static_cast<int>(primitive.materialIndex.value());
-        if (gltfMatIdx >= 0 &&
-            gltfMatIdx < static_cast<int>(model.materials.size())) {
-          newMesh.materialIndex = gltfMatIdx;
+            auto *textureIt = primitive.findAttribute("TEXCOORD_0");
+            auto *texture1It = primitive.findAttribute("TEXCOORD_1");
+            Log::Print("Has TEXCOORD_0: " + std::to_string(textureIt != primitive.attributes.end()), "ModelLoader",
+                       LogType::LOG_INFO);
+            Log::Print("Has TEXCOORD_1: " + std::to_string(texture1It != primitive.attributes.end()), "ModelLoader",
+                       LogType::LOG_INFO);
+            if (textureIt != primitive.attributes.end())
+            {
+                auto &uvAccessor = gltf.accessors[textureIt->accessorIndex];
+                // how many floats per vertex currently?
+                unsigned int currentFloats = currentOffset / sizeof(float);
+                unsigned int newFloats = currentFloats + 2;
+
+                std::vector<float> expanded(posAccessor.count * newFloats);
+
+                // copy the exisiting data into the new layout that supports texcoord
+                for (size_t i = 0; i < posAccessor.count; i++)
+                {
+                    for (unsigned int j = 0; j < currentFloats; j++)
+                    {
+                        expanded[i * newFloats + j] = vertexData[i * currentFloats + j];
+                    }
+                }
+
+                fastgltf::iterateAccessorWithIndex<glm::vec2>(gltf, uvAccessor,
+                                                              [&](glm::vec2 uv, size_t index) {
+                                                                  expanded[index * newFloats + currentFloats] = uv.x;
+                                                                  expanded[index * newFloats + currentFloats + 1] =
+                                                                      uv.y;
+                                                              }
+
+                );
+
+                vertexData = std::move(expanded);
+                attributes.push_back({2, 2, currentOffset});
+                currentOffset += 2 * sizeof(float);
+            }
+
+            if (primitive.indicesAccessor.has_value())
+            {
+                auto &indexAccessor = gltf.accessors[primitive.indicesAccessor.value()];
+                indexdata.resize(indexAccessor.count);
+
+                fastgltf::iterateAccessorWithIndex<unsigned int>(
+                    gltf, indexAccessor, [&](unsigned int idx, size_t index) { indexdata[index] = idx; });
+            }
+            unsigned int stride = currentOffset;
+            Mesh newMesh;
+            newMesh.setup(vertexData, indexdata, attributes, stride);
+
+            Texture newTexture;
+            if (primitive.materialIndex.has_value())
+            {
+                int gltfMatIdx = static_cast<int>(primitive.materialIndex.value());
+                if (gltfMatIdx >= 0 && gltfMatIdx < static_cast<int>(model.materials.size()))
+                {
+                    newMesh.materialIndex = gltfMatIdx;
+                }
+            }
+
+            model.meshes.push_back(std::move(newMesh));
         }
-      }
-
-      model.meshes.push_back(std::move(newMesh));
     }
-  }
-  return model;
+    return model;
 };
 } // namespace Cthulhu::Rendering

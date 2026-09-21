@@ -12,500 +12,499 @@
 
 using KalaHeaders::KalaLog::Log;
 using KalaHeaders::KalaLog::LogType;
-namespace Cthulhu::Rendering {
-void Renderer::setScene(Cthulhu::Scene::Scene *scene) { this->scene = scene; }
-
-void Renderer::init(GLFWwindow *window, Scene::Camera *camera,
-                    const RenderConfig &config) {
-  this->config = config;
-
-  auto enginePath = [&config](const std::filesystem::path &relative) {
-    return (config.engineResourceRoot / relative).lexically_normal().string();
-  };
-
-  this->camera = camera;
-  this->window = window;
-
-  int width, height;
-  glfwGetFramebufferSize(window, &width, &height);
-  sceneFramebuffer.create(width, height);
-
-  glEnable(GL_DEPTH_TEST);
-  glEnable(GL_CULL_FACE);
-
-  basicShader.load(enginePath("shaders/basic.vertex"),
-                   enginePath("shaders/basic.fragment"));
-  gridShader.load(enginePath("shaders/grid.vertex"),
-                  enginePath("shaders/grid.fragment"));
-
-  skybox.load(config.engineResourceRoot,
-              config.engineResourceRoot / "images/Test2.hdr");
-  skybox.generateIrradianceMap();
-  skybox.generatePrefilterMap();
-  grid.setupGrid(config.gridSize);
-
-  // temp setup for whitepointshadow
-  glGenTextures(1, &whitePointShadow);
-  glBindTexture(GL_TEXTURE_CUBE_MAP, whitePointShadow);
-
-  float whiteDepth = 1.0f; // far plane = "no shadow"
-  for (int face = 0; face < 6; ++face) {
-    glTexImage2D(GL_TEXTURE_CUBE_MAP_POSITIVE_X + face, 0, GL_DEPTH_COMPONENT24,
-                 1, 1, 0, GL_DEPTH_COMPONENT, GL_FLOAT, &whiteDepth);
-  }
-
-  glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
-  glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
-  glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
-  glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
-  glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_WRAP_R, GL_CLAMP_TO_EDGE);
-  glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_COMPARE_MODE,
-                  GL_COMPARE_REF_TO_TEXTURE);
-  glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_COMPARE_FUNC, GL_LEQUAL);
-
-  glBindTexture(GL_TEXTURE_CUBE_MAP, 0);
-  KalaHeaders::KalaLog::Log::Print("White point shadow fallback created",
-                                   "Renderer",
-                                   KalaHeaders::KalaLog::LogType::LOG_SUCCESS);
-
-  glGenTextures(1, &defaultDataTexture);
-  glBindTexture(GL_TEXTURE_2D, defaultDataTexture);
-  unsigned char whitePixel[4] = {255, 255, 255, 255};
-  glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA8, 1, 1, 0, GL_RGBA, GL_UNSIGNED_BYTE,
-               whitePixel);
-  glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
-  glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
-  glBindTexture(GL_TEXTURE_2D, 0);
-
-  glGenTextures(1, &defaultNormalTexture);
-  glBindTexture(GL_TEXTURE_2D, defaultNormalTexture);
-  unsigned char flatNormalPixel[4] = {128, 128, 255,
-                                      255}; // Normal pointing straight up
-  glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA8, 1, 1, 0, GL_RGBA, GL_UNSIGNED_BYTE,
-               flatNormalPixel);
-  glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
-  glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
-  glBindTexture(GL_TEXTURE_2D, 0);
-
-  basicShader.use();
-  basicShader.setInt("uTexture", 0);   // diffuse
-  basicShader.setInt("uShadowMap", 1); // directional shadow
-  for (int i = 0; i < MAX_POINT_SHADOW_CASTERS; i++) {
-    basicShader.setInt("uPointShadowMaps[" + std::to_string(i) + "]", 2 + i);
-  }
-  basicShader.setInt("uMetallicRoughnessTexture", 6);
-  basicShader.setInt("uNormalMap", 7);
-  basicShader.setInt("uBRDFLUT", 8); // Setup slot for BRDF LUT now
-  basicShader.setInt("uIrradianceMap", 9);
-  basicShader.setInt("uPrefilterMap", 10);
-
-  shadowMap.init(config.shadowMapResolution, config.shadowMapResolution,
-                 config.engineResourceRoot);
-  for (int i = 0; i < MAX_POINT_SHADOW_CASTERS; i++) {
-    pointShadowMaps[i].init(config.shadowMapResolution,
-                            config.shadowMapResolution,
-                            config.engineResourceRoot);
-  }
-  shadowMap.setLightDir(sunLight.direction);
-
-  // BRDF LUT Generation
-  Shader brdfShader;
-  brdfShader.load(enginePath("shaders/brdf.vertex"),
-                  enginePath("shaders/brdf.fragment"));
-
-  glGenTextures(1, &brdfLUTTexture);
-  glBindTexture(GL_TEXTURE_2D, brdfLUTTexture);
-  glTexImage2D(GL_TEXTURE_2D, 0, GL_RG16F, config.brdfLUTSize,
-               config.brdfLUTSize, 0, GL_RG, GL_FLOAT, 0);
-  glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
-  glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
-  glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
-  glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
-
-  unsigned int brdfFBO;
-  glGenFramebuffers(1, &brdfFBO);
-  glBindFramebuffer(GL_FRAMEBUFFER, brdfFBO);
-  glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D,
-                         brdfLUTTexture, 0);
-
-  glViewport(0, 0, config.brdfLUTSize, config.brdfLUTSize);
-  brdfShader.use();
-  glClear(GL_COLOR_BUFFER_BIT);
-
-  float quadVertices[] = {
-      // positions        // texcoords
-      -1.0f, 1.0f, 0.0f, 1.0f, -1.0f, -1.0f, 0.0f, 0.0f,
-      1.0f,  1.0f, 1.0f, 1.0f, 1.0f,  -1.0f, 1.0f, 0.0f,
-  };
-  unsigned int quadVAO, quadVBO;
-  glGenVertexArrays(1, &quadVAO);
-  glGenBuffers(1, &quadVBO);
-  glBindVertexArray(quadVAO);
-  glBindBuffer(GL_ARRAY_BUFFER, quadVBO);
-  glBufferData(GL_ARRAY_BUFFER, sizeof(quadVertices), &quadVertices,
-               GL_STATIC_DRAW);
-  glEnableVertexAttribArray(0);
-  glVertexAttribPointer(0, 2, GL_FLOAT, GL_FALSE, 4 * sizeof(float), (void *)0);
-  glEnableVertexAttribArray(1);
-  glVertexAttribPointer(1, 2, GL_FLOAT, GL_FALSE, 4 * sizeof(float),
-                        (void *)(2 * sizeof(float)));
-
-  glDrawArrays(GL_TRIANGLE_STRIP, 0, 4);
-
-  // Cleanup BRDF state
-  glBindFramebuffer(GL_FRAMEBUFFER, 0);
-  glDeleteFramebuffers(1, &brdfFBO);
-  glDeleteVertexArrays(1, &quadVAO);
-  glDeleteBuffers(1, &quadVBO);
-  brdfShader.destroy();
-
-  lineShader.load(enginePath("shaders/debugLine.vertex"),
-                  enginePath("shaders/debugLine.fragment"));
-  glGenVertexArrays(1, &lineVAO);
-  glGenBuffers(1, &lineVBO);
-  glBindVertexArray(lineVAO);
-  glBindBuffer(GL_ARRAY_BUFFER, lineVBO);
-  glBufferData(GL_ARRAY_BUFFER, sizeof(DebugVertex) * 1000, nullptr,
-               GL_DYNAMIC_DRAW);
-
-  glEnableVertexAttribArray(0);
-  glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, sizeof(DebugVertex),
-                        (void *)0);
-  glEnableVertexAttribArray(1);
-  glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, sizeof(DebugVertex),
-                        (void *)(sizeof(glm::vec3)));
-
-  glBindVertexArray(0);
-
-  glGenBuffers(1, &sceneUBO);
-  glBindBuffer(GL_UNIFORM_BUFFER, sceneUBO);
-  glBufferData(GL_UNIFORM_BUFFER, sizeof(SceneUniforms), nullptr,
-               GL_DYNAMIC_DRAW);
-  glBindBufferBase(GL_UNIFORM_BUFFER, 0, sceneUBO);
-  glBindBuffer(GL_UNIFORM_BUFFER, 0);
-  Log::Print("Renderer Initialized Successfully", "ENGINE",
-             LogType::LOG_SUCCESS);
+namespace Cthulhu::Rendering
+{
+void Renderer::setScene(Cthulhu::Scene::Scene *scene)
+{
+    this->scene = scene;
 }
 
-void Renderer::addPointLight(const PointLight &light) {
-  pointLights.push_back(light);
-}
+void Renderer::init(GLFWwindow *window, Scene::Camera *camera, const RenderConfig &config)
+{
+    this->config = config;
 
-void Renderer::bindDefaultMaterial() {
-  basicShader.setVec4("uBaseColorFactor", glm::vec4(1.0f));
-  basicShader.setFloat("uMetallicFactor", 0.0f);
-  basicShader.setFloat("uRoughnessFactor", 1.0f);
-  glActiveTexture(GL_TEXTURE0);
-  glBindTexture(GL_TEXTURE_2D, defaultDataTexture);
-  glActiveTexture(GL_TEXTURE6);
-  glBindTexture(GL_TEXTURE_2D, defaultDataTexture);
-  glActiveTexture(GL_TEXTURE7);
-  glBindTexture(GL_TEXTURE_2D, defaultNormalTexture);
-}
+    auto enginePath = [&config](const std::filesystem::path &relative) {
+        return (config.engineResourceRoot / relative).lexically_normal().string();
+    };
 
-void Renderer::bindMaterial(const Material &material,
-                            const std::vector<Texture> &modelTextures) {
-  basicShader.setVec4("uBaseColorFactor", material.baseColorFactor);
-  basicShader.setFloat("uMetallicFactor", material.metallicFactor);
-  basicShader.setFloat("uRoughnessFactor", material.roughnessFactor);
+    this->camera = camera;
+    this->window = window;
 
-  glActiveTexture(GL_TEXTURE0); // base colour
-  if (material.baseColorTextureIndex >= 0 &&
-      material.baseColorTextureIndex < static_cast<int>(modelTextures.size())) {
-    glBindTexture(GL_TEXTURE_2D,
-                  modelTextures[material.baseColorTextureIndex].getID());
-  } else {
+    int width, height;
+    glfwGetFramebufferSize(window, &width, &height);
+    sceneFramebuffer.create(width, height);
+
+    glEnable(GL_DEPTH_TEST);
+    glEnable(GL_CULL_FACE);
+
+    basicShader.load(enginePath("shaders/basic.vertex"), enginePath("shaders/basic.fragment"));
+    gridShader.load(enginePath("shaders/grid.vertex"), enginePath("shaders/grid.fragment"));
+
+    skybox.load(config.engineResourceRoot, config.engineResourceRoot / "images/Test2.hdr");
+    skybox.generateIrradianceMap();
+    skybox.generatePrefilterMap();
+    grid.setupGrid(config.gridSize);
+
+    // temp setup for whitepointshadow
+    glGenTextures(1, &whitePointShadow);
+    glBindTexture(GL_TEXTURE_CUBE_MAP, whitePointShadow);
+
+    float whiteDepth = 1.0f; // far plane = "no shadow"
+    for (int face = 0; face < 6; ++face)
+    {
+        glTexImage2D(GL_TEXTURE_CUBE_MAP_POSITIVE_X + face, 0, GL_DEPTH_COMPONENT24, 1, 1, 0, GL_DEPTH_COMPONENT,
+                     GL_FLOAT, &whiteDepth);
+    }
+
+    glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+    glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+    glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+    glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+    glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_WRAP_R, GL_CLAMP_TO_EDGE);
+    glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_COMPARE_MODE, GL_COMPARE_REF_TO_TEXTURE);
+    glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_COMPARE_FUNC, GL_LEQUAL);
+
+    glBindTexture(GL_TEXTURE_CUBE_MAP, 0);
+    KalaHeaders::KalaLog::Log::Print("White point shadow fallback created", "Renderer",
+                                     KalaHeaders::KalaLog::LogType::LOG_SUCCESS);
+
+    glGenTextures(1, &defaultDataTexture);
     glBindTexture(GL_TEXTURE_2D, defaultDataTexture);
-  }
+    unsigned char whitePixel[4] = {255, 255, 255, 255};
+    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA8, 1, 1, 0, GL_RGBA, GL_UNSIGNED_BYTE, whitePixel);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+    glBindTexture(GL_TEXTURE_2D, 0);
 
-  glActiveTexture(GL_TEXTURE6); // metallic roughness
-  if (material.metallicRoughnessTextureIndex >= 0 &&
-      material.metallicRoughnessTextureIndex <
-          static_cast<int>(modelTextures.size())) {
-    glBindTexture(
-        GL_TEXTURE_2D,
-        modelTextures[material.metallicRoughnessTextureIndex].getID());
-  } else {
-    glBindTexture(GL_TEXTURE_2D, defaultDataTexture);
-  }
-
-  glActiveTexture(GL_TEXTURE7); // normal map
-  if (material.normalTextureIndex >= 0 &&
-      material.normalTextureIndex < static_cast<int>(modelTextures.size())) {
-    glBindTexture(GL_TEXTURE_2D,
-                  modelTextures[material.normalTextureIndex].getID());
-  } else {
+    glGenTextures(1, &defaultNormalTexture);
     glBindTexture(GL_TEXTURE_2D, defaultNormalTexture);
-  }
+    unsigned char flatNormalPixel[4] = {128, 128, 255, 255}; // Normal pointing straight up
+    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA8, 1, 1, 0, GL_RGBA, GL_UNSIGNED_BYTE, flatNormalPixel);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+    glBindTexture(GL_TEXTURE_2D, 0);
+
+    basicShader.use();
+    basicShader.setInt("uTexture", 0);   // diffuse
+    basicShader.setInt("uShadowMap", 1); // directional shadow
+    for (int i = 0; i < MAX_POINT_SHADOW_CASTERS; i++)
+    {
+        basicShader.setInt("uPointShadowMaps[" + std::to_string(i) + "]", 2 + i);
+    }
+    basicShader.setInt("uMetallicRoughnessTexture", 6);
+    basicShader.setInt("uNormalMap", 7);
+    basicShader.setInt("uBRDFLUT", 8); // Setup slot for BRDF LUT now
+    basicShader.setInt("uIrradianceMap", 9);
+    basicShader.setInt("uPrefilterMap", 10);
+
+    shadowMap.init(config.shadowMapResolution, config.shadowMapResolution, config.engineResourceRoot);
+    for (int i = 0; i < MAX_POINT_SHADOW_CASTERS; i++)
+    {
+        pointShadowMaps[i].init(config.shadowMapResolution, config.shadowMapResolution, config.engineResourceRoot);
+    }
+    shadowMap.setLightDir(sunLight.direction);
+
+    // BRDF LUT Generation
+    Shader brdfShader;
+    brdfShader.load(enginePath("shaders/brdf.vertex"), enginePath("shaders/brdf.fragment"));
+
+    glGenTextures(1, &brdfLUTTexture);
+    glBindTexture(GL_TEXTURE_2D, brdfLUTTexture);
+    glTexImage2D(GL_TEXTURE_2D, 0, GL_RG16F, config.brdfLUTSize, config.brdfLUTSize, 0, GL_RG, GL_FLOAT, 0);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+
+    unsigned int brdfFBO;
+    glGenFramebuffers(1, &brdfFBO);
+    glBindFramebuffer(GL_FRAMEBUFFER, brdfFBO);
+    glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, brdfLUTTexture, 0);
+
+    glViewport(0, 0, config.brdfLUTSize, config.brdfLUTSize);
+    brdfShader.use();
+    glClear(GL_COLOR_BUFFER_BIT);
+
+    float quadVertices[] = {
+        // positions        // texcoords
+        -1.0f, 1.0f, 0.0f, 1.0f, -1.0f, -1.0f, 0.0f, 0.0f, 1.0f, 1.0f, 1.0f, 1.0f, 1.0f, -1.0f, 1.0f, 0.0f,
+    };
+    unsigned int quadVAO, quadVBO;
+    glGenVertexArrays(1, &quadVAO);
+    glGenBuffers(1, &quadVBO);
+    glBindVertexArray(quadVAO);
+    glBindBuffer(GL_ARRAY_BUFFER, quadVBO);
+    glBufferData(GL_ARRAY_BUFFER, sizeof(quadVertices), &quadVertices, GL_STATIC_DRAW);
+    glEnableVertexAttribArray(0);
+    glVertexAttribPointer(0, 2, GL_FLOAT, GL_FALSE, 4 * sizeof(float), (void *)0);
+    glEnableVertexAttribArray(1);
+    glVertexAttribPointer(1, 2, GL_FLOAT, GL_FALSE, 4 * sizeof(float), (void *)(2 * sizeof(float)));
+
+    glDrawArrays(GL_TRIANGLE_STRIP, 0, 4);
+
+    // Cleanup BRDF state
+    glBindFramebuffer(GL_FRAMEBUFFER, 0);
+    glDeleteFramebuffers(1, &brdfFBO);
+    glDeleteVertexArrays(1, &quadVAO);
+    glDeleteBuffers(1, &quadVBO);
+    brdfShader.destroy();
+
+    lineShader.load(enginePath("shaders/debugLine.vertex"), enginePath("shaders/debugLine.fragment"));
+    glGenVertexArrays(1, &lineVAO);
+    glGenBuffers(1, &lineVBO);
+    glBindVertexArray(lineVAO);
+    glBindBuffer(GL_ARRAY_BUFFER, lineVBO);
+    glBufferData(GL_ARRAY_BUFFER, sizeof(DebugVertex) * 1000, nullptr, GL_DYNAMIC_DRAW);
+
+    glEnableVertexAttribArray(0);
+    glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, sizeof(DebugVertex), (void *)0);
+    glEnableVertexAttribArray(1);
+    glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, sizeof(DebugVertex), (void *)(sizeof(glm::vec3)));
+
+    glBindVertexArray(0);
+
+    glGenBuffers(1, &sceneUBO);
+    glBindBuffer(GL_UNIFORM_BUFFER, sceneUBO);
+    glBufferData(GL_UNIFORM_BUFFER, sizeof(SceneUniforms), nullptr, GL_DYNAMIC_DRAW);
+    glBindBufferBase(GL_UNIFORM_BUFFER, 0, sceneUBO);
+    glBindBuffer(GL_UNIFORM_BUFFER, 0);
+    Log::Print("Renderer Initialized Successfully", "ENGINE", LogType::LOG_SUCCESS);
+}
+
+void Renderer::addPointLight(const PointLight &light)
+{
+    pointLights.push_back(light);
+}
+
+void Renderer::bindDefaultMaterial()
+{
+    basicShader.setVec4("uBaseColorFactor", glm::vec4(1.0f));
+    basicShader.setFloat("uMetallicFactor", 0.0f);
+    basicShader.setFloat("uRoughnessFactor", 1.0f);
+    glActiveTexture(GL_TEXTURE0);
+    glBindTexture(GL_TEXTURE_2D, defaultDataTexture);
+    glActiveTexture(GL_TEXTURE6);
+    glBindTexture(GL_TEXTURE_2D, defaultDataTexture);
+    glActiveTexture(GL_TEXTURE7);
+    glBindTexture(GL_TEXTURE_2D, defaultNormalTexture);
+}
+
+void Renderer::bindMaterial(const Material &material, const std::vector<Texture> &modelTextures)
+{
+    basicShader.setVec4("uBaseColorFactor", material.baseColorFactor);
+    basicShader.setFloat("uMetallicFactor", material.metallicFactor);
+    basicShader.setFloat("uRoughnessFactor", material.roughnessFactor);
+
+    glActiveTexture(GL_TEXTURE0); // base colour
+    if (material.baseColorTextureIndex >= 0 && material.baseColorTextureIndex < static_cast<int>(modelTextures.size()))
+    {
+        glBindTexture(GL_TEXTURE_2D, modelTextures[material.baseColorTextureIndex].getID());
+    }
+    else
+    {
+        glBindTexture(GL_TEXTURE_2D, defaultDataTexture);
+    }
+
+    glActiveTexture(GL_TEXTURE6); // metallic roughness
+    if (material.metallicRoughnessTextureIndex >= 0 &&
+        material.metallicRoughnessTextureIndex < static_cast<int>(modelTextures.size()))
+    {
+        glBindTexture(GL_TEXTURE_2D, modelTextures[material.metallicRoughnessTextureIndex].getID());
+    }
+    else
+    {
+        glBindTexture(GL_TEXTURE_2D, defaultDataTexture);
+    }
+
+    glActiveTexture(GL_TEXTURE7); // normal map
+    if (material.normalTextureIndex >= 0 && material.normalTextureIndex < static_cast<int>(modelTextures.size()))
+    {
+        glBindTexture(GL_TEXTURE_2D, modelTextures[material.normalTextureIndex].getID());
+    }
+    else
+    {
+        glBindTexture(GL_TEXTURE_2D, defaultNormalTexture);
+    }
 }
 
 void Renderer::render(unsigned int width, unsigned int height, float deltaTime,
-                      const std::vector<Renderable> &renderables) {
-  if (width == 0 || height == 0) {
-    return;
-  }
-  sceneFramebuffer.resize(width, height);
+                      const std::vector<Renderable> &renderables)
+{
+    if (width == 0 || height == 0)
+    {
+        return;
+    }
+    sceneFramebuffer.resize(width, height);
 
-  if (camera != nullptr) {
-    projection =
-        glm::perspective(camera->getFov(), (float)width / (float)height,
-                         config.nearPlane, config.farPlane);
-    view = camera->getViewMatrix();
-  }
+    if (camera != nullptr)
+    {
+        projection =
+            glm::perspective(camera->getFov(), (float)width / (float)height, config.nearPlane, config.farPlane);
+        view = camera->getViewMatrix();
+    }
 
-  frustum.extractFromMatrix(projection * view);
+    frustum.extractFromMatrix(projection * view);
 
-  // 1. shadow pass
-  shadowMap.beginPass();
-  for (const auto &renderable : renderables) {
-    shadowMap.getDepthShader().setMat4("model", renderable.modelMatrix);
-    renderable.model->draw();
-  }
-  shadowMap.endPass();
-  int shadowCasters =
-      std::min((int)pointLights.size(), MAX_POINT_SHADOW_CASTERS);
-
-  for (int i = 0; i < shadowCasters; i++) {
-    glm::vec3 lightPos = pointLights[i].position;
-
-    glm::mat4 captureViews[] = {
-        glm::lookAt(lightPos, lightPos + glm::vec3(1.0f, 0.0f, 0.0f),
-                    glm::vec3(0.0f, -1.0f, 0.0f)),
-        glm::lookAt(lightPos, lightPos + glm::vec3(-1.0f, 0.0f, 0.0f),
-                    glm::vec3(0.0f, -1.0f, 0.0f)),
-        glm::lookAt(lightPos, lightPos + glm::vec3(0.0f, 1.0f, 0.0f),
-                    glm::vec3(0.0f, 0.0f, 1.0f)),
-        glm::lookAt(lightPos, lightPos + glm::vec3(0.0f, -1.0f, 0.0f),
-                    glm::vec3(0.0f, 0.0f, -1.0f)),
-        glm::lookAt(lightPos, lightPos + glm::vec3(0.0f, 0.0f, 1.0f),
-                    glm::vec3(0.0f, -1.0f, 0.0f)),
-        glm::lookAt(lightPos, lightPos + glm::vec3(0.0f, 0.0f, -1.0f),
-                    glm::vec3(0.0f, -1.0f, 0.0f))};
-
-    pointShadowMaps[i].beginPass(lightPos, config.nearPlane, config.farPlane);
-
-    for (int face = 0; face < 6; face++) {
-      pointShadowMaps[i].bindFace(face, captureViews[face]);
-      for (const auto &renderable : renderables) {
-        pointShadowMaps[i].getDepthShader().setMat4("model",
-                                                    renderable.modelMatrix);
+    // 1. shadow pass
+    shadowMap.beginPass();
+    for (const auto &renderable : renderables)
+    {
+        shadowMap.getDepthShader().setMat4("model", renderable.modelMatrix);
         renderable.model->draw();
-      }
     }
-    pointShadowMaps[i].endPass();
-  }
+    shadowMap.endPass();
+    int shadowCasters = std::min((int)pointLights.size(), MAX_POINT_SHADOW_CASTERS);
 
-  // bind scene framebuffer for main pass
-  sceneFramebuffer.bind();
+    for (int i = 0; i < shadowCasters; i++)
+    {
+        glm::vec3 lightPos = pointLights[i].position;
 
-  // main pass
-  glClearColor(config.clearColor.r, config.clearColor.g, config.clearColor.b,
-               config.clearColor.a);
-  glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+        glm::mat4 captureViews[] = {
+            glm::lookAt(lightPos, lightPos + glm::vec3(1.0f, 0.0f, 0.0f), glm::vec3(0.0f, -1.0f, 0.0f)),
+            glm::lookAt(lightPos, lightPos + glm::vec3(-1.0f, 0.0f, 0.0f), glm::vec3(0.0f, -1.0f, 0.0f)),
+            glm::lookAt(lightPos, lightPos + glm::vec3(0.0f, 1.0f, 0.0f), glm::vec3(0.0f, 0.0f, 1.0f)),
+            glm::lookAt(lightPos, lightPos + glm::vec3(0.0f, -1.0f, 0.0f), glm::vec3(0.0f, 0.0f, -1.0f)),
+            glm::lookAt(lightPos, lightPos + glm::vec3(0.0f, 0.0f, 1.0f), glm::vec3(0.0f, -1.0f, 0.0f)),
+            glm::lookAt(lightPos, lightPos + glm::vec3(0.0f, 0.0f, -1.0f), glm::vec3(0.0f, -1.0f, 0.0f))};
 
-  basicShader.use();
+        pointShadowMaps[i].beginPass(lightPos, config.nearPlane, config.farPlane);
 
-  SceneUniforms uboData;
-  uboData.view = view;
-  uboData.projection = projection;
-  uboData.viewPos = camera->getPosition();
-
-  uboData.lightDir = sunLight.direction;
-  uboData.lightColor = sunLight.color;
-  uboData.lightIntensity = sunLight.intensity;
-
-  uboData.fogColor = config.fogColor;
-  uboData.fogDensity = config.fogDensity;
-  uboData.fogHeightFalloff = config.fogHeightFalloff;
-
-  uboData.pointLightCount = (int)pointLights.size();
-  uboData.pointShadowCount = shadowCasters;
-  uboData.pointShadowfarPlane = config.farPlane;
-
-  for (int i = 0; i < uboData.pointLightCount; i++) {
-    uboData.pointLights[i].position = pointLights[i].position;
-    uboData.pointLights[i].color = pointLights[i].color;
-    uboData.pointLights[i].intensity = pointLights[i].intensity;
-    uboData.pointLights[i].constant = pointLights[i].constant;
-    uboData.pointLights[i].linear = pointLights[i].linear;
-    uboData.pointLights[i].quadratic = pointLights[i].quadratic;
-  }
-  // upload to gpu in one call
-  glBindBuffer(GL_UNIFORM_BUFFER, sceneUBO);
-  glBufferSubData(GL_UNIFORM_BUFFER, 0, sizeof(SceneUniforms), &uboData);
-  glBindBuffer(GL_UNIFORM_BUFFER, 0);
-
-  basicShader.setMat4("lightSpaceMatrix", shadowMap.getLightSpaceMatrix());
-
-  // bind all textures in order: 0=diffuse(per mesh), 1=shadow, 2+=cubemaps
-  glActiveTexture(GL_TEXTURE1);
-  glBindTexture(GL_TEXTURE_2D, shadowMap.getDepthMap());
-
-  for (int i = 0; i < MAX_POINT_SHADOW_CASTERS; i++) {
-    glActiveTexture(GL_TEXTURE2 + i);
-    if (i < shadowCasters) {
-      glBindTexture(GL_TEXTURE_CUBE_MAP, pointShadowMaps[i].getDepthCubeMap());
-    } else {
-      glBindTexture(GL_TEXTURE_CUBE_MAP,
-                    whitePointShadow); // 1x1 depth=1.0 = no shadow
+        for (int face = 0; face < 6; face++)
+        {
+            pointShadowMaps[i].bindFace(face, captureViews[face]);
+            for (const auto &renderable : renderables)
+            {
+                pointShadowMaps[i].getDepthShader().setMat4("model", renderable.modelMatrix);
+                renderable.model->draw();
+            }
+        }
+        pointShadowMaps[i].endPass();
     }
-  }
 
-  // reset to slot 0 before entity loop
-  glActiveTexture(GL_TEXTURE0);
+    // bind scene framebuffer for main pass
+    sceneFramebuffer.bind();
 
-  // Bind IBL textures
-  glActiveTexture(GL_TEXTURE8);
-  glBindTexture(GL_TEXTURE_2D, brdfLUTTexture);
+    // main pass
+    glClearColor(config.clearColor.r, config.clearColor.g, config.clearColor.b, config.clearColor.a);
+    glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
-  glActiveTexture(GL_TEXTURE9);
-  glBindTexture(GL_TEXTURE_CUBE_MAP, skybox.getIrradianceMap());
+    basicShader.use();
 
-  glActiveTexture(GL_TEXTURE10);
-  glBindTexture(GL_TEXTURE_CUBE_MAP, skybox.getPrefilterMap());
+    SceneUniforms uboData;
+    uboData.view = view;
+    uboData.projection = projection;
+    uboData.viewPos = camera->getPosition();
 
-  // reset to slot 0 before entity loop
-  glActiveTexture(GL_TEXTURE0);
+    uboData.lightDir = sunLight.direction;
+    uboData.lightColor = sunLight.color;
+    uboData.lightIntensity = sunLight.intensity;
 
-  for (const auto &renderable : renderables) {
-    Scene::AABB worldBounds = TransformAABB(
-        {renderable.boundsMin, renderable.boundsMax}, renderable.modelMatrix);
-    if (!frustum.testAABB(worldBounds.min, worldBounds.max))
-      continue;
+    uboData.fogColor = config.fogColor;
+    uboData.fogDensity = config.fogDensity;
+    uboData.fogHeightFalloff = config.fogHeightFalloff;
 
-    basicShader.setMat4("model", renderable.modelMatrix);
-    basicShader.setMat4("uNormalMatrix", renderable.normalMatrix);
+    uboData.pointLightCount = (int)pointLights.size();
+    uboData.pointShadowCount = shadowCasters;
+    uboData.pointShadowfarPlane = config.farPlane;
 
-    for (size_t meshIdx = 0; meshIdx < renderable.model->meshes.size();
-         meshIdx++) {
-      auto &modelMesh = renderable.model->meshes[meshIdx];
-
-      if (modelMesh.materialIndex >= 0 &&
-          modelMesh.materialIndex <
-              static_cast<int>(renderable.model->materials.size())) {
-        bindMaterial(renderable.model->materials[modelMesh.materialIndex],
-                     renderable.model->textures);
-      } else {
-        bindDefaultMaterial();
-      }
-      modelMesh.draw();
+    for (int i = 0; i < uboData.pointLightCount; i++)
+    {
+        uboData.pointLights[i].position = pointLights[i].position;
+        uboData.pointLights[i].color = pointLights[i].color;
+        uboData.pointLights[i].intensity = pointLights[i].intensity;
+        uboData.pointLights[i].constant = pointLights[i].constant;
+        uboData.pointLights[i].linear = pointLights[i].linear;
+        uboData.pointLights[i].quadratic = pointLights[i].quadratic;
     }
-  }
+    // upload to gpu in one call
+    glBindBuffer(GL_UNIFORM_BUFFER, sceneUBO);
+    glBufferSubData(GL_UNIFORM_BUFFER, 0, sizeof(SceneUniforms), &uboData);
+    glBindBuffer(GL_UNIFORM_BUFFER, 0);
 
-  // grid
-  glEnable(GL_BLEND);
-  glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
-  gridShader.use();
-  glm::mat4 gridModel = glm::mat4(1.0f);
-  gridShader.setMat4("model", gridModel);
-  grid.draw();
-  glDisable(GL_BLEND);
+    basicShader.setMat4("lightSpaceMatrix", shadowMap.getLightSpaceMatrix());
 
-  // skybox
-  skybox.draw(view, projection);
+    // bind all textures in order: 0=diffuse(per mesh), 1=shadow, 2+=cubemaps
+    glActiveTexture(GL_TEXTURE1);
+    glBindTexture(GL_TEXTURE_2D, shadowMap.getDepthMap());
 
-  for (size_t i = 0; i < persistentLines.size();) {
-    persistentLines[i].lifetime -= deltaTime;
-
-    if (persistentLines[i].lifetime <= 0.0f) {
-      persistentLines[i] = persistentLines.back();
-      persistentLines.pop_back();
-    } else {
-      // Line is still alive. Push it to the immediate draw buffer for this
-      // frame.
-      debugLines.push_back(
-          {persistentLines[i].start, persistentLines[i].color});
-      debugLines.push_back({persistentLines[i].end, persistentLines[i].color});
-      i++;
+    for (int i = 0; i < MAX_POINT_SHADOW_CASTERS; i++)
+    {
+        glActiveTexture(GL_TEXTURE2 + i);
+        if (i < shadowCasters)
+        {
+            glBindTexture(GL_TEXTURE_CUBE_MAP, pointShadowMaps[i].getDepthCubeMap());
+        }
+        else
+        {
+            glBindTexture(GL_TEXTURE_CUBE_MAP,
+                          whitePointShadow); // 1x1 depth=1.0 = no shadow
+        }
     }
-  }
 
-  if (!debugLines.empty()) {
-    glDisable(GL_DEPTH_TEST);
-    lineShader.use();
-    lineShader.setMat4("projection", projection);
-    lineShader.setMat4("view", view);
+    // reset to slot 0 before entity loop
+    glActiveTexture(GL_TEXTURE0);
 
-    glBindVertexArray(lineVAO);
-    glBindBuffer(GL_ARRAY_BUFFER, lineVBO);
-    glBufferData(GL_ARRAY_BUFFER, debugLines.size() * sizeof(DebugVertex),
-                 nullptr, GL_DYNAMIC_DRAW);
-    glBufferSubData(GL_ARRAY_BUFFER, 0, debugLines.size() * sizeof(DebugVertex),
-                    debugLines.data());
+    // Bind IBL textures
+    glActiveTexture(GL_TEXTURE8);
+    glBindTexture(GL_TEXTURE_2D, brdfLUTTexture);
 
-    glLineWidth(3.0f);
-    glDrawArrays(GL_LINES, 0, debugLines.size());
-    glLineWidth(1.0f);
+    glActiveTexture(GL_TEXTURE9);
+    glBindTexture(GL_TEXTURE_CUBE_MAP, skybox.getIrradianceMap());
 
-    glBindVertexArray(0);
-    glEnable(GL_DEPTH_TEST);
-    debugLines.clear();
-  }
+    glActiveTexture(GL_TEXTURE10);
+    glBindTexture(GL_TEXTURE_CUBE_MAP, skybox.getPrefilterMap());
 
-  sceneFramebuffer.unbind();
+    // reset to slot 0 before entity loop
+    glActiveTexture(GL_TEXTURE0);
 
-  glViewport(0, 0, width, height);
-  glClearColor(0.0f, 0.0f, 0.0f, 1.0f);
-  glClear(GL_COLOR_BUFFER_BIT);
+    for (const auto &renderable : renderables)
+    {
+        Scene::AABB worldBounds = TransformAABB({renderable.boundsMin, renderable.boundsMax}, renderable.modelMatrix);
+        if (!frustum.testAABB(worldBounds.min, worldBounds.max))
+            continue;
 
-  sceneFramebuffer.blitToScreen(width, height);
+        basicShader.setMat4("model", renderable.modelMatrix);
+        basicShader.setMat4("uNormalMatrix", renderable.normalMatrix);
+
+        for (size_t meshIdx = 0; meshIdx < renderable.model->meshes.size(); meshIdx++)
+        {
+            auto &modelMesh = renderable.model->meshes[meshIdx];
+
+            if (modelMesh.materialIndex >= 0 &&
+                modelMesh.materialIndex < static_cast<int>(renderable.model->materials.size()))
+            {
+                bindMaterial(renderable.model->materials[modelMesh.materialIndex], renderable.model->textures);
+            }
+            else
+            {
+                bindDefaultMaterial();
+            }
+            modelMesh.draw();
+        }
+    }
+
+    // grid
+    glEnable(GL_BLEND);
+    glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+    gridShader.use();
+    glm::mat4 gridModel = glm::mat4(1.0f);
+    gridShader.setMat4("model", gridModel);
+    grid.draw();
+    glDisable(GL_BLEND);
+
+    // skybox
+    skybox.draw(view, projection);
+
+    for (size_t i = 0; i < persistentLines.size();)
+    {
+        persistentLines[i].lifetime -= deltaTime;
+
+        if (persistentLines[i].lifetime <= 0.0f)
+        {
+            persistentLines[i] = persistentLines.back();
+            persistentLines.pop_back();
+        }
+        else
+        {
+            // Line is still alive. Push it to the immediate draw buffer for this
+            // frame.
+            debugLines.push_back({persistentLines[i].start, persistentLines[i].color});
+            debugLines.push_back({persistentLines[i].end, persistentLines[i].color});
+            i++;
+        }
+    }
+
+    if (!debugLines.empty())
+    {
+        glDisable(GL_DEPTH_TEST);
+        lineShader.use();
+        lineShader.setMat4("projection", projection);
+        lineShader.setMat4("view", view);
+
+        glBindVertexArray(lineVAO);
+        glBindBuffer(GL_ARRAY_BUFFER, lineVBO);
+        glBufferData(GL_ARRAY_BUFFER, debugLines.size() * sizeof(DebugVertex), nullptr, GL_DYNAMIC_DRAW);
+        glBufferSubData(GL_ARRAY_BUFFER, 0, debugLines.size() * sizeof(DebugVertex), debugLines.data());
+
+        glLineWidth(3.0f);
+        glDrawArrays(GL_LINES, 0, debugLines.size());
+        glLineWidth(1.0f);
+
+        glBindVertexArray(0);
+        glEnable(GL_DEPTH_TEST);
+        debugLines.clear();
+    }
+
+    sceneFramebuffer.unbind();
+
+    glViewport(0, 0, width, height);
+    glClearColor(0.0f, 0.0f, 0.0f, 1.0f);
+    glClear(GL_COLOR_BUFFER_BIT);
+
+    sceneFramebuffer.blitToScreen(width, height);
 }
 
-void Renderer::shutdown() {
-  grid.destroy();
-  gridShader.destroy();
-  basicShader.destroy();
-  skybox.destroy();
+void Renderer::shutdown()
+{
+    grid.destroy();
+    gridShader.destroy();
+    basicShader.destroy();
+    skybox.destroy();
 
-  Log::Print("Renderer shutdown successfully", "ENGINE", LogType::LOG_SUCCESS);
+    Log::Print("Renderer shutdown successfully", "ENGINE", LogType::LOG_SUCCESS);
 }
 
-Scene::AABB Renderer::TransformAABB(const Scene::AABB &localBounds,
-                                    const glm::mat4 &modelMatrix) {
-  // get all 8 corners of the local AABB
-  glm::vec3 corners[8] = {
-      glm::vec3(localBounds.min.x, localBounds.min.y, localBounds.min.z),
-      glm::vec3(localBounds.max.x, localBounds.min.y, localBounds.min.z),
-      glm::vec3(localBounds.min.x, localBounds.max.y, localBounds.min.z),
-      glm::vec3(localBounds.max.x, localBounds.max.y, localBounds.min.z),
-      glm::vec3(localBounds.min.x, localBounds.min.y, localBounds.max.z),
-      glm::vec3(localBounds.max.x, localBounds.min.y, localBounds.max.z),
-      glm::vec3(localBounds.min.x, localBounds.max.y, localBounds.max.z),
-      glm::vec3(localBounds.max.x, localBounds.max.y, localBounds.max.z)};
+Scene::AABB Renderer::TransformAABB(const Scene::AABB &localBounds, const glm::mat4 &modelMatrix)
+{
+    // get all 8 corners of the local AABB
+    glm::vec3 corners[8] = {glm::vec3(localBounds.min.x, localBounds.min.y, localBounds.min.z),
+                            glm::vec3(localBounds.max.x, localBounds.min.y, localBounds.min.z),
+                            glm::vec3(localBounds.min.x, localBounds.max.y, localBounds.min.z),
+                            glm::vec3(localBounds.max.x, localBounds.max.y, localBounds.min.z),
+                            glm::vec3(localBounds.min.x, localBounds.min.y, localBounds.max.z),
+                            glm::vec3(localBounds.max.x, localBounds.min.y, localBounds.max.z),
+                            glm::vec3(localBounds.min.x, localBounds.max.y, localBounds.max.z),
+                            glm::vec3(localBounds.max.x, localBounds.max.y, localBounds.max.z)};
 
-  // transform each corner to world space and compute new min/max
-  glm::vec3 worldMin = glm::vec3(FLT_MAX);
-  glm::vec3 worldMax = glm::vec3(-FLT_MAX);
+    // transform each corner to world space and compute new min/max
+    glm::vec3 worldMin = glm::vec3(FLT_MAX);
+    glm::vec3 worldMax = glm::vec3(-FLT_MAX);
 
-  for (int i = 0; i < 8; i++) {
-    glm::vec4 worldCorner = modelMatrix * glm::vec4(corners[i], 1.0f);
-    worldMin = glm::min(worldMin, glm::vec3(worldCorner));
-    worldMax = glm::max(worldMax, glm::vec3(worldCorner));
-  }
+    for (int i = 0; i < 8; i++)
+    {
+        glm::vec4 worldCorner = modelMatrix * glm::vec4(corners[i], 1.0f);
+        worldMin = glm::min(worldMin, glm::vec3(worldCorner));
+        worldMax = glm::max(worldMax, glm::vec3(worldCorner));
+    }
 
-  Scene::AABB worldBounds{worldMin, worldMax};
-  return worldBounds;
+    Scene::AABB worldBounds{worldMin, worldMax};
+    return worldBounds;
 }
 
-void Renderer::addDebugLine(const glm::vec3 &start, const glm::vec3 &end,
-                            const glm::vec3 &color, float duration) {
-  if (duration <= 0.0f) {
-    // (disappears next frame)
-    debugLines.push_back({start, color});
-    debugLines.push_back({end, color});
-  } else {
-    // (stays on screen)
-    persistentLines.push_back({start, end, color, duration});
-  }
+void Renderer::addDebugLine(const glm::vec3 &start, const glm::vec3 &end, const glm::vec3 &color, float duration)
+{
+    if (duration <= 0.0f)
+    {
+        // (disappears next frame)
+        debugLines.push_back({start, color});
+        debugLines.push_back({end, color});
+    }
+    else
+    {
+        // (stays on screen)
+        persistentLines.push_back({start, end, color, duration});
+    }
 }
 
-void Renderer::setDirectionalLight(const DirectionalLight &light) {
-  sunLight = light;
-  shadowMap.setLightDir(light.direction);
+void Renderer::setDirectionalLight(const DirectionalLight &light)
+{
+    sunLight = light;
+    shadowMap.setLightDir(light.direction);
 }
 
-void Renderer::setPointLights(const std::vector<PointLight> &lights) {
-  pointLights = lights;
+void Renderer::setPointLights(const std::vector<PointLight> &lights)
+{
+    pointLights = lights;
 }
 
 } // namespace Cthulhu::Rendering

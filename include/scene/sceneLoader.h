@@ -1,17 +1,18 @@
 #pragma once
-#include "scene.h"
 #include "physics.h"
+#include "scene.h"
 #include <string>
 
 namespace Cthulhu::Project
 {
-    class Project;
+class Project;
 }
 namespace Cthulhu::Scene
-{   
-    class SceneLoader
-    {
-    public:
-        static bool load(const std::string& path, Scene& scene, Cthulhu::Physics::PhysicsWorld& physicsWorld, const Project::Project& project);
-    };
-}
+{
+class SceneLoader
+{
+  public:
+    static bool load(const std::string &path, Scene &scene, Cthulhu::Physics::PhysicsWorld &physicsWorld,
+                     const Project::Project &project);
+};
+} // namespace Cthulhu::Scene

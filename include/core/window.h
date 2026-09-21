@@ -3,57 +3,60 @@
 #include "glad.h"
 #include "glfw3.h"
 #include "glm.hpp"
-#include <string>
 #include <memory>
+#include <string>
 #include <vector>
 
-using std::unique_ptr;
 using std::make_unique;
+using std::unique_ptr;
 
-namespace Cthulhu::Scene {class Camera;}
-namespace Cthulhu::Core 
+namespace Cthulhu::Scene
 {
-    enum class WindowMode
-    {
-        Windowed,
-        Borderless,
-        ExclusiveFullscreen
-    };
-    struct WindowConfig
-    {
-        glm::vec2 resolution = glm::vec2(1920.0f, 1080.0f);
-        WindowMode initialMode = WindowMode::Windowed;
-        bool vSync = false; // Currently hardcoded to 0 (off) in window.cpp
-    };
-    class Window
-    {
-        public:
-        
-        static Window* createWindow(const WindowConfig& config, const char* windowTitle);
-        void setWindowMode(WindowMode newMode);
-        void setCamera(Cthulhu::Scene::Camera* cam);
-        
-        GLFWwindow* getWindow() const;
-        float getWidth();
-        float getHeight();
-        static void mouse_callback(GLFWwindow* window, double xposIn, double yposIn);
-        static void mouse_button_callback(GLFWwindow* window, int button, int action, int mods);
-
-        static void destroyAll();
-        private:
-        GLFWwindow* glfWwindow = nullptr;
-        Cthulhu::Scene::Camera* camera = nullptr;
-        glm::vec2 windowSize = glm::vec2(1920.0f,1080.0f);
-        bool firstMouse = true;
-        float lastX = windowSize.x/2.0f;
-        float lastY = windowSize.y/2.0f;
-
-        WindowMode currentMode = WindowMode::Windowed;
-        int cachedX = 0;
-        int cachedY = 0;
-        int cachedWidth = 0;
-        int cachedHeight = 0;
-
-        GLFWmonitor* getCurrentMonitor() const;
-    };
+class Camera;
 }
+namespace Cthulhu::Core
+{
+enum class WindowMode
+{
+    Windowed,
+    Borderless,
+    ExclusiveFullscreen
+};
+struct WindowConfig
+{
+    glm::vec2 resolution = glm::vec2(1920.0f, 1080.0f);
+    WindowMode initialMode = WindowMode::Windowed;
+    bool vSync = false; // Currently hardcoded to 0 (off) in window.cpp
+};
+class Window
+{
+  public:
+    static Window *createWindow(const WindowConfig &config, const char *windowTitle);
+    void setWindowMode(WindowMode newMode);
+    void setCamera(Cthulhu::Scene::Camera *cam);
+
+    GLFWwindow *getWindow() const;
+    float getWidth();
+    float getHeight();
+    static void mouse_callback(GLFWwindow *window, double xposIn, double yposIn);
+    static void mouse_button_callback(GLFWwindow *window, int button, int action, int mods);
+
+    static void destroyAll();
+
+  private:
+    GLFWwindow *glfWwindow = nullptr;
+    Cthulhu::Scene::Camera *camera = nullptr;
+    glm::vec2 windowSize = glm::vec2(1920.0f, 1080.0f);
+    bool firstMouse = true;
+    float lastX = windowSize.x / 2.0f;
+    float lastY = windowSize.y / 2.0f;
+
+    WindowMode currentMode = WindowMode::Windowed;
+    int cachedX = 0;
+    int cachedY = 0;
+    int cachedWidth = 0;
+    int cachedHeight = 0;
+
+    GLFWmonitor *getCurrentMonitor() const;
+};
+} // namespace Cthulhu::Core
