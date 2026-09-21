@@ -1,5 +1,6 @@
 #include "project.h"
 #include "projectParser.h"
+#include "projectWriter.h"
 
 #include "log_utils.hpp"
 
@@ -53,8 +54,87 @@ namespace Cthulhu::Project
 
     }
 
-     std::optional<Project> Project::open(const std::filesystem::path& projectFilePath)
-     {
+    std::optional<Project> Project::createProject(const std::filesystem::path &requestedRoot, const ProjectConfig &config)
+    {
+        if (config.name.empty())
+        {
+            Log::Print("PROJECT NAME CANNOT BE EMPTY","Project", LogType::LOG_ERROR);
+            return std::nullopt;
+        }
+
+        uint32_t maxWindowDimension = ProjectParser::getMaxWindowDimension();
+
+        if (config.windowWidth == 0 || config.windowHeight == 0 || config.windowWidth > maxWindowDimension || config.windowHeight > maxWindowDimension)
+        {
+            Log::Print("INVALID WINDOW DIMENSIONS","Project", LogType::LOG_ERROR);
+            return std::nullopt;
+        }
+
+        std::error_code error;
+
+        auto root = std::filesystem::absolute(requestedRoot, error);
+
+        if (error)
+        {
+            Log::Print("FAILED TO RESOLVE PROJECT DIRECTOY: " + requestedRoot.string(),"Project", LogType::LOG_ERROR);
+            return std::nullopt;
+        }
+
+        root = root.lexically_normal();
+
+        if (std::filesystem::exists(root, error))
+        {
+            if (error || !std::filesystem::is_directory(root))
+            {
+                Log::Print("PROJECT DESTINATION IS NOT A VALID DIRECTORY: " + root.string(),"Project", LogType::LOG_ERROR);
+                return std::nullopt;
+            }
+
+            if (!std::filesystem::is_empty(root,error) || error)
+            {
+                Log::Print("PROJECT DIRECTORY MUST BE EMPTY: " + root.string(),"Project", LogType::LOG_ERROR);
+                return std::nullopt;
+            }
+        }
+        else 
+        {
+            if (!std::filesystem::create_directories(root, error) || error)
+            {
+                Log::Print("FAILED TO CREATE PROJECT DIRECTORY: " + root.string(),"Project", LogType::LOG_ERROR);
+                return std::nullopt;
+            }
+        }
+
+        const auto internalDirectoy = root / ".cthulhu";
+
+        if (!std::filesystem::create_directories(internalDirectoy, error) || error)
+        {
+            Log::Print("FAILED TO CREATE .cthulhu DIRECTORY" , "Project", LogType::LOG_ERROR);
+            return std::nullopt;
+        }
+
+        const auto projectFile = root / "project.cthulhu";
+
+        if (!ProjectWriter::write(projectFile, config))
+        {
+            return std::nullopt;
+        }
+
+        auto project = Project::open(projectFile);
+
+        if (!project)
+        {
+            Log::Print("PROJECT WAS CREATED BUT CANNOT BE OPENED" , "Project", LogType::LOG_ERROR);
+            return std::nullopt;
+        }
+
+         Log::Print("PROJECT WAS CREATED SUCCESSFULLY: " + config.name, "Project", LogType::LOG_SUCCESS);
+         return project;
+    }
+
+
+    std::optional<Project> Project::open(const std::filesystem::path& projectFilePath)
+    {
         std::error_code error;
 
         std::filesystem::path absolutePath = std::filesystem::absolute(projectFilePath,error);
@@ -107,5 +187,5 @@ namespace Cthulhu::Project
 
         Log::Print("PROJECT OPENED: " + project.config.name, "Project",LogType::LOG_SUCCESS);
         return project;
-     }
+    }
 }

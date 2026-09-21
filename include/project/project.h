@@ -11,6 +11,7 @@ namespace Cthulhu::Project
     {
         public:
             static std::optional<Project> open(const std::filesystem::path& projectFilePath);
+            static std::optional<Project> createProject(const std::filesystem::path& rootPath, const ProjectConfig& config);
 
             const ProjectConfig& getConfig() const
             {

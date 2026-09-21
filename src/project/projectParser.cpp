@@ -12,8 +12,6 @@ using KalaHeaders::KalaLog::Log;
 using KalaHeaders::KalaLog::LogType;
 namespace Cthulhu::Project
 {
-    static constexpr uint32_t MAX_WINDOW_DIMENSION = 16384;
-
     static std::string_view trim(std::string_view text)
     {
         while (!text.empty() &&
@@ -180,9 +178,11 @@ namespace Cthulhu::Project
 
         uint32_t parsed = 0;
 
-        if (!parseUInt32(value, parsed) || parsed == 0 || parsed > MAX_WINDOW_DIMENSION)
+        uint32_t maxWindowDimensions = ProjectParser::getMaxWindowDimension();
+
+        if (!parseUInt32(value, parsed) || parsed == 0 || parsed > maxWindowDimensions)
         {
-            Log::Print("INVALID '" + std::string(keyName) + "' ON LINE " + std::to_string(lineNumber) + " (EXPECTED 1-" + std::to_string(MAX_WINDOW_DIMENSION) + ")", "ProjectParser", LogType::LOG_ERROR);
+            Log::Print("INVALID '" + std::string(keyName) + "' ON LINE " + std::to_string(lineNumber) + " (EXPECTED 1-" + std::to_string(maxWindowDimensions) + ")", "ProjectParser", LogType::LOG_ERROR);
             return false;
         }
 
