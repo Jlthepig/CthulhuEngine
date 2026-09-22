@@ -1,14 +1,11 @@
 #pragma once
 
-#include "fwd.hpp"
-#include "glm.hpp"
-
-#include <algorithm>
 #include <memory>
+
+#include <glm.hpp>
 
 using std::make_unique;
 using std::unique_ptr;
-
 namespace Cthulhu::Scene
 {
 class Camera

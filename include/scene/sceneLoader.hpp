@@ -1,8 +1,9 @@
 #pragma once
-#include "physics.h"
-#include "scene.h"
+
 #include <string>
 
+#include "physics.hpp"
+#include "scene.hpp"
 namespace Cthulhu::Project
 {
 class Project;

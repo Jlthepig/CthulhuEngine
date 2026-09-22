@@ -1,10 +1,12 @@
 #include <memory>
 #include <utility>
 
-#include "camera.h"
-#include "glfw3.h"
+#include <glfw3.h>
+
+#include "camera.hpp"
+#include "window.hpp"
 #include "log_utils.hpp"
-#include "window.h"
+
 
 using KalaHeaders::KalaLog::Log;
 using KalaHeaders::KalaLog::LogType;

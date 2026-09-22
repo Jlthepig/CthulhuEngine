@@ -2,11 +2,10 @@
 
 #include <filesystem>
 
-#include "glad.h"
 #include <mat4x4.hpp>
 #include <vec3.hpp>
 
-#include "shader.h"
+#include "shader.hpp"
 namespace Cthulhu::Rendering
 {
 class ShadowMap

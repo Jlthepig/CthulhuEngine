@@ -1,9 +1,10 @@
+#include <ext/matrix_clip_space.hpp>
+#include <ext/matrix_transform.hpp>
 
-#include "skybox.h"
-#include "ext/matrix_clip_space.hpp"
-#include "ext/matrix_transform.hpp"
+#include <stb_image.h>
+
+#include "skybox.hpp"
 #include "log_utils.hpp"
-#include "stb_image.h"
 
 using KalaHeaders::KalaLog::Log;
 using KalaHeaders::KalaLog::LogType;

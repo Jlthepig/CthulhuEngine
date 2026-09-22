@@ -1,10 +1,11 @@
 #pragma once
-#include "glm.hpp"
+
 #include <cstdint>
+
+#include <glm.hpp>
 
 #define a4 alignas(4)
 #define a16 alignas(16)
-
 namespace Cthulhu::Rendering
 {
 struct PointLightUBO

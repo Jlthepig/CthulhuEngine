@@ -1,16 +1,15 @@
-
-#include "jsonWriter.h"
-#include "components.h"
-#include "light.h"
-#include "log_utils.hpp"
-#include "scene.h"
 #include <fstream>
 #include <iomanip>
 #include <sstream>
 
+#include "jsonWriter.hpp"
+#include "components.hpp"
+#include "scene.hpp"
+#include "light.hpp"
+#include "log_utils.hpp"
+
 using KalaHeaders::KalaLog::Log;
 using KalaHeaders::KalaLog::LogType;
-
 namespace Cthulhu::Scene
 {
 namespace

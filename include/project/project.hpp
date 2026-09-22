@@ -1,10 +1,10 @@
 #pragma once
 
-#include "projectConfig.h"
-
 #include <filesystem>
 #include <optional>
 #include <string_view>
+
+#include "projectConfig.hpp"
 namespace Cthulhu::Project
 {
 class Project

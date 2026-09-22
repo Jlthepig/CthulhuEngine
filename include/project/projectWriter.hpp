@@ -1,9 +1,8 @@
 #pragma once
 
-#include "projectConfig.h"
-
 #include <filesystem>
 
+#include "projectConfig.hpp"
 namespace Cthulhu::Project
 {
 class ProjectWriter

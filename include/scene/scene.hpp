@@ -6,10 +6,11 @@
 #include <unordered_map>
 #include <vector>
 
-#include "components.h"
-#include "flecs.h"
-#include "light.h"
-#include "model.h"
+#include <flecs.h>
+
+#include "components.hpp"
+#include "light.hpp"
+#include "model.hpp"
 
 namespace Cthulhu::Scene
 {

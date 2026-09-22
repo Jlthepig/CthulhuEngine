@@ -1,10 +1,9 @@
 #pragma once
 
-#include "glad.h"
-#include "glfw3.h"
 #include <cstddef>
 #include <vector>
 
+#include <glad.h>
 namespace Cthulhu::Rendering
 {
 

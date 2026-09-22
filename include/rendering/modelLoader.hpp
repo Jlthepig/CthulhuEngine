@@ -1,7 +1,8 @@
 #pragma once
 
-#include "model.h"
 #include <string>
+
+#include "model.hpp"
 namespace Cthulhu::Rendering
 {
 class ModelLoader

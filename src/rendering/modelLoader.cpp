@@ -6,15 +6,16 @@
 #include <variant>
 #include <vector>
 
-#include "fastgltf/core.hpp"
-#include "fastgltf/glm_element_traits.hpp"
+#include <glm.hpp>
+#include <fastgltf/core.hpp>
+#include <fastgltf/glm_element_traits.hpp>
 #include "fastgltf/tools.hpp"
-#include "fastgltf/types.hpp"
-#include "fwd.hpp"
+#include <fastgltf/types.hpp>
+
+#include "material.hpp"
+#include "mesh.hpp"
+#include "modelLoader.hpp"
 #include "log_utils.hpp"
-#include "material.h"
-#include "mesh.h"
-#include "modelLoader.h"
 
 using KalaHeaders::KalaLog::Log;
 using KalaHeaders::KalaLog::LogType;

@@ -1,12 +1,12 @@
-#include "projectParser.h"
-#include "log_utils.hpp"
-
 #include <cctype>
 #include <charconv>
 #include <cstdint>
 #include <fstream>
 #include <string>
 #include <string_view>
+
+#include "projectParser.hpp"
+#include "log_utils.hpp"
 
 using KalaHeaders::KalaLog::Log;
 using KalaHeaders::KalaLog::LogType;

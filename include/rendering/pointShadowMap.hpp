@@ -2,8 +2,7 @@
 
 #include <filesystem>
 
-#include "shader.h"
-
+#include "shader.hpp"
 namespace Cthulhu::Rendering
 {
 class PointLightShadowMap

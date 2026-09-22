@@ -1,6 +1,6 @@
 #pragma once
-#include "flecs.h"
 
+#include <flecs.h>
 namespace Cthulhu
 {
 class Engine;

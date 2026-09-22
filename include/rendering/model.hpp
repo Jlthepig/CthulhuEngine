@@ -1,9 +1,10 @@
 #pragma once
 
-#include "material.h"
-#include "mesh.h"
-#include "texture.h"
 #include <vector>
+
+#include "texture.hpp"
+#include "material.hpp"
+#include "mesh.hpp"
 namespace Cthulhu::Rendering
 {
 struct Model

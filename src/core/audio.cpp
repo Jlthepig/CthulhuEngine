@@ -1,9 +1,10 @@
-
-#include "audio.h"
-#define MINIAUDIO_IMPLEMENTATION
-#include "log_utils.hpp"
-#include "miniaudio.h"
 #include <unordered_map>
+
+#define MINIAUDIO_IMPLEMENTATION
+#include <miniaudio.h>
+
+#include "audio.hpp"
+#include "log_utils.hpp"
 namespace Cthulhu::Core
 {
 static ma_engine g_audioEngine;

@@ -1,13 +1,11 @@
+#include <glad.h>
+#include <stb_image.h>
 
-#include "texture.h"
-#include "glad.h"
+#include "texture.hpp"
 #include "log_utils.hpp"
-#include "stb_image.h"
-#include <cstdio>
 
 using KalaHeaders::KalaLog::Log;
 using KalaHeaders::KalaLog::LogType;
-
 namespace Cthulhu::Rendering
 {
 void Texture::load(const std::string &path)

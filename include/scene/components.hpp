@@ -1,11 +1,9 @@
 #pragma once
 
-#include "camera.h"
-#include "fwd.hpp"
-#include "glm.hpp"
 #include <cstdint>
 #include <string>
 
+#include <glm.hpp>
 namespace Cthulhu::Rendering
 {
 struct Model;

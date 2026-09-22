@@ -1,14 +1,12 @@
-#include "sceneLoader.h"
-#include "components.h"
-#include "jsonParser.h"
-#include "physics.h"
-#include "project.h"
-
+#include "sceneLoader.hpp"
+#include "components.hpp"
+#include "jsonParser.hpp"
+#include "physics.hpp"
+#include "project.hpp"
 #include "log_utils.hpp"
 
 using KalaHeaders::KalaLog::Log;
 using KalaHeaders::KalaLog::LogType;
-
 namespace Cthulhu::Scene
 {
 bool SceneLoader::load(const std::string &path, Scene &scene, Cthulhu::Physics::PhysicsWorld &physicsWorld,

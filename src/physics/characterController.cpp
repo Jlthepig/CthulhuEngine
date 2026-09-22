@@ -1,12 +1,13 @@
-#include "characterController.h"
-#include "components.h"
-#include "flecs.h"
-#include "physics.h"
-// Jolt Includes
-#include "Jolt/Jolt.h"
-#include "Jolt/Physics/Character/CharacterVirtual.h"
-#include "Jolt/Physics/Collision/Shape/CapsuleShape.h"
-#include "Jolt/Physics/Collision/Shape/RotatedTranslatedShape.h"
+#include <Jolt/Jolt.h>
+#include <Jolt/Physics/Character/CharacterVirtual.h>
+#include <Jolt/Physics/Collision/Shape/CapsuleShape.h>
+#include <Jolt/Physics/Collision/Shape/RotatedTranslatedShape.h>
+
+#include <flecs.h>
+
+#include "physics.hpp"
+#include "characterController.hpp"
+#include "components.hpp"
 #include "log_utils.hpp"
 
 using KalaHeaders::KalaLog::Log;

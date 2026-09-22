@@ -1,8 +1,8 @@
 #pragma once
 
-#include "fwd.hpp"
-#include "glm.hpp"
 #include <cstdint>
+
+#include <glm.hpp>
 namespace JPH
 {
 class PhysicsSystem;

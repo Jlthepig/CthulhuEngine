@@ -1,6 +1,6 @@
 #pragma once
-#include "glad.h"
 
+#include <glad.h>
 namespace Cthulhu::Rendering
 {
 class Framebuffer

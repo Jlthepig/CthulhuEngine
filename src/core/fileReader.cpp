@@ -1,7 +1,7 @@
-#include "fileReader.h"
-#include "log_utils.hpp"
-
 #include <sstream>
+
+#include "fileReader.hpp"
+#include "log_utils.hpp"
 
 using KalaHeaders::KalaLog::Log;
 using KalaHeaders::KalaLog::LogType;

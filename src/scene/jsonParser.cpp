@@ -1,12 +1,12 @@
-
-#include "jsonParser.h"
-#include "log_utils.hpp"
-#include "simdjson.h"
 #include <string>
+
+#include <simdjson.h>
+
+#include "jsonParser.hpp"
+#include "log_utils.hpp"
 
 using KalaHeaders::KalaLog::Log;
 using KalaHeaders::KalaLog::LogType;
-
 namespace Cthulhu::Scene
 {
 

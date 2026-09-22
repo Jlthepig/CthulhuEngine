@@ -3,8 +3,10 @@
 #include <string>
 #include <unordered_map>
 
-#include "fwd.hpp"
-#include "glad.h"
+#include <mat4x4.hpp>
+#include <vec3.hpp>
+
+#include <glad.h>
 
 namespace Cthulhu::Rendering
 {

@@ -1,4 +1,4 @@
-#include "applicationPaths.h"
+#include "applicationPaths.hpp"
 
 #if defined(_WIN32)
 

@@ -1,5 +1,5 @@
 
-#include "mesh.h"
+#include "mesh.hpp"
 namespace Cthulhu::Rendering
 {
 void Mesh::setup(const std::vector<float> &vertices, const std::vector<unsigned int> &indices,

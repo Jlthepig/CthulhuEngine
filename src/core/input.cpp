@@ -1,13 +1,15 @@
 #include <cstring>
 
-#include "glfw3.h"
-#include "input.h"
+#include <glfw3.h>
+
+#include "input.hpp"
 #include "log_utils.hpp"
 
 using KalaHeaders::KalaLog::Log;
 using KalaHeaders::KalaLog::LogType;
 namespace Cthulhu::Core
 {
+    
 GLFWwindow *Input::windowHandle = nullptr;
 bool Input::currentKeys[GLFW_KEY_LAST + 1] = {};
 bool Input::previousKeys[GLFW_KEY_LAST + 1] = {};
@@ -19,6 +21,7 @@ float Input::scrollDeltaY = 0.0f;
 bool Input::firstMouse = true;
 float Input::lastX = 0.0f;
 float Input::lastY = 0.0f;
+
 void Input::init(GLFWwindow *window, glm::vec2 resolution)
 {
     windowHandle = window;

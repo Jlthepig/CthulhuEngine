@@ -1,5 +1,4 @@
 #pragma once
-
 namespace Cthulhu::Rendering
 {
 class GridLines

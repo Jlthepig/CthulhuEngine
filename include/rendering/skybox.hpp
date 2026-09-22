@@ -3,9 +3,10 @@
 #include <filesystem>
 #include <string>
 
-#include "glad.h"
-#include "mesh.h"
-#include "shader.h"
+#include <glad.h>
+
+#include "mesh.hpp"
+#include "shader.hpp"
 namespace Cthulhu::Rendering
 {
 class Skybox

@@ -1,29 +1,28 @@
-#include "fwd.hpp"
 #include <cstdlib>
 
 #define STB_IMAGE_IMPLEMENTATION
-#include "glad.h"
-#include "glfw3.h"
-#include "log_utils.hpp"
-#include "stb_image.h"
+#include <glad.h>
+#include <glfw3.h>
+#include <stb_image.h>
 
-#include "Jolt/Jolt.h"
-#include "Jolt/Physics/Character/CharacterVirtual.h"
-#include "Jolt/Physics/PhysicsSystem.h"
+#include <Jolt/Jolt.h>
+#include <Jolt/Physics/Character/CharacterVirtual.h>
+#include <Jolt/Physics/PhysicsSystem.h>
 
-#include "applicationPaths.h"
-#include "audio.h"
-#include "camera.h"
-#include "components.h"
-#include "engine.h"
+#include "applicationPaths.hpp"
+#include "audio.hpp"
+#include "camera.hpp"
+#include "components.hpp"
+#include "engine.hpp"
 #include "flecs.h"
-#include "input.h"
-#include "physics.h"
-#include "renderer.h"
-#include "scene.h"
-#include "sceneLoader.h"
-#include "systemRegistry.h"
-#include "window.h"
+#include "input.hpp"
+#include "physics.hpp"
+#include "renderer.hpp"
+#include "scene.hpp"
+#include "sceneLoader.hpp"
+#include "systemRegistry.hpp"
+#include "window.hpp"
+#include "log_utils.hpp"
 
 using KalaHeaders::KalaLog::Log;
 using KalaHeaders::KalaLog::LogType;
@@ -35,6 +34,9 @@ static void physicsFixedUpdateCallback(void *context, float fixedDt)
 }
 namespace Cthulhu
 {
+
+Engine::Engine() = default;
+
 Engine::~Engine()
 {
     shutdown();
@@ -155,6 +157,8 @@ bool Engine::init(const std::filesystem::path &projectFilePath)
     physicsWorld.onFixedUpdate = physicsFixedUpdateCallback;
     physicsWorld.onFixedUpdateContext = this;
 
+    state = EngineState::Initialized;
+
     if (!createEmptyScene())
     {
         shutdown();
@@ -162,7 +166,6 @@ bool Engine::init(const std::filesystem::path &projectFilePath)
     }
 
     Log::Print("ENGINE INITIALIZED FOR PROJECT: " + projectConfig.name, "ENGINE", LogType::LOG_SUCCESS);
-    state = EngineState::Initialized;
     return true;
 }
 

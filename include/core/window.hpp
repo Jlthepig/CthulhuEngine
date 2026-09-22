@@ -1,11 +1,11 @@
 #pragma once
 
-#include "glad.h"
-#include "glfw3.h"
-#include "glm.hpp"
 #include <memory>
-#include <string>
-#include <vector>
+
+#include <glm.hpp>
+
+#include <glad.h>
+#include <glfw3.h>
 
 using std::make_unique;
 using std::unique_ptr;

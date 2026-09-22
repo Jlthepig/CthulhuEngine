@@ -3,8 +3,8 @@
 #include <trigonometric.hpp>
 #include <vec3.hpp>
 
+#include "pointShadowMap.hpp"
 #include "log_utils.hpp"
-#include "pointShadowMap.h"
 namespace Cthulhu::Rendering
 {
 void PointLightShadowMap::init(unsigned int width, unsigned int height, const std::filesystem::path &engineResourceRoot)

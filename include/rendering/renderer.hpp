@@ -1,22 +1,23 @@
 #pragma once
 
 #include <filesystem>
-#include <string>
 #include <vector>
 
-#include "camera.h"
-#include "framebuffer.h"
-#include "frustum.h"
-#include "glad.h"
-#include "glfw3.h"
-#include "grid.h"
-#include "light.h"
-#include "material.h"
-#include "pointShadowMap.h"
-#include "shader.h"
-#include "shadowMap.h"
-#include "skybox.h"
-#include "texture.h"
+#include <glad.h>
+#include <glfw3.h>
+
+#include "camera.hpp"
+#include "framebuffer.hpp"
+#include "frustum.hpp"
+
+#include "grid.hpp"
+#include "light.hpp"
+#include "material.hpp"
+#include "pointShadowMap.hpp"
+#include "shader.hpp"
+#include "shadowMap.hpp"
+#include "skybox.hpp"
+#include "texture.hpp"
 
 namespace Cthulhu::Scene
 {

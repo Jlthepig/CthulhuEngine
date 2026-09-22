@@ -1,12 +1,10 @@
 #pragma once
 
-#include "fwd.hpp"
-#include "glm.hpp"
-#include "light.h"
 #include <optional>
 #include <string>
 #include <vector>
 
+#include "light.hpp"
 namespace Cthulhu::Scene
 {
 struct ParsedWeapon

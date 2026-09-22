@@ -6,9 +6,9 @@
 #include <string_view>
 #include <vector>
 
-#include "physics.h"
-#include "project.h"
-#include "renderer.h"
+#include "physics.hpp"
+#include "project.hpp"
+#include "renderer.hpp"
 
 struct GLFWwindow;
 namespace Cthulhu::Scene
@@ -42,7 +42,7 @@ class Engine
     using UpdateCallback = void (*)(void *context, float deltaTime);
     using RaycastCallback = void (*)(void *context, const Physics::RaycastHitInfo &hit);
 
-    Engine() = default;
+    Engine();
     ~Engine();
 
     Engine(const Engine &) = delete;

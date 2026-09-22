@@ -1,15 +1,18 @@
-#include "camera.h"
-#include "common.hpp"
-#include "ext/matrix_transform.hpp"
-#include "fwd.hpp"
-#include "geometric.hpp"
-#include "glad.h"
-#include "glfw3.h"
-#include "gtc/random.hpp"
-#include "input.h"
-#include "log_utils.hpp"
-#include "trigonometric.hpp"
 #include <vector>
+
+#include <common.hpp>
+#include <ext/matrix_transform.hpp>
+#include <geometric.hpp>
+#include <gtc/random.hpp>
+#include <trigonometric.hpp>
+
+#include <glad.h>
+#include <glfw3.h>
+
+#include "camera.hpp"
+#include "input.hpp"
+#include "log_utils.hpp"
+
 using KalaHeaders::KalaLog::Log;
 using KalaHeaders::KalaLog::LogType;
 namespace Cthulhu::Scene

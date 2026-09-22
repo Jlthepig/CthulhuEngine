@@ -1,7 +1,7 @@
-#include "scene.h"
-#include "light.h"
+#include "scene.hpp"
+#include "light.hpp"
+#include "modelLoader.hpp"
 #include "log_utils.hpp"
-#include "modelLoader.h"
 
 using KalaHeaders::KalaLog::Log;
 using KalaHeaders::KalaLog::LogType;

@@ -2,11 +2,11 @@
 #include <Jolt/Physics/Character/CharacterVirtual.h>
 #include <gtc/matrix_transform.hpp>
 
-#include "audio.h"
-#include "components.h"
-#include "engine.h"
-#include "physics.h"
-#include "systemRegistry.h"
+#include "audio.hpp"
+#include "components.hpp"
+#include "engine.hpp"
+#include "physics.hpp"
+#include "systemRegistry.hpp"
 namespace Cthulhu::Scene
 {
 void RegisterCoreSystems(flecs::world &world, Cthulhu::Engine *engineContext)

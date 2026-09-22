@@ -1,8 +1,6 @@
 #pragma once
 
-#include "fwd.hpp"
-#include "glm.hpp"
-
+#include <glm.hpp>
 namespace flecs
 {
 struct entity;

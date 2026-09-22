@@ -1,4 +1,4 @@
-#include "framebuffer.h"
+#include "framebuffer.hpp"
 #include "log_utils.hpp"
 
 namespace Cthulhu::Rendering

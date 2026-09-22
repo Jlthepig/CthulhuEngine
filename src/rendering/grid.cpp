@@ -1,8 +1,8 @@
 #include <vector>
 
-#include "glad.h"
+#include <glad.h>
 
-#include "grid.h"
+#include "grid.hpp"
 namespace Cthulhu::Rendering
 {
 void GridLines::setupGrid(int size)
