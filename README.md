@@ -1,5 +1,4 @@
-<img width="1000" height="500" alt="image" src="https://github.com/user-attachments/assets/6eb22c1a-5b1a-4fed-8f5c-548693e3a9f9" />
-
+<img width="1000" height="500" alt="Cthulhu Engine" src="https://github.com/user-attachments/assets/6eb22c1a-5b1a-4fed-8f5c-548693e3a9f9" />
 
 # What is Cthulhu?
 
@@ -12,20 +11,36 @@ I plan to work on this until my last breath.
 
 I'm currently 16 years old.
 
-it's the first year of making Cthulhu so let's see if I can work on this for 60 more years!
+## It's the first year of making Cthulhu, so let's see if I can work on this for 60 more years!
+
 ---
 
 ## Current Status
 
 Cthulhu is still in early development.
-Contributing is not possible yet and there are no docs.
 
-- OpenGL 4.0 rendering with Cook-Torrance PBR and normal mapping
-- glTF model loading with FastGltf (PBR materials, embedded textures)
+Cthulhu engine atm is currently undergoing major foundational work to prepare it for its future editor and eventual FPS demos or projects. Contributing is not possible yet and there are currently no docs.
+
+Current features and systems include:
+
+- OpenGL 4.3 rendering with Cook-Torrance PBR and normal mapping
+- glTF model loading with FastGLTF, including PBR materials and embedded textures
 - Jolt Physics integration with an FPS character controller
+- Flecs ECS integration
 - Directional and point light shadow mapping
-- HDR skybox with tonemapping and gamma correction
-- Editor/Game mode toggle and ImGui debug panel
+- HDR skybox with irradiance maps, prefiltered environment maps, tonemapping, and gamma correction
+- Scene loading and serialization
+- Project system using `project.cthulhu`
+- Project-relative resources using `res://`
+- Separate engine and project resources
+- External Cthulhu projects independent of the engine repository
+- Generic `CthulhuRuntime` for running Cthulhu projects
+- Scene creation, loading, unloading, and switching
+- Scene identity and unsaved-change tracking
+- Miniaudio integration
+- Debug rendering
+
+The editor is not ready at all yet. Its current focus is building the scene, asset, and editor facing architecture that the editor will eventually need to use and work with.
 
 ---
 
@@ -33,10 +48,54 @@ Contributing is not possible yet and there are no docs.
 
 Cthulhu is being developed as a long-term engine project with a focus on:
 
-- Learning by building  
-- Visible progress through milestones  
-- Clean foundations without premature overengineering  
-- Practical FPS-specific design decisions  
+- Learning by building
+- Visible progress through milestones
+- Clean foundations without premature overengineering
+- Practical FPS-specific design decisions
+- Building engine systems before building UI around them
+- Keeping the engine focused specifically on FPS development
+
+---
+
+## Cthulhu Projects
+
+Cthulhu takes the godot approach.
+
+A minimal Cthulhu project looks like:
+
+```text
+MyGame/
+├── project.cthulhu
+└── .cthulhu/
+```
+
+The entire project directory acts as the project's resource root.
+
+For example:
+
+```text
+res://assets/models/weapon.glb
+res://maps/level01.scene
+```
+
+A project can define settings such as its name, window resolution, and optional startup scene inside `project.cthulhu`.
+
+Example:
+
+```text
+name = "My Game"
+
+windowWidth = 1920
+windowHeight = 1080
+
+mainScene = "res://maps/level01.scene"
+```
+
+Cthulhu projects can currently be launched through the runtime:
+
+```text
+CthulhuRuntime.exe path/to/project.cthulhu
+```
 
 ---
 
@@ -44,24 +103,64 @@ Cthulhu is being developed as a long-term engine project with a focus on:
 
 ```text
 Cthulhu/
-├─ src/             # Engine source files
-├─ include/         # Engine headers
-├─ SandboxSample/   # Standalone game sample using the engine library
-├─ assets/          # Models, textures, scenes, etc.
-├─ shaders/         # GLSL shader files
-├─ Libraries/       # Third party dependencies
-└─ build/           # Build output
+├── src/                 # Engine source files
+├── include/             # Engine headers
+├── EditorApp/           # Cthulhu editor application
+├── RuntimeApp/          # Generic Cthulhu project runtime
+├── EngineResources/     # Engine-owned shaders and internal resources
+├── Libraries/           # Third-party dependencies
+└── build/               # Build output
 ```
+
+Game projects and sandbox projects are kept separate from the engine repository.
+
+For example:
+
+```text
+CthulhuSandbox/
+├── project.cthulhu
+├── .cthulhu/
+└── assets/
+    ├── audio/
+    ├── models/
+    └── scenes/
+```
+
+---
+
+## Development Roadmap
+
+Cthulhu is currently being developed in 4 major architectural phases.
+
+```text
+Phase 1 — Project Foundation                    COMPLETE
+Phase 2 — Scene, Asset & Editor Architecture    IN PROGRESS
+Phase 3 — OctoGUI Editor
+Phase 4 — FPS / Game Systems Expansion
+```
+
+Phase 1 established the project format, resource paths, runtime, project creation, and engine lifecycle.
+
+Phase 2 is focused on making scenes, assets, entities, components, and engine APIs robust enough for the future editor.
+
+---
 
 ## Acknowledgements
 
-```text
-KalaMake — build system used for Cthulhu, developed by Lost Empire Entertainment.
-A very big thanks for making a great alternative to CMake which is really saved me time and loads of headaches.
+**KalaMake** — the build system used for Cthulhu, developed by Lost Empire Entertainment.
 
-Lost Empire Entertainment — if you want to explore their broader ecosystem of tools and engines, check out their GitHub.
+A very big thanks for making a great alternative to CMake. It has saved me a lot of time and headaches.
+
+**Lost Empire Entertainment** — if you want to explore their broader ecosystem of tools and engines, check out their GitHub.
+
 Note: their Elypso Engine is currently being reworked.
-```
 
-## Ai Usage 
-I will be honest and transparent with you that Ai has been used in this project to assist me I will admit sometimes I am reliant on it some people don't like Ai some people don't care I hope you still find interest in Cthulhu regardless!
+---
+
+## AI Usage
+
+I want to be honest and transparent that AI has been used in this project to assist me.
+
+I will admit that sometimes I am reliant on it. Some people don't like AI and some people don't care. I hope you still find Cthulhu interesting regardless!
+
+AI has not been used as an agent. Any code generated by AI has been read by me and typed by hand if I don't understand it, I don't use it Period.
