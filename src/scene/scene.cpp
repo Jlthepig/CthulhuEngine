@@ -11,6 +11,7 @@ flecs::entity Scene::createEntity(const std::string &name)
 {
     auto e = world.entity(name.c_str());
     e.set(TransformComponent{});
+    markDirty();
     Log::Print("Created entity: " + name, "Scene", LogType::LOG_INFO);
     return e;
 }

@@ -5,6 +5,7 @@
 #include <string>
 #include <unordered_map>
 #include <vector>
+#include <optional>
 
 #include <flecs.h>
 
@@ -17,6 +18,42 @@ namespace Cthulhu::Scene
 class Scene
 {
   public:
+    const std::optional<std::string>& getResourcePath() const
+    {
+        return resourcePath;
+    }
+
+    bool hasResourcePath() const
+    {
+        return resourcePath.has_value();
+    }
+    bool isDirty() const
+    {
+        return dirty;
+    }
+    bool needsSave() const
+    {
+        return dirty || !resourcePath.has_value();
+    }
+
+    void markDirty()
+    {
+        dirty = true;
+    }
+    void markClean()
+    {
+        dirty = false;
+    }
+
+    void setResourcePath(std::string path)
+    {
+        resourcePath = std::move(path);
+    }
+    void clearResourcePath()
+    {
+        resourcePath.reset();
+    }
+
     flecs::world &getWorld()
     {
         return world;
@@ -33,10 +70,12 @@ class Scene
     void setDirectionalLight(const Rendering::DirectionalLight &light)
     {
         directionalLight = light;
+        markDirty();
     }
     void addPointLight(const Rendering::PointLight &light)
     {
         pointLights.push_back(light);
+        markDirty();
     }
 
     const Rendering::DirectionalLight &getDirectionalLight() const
@@ -50,7 +89,13 @@ class Scene
 
     void setName(const std::string &n)
     {
+        if (name == n) 
+        {
+            return;
+        }
+
         name = n;
+        markDirty();
     }
     const std::string &getName() const
     {
@@ -58,6 +103,9 @@ class Scene
     }
 
   private:
+    std::optional<std::string>  resourcePath;
+    bool dirty = false;
+
     std::string name;
 
     flecs::world world;

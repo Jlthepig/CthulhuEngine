@@ -259,6 +259,9 @@ bool Engine::loadScene(std::string_view resourcePath)
         return false;
     }
 
+    newScene->setResourcePath(std::string(resourcePath));
+    newScene->markClean();
+
     activateScene(std::move(newScene));
     Log::Print("ACTIVE SCENE CHANGED TO: " + activeScene->getName(), "ENGINE", LogType::LOG_SUCCESS);
     return true;
@@ -275,6 +278,9 @@ bool Engine::createEmptyScene(const std::string &name)
     auto newScene = createSceneInstance();
 
     newScene->setName(name.empty() ? "Untitled" : name);
+
+    newScene->clearResourcePath();
+    newScene->markClean();
 
     activateScene(std::move(newScene));
     return true;
