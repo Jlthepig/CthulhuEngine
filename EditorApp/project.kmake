@@ -6,7 +6,7 @@ standard: c++20
 binarytype: executable
 binaryname: CthulhuEngine
 sources: "src"
-headers: "..\\Libraries\\GLFW\\include\\GLFW", "..\\Libraries\\GLM", "..\\Libraries\\glad", "..\\Libraries\\Stb_image", "..\\Libraries\\simdjson", "..\\Libraries", "..\\Libraries\\JoltPhysics-5.5.0", "..\\Libraries\\flecs", "..\\include\\core", "..\\include\\rendering", "..\\include\\scene", "..\\include\\utils", "..\\include\\physics\\"
+headers: "..\\Libraries\\GLFW\\include\\GLFW", "..\\Libraries\\GLM", "..\\Libraries\\glad", "..\\Libraries\\Stb_image", "..\\Libraries\\simdjson", "..\\Libraries", "..\\Libraries\\JoltPhysics-5.5.0", "..\\Libraries\\flecs", "..\\include\\core", "..\\include\\rendering", "..\\include\\scene", "..\\include\\utils", "..\\include\\physics\\", "..\\include\\project"
 
 customflags: export-compile-commands, export-vscode-sln, warnings-as-errors
 
@@ -20,10 +20,10 @@ warninglevel: strict
     buildtype: release
     buildpath: "build\\release-windows"
     links: "..\\build\\release-windows\\Cthulhu.lib", "..\\Libraries\\GLAD\\build\\release-windows\\glad.lib", "..\\Libraries\\GLFW\\build\\release-windows\\glfw3.lib", "..\\Libraries\\FASTTGLTF\\fastgltf\\build\\release-windows\\fastGltf.lib", "..\\Libraries\\JoltPhysics-5.5.0\\build\\distribution-windows\\Jolt.lib", "..\\Libraries\\flecs\\build\\release-windows\\flecs.lib"
-    defines: _GLFW_WIN32
+    defines: _GLFW_WIN32, GLFW_INCLUDE_NONE
 
 #profile debug-windows
     buildtype: debug
     buildpath: "build\\debug-windows"
     links: "..\\build\\debug-windows\\Cthulhu.lib", "..\\Libraries\\GLAD\\build\\debug-windows\\glad.lib", "..\\Libraries\\GLFW\\build\\debug-windows\\glfw3.lib", "..\\Libraries\\FASTTGLTF\\fastgltf\\build\\debug-windows\\fastGltf.lib", "..\\Libraries\\JoltPhysics-5.5.0\\build\\debug-windows\\Jolt.lib", "..\\Libraries\\flecs\\build\\debug-windows\\flecs.lib"
-    defines: _GLFW_WIN32, JPH_ENABLE_ASSERTS
+    defines: _GLFW_WIN32, GLFW_INCLUDE_NONE, JPH_ENABLE_ASSERTS

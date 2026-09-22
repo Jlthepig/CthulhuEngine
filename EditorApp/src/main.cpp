@@ -1,7 +1,8 @@
-#include "engine.h"
-#include "glfw3.h"
-#include "input.h"
-#include "window.h"
+#include <glfw3.h>
+
+#include "engine.hpp"
+#include "input.hpp"
+#include "window.hpp"
 #include "log_utils.hpp"
 
 static bool isFullscreen = false;
@@ -55,7 +56,7 @@ void onUpdate([[maybe_unused]] void* context, [[maybe_unused]] float deltaTime)
 int main()
 {
     Cthulhu::Engine engine;
-    engine.init("Cthulhu Engine", glm::vec2(1920.0f, 1080.0f));
+    engine.init();
     engine.loadScene("assets/scenes/test.scene");
     engine.setUpdateCallback(onUpdate,&engine);
 
