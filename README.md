@@ -147,11 +147,11 @@ Phase 2 is focused on making scenes, assets, entities, components, and engine AP
 
 ## Acknowledgements
 
-**KalaMake** — the build system used for Cthulhu, developed by Lost Empire Entertainment.
+**[KalaMake](https://github.com/KalaKit/KalaMake)** — the build system used for Cthulhu, developed by Lost Empire Entertainment.
 
 A very big thanks for making a great alternative to CMake. It has saved me a lot of time and headaches.
 
-**Lost Empire Entertainment** — if you want to explore their broader ecosystem of tools and engines, check out their GitHub.
+**[Lost Empire Entertainment](https://github.com/Lost-Empire-Entertainment)** — if you want to explore their broader ecosystem of tools and engines, check out their GitHub.
 
 Note: their Elypso Engine is currently being reworked.
 
