@@ -56,6 +56,9 @@ class Engine
     bool createEmptyScene(const std::string &name = "Untitled");
     void unloadScene();
 
+    bool saveActiveScene();
+    bool saveActiveSceneAs(std::string_view resourcePath);
+
     void setUpdateCallback(UpdateCallback callback, void *context = nullptr);
     void setRaycastCallback(RaycastCallback callback, void *context = nullptr);
     void triggerRaycastCallback(const Physics::RaycastHitInfo &hit)

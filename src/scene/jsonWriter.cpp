@@ -4,6 +4,7 @@
 
 #include "jsonWriter.hpp"
 #include "components.hpp"
+#include "jsonParser.hpp"
 #include "scene.hpp"
 #include "light.hpp"
 #include "log_utils.hpp"
@@ -148,6 +149,9 @@ bool SceneWriter::writeScene(const Scene &scene, const std::string &path)
     JsonWriter w;
     w.beginObject();
 
+    w.key("format_version");
+    w.value(static_cast<int>(SCENE_FORMAT_VERSION));
+
     w.key("name");
     w.value(scene.getName());
 
@@ -178,17 +182,15 @@ bool SceneWriter::writeScene(const Scene &scene, const std::string &path)
         if (e.has<PhysicsComponent>())
         {
             const auto &p = e.get<PhysicsComponent>();
-            if (p.hasBody)
-            {
-                w.key("physics");
-                w.beginObject();
-                w.key("type");
-                w.value(p.type);
-                w.vec3("half_extent", p.halfExtent);
-                w.key("mass");
-                w.value(p.mass);
-                w.endObject();
-            }
+            
+            w.key("physics");
+            w.beginObject();
+            w.key("type");
+            w.value(p.type);
+            w.vec3("half_extent", p.halfExtent);
+            w.key("mass");
+            w.value(p.mass);
+            w.endObject();
         }
 
         if (e.has<WeaponComponent>()) // Gap B
@@ -246,6 +248,8 @@ bool SceneWriter::writeScene(const Scene &scene, const std::string &path)
         w.vec3("color", pl.color);
         w.key("intensity");
         w.value(pl.intensity);
+        w.key("radius");
+        w.value(pl.radius);
         w.key("constant");
         w.value(pl.constant);
         w.key("linear");
@@ -265,6 +269,14 @@ bool SceneWriter::writeScene(const Scene &scene, const std::string &path)
         return false;
     }
     out << w.oss.str();
+
+    out.flush();
+    if (!out.good())
+    {
+        Log::Print("FAILED WHILE WRITING SCENE FILE: " + path, "SceneWriter", LogType::LOG_ERROR);
+        return false;
+    }
+
     Log::Print("Scene written: " + path, "SceneWriter", LogType::LOG_SUCCESS);
     return true;
 }

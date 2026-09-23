@@ -10,21 +10,28 @@ using KalaHeaders::KalaLog::LogType;
 namespace Cthulhu::Scene
 {
 
-static glm::vec3 readVec3(simdjson::ondemand::array arr)
+static bool readVec3(simdjson::ondemand::array array,glm::vec3& result)
 {
-    glm::vec3 result(0.0f);
-    int i = 0;
-    for (auto val : arr)
+    size_t index = 0;
+
+    for (auto value : array)
     {
-        if (i == 0)
-            result.x = static_cast<float>(val.get_double().value());
-        if (i == 1)
-            result.y = static_cast<float>(val.get_double().value());
-        if (i == 2)
-            result.z = static_cast<float>(val.get_double().value());
-        i++;
+        if (index >= 3)
+        {
+            return false;
+        }
+
+        auto number = value.get_double();
+
+        if (number.error())
+        {
+            return false;
+        }
+
+        result[index++] = static_cast<float>(number.value());
     }
-    return result;
+
+    return index == 3;
 }
 
 std::optional<ParsedScene> JsonParser::parseScene(const std::string &path)
@@ -40,22 +47,91 @@ std::optional<ParsedScene> JsonParser::parseScene(const std::string &path)
     auto doc = parser.iterate(json);
     ParsedScene result;
 
-    // scene name
-    result.name = std::string(doc["name"].get_string().value());
+    auto nameResult = doc["name"].get_string();
+    if (nameResult.error())
+    {
+        Log::Print("SCENE FILE MUST CONTAIN A NAME name: " + path, "SceneParser", LogType::LOG_ERROR);
+        return std::nullopt;
+    }
+
+    auto versionResult = doc["format_version"].get_int64();
+    if (versionResult.error())
+    {
+        Log::Print("SCENE FILE IS MISSING format_version: " + path, "SceneParser", LogType::LOG_ERROR);
+        return std::nullopt;
+    }
+
+    const uint64_t version = versionResult.value();
+    if (version != SCENE_FORMAT_VERSION)
+    {
+        Log::Print("UNSUPPORTED SCENE FORMAT VERSION: " + std::to_string(version), "SceneParser", LogType::LOG_ERROR);
+        return std::nullopt;
+    }
+
+    result.name = nameResult.value();
+    result.formatVersion = static_cast<uint32_t>(version);
 
     // entities
     for (auto entityJson : doc["entities"].get_array())
     {
         ParsedEntity entity;
-        entity.name = std::string(entityJson["name"].get_string().value());
-        entity.modelPath = std::string(entityJson["model"].get_string().value());
-        entity.position = readVec3(entityJson["position"].get_array().value());
-        entity.rotation = readVec3(entityJson["rotation"].get_array().value());
-        entity.scale = readVec3(entityJson["scale"].get_array().value());
 
-        auto boundsJson = entityJson["bounds"].get_object().value();
-        entity.boundsMin = readVec3(boundsJson["min"].get_array().value());
-        entity.boundsMax = readVec3(boundsJson["max"].get_array().value());
+        auto name = entityJson["name"].get_string();
+        if (name.error())
+        {
+            Log::Print("INVALID ENTITY NAME", "SceneParser", LogType::LOG_ERROR);
+            return std::nullopt;
+        }
+        entity.name = name.value();
+
+        auto position = entityJson["position"].get_array();
+        if (position.error() || !readVec3(position.value(), entity.position))
+        {
+            Log::Print("INVALID POSITION: " + entity.name, "SceneParser", LogType::LOG_ERROR);
+            return std::nullopt;
+        }
+
+        auto rotation = entityJson["rotation"].get_array();
+        if (rotation.error() || !readVec3(rotation.value(), entity.rotation))
+        {
+            Log::Print("INVALID ROTATION: " + entity.name, "SceneParser", LogType::LOG_ERROR);
+            return std::nullopt;
+        }
+        
+        auto scale = entityJson["scale"].get_array();
+        if (scale.error() || !readVec3(scale.value(), entity.scale))
+        {
+            Log::Print("INVALID SCALE: " + entity.name, "SceneParser", LogType::LOG_ERROR);
+            return std::nullopt;
+        }
+
+        auto modelResult = entityJson["model"].get_string();
+        if (!modelResult.error())
+        {
+            ParsedMesh mesh;
+            mesh.modelPath = std::string(modelResult.value());
+
+            auto boundsResult = entityJson["bounds"].get_object();
+            if (!boundsResult.error())
+            {
+                auto boundsJson = boundsResult.value();
+
+                auto minResult = boundsJson["min"].get_array();
+                auto maxResult = boundsJson["max"].get_array();
+
+                if (!minResult.error())
+                {
+                    readVec3(minResult.value(), mesh.boundsMin);
+                }
+
+                if (!maxResult.error())
+                {
+                    readVec3(maxResult.value(), mesh.boundsMax);
+                }
+            }
+
+            entity.mesh = std::move(mesh);
+        }
 
         auto physicsResult = entityJson["physics"].get_object();
         if (!physicsResult.error())
@@ -63,7 +139,11 @@ std::optional<ParsedScene> JsonParser::parseScene(const std::string &path)
             auto physicsJson = physicsResult.value();
             ParsedPhysics physics;
             physics.type = std::string(physicsJson["type"].get_string().value());
-            physics.halfExtent = readVec3(physicsJson["half_extent"].get_array().value());
+            auto halfExtent = physicsJson["half_extent"].get_array();
+            if (!halfExtent.error())
+            {
+                readVec3(halfExtent.value(), physics.halfExtent);
+            }
 
             auto massVal = physicsJson["mass"].get_double();
             if (!massVal.error())
@@ -111,21 +191,70 @@ std::optional<ParsedScene> JsonParser::parseScene(const std::string &path)
     }
 
     // directional light
-    auto dirLightJson = doc["directional_light"].get_object().value();
-    result.directionalLight.direction = readVec3(dirLightJson["direction"].get_array().value());
-    result.directionalLight.color = readVec3(dirLightJson["color"].get_array().value());
-    result.directionalLight.intensity = static_cast<float>(dirLightJson["intensity"].get_double().value());
-
-    // point lights
-    for (auto lightJson : doc["point_lights"].get_array())
+    auto dirLightResult = doc["directional_light"].get_object();
+    if (dirLightResult.error())
     {
+        Log::Print("MISSING OR INVALID DIRECTIONAL LIGHT", "JsonParser", LogType::LOG_ERROR);
+        return std::nullopt;
+    }
+
+    auto dirLightJson = dirLightResult.value();
+    auto directionResult = dirLightJson["direction"].get_array();
+    auto colorResult = dirLightJson["color"].get_array();
+    auto intensityResult = dirLightJson["intensity"].get_double();
+
+    if (directionResult.error() || colorResult.error() || intensityResult.error() || !readVec3(directionResult.value(), result.directionalLight.direction) ||
+        !readVec3(colorResult.value(), result.directionalLight.color))
+    {
+        Log::Print("INVALID DIRECTIONAL LIGHT DATA", "JsonParser", LogType::LOG_ERROR);
+        return std::nullopt;
+    }
+
+    result.directionalLight.intensity = static_cast<float>(intensityResult.value());
+
+    auto pointLightsResult = doc["point_lights"].get_array();
+    if (pointLightsResult.error())
+    {
+        Log::Print("MISSING OR INVALID POINT LIGHT ARRAY", "JsonParser", LogType::LOG_ERROR);
+        return std::nullopt;
+    }
+
+    for (auto lightValue : pointLightsResult.value())
+    {
+        auto lightObjectResult = lightValue.get_object();
+        if (lightObjectResult.error())
+        {
+            Log::Print("INVALID POINT LIGHT", "JsonParser", LogType::LOG_ERROR);
+            return std::nullopt;
+        }
+
+        auto lightJson = lightObjectResult.value();
+
         Rendering::PointLight light;
-        light.position = readVec3(lightJson["position"].get_array().value());
-        light.color = readVec3(lightJson["color"].get_array().value());
-        light.intensity = static_cast<float>(lightJson["intensity"].get_double().value());
-        light.constant = static_cast<float>(lightJson["constant"].get_double().value());
-        light.linear = static_cast<float>(lightJson["linear"].get_double().value());
-        light.quadratic = static_cast<float>(lightJson["quadratic"].get_double().value());
+
+        auto positionResult = lightJson["position"].get_array();
+        auto colorResult = lightJson["color"].get_array();
+        auto intensityResult = lightJson["intensity"].get_double();
+        auto radiusResult = lightJson["radius"]->get_double();
+
+        auto constantResult = lightJson["constant"].get_double();
+        auto linearResult = lightJson["linear"].get_double();
+        auto quadraticResult = lightJson["quadratic"].get_double();
+
+        if (positionResult.error() || colorResult.error() || intensityResult.error() || radiusResult.error() || constantResult.error() ||
+            linearResult.error() || quadraticResult.error() || !readVec3(positionResult.value(), light.position) || 
+            !readVec3(colorResult.value(), light.color))
+        {
+            Log::Print("INVALID POINT LIGHT DATA", "JsonParser", LogType::LOG_ERROR);
+            return std::nullopt;
+        }
+
+        light.intensity = static_cast<float>(intensityResult.value());
+        light.radius = static_cast<float>(radiusResult.value());
+        light.constant = static_cast<float>(constantResult.value());
+        light.linear = static_cast<float>(linearResult.value());
+        light.quadratic = static_cast<float>(quadraticResult.value());
+
         result.pointLights.push_back(light);
     }
 

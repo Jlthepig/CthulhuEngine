@@ -34,22 +34,25 @@ bool SceneLoader::load(const std::string &path, Scene &scene, Cthulhu::Physics::
         transform.scale = parsedEntity.scale;
         transform.matrixDirty = true;
 
-        if (!parsedEntity.modelPath.empty())
+        if (parsedEntity.mesh)
         {
-            auto resolvedModelPath = project.resolveResourcePath(parsedEntity.modelPath);
+            const auto& parsedMesh = *parsedEntity.mesh;
 
+            auto& mesh = e.ensure<MeshComponent>();
+
+            mesh.modelPath = parsedMesh.modelPath;
+            mesh.boundsMin = parsedMesh.boundsMin;
+            mesh.boundsMax = parsedMesh.boundsMax;
+
+            auto resolvedModelPath = project.resolveResourcePath(mesh.modelPath);
             if (!resolvedModelPath)
             {
-                Log::Print("FAILED TO RESOLVE MODEL RESOURCE: " + parsedEntity.modelPath, "SceneLoader",
+                Log::Print("FAILED TO RESOLVE MODEL RESOURCE: " + mesh.modelPath, "SceneLoader",
                            LogType::LOG_ERROR);
                 continue;
             }
 
-            auto &mesh = e.ensure<MeshComponent>();
-            mesh.model = scene.getOrLoadModel(parsedEntity.modelPath, *resolvedModelPath);
-            mesh.modelPath = parsedEntity.modelPath;
-            mesh.boundsMin = parsedEntity.boundsMin;
-            mesh.boundsMax = parsedEntity.boundsMax;
+            mesh.model = scene.getOrLoadModel(mesh.modelPath, *resolvedModelPath);
         }
 
         // create physics body if there

@@ -20,6 +20,7 @@
 #include "renderer.hpp"
 #include "scene.hpp"
 #include "sceneLoader.hpp"
+#include "jsonWriter.hpp"
 #include "systemRegistry.hpp"
 #include "window.hpp"
 #include "log_utils.hpp"
@@ -313,6 +314,68 @@ void Engine::unloadScene()
     renderer.setPointLights({});
     renderer.setDirectionalLight(Rendering::DirectionalLight{});
     frameRenderables.clear();
+}
+
+bool Engine::saveActiveScene()
+{
+    if (!activeScene)
+    {
+        Log::Print("NO ACTIVE SCENE TO SAVE", "ENGINE", LogType::LOG_ERROR);
+        return false;
+    }
+
+    if (!activeScene->hasResourcePath())
+    {
+        Log::Print("ACTIVE SCENE HAS NO RESOURCEPATH, SAVE AS IS REQUIRED", "ENGINE", LogType::LOG_ERROR);
+        return false;
+    }
+
+    return saveActiveSceneAs(*activeScene->getResourcePath());
+}
+
+bool Engine::saveActiveSceneAs(std::string_view resourcePath)
+{
+    if (!project || !activeScene)
+    {
+        return false;
+    }
+
+    if (!resourcePath.starts_with("res://"))
+    {
+        Log::Print("SCENE PATH MUST USE res://","ENGINE",LogType::LOG_ERROR);
+        return false;
+    }
+
+    if (!resourcePath.ends_with(".scene"))
+    {
+        Log::Print("SCENE FILE MUST USE .scene EXTENSION","ENGINE",LogType::LOG_ERROR);
+        return false;
+    }
+
+    auto resolvedPath =project->resolveResourcePath(resourcePath);
+
+    if (!resolvedPath)
+    {
+        return false;
+    }
+
+    std::error_code error;
+
+    std::filesystem::create_directories(resolvedPath->parent_path(), error);
+    if (error)
+    {
+        Log::Print("FAILED TO CREATE SCENE DIRECTORY: " + resolvedPath->parent_path().string(), "ENGINE", LogType::LOG_ERROR);
+        return false;
+    }
+
+    if (!Scene::SceneWriter::writeScene(*activeScene, resolvedPath->string()))
+    {
+        return false;
+    }
+
+    activeScene->setResourcePath(std::string(resourcePath));
+    activeScene->markClean();
+    return true;
 }
 
 void Engine::processFixedUpdate(float fixedDt)
