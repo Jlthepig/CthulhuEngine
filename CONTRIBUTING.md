@@ -2,7 +2,7 @@
 
 Thanks for your interest and valuable time in contributing to Cthulhu. Every contribution adds another tentacle to the cosmic mythos.
 
-Cthulhu is still in early development, so its architecture and APIs etc. Are changing frequently. Contributions at this  are not possible, for now and the future once contributing becomes possible and encouraged please keep the following in mind.
+Cthulhu is still in early development, so its architecture and APIs etc. Are changing frequently. Contributions at this time are not possible, for now and the future once contributing becomes possible and encouraged please keep the following in mind.
 
 ## Before Contributing
 
