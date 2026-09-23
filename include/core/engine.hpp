@@ -162,7 +162,7 @@ class Engine
     SimulationState simState = SimulationState::Running;
     void applySimStateToSystems(); // toggle systems based on the simState
 
-    float deltaTime = 0.0f;
-    double lastFrame = 0.0f;
+    float  deltaTime{};
+    double lastFrame{};
 };
 } // namespace Cthulhu

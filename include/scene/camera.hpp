@@ -32,11 +32,11 @@ class Camera
     void updateRecoil(float deltaTime);
 
   private:
-    float yaw;
-    float pitch;
-    float speed;
-    float sensitivity;
-    float fov;
+    float yaw{};
+    float pitch{};
+    float speed{};
+    float sensitivity{};
+    float fov{};
     glm::vec3 position;
     glm::vec3 front;
     glm::vec3 up;

@@ -15,12 +15,12 @@ bool Input::currentKeys[GLFW_KEY_LAST + 1] = {};
 bool Input::previousKeys[GLFW_KEY_LAST + 1] = {};
 bool Input::currentMouseButtons[GLFW_MOUSE_BUTTON_LAST + 1] = {};
 bool Input::previousMouseButtons[GLFW_MOUSE_BUTTON_LAST + 1] = {};
-float Input::mouseDeltaX = 0.0f;
-float Input::mouseDeltaY = 0.0f;
-float Input::scrollDeltaY = 0.0f;
+float Input::mouseDeltaX {};
+float Input::mouseDeltaY {};
+float Input::scrollDeltaY{};
 bool Input::firstMouse = true;
-float Input::lastX = 0.0f;
-float Input::lastY = 0.0f;
+float Input::lastX{};
+float Input::lastY{};
 
 void Input::init(GLFWwindow *window, glm::vec2 resolution)
 {

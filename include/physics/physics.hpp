@@ -26,24 +26,24 @@ struct RaycastHitInfo
     bool didHit = false;
     glm::vec3 position = glm::vec3(0.0f);
     glm::vec3 normal = glm::vec3(0.0f);
-    float distance = 0.0f;
-    uint32_t bodyId = 0;
+    float distance{};
+    uint32_t bodyId{};
 };
 
 struct PhysicsConfig
 {
-    int tempAllocatorSizeMB = 10;
-    int threadCount = 1;
-    int maxBodies = 1024;
-    int maxBodyPairs = 1024;
-    int maxContactConstraints = 1024;
-    float fixedDeltaTime = 1.0f / 60.0f;
-    int collisionSteps = 1;
-    float maxDeltaTime = 0.25f;
-    float groundWidth = 100.0f;
-    float groundHeight = 0.5f;
-    float groundDepth = 100.0f;
-    float groundFriction = 0.8f;
+    int tempAllocatorSizeMB{10};
+    int threadCount{1};
+    int maxBodies{1024};
+    int maxBodyPairs{1024};
+    int maxContactConstraints{1024};
+    float fixedDeltaTime{1.0f / 60.0f};
+    int collisionSteps{1};
+    float maxDeltaTime{0.25f};
+    float groundWidth{100.0f};
+    float groundHeight{0.5f};
+    float groundDepth{100.0f};
+    float groundFriction{0.8f};
 };
 class PhysicsWorld
 {
@@ -77,7 +77,7 @@ class PhysicsWorld
 
   private:
     PhysicsConfig config;
-    float physicsAccumulator = 0.0f;
+    float physicsAccumulator{};
 
     // Jolt State
     JPH::TempAllocatorImpl *tempAllocator = nullptr;
