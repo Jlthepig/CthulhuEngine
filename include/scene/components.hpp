@@ -21,6 +21,11 @@ struct EntityIdentityComponent
 {
     EntityId id;
 };
+
+struct NameComponent
+{
+    std::string name = "Entity";
+};
 struct AudioSourceComponent
 {
     std::string filePath;

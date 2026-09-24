@@ -30,4 +30,7 @@ namespace Cthulhu::Scene
             return seed;
         }
     };
+
+    [[nodiscard]]
+    EntityId generateEntityId();
 }

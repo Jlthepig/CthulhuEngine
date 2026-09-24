@@ -162,7 +162,14 @@ bool SceneWriter::writeScene(const Scene &scene, const std::string &path)
         w.beginObject();
 
         w.key("name");
-        w.value(std::string(e.name()));
+        if (const auto *name = e.try_get<NameComponent>())
+        {
+            w.value(name->name);
+        }
+        else
+        {
+            w.value("Entity");
+        }
         w.vec3("position", transform.position);
         w.vec3("rotation", transform.rotation);
         w.vec3("scale", transform.scale);

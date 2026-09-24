@@ -6,6 +6,7 @@
 #include <unordered_map>
 #include <vector>
 #include <optional>
+#include <string_view>
 
 #include <flecs.h>
 
@@ -63,7 +64,17 @@ class Scene
     {
         return world;
     }
+
     flecs::entity createEntity(const std::string &name = "Entity");
+
+    [[nodiscard]]
+    std::optional<flecs::entity> findEntity(EntityId id) const;
+
+    [[nodiscard]]
+    bool isEntityAlive(EntityId id) const;    
+    bool renameEntity(EntityId id, std::string_view newName);
+    bool destroyEntity(EntityId id);
+
 
     Rendering::Model *getOrLoadModel(const std::string &resourcePath, const std::filesystem::path &fileSystemPath);
     void clear();
@@ -118,5 +129,8 @@ class Scene
 
     bool registerEntity(EntityId id, flecs::entity entity);
     void unregisterEntity(EntityId id);
+
+    [[nodiscard]]
+    EntityId generateUniqueEntityId() const;
 };
 } // namespace Cthulhu::Scene
