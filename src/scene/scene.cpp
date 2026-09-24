@@ -36,7 +36,8 @@ Rendering::Model *Scene::getOrLoadModel(const std::string &resourcePath, const s
 void Scene::clear()
 {
     world.delete_with<TransformComponent>();
-
+    entityLookup.clear();
+    
     for (auto &[path, model] : modelCache)
     {
         model.destroy();

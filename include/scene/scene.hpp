@@ -9,6 +9,7 @@
 
 #include <flecs.h>
 
+#include "EntityId.hpp"
 #include "components.hpp"
 #include "light.hpp"
 #include "model.hpp"
@@ -103,16 +104,19 @@ class Scene
     }
 
   private:
+    std::string name;
     std::optional<std::string>  resourcePath;
     bool dirty = false;
-
-    std::string name;
+    uint32_t nextId = 0;
 
     flecs::world world;
-    uint32_t nextId = 0;
-    std::unordered_map<std::string, Rendering::Model> modelCache;
+    std::unordered_map<EntityId, flecs::entity, EntityIdHash> entityLookup;
 
     Rendering::DirectionalLight directionalLight;
     std::vector<Rendering::PointLight> pointLights;
+    std::unordered_map<std::string, Rendering::Model> modelCache;
+
+    bool registerEntity(EntityId id, flecs::entity entity);
+    void unregisterEntity(EntityId id);
 };
 } // namespace Cthulhu::Scene

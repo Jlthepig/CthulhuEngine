@@ -4,6 +4,8 @@
 #include <string>
 
 #include <glm.hpp>
+
+#include "EntityId.hpp"
 namespace Cthulhu::Rendering
 {
 struct Model;
@@ -14,6 +16,11 @@ class CharacterVirtual;
 }
 namespace Cthulhu::Scene
 {
+
+struct EntityIdentityComponent
+{
+    EntityId id;
+};
 struct AudioSourceComponent
 {
     std::string filePath;
