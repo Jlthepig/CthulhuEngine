@@ -245,7 +245,7 @@ BodyTransform PhysicsWorld::getBodyTransform(uint32_t bodyIdValue)
 
 void PhysicsWorld::removeBody(uint32_t bodyIdValue)
 {
-    if (!physicsSystem)
+    if (!physicsSystem || bodyIdValue == 0)
     {
         return;
     }
