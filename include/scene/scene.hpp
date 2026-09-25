@@ -10,7 +10,7 @@
 
 #include <flecs.h>
 
-#include "EntityId.hpp"
+#include "entityId.hpp"
 #include "components.hpp"
 #include "light.hpp"
 #include "model.hpp"

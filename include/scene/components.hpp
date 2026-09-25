@@ -5,7 +5,7 @@
 
 #include <glm.hpp>
 
-#include "EntityId.hpp"
+#include "entityId.hpp"
 namespace Cthulhu::Rendering
 {
 struct Model;
