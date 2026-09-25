@@ -30,25 +30,29 @@ void RegisterCoreSystems(flecs::world &world, Cthulhu::Engine *engineContext)
             transform.matrixDirty = true;
         });
 
-    world.system<TransformComponent>("TransformSystem").each([](flecs::entity e, TransformComponent &transform) {
-        glm::mat4 localMatrix = glm::mat4(1.0f);
-        localMatrix = glm::translate(localMatrix, transform.position);
-        localMatrix = glm::rotate(localMatrix, transform.rotation.x, glm::vec3(1.0f, 0.0f, 0.0f));
-        localMatrix = glm::rotate(localMatrix, transform.rotation.y, glm::vec3(0.0f, 1.0f, 0.0f));
-        localMatrix = glm::rotate(localMatrix, transform.rotation.z, glm::vec3(0.0f, 0.0f, 1.0f));
-        localMatrix = glm::scale(localMatrix, transform.scale);
+    world.system<TransformComponent, const TransformComponent *>("TransformSystem")
+        .term_at(1)
+        .parent()
+        .cascade()
+        .each([](TransformComponent &transform, const TransformComponent *parentTransform) {
+            glm::mat4 localMatrix = glm::mat4(1.0f);
+            localMatrix = glm::translate(localMatrix, transform.position);
+            localMatrix = glm::rotate(localMatrix, transform.rotation.x, glm::vec3(1.0f, 0.0f, 0.0f));
+            localMatrix = glm::rotate(localMatrix, transform.rotation.y, glm::vec3(0.0f, 1.0f, 0.0f));
+            localMatrix = glm::rotate(localMatrix, transform.rotation.z, glm::vec3(0.0f, 0.0f, 1.0f));
+            localMatrix = glm::scale(localMatrix, transform.scale);
 
-        // combine with parent matrix if it has a parent
-        glm::mat4 globalMatrix = localMatrix;
-        auto parent = e.parent();
-        if (parent.is_alive() && parent.has<TransformComponent>())
-        {
-            const auto &parentTransform = parent.get<TransformComponent>();
-            globalMatrix = parentTransform.cachedModelMatrix * localMatrix;
-        }
-        transform.cachedModelMatrix = globalMatrix;
-        transform.cachedNormalMatrix = glm::transpose(glm::inverse(globalMatrix));
-    });
+            if (parentTransform)
+            {
+                transform.cachedModelMatrix = parentTransform->cachedModelMatrix * localMatrix;
+            }
+            else
+            {
+                transform.cachedModelMatrix = localMatrix;
+            }
+
+            transform.cachedNormalMatrix = glm::transpose(glm::inverse(transform.cachedModelMatrix));
+        });
 
     world.system<WeaponComponent, const TransformComponent, const CameraComponent>("WeaponSystem")
         .each([engineContext]([[maybe_unused]] flecs::entity e, WeaponComponent &wep, const TransformComponent &trans,

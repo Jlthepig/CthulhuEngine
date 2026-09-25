@@ -20,29 +20,29 @@ namespace Cthulhu::Scene
 class Scene
 {
   public:
-    const std::optional<std::string>& getResourcePath() const
+    // << serialization >>
+    [[nodiscard]] const std::optional<std::string>& getResourcePath() const noexcept
     {
         return resourcePath;
     }
-
-    bool hasResourcePath() const
+    [[nodiscard]] bool hasResourcePath() const noexcept
     {
         return resourcePath.has_value();
     }
-    bool isDirty() const
+    [[nodiscard]] bool isDirty() const noexcept
     {
         return dirty;
     }
-    bool needsSave() const
+    [[nodiscard]] bool needsSave() const noexcept
     {
         return dirty || !resourcePath.has_value();
     }
 
-    void markDirty()
+    void markDirty() noexcept
     {
         dirty = true;
     }
-    void markClean()
+    void markClean() noexcept
     {
         dirty = false;
     }
@@ -51,33 +51,39 @@ class Scene
     {
         resourcePath = std::move(path);
     }
-    void clearResourcePath()
+    void clearResourcePath() noexcept
     {
         resourcePath.reset();
     }
 
-    flecs::world &getWorld()
+    // << ecs >>
+    [[nodiscard]] flecs::world &getWorld() noexcept
     {
         return world;
     }
-    const flecs::world &getWorld() const
+    [[nodiscard]] const flecs::world &getWorld() const noexcept
     {
         return world;
     }
 
+    // << entity management >>
     flecs::entity createEntity(const std::string &name = "Entity");
 
-    [[nodiscard]]
-    std::optional<flecs::entity> findEntity(EntityId id) const;
+    [[nodiscard]] std::optional<flecs::entity> findEntity(EntityId id) const;
+    [[nodiscard]] bool isEntityAlive(EntityId id) const;
 
-    [[nodiscard]]
-    bool isEntityAlive(EntityId id) const;    
     bool renameEntity(EntityId id, std::string_view newName);
     bool destroyEntity(EntityId id);
+    bool setParent(EntityId childId, EntityId parentId);
+    bool clearParent(EntityId childId);
 
+    [[nodiscard]] std::optional<EntityId> getParent(EntityId childId) const;
+    [[nodiscard]] std::vector<EntityId> getChildren(EntityId parentId) const;
 
-    Rendering::Model *getOrLoadModel(const std::string &resourcePath, const std::filesystem::path &fileSystemPath);
     void clear();
+
+    // << asset lighting >> 
+    Rendering::Model *getOrLoadModel(const std::string &resourcePath, const std::filesystem::path &fileSystemPath);
 
     void setDirectionalLight(const Rendering::DirectionalLight &light)
     {
@@ -90,18 +96,19 @@ class Scene
         markDirty();
     }
 
-    const Rendering::DirectionalLight &getDirectionalLight() const
+    [[nodiscard]] const Rendering::DirectionalLight &getDirectionalLight() const noexcept
     {
         return directionalLight;
     }
-    const std::vector<Rendering::PointLight> getPointLights() const
+    [[nodiscard]] const std::vector<Rendering::PointLight> &getPointLights() const noexcept
     {
         return pointLights;
     }
 
+    // << properties >>
     void setName(const std::string &n)
     {
-        if (name == n) 
+        if (name == n)
         {
             return;
         }
@@ -109,7 +116,7 @@ class Scene
         name = n;
         markDirty();
     }
-    const std::string &getName() const
+    [[nodiscard]] const std::string &getName() const noexcept
     {
         return name;
     }
@@ -129,6 +136,10 @@ class Scene
 
     bool registerEntity(EntityId id, flecs::entity entity);
     void unregisterEntity(EntityId id);
+
+    [[nodiscard]] bool shouldCreateHierarchyCycle(flecs::entity child, flecs::entity newParent) const;
+    
+    void collectSubtreeEntityIds(flecs::entity entity, std::vector<EntityId>& ids) const;
 
     [[nodiscard]]
     EntityId generateUniqueEntityId() const;

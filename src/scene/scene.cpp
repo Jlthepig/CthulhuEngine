@@ -7,6 +7,8 @@ using KalaHeaders::KalaLog::Log;
 using KalaHeaders::KalaLog::LogType;
 namespace Cthulhu::Scene
 {
+
+// << entity management >>
 flecs::entity Scene::createEntity(const std::string &name)
 {
     const EntityId id = generateUniqueEntityId();
@@ -30,23 +32,21 @@ flecs::entity Scene::createEntity(const std::string &name)
 
 bool Scene::destroyEntity(EntityId id)
 {
-    auto it = entityLookup.find(id);
-
-    if (it == entityLookup.end())
+    auto entity = findEntity(id);
+    if (!entity)
     {
         return false;
     }
 
-    flecs::entity entity = it->second;
+    std::vector<EntityId> subtreeIds;
 
-    if (!entity.is_alive())
+    collectSubtreeEntityIds(*entity,subtreeIds);
+    entity->destruct();
+
+    for (const EntityId subtreeId : subtreeIds)
     {
-        entityLookup.erase(it);
-        return false;
+        entityLookup.erase(subtreeId);
     }
-
-    entity.destruct();
-    entityLookup.erase(it);
 
     markDirty();
     return true;
@@ -129,6 +129,143 @@ void Scene::unregisterEntity(EntityId id)
     entityLookup.erase(id);
 }
 
+bool Scene::shouldCreateHierarchyCycle(flecs::entity child, flecs::entity newParent) const
+{
+    if (child == newParent)
+    {
+        return true;
+    }
+
+    auto current = newParent;
+    while (current.is_alive())
+    {
+        if (current == child)
+        {
+            return true;
+        }
+
+        current = current.parent();
+    }
+
+    return false;
+}
+
+bool Scene::setParent(EntityId childId, EntityId parentId)
+{
+    auto child = findEntity(childId);
+    auto parent = findEntity(parentId);
+
+    if (!child || !parent)
+    {
+        return false;
+    }
+
+    if (childId == parentId)
+    {
+        return false;
+    }
+
+    auto currentParent = child->parent();
+
+    if (currentParent.is_alive() && currentParent == *parent)
+    {
+        return true;
+    }
+
+    if (shouldCreateHierarchyCycle(*child, *parent))
+    {
+        Log::Print("FAILED TO SET AN ENTITY PARENT: HIERARCHY CYCLE", "Scene", LogType::LOG_ERROR);
+        return false;
+    }
+
+    child->child_of(*parent);
+    markDirty();
+    return true;
+}
+
+bool Scene::clearParent(EntityId childId)
+{
+    auto child = findEntity(childId);
+
+    if (!child)
+    {
+        return false;
+    }
+
+    auto parent = child->parent();
+
+    if (!parent.is_alive())
+    {
+        return true;
+    }
+
+    child->remove(flecs::ChildOf,parent);
+    markDirty();
+    return true;
+}
+
+std::optional<EntityId> Scene::getParent(EntityId childId) const
+{
+    auto child = findEntity(childId);
+
+    if (!child)
+    {
+        return std::nullopt;
+    }
+
+    auto parent = child->parent();
+
+    if (!parent.is_alive())
+    {
+        return std::nullopt;
+    }
+
+    if (!parent.has<EntityIdentityComponent>())
+    {
+        return std::nullopt;
+    }
+
+    return parent.get<EntityIdentityComponent>().id;
+}
+
+std::vector<EntityId> Scene::getChildren(EntityId parentId) const
+{
+    std::vector<EntityId> children;
+
+    auto parent = findEntity(parentId);
+
+    if (!parent)
+    {
+        return children;
+    }
+
+    parent->children([&](flecs::entity child)
+    {
+        if (!child.has<EntityIdentityComponent>())
+        {
+            return;
+        }
+
+        children.push_back(child.get<EntityIdentityComponent>().id);
+    });
+
+    return children;
+}
+
+void Scene::collectSubtreeEntityIds(flecs::entity entity,std::vector<EntityId>& ids) const
+{
+    entity.children([&](flecs::entity child)
+    {
+        collectSubtreeEntityIds(child,ids);
+    });
+
+    if (entity.has<EntityIdentityComponent>())
+    {
+        ids.push_back(entity.get<EntityIdentityComponent>().id);
+    }
+}
+
+// << asset lighting >> 
 Rendering::Model *Scene::getOrLoadModel(const std::string &resourcePath, const std::filesystem::path &fileSystemPath)
 {
     auto it = modelCache.find(resourcePath);

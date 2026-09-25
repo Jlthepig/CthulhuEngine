@@ -18,11 +18,16 @@ warninglevel: strict
 #profile release-windows
     buildtype: release
     buildpath: "build\\release-windows"
-    compileflags: Z7
-    linkflags: IGNORE:4006
+    
+    compileflags: Z7, O2, Gw, Gy
+    
+    linkflags: IGNORE:4006, OPT:REF, OPT:ICF
+    
     links: "Libraries\\GLAD\\build\\release-windows\\glad.lib", "Libraries\\GLFW\\build\\release-windows\\glfw3.lib", "Libraries\\FASTTGLTF\\fastgltf\\build\\release-windows\\fastGltf.lib", "Libraries\\JoltPhysics-5.5.0\\build\\distribution-windows\\Jolt.lib", "Libraries\\flecs\\build\\release-windows\\flecs.lib"
     
     defines: _GLFW_WIN32, GLFW_INCLUDE_NONE
+
+
 
 #profile debug-windows
     buildtype: debug
