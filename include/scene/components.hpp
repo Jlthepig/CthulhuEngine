@@ -1,106 +1,100 @@
 #pragma once
-
 #include <cstdint>
 #include <string>
-
 #include <glm.hpp>
-
 #include "entityId.hpp"
-namespace Cthulhu::Rendering
-{
-struct Model;
-}
-namespace JPH
-{
-class CharacterVirtual;
-}
-namespace Cthulhu::Scene
-{
 
-struct EntityIdentityComponent
-{
-    EntityId id;
+namespace Cthulhu::Rendering { struct Model; }
+namespace JPH { class CharacterVirtual; }
+
+namespace Cthulhu::Scene {
+
+struct EntityIdentityComponent {
+    EntityId id{};
 };
 
-struct NameComponent
-{
-    std::string name = "Entity";
+struct NameComponent {
+    std::string name{"Entity"};
 };
-struct AudioSourceComponent
-{
-    std::string filePath;
-    float volume = 1.0f;
-    bool loop = false;
 
-    bool playTrigger = false;
-    bool stopTrigger = false;
+struct AudioSourceComponent {
+    std::string filePath{""};
+    float volume{1.0f};
+    bool loop{false};
+};
 
-    bool isPlaying = false;
-    uint32_t soundInstanceId = 0; // tracked by audio system
+struct AudioSourceRuntimeComponent {
+    bool playRequested{false};
+    bool stopRequested{false};
+    bool isPlaying{false};
+    uint32_t soundInstanceId{0};
 };
-struct CameraComponent
-{
-    glm::vec3 front = glm::vec3(0.0f, 0.0f, -1.0f);
+
+struct CameraComponent {
+    glm::vec3 front{0.0f, 0.0f, -1.0f};
 };
-struct TransformComponent
-{
+
+struct TransformComponent {
     glm::vec3 position{0.0f};
     glm::vec3 rotation{0.0f};
     glm::vec3 scale{1.0f};
-
-    bool matrixDirty = true;
-    glm::mat4 cachedModelMatrix = glm::mat4(1.0f);
-    glm::mat4 cachedNormalMatrix = glm::mat4(1.0f);
+    bool matrixDirty{true};
+    glm::mat4 cachedModelMatrix{1.0f};
+    glm::mat4 cachedNormalMatrix{1.0f};
 };
 
-struct MeshComponent
-{
-    Cthulhu::Rendering::Model *model = nullptr;
-    std::string modelPath;
-    glm::vec3 boundsMin = glm::vec3(-1.0f);
-    glm::vec3 boundsMax = glm::vec3(1.0f);
+struct MeshComponent {
+    std::string modelPath{""};
+    glm::vec3 boundsMin{-1.0f};
+    glm::vec3 boundsMax{1.0f};
 };
 
-struct PhysicsComponent
-{
-    uint32_t bodyId = 0;
-    bool hasBody = false;
-    std::string type = "static";
-    glm::vec3 halfExtent = glm::vec3(0.5f);
-    float mass = 1.0f;
+struct MeshRuntimeComponent {
+    Rendering::Model* model{nullptr};
 };
 
-struct CharacterControllerComponent
-{
-    JPH::CharacterVirtual *character = nullptr;
+enum class PhysicsBodyType : uint8_t { Static, Dynamic };
 
-    float verticalVelocity = 0.0f;
-    glm::vec3 prevPos = glm::vec3(0.0f);
-    glm::vec3 currentPos = glm::vec3(0.0f);
-
-    glm::vec3 pendingMove = glm::vec3(0.0f);
-    bool pendingJump = false;
+struct PhysicsComponent {
+    PhysicsBodyType type{PhysicsBodyType::Static};
+    glm::vec3 halfExtent{0.5f};
+    float mass{1.0f}; 
 };
 
-struct WeaponComponent
-{
-    float firerate = 10.0f;  // how fast the gun shoots
-    float maxRange = 100.0f; // max distance in meters
-
-    // managed by engine
-    float timeSinceLastShot = 0.0;
-
-    // Input (managed by game)
-    bool wantsToFire = false;
+struct PhysicsRuntimeComponent {
+    uint32_t bodyId{0};
 };
 
-struct TagActive
-{
+struct CharacterControllerComponent {
+    float gravity{-9.81f};
+    float jumpVelocity{5.0f};
+    float capsuleRadius{0.3f};
+    float capsuleHeight{2.0f};
+    float maxWalkableSlope{45.0f};
+    float maxPushStrength{100.0f};
 };
-struct TagStatic
-{
+
+struct CharacterControllerRuntimeComponent {
+    JPH::CharacterVirtual* character{nullptr};
+    float verticalVelocity{0.0f};
+    glm::vec3 prevPos{0.0f};
+    glm::vec3 currentPos{0.0f};
+    glm::vec3 pendingMove{0.0f};
+    bool pendingJump{false};
 };
-struct TagPlayer
-{
+
+struct WeaponComponent {
+    float fireRate{10.0f};
+    float maxRange{100.0f};
 };
+
+struct WeaponRuntimeComponent {
+    float timeSinceLastShot{0.0f};
+    bool wantsToFire{false};
+};
+
+struct TagActive {};
+struct TagStatic {};
+struct TagPlayer {};
+
 } // namespace Cthulhu::Scene
