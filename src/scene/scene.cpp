@@ -46,6 +46,34 @@ flecs::entity Scene::createEntity(const std::string &name)
     return entity;
 }
 
+std::optional<flecs::entity> Scene::createEntityWithId(EntityId id,const std::string& name)
+{
+    if (!id.isValid())
+    {
+        return std::nullopt;
+    }
+
+    if (entityLookup.contains(id))
+    {
+        Log::Print("ATTEMPTED TO CREATE ENTITY WITH DUPLICATE ID: " + entityIdToString(id),"Scene",LogType::LOG_ERROR);
+        return std::nullopt;
+    }
+
+    auto entity =world.entity();
+
+    entity.set<EntityIdentityComponent>({id});
+    entity.set<NameComponent>({name.empty() ? "Entity" : name});
+    entity.set(TransformComponent{});
+
+    if (!registerEntity(id,entity))
+    {
+        entity.destruct();
+        return std::nullopt;
+    }
+
+    return entity;
+}
+
 bool Scene::destroyEntity(EntityId id)
 {
     auto entity = findEntity(id);

@@ -3,6 +3,9 @@
 #include <cstddef>
 #include <cstdint>
 #include <functional>
+#include <optional>
+#include <string>
+#include <string_view>
 
 namespace Cthulhu::Scene
 {
@@ -11,8 +14,7 @@ namespace Cthulhu::Scene
         uint64_t high{};
         uint64_t low{};
 
-        [[nodiscard]]
-        constexpr bool isValid() const noexcept
+        [[nodiscard]] constexpr bool isValid() const noexcept
         {
             return high != 0 || low != 0;
         }
@@ -30,7 +32,9 @@ namespace Cthulhu::Scene
             return seed;
         }
     };
+    
+    [[nodiscard]] EntityId generateEntityId();
+    [[nodiscard]] std::string entityIdToString(EntityId id);
+    [[nodiscard]] std::optional<EntityId> entityIdFromString(std::string_view value);
 
-    [[nodiscard]]
-    EntityId generateEntityId();
 }

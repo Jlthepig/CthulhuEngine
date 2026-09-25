@@ -26,7 +26,14 @@ bool SceneLoader::load(const std::string &path, Scene &scene, Cthulhu::Physics::
     // build entities from parsed information
     for (auto &parsedEntity : parsed->entities)
     {
-        auto e = scene.createEntity(parsedEntity.name);
+        auto entity = scene.createEntityWithId(parsedEntity.id, parsedEntity.name);
+        if (!entity)
+        {
+            Log::Print("FAILED TO CREATE ENTITY FROM SCENE: " + entityIdToString(parsedEntity.id),"SceneLoader",LogType::LOG_ERROR);
+            return false;
+        }
+
+        auto e = *entity;
 
         auto &transform = e.ensure<TransformComponent>();
         transform.position = parsedEntity.position;
@@ -97,6 +104,26 @@ bool SceneLoader::load(const std::string &path, Scene &scene, Cthulhu::Physics::
             e.add<TagPlayer>();
 
         e.add<TagActive>();
+    }
+
+    for (const auto &parsedEntity : parsed->entities)
+    {
+        if (!parsedEntity.parentId)
+        {
+            continue;
+        }
+
+        if (!scene.isEntityAlive(*parsedEntity.parentId))
+        {
+            Log::Print("ENTITY REFERENCES MISSING PARENT: " + entityIdToString(*parsedEntity.parentId),"SceneLoader",LogType::LOG_ERROR);
+            return false;
+        }
+
+        if (!scene.setParent(parsedEntity.id, *parsedEntity.parentId))
+        {
+            Log::Print("FAILED TO RESTORE ENTITY HIERARCHY","SceneLoader",LogType::LOG_ERROR);
+            return false;
+        }
     }
 
     scene.setDirectionalLight(parsed->directionalLight);

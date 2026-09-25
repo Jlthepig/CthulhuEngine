@@ -4,11 +4,12 @@
 #include <string>
 #include <vector>
 
+#include "entityId.hpp"
 #include "light.hpp"
 namespace Cthulhu::Scene
 {
 
-inline constexpr uint32_t SCENE_FORMAT_VERSION = 1;
+inline constexpr uint32_t SCENE_FORMAT_VERSION = 2;
 struct ParsedAudio
 {
     std::string file;
@@ -36,14 +37,20 @@ struct ParsedWeapon
 };
 struct ParsedEntity
 {
+    EntityId id;
+    std::optional<EntityId> parentId;
+
     std::string name;
+
     glm::vec3 position = glm::vec3(0.0f);
     glm::vec3 rotation = glm::vec3(0.0f);
     glm::vec3 scale = glm::vec3(1.0f);
+
     std::optional<ParsedPhysics> physics;
     std::optional<ParsedWeapon>  weapon;
     std::optional<ParsedAudio>   audio;
     std::optional<ParsedMesh>    mesh;
+
     bool player = false;
 };
 

@@ -68,6 +68,7 @@ class Scene
 
     // << entity management >>
     flecs::entity createEntity(const std::string &name = "Entity");
+    [[nodiscard]] std::optional<flecs::entity> createEntityWithId(EntityId id, const std::string& name);
 
     [[nodiscard]] std::optional<flecs::entity> findEntity(EntityId id) const;
     [[nodiscard]] bool isEntityAlive(EntityId id) const;

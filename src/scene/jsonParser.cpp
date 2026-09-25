@@ -1,4 +1,5 @@
 #include <string>
+#include <unordered_set>
 
 #include <simdjson.h>
 
@@ -47,12 +48,7 @@ std::optional<ParsedScene> JsonParser::parseScene(const std::string &path)
     auto doc = parser.iterate(json);
     ParsedScene result;
 
-    auto nameResult = doc["name"].get_string();
-    if (nameResult.error())
-    {
-        Log::Print("SCENE FILE MUST CONTAIN A NAME name: " + path, "SceneParser", LogType::LOG_ERROR);
-        return std::nullopt;
-    }
+    // << version >>
 
     auto versionResult = doc["format_version"].get_int64();
     if (versionResult.error())
@@ -68,13 +64,62 @@ std::optional<ParsedScene> JsonParser::parseScene(const std::string &path)
         return std::nullopt;
     }
 
-    result.name = nameResult.value();
     result.formatVersion = static_cast<uint32_t>(version);
 
-    // entities
+    auto nameResult = doc["name"].get_string();
+    if (nameResult.error())
+    {
+        Log::Print("SCENE FILE MUST CONTAIN A NAME name: " + path, "SceneParser", LogType::LOG_ERROR);
+        return std::nullopt;
+    }
+
+    result.name = nameResult.value();
+
+    // << entities >>
+    std::unordered_set<EntityId, EntityIdHash> parsedEntityIds;
     for (auto entityJson : doc["entities"].get_array())
     {
         ParsedEntity entity;
+
+        auto idResult = entityJson["id"].get_string();
+        if (idResult.error())
+        {
+            Log::Print("ENTITY IS MISSING ID","JsonParser",LogType::LOG_ERROR);
+            return std::nullopt;
+        }
+
+        auto parsedId = entityIdFromString(idResult.value());
+        if (!parsedId)
+        {
+            Log::Print("ENTITY HAS INVALID ID","JsonParser",LogType::LOG_ERROR);
+            return std::nullopt;
+        }
+        entity.id = *parsedId;
+
+        if (!parsedEntityIds.insert(entity.id).second)
+        {
+            Log::Print("SCENE CONTAINS DUPLICATE ENTITY ID: " +entityIdToString(entity.id),"JsonParser",LogType::LOG_ERROR);
+            return std::nullopt;
+        }
+
+        auto parentResult =entityJson["parent"].get_string();
+        if (!parentResult.error())
+        {
+            auto parsedParent =entityIdFromString(parentResult.value());
+            if (!parsedParent)
+            {
+                Log::Print("ENTITY HAS INVALID PARENT ID","JsonParser",LogType::LOG_ERROR);
+                return std::nullopt;
+            }
+
+            if (*parsedParent == entity.id)
+            {
+                Log::Print("ENTITY CANNOT BE ITS OWN PARENT","JsonParser",LogType::LOG_ERROR);
+                return std::nullopt;
+            }
+
+            entity.parentId = *parsedParent;
+        }
 
         auto name = entityJson["name"].get_string();
         if (name.error())

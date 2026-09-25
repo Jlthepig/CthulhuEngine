@@ -1,6 +1,7 @@
 #include <fstream>
 #include <iomanip>
 #include <sstream>
+#include <unordered_set>
 
 #include "jsonWriter.hpp"
 #include "components.hpp"
@@ -157,19 +158,47 @@ bool SceneWriter::writeScene(const Scene &scene, const std::string &path)
 
     w.key("entities");
     w.beginArray();
-    scene.getWorld().each([&](flecs::entity e, const TransformComponent &transform) {
+    
+    bool valid = true;
+
+    std::unordered_set<EntityId, EntityIdHash> writtenIds;
+    scene.getWorld().each([&](flecs::entity e, const EntityIdentityComponent &identity, const NameComponent &name, const TransformComponent &transform) {
+        if (!identity.id.isValid())
+        {
+            Log::Print("CANNOT SAVE ENTITY WITH INVALID ID","SceneWriter",LogType::LOG_ERROR);
+            valid = false;
+            return;
+        }
+
+        if (!writtenIds.insert(identity.id).second)
+        {
+            Log::Print("CANNOT SAVE SCENE WITH DUPLICATE ENTITY IDs","SceneWriter",LogType::LOG_ERROR);
+            valid = false;
+            return;
+        }
+
         w.commaArr();
         w.beginObject();
 
+        w.key("id");
+        w.value(entityIdToString(identity.id));
+
         w.key("name");
-        if (const auto *name = e.try_get<NameComponent>())
+        w.value(name.name);
+
+        auto parentId = scene.getParent(identity.id);
+        if (parentId)
         {
-            w.value(name->name);
+            if (!scene.isEntityAlive(*parentId))
+            {
+                valid = false;
+                return;
+            }
+
+            w.key("parent");
+            w.value(entityIdToString(*parentId));
         }
-        else
-        {
-            w.value("Entity");
-        }
+
         w.vec3("position", transform.position);
         w.vec3("rotation", transform.rotation);
         w.vec3("scale", transform.scale);
@@ -234,6 +263,12 @@ bool SceneWriter::writeScene(const Scene &scene, const std::string &path)
 
         w.endObject();
     });
+
+    if (!valid)
+    {
+        return false;
+    }
+
     w.endArray();
 
     const auto &dir = scene.getDirectionalLight();
