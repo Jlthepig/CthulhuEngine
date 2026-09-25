@@ -80,6 +80,8 @@ class Scene
     [[nodiscard]] std::optional<EntityId> getParent(EntityId childId) const;
     [[nodiscard]] std::vector<EntityId> getChildren(EntityId parentId) const;
 
+    [[nodiscard]] std::optional<EntityId> duplicateEntity(EntityId sourceId);
+
     void clear();
 
     // << asset lighting >> 
@@ -140,6 +142,10 @@ class Scene
     [[nodiscard]] bool shouldCreateHierarchyCycle(flecs::entity child, flecs::entity newParent) const;
     
     void collectSubtreeEntityIds(flecs::entity entity, std::vector<EntityId>& ids) const;
+
+    [[nodiscard]] std::optional<EntityId> duplicateEntityRecursive(flecs::entity sourceEntity, std::optional<EntityId> parentId); 
+    
+    void copyAuthoringComponents(flecs::entity sourceEntity, flecs::entity destinationEntity);
 
     [[nodiscard]]
     EntityId generateUniqueEntityId() const;

@@ -8,6 +8,22 @@ using KalaHeaders::KalaLog::LogType;
 namespace Cthulhu::Scene
 {
 
+namespace 
+{
+
+template <typename T, typename CopyFn>
+void copyIfPresent(flecs::entity source, flecs::entity destination, CopyFn&& copyFn)
+{
+    if (const auto* src = source.try_get<T>())
+    {
+        T dst{};
+        copyFn(*src, dst);
+        destination.set(dst);
+    }
+}
+
+} // namespace
+
 // << entity management >>
 flecs::entity Scene::createEntity(const std::string &name)
 {
@@ -263,6 +279,167 @@ void Scene::collectSubtreeEntityIds(flecs::entity entity,std::vector<EntityId>& 
     {
         ids.push_back(entity.get<EntityIdentityComponent>().id);
     }
+}
+
+void Scene::copyAuthoringComponents(flecs::entity source,flecs::entity destination)
+{
+    copyIfPresent<TransformComponent>(source, destination,[](const TransformComponent& src, TransformComponent& dst)
+    {
+        dst.position = src.position;
+        dst.rotation = src.rotation;
+        dst.scale = src.scale;
+        dst.matrixDirty = true;
+    });
+
+    copyIfPresent<MeshComponent>(source, destination,[](const MeshComponent& src, MeshComponent& dst)
+    {
+        dst.model = src.model;
+        dst.modelPath = src.modelPath;
+        dst.boundsMin = src.boundsMin;
+        dst.boundsMax = src.boundsMax;
+    });
+
+    copyIfPresent<PhysicsComponent>(source, destination,[](const PhysicsComponent& src, PhysicsComponent& dst)
+    {
+        dst.type = src.type;
+        dst.halfExtent = src.halfExtent;
+        dst.mass = src.mass;
+
+        // Runtime state deliberately NOT copied.
+        dst.bodyId = 0;
+        dst.hasBody = false;
+    });
+
+    if (const auto* physics = source.try_get<PhysicsComponent>())
+    {
+        if (physics->type == "static")
+        {
+            destination.add<TagStatic>();
+        }
+    }
+
+    copyIfPresent<WeaponComponent>(source, destination,[](const WeaponComponent& src, WeaponComponent& dst)
+    {
+        dst.firerate = src.firerate;
+        dst.maxRange = src.maxRange;
+
+        // Runtime state stays at defaults:
+        // timeSinceLastShot = 0
+        // wantsToFire = false
+    });
+
+    copyIfPresent<AudioSourceComponent>(source, destination,[](const AudioSourceComponent& src, AudioSourceComponent& dst)
+    {
+        dst.filePath = src.filePath;
+        dst.volume = src.volume;
+        dst.loop = src.loop;
+
+        // Runtime state remains default on purpose.
+    });
+
+    copyIfPresent<CameraComponent>(source, destination,[](const CameraComponent& src, CameraComponent& dst)
+    {
+        dst.front = src.front;
+    });
+
+    if (source.has<TagPlayer>())
+    {
+        destination.add<TagPlayer>();
+    }
+}
+
+std::optional<EntityId> Scene::duplicateEntityRecursive(flecs::entity source,std::optional<EntityId> parentId)
+{
+    if (!source.is_alive())
+    {
+        return std::nullopt;
+    }
+
+    const auto* sourceName =source.try_get<NameComponent>();
+
+    const std::string name = sourceName ? sourceName->name : "Entity";
+
+    flecs::entity duplicate = createEntity(name);
+
+    const auto* identity = duplicate.try_get<EntityIdentityComponent>();
+
+    if (!identity)
+    {
+        duplicate.destruct();
+        return std::nullopt;
+    }
+
+    const EntityId duplicateId = identity->id;
+
+    copyAuthoringComponents(source, duplicate);
+
+    if (parentId)
+    {
+        if (!setParent(duplicateId,*parentId))
+        {
+            destroyEntity(duplicateId);
+            return std::nullopt;
+        }
+    }
+
+    bool success = true;
+
+    source.children([&](flecs::entity sourceChild)
+        {
+            if (!success)
+            {
+                return;
+            }
+
+            if (!sourceChild.has<EntityIdentityComponent>())
+            {
+                Log::Print("ENTITY HIERARCHY CHILD HAS NO ENTITY ID","Scene",LogType::LOG_ERROR);
+                success = false;
+                return;
+            }
+
+            if (!duplicateEntityRecursive(sourceChild,duplicateId))
+            {
+                success = false;
+            }
+        });
+
+    if (!success)
+    {
+        destroyEntity(duplicateId);
+        return std::nullopt;
+    }
+
+    return duplicateId;
+}
+
+std::optional<EntityId> Scene::duplicateEntity(EntityId sourceId)
+{
+    auto source = findEntity(sourceId);
+
+    if (!source)
+    {
+        return std::nullopt;
+    }
+
+    const bool wasDirty =isDirty();
+    const std::optional<EntityId> parentId = getParent(sourceId);
+
+    auto duplicateId = duplicateEntityRecursive(*source,parentId);
+
+    if (!duplicateId)
+    {
+        if (!wasDirty)
+        {
+            markClean();
+        }
+
+        Log::Print("FAILED TO DUPLICATE ENTITY","Scene",LogType::LOG_ERROR);
+        return std::nullopt;
+    }
+
+    markDirty();
+    return duplicateId;
 }
 
 // << asset lighting >> 
