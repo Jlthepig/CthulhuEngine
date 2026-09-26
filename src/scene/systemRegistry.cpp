@@ -6,6 +6,7 @@
 #include "components.hpp"
 #include "engine.hpp"
 #include "physics.hpp"
+#include "characterController.hpp"
 #include "systemRegistry.hpp"
 
 namespace Cthulhu::Scene
@@ -18,11 +19,6 @@ namespace
         if (!entity.has<PhysicsComponent>() || !entity.has<TransformComponent>())
         {
             return false;
-        }
-
-        if (entity.has<PhysicsRuntimeComponent>())
-        {
-            return true;
         }
 
         const auto &physics = entity.get<PhysicsComponent>();
@@ -50,7 +46,21 @@ namespace
             return false;
         }
 
-        entity.set(PhysicsRuntimeComponent{.bodyId = bodyId});
+        if (entity.has<PhysicsRuntimeComponent>())
+        {
+            auto& runtime = entity.get_mut<PhysicsRuntimeComponent>();
+
+            if (runtime.bodyId != 0)
+            {
+                engine->getPhysicsWorld().removeBody(runtime.bodyId);
+            }
+
+            runtime.bodyId = bodyId;
+        }
+        else 
+        {
+            entity.set(PhysicsRuntimeComponent{.bodyId = bodyId});
+        }
         return true;
     }
 } // namespace
@@ -58,7 +68,7 @@ namespace
 void RegisterCoreSystems(flecs::world &world, Cthulhu::Engine *engineContext)
 {
     // << physics >>
-    world.observer<PhysicsComponent>("PhysicsCreateObserver")
+    world.observer<PhysicsComponent>("PhysicsRuntimeCreateObserver")
         .event(flecs::OnSet)
         .each([engineContext](flecs::entity entity, PhysicsComponent &)
         {
@@ -85,7 +95,31 @@ void RegisterCoreSystems(flecs::world &world, Cthulhu::Engine *engineContext)
             transform.matrixDirty = true;
         });
 
+    world.observer<PhysicsComponent>("PhysicsRuntimeRemoveObserver")
+        .event(flecs::OnRemove)
+        .each([](flecs::entity entity, PhysicsComponent &)
+        {
+            entity.remove<PhysicsRuntimeComponent>();
+        });
+
+    world.observer<PhysicsRuntimeComponent>("PhysicsCleanupObserver")
+        .event(flecs::OnRemove)
+        .each([engineContext](flecs::entity, PhysicsRuntimeComponent &runtime)
+        {
+            if (runtime.bodyId != 0)
+            {
+                engineContext->getPhysicsWorld().removeBody(runtime.bodyId);
+            }
+        });
+
     // << character >>
+    world.observer<CharacterControllerComponent>("CharacterControllerRuntimeCreateObserver")
+        .event(flecs::OnSet)
+        .each([engineContext](flecs::entity entity, CharacterControllerComponent &)
+        {
+            Physics::CharacterController::createRuntime(entity, engineContext->getPhysicsWorld());
+        });
+
     world.system<CharacterControllerRuntimeComponent, TransformComponent>("CharacterInterpolationSystem")
         .each([engineContext](CharacterControllerRuntimeComponent &runtime, TransformComponent &transform)
         {
@@ -93,6 +127,24 @@ void RegisterCoreSystems(flecs::world &world, Cthulhu::Engine *engineContext)
 
             transform.position = glm::mix(runtime.prevPos, runtime.currentPos, alpha);
             transform.matrixDirty = true;
+        });
+
+    world.observer<CharacterControllerComponent>("CharacterControllerRuntimeRemoveObserver")
+        .event(flecs::OnRemove)
+        .each([](flecs::entity entity, CharacterControllerComponent &)
+        {
+            if (entity.has<CharacterControllerRuntimeComponent>())
+            {
+                entity.remove<CharacterControllerRuntimeComponent>();
+            }
+        });
+
+    world.observer<CharacterControllerRuntimeComponent>("CharacterControllerCleanupObserver")
+        .event(flecs::OnRemove)
+        .each([](flecs::entity, CharacterControllerRuntimeComponent &runtime)
+        {
+            delete runtime.character;
+            runtime.character = nullptr;
         });
 
     // << transform >>
@@ -174,6 +226,13 @@ void RegisterCoreSystems(flecs::world &world, Cthulhu::Engine *engineContext)
             runtime.wantsToFire = false;
         });
 
+    world.observer<WeaponComponent>("WeaponRuntimeRemoveObserver")
+        .event(flecs::OnRemove)
+        .each([](flecs::entity entity, WeaponComponent &)
+        {
+            entity.remove<WeaponRuntimeComponent>();
+        });
+
     // << audio >>
     world.observer<AudioSourceComponent>("AudioRuntimeCreateObserver")
         .event(flecs::OnSet)
@@ -233,52 +292,11 @@ void RegisterCoreSystems(flecs::world &world, Cthulhu::Engine *engineContext)
             }
         });
 
-    // << lifecycle removal observers >>
-    world.observer<PhysicsComponent>("PhysicsRuntimeRemoveObserver")
-        .event(flecs::OnRemove)
-        .each([](flecs::entity entity, PhysicsComponent &)
-        {
-            entity.remove<PhysicsRuntimeComponent>();
-        });
-
-    world.observer<WeaponComponent>("WeaponRuntimeRemoveObserver")
-        .event(flecs::OnRemove)
-        .each([](flecs::entity entity, WeaponComponent &)
-        {
-            entity.remove<WeaponRuntimeComponent>();
-        });
-
     world.observer<AudioSourceComponent>("AudioRuntimeRemoveObserver")
         .event(flecs::OnRemove)
         .each([](flecs::entity entity, AudioSourceComponent &)
         {
             entity.remove<AudioSourceRuntimeComponent>();
-        });
-
-    world.observer<CharacterControllerComponent>("CharacterControllerRuntimeRemoveObserver")
-        .event(flecs::OnRemove)
-        .each([](flecs::entity entity, CharacterControllerComponent &)
-        {
-            entity.remove<CharacterControllerRuntimeComponent>();
-        });
-
-    // << cleanup observers >>
-    world.observer<PhysicsRuntimeComponent>("PhysicsCleanupObserver")
-        .event(flecs::OnRemove)
-        .each([engineContext](flecs::entity, PhysicsRuntimeComponent &runtime)
-        {
-            if (runtime.bodyId != 0)
-            {
-                engineContext->getPhysicsWorld().removeBody(runtime.bodyId);
-            }
-        });
-
-    world.observer<CharacterControllerRuntimeComponent>("CharacterControllerCleanupObserver")
-        .event(flecs::OnRemove)
-        .each([](flecs::entity, CharacterControllerRuntimeComponent &runtime)
-        {
-            delete runtime.character;
-            runtime.character = nullptr;
         });
 
     world.observer<AudioSourceRuntimeComponent>("AudioCleanupObserver")

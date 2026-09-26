@@ -14,25 +14,39 @@ using KalaHeaders::KalaLog::Log;
 using KalaHeaders::KalaLog::LogType;
 namespace Cthulhu::Physics
 {
-void CharacterController::create(flecs::entity e, glm::vec3 startPosition, const CharacterConfig &config,
-                                 PhysicsWorld &physicsWorld)
+
+bool CharacterController::createRuntime(flecs::entity entity, PhysicsWorld &physicsWorld)
 {
-    JPH::PhysicsSystem *physicsSystem = physicsWorld.getPhysicsSystem();
+    if (!entity.has<Scene::CharacterControllerComponent>() || !entity.has<Scene::TransformComponent>())
+    {
+        return false;
+    }
+
+    JPH::PhysicsSystem* physicsSystem = physicsWorld.getPhysicsSystem();
     if (!physicsSystem)
-        return;
+    {
+        return false;
+    }
+
+    const auto& config = entity.get<Scene::CharacterControllerComponent>();
+    const auto& transform = entity.get<Scene::TransformComponent>();
 
     JPH::CapsuleShapeSettings capsuleSettings(config.capsuleHeight * 0.5f, config.capsuleRadius);
+
     auto capsuleShape = capsuleSettings.Create();
     if (capsuleShape.HasError())
-        return;
+    {
+        return false;
+    }
 
-    JPH::RotatedTranslatedShapeSettings offsetSettings(
-        JPH::Vec3(0.0f, config.capsuleRadius + config.capsuleHeight * 0.5f, 0.0f), JPH::Quat::sIdentity(),
-        capsuleShape.Get());
+    JPH::RotatedTranslatedShapeSettings offsetSettings(JPH::Vec3(0.0f, config.capsuleRadius + config.capsuleHeight * 0.5f, 0.0f), 
+    JPH::Quat::sIdentity(), capsuleShape.Get());
 
     auto offsetShape = offsetSettings.Create();
     if (offsetShape.HasError())
-        return;
+    {
+        return false;
+    }
 
     JPH::CharacterVirtualSettings settings;
     settings.mMaxSlopeAngle = JPH::DegreesToRadians(config.maxWalkableSlope);
@@ -41,44 +55,50 @@ void CharacterController::create(flecs::entity e, glm::vec3 startPosition, const
     settings.mUp = JPH::Vec3::sAxisY();
     settings.mCharacterPadding = 0.02f;
 
-    JPH::CharacterVirtual *character =
-        new JPH::CharacterVirtual(&settings, JPH::RVec3(startPosition.x, startPosition.y, startPosition.z),
-                                  JPH::Quat::sIdentity(), physicsSystem);
-    Scene::CharacterControllerComponent cc;
-    cc.character = character;
-    cc.prevPos = startPosition;
-    cc.currentPos = startPosition;
-    e.set(cc);
-    Log::Print("Character Controller created for entity", "CharacterController", LogType::LOG_SUCCESS);
+    auto* character = new JPH::CharacterVirtual(&settings, JPH::RVec3(transform.position.x, transform.position.y, transform.position.z), 
+    JPH::Quat::sIdentity(), physicsSystem);
+
+    if (entity.has<Scene::CharacterControllerRuntimeComponent>())
+    {
+        auto& oldRuntime = entity.get_mut<Scene::CharacterControllerRuntimeComponent>();
+
+        delete oldRuntime.character;
+        oldRuntime.character = nullptr;
+    }
+
+    Scene::CharacterControllerRuntimeComponent runtime;
+    runtime.character = character;
+    runtime.prevPos = transform.position;
+    runtime.currentPos = transform.position;
+
+    entity.set(runtime);
+    return true;
 }
 
-void CharacterController::teleport(flecs::entity e, const glm::vec3 &pos)
+void CharacterController::teleport(flecs::entity entity, const glm::vec3 &position)
 {
-    if (!e.has<Scene::CharacterControllerComponent>())
+    if (!entity.has<Scene::CharacterControllerRuntimeComponent>())
+    {
         return;
-    auto &cc = e.get_mut<Scene::CharacterControllerComponent>();
-    if (cc.character)
-    {
-        cc.character->SetPosition(JPH::RVec3(pos.x, pos.y, pos.z));
     }
-    cc.prevPos = pos;
-    cc.currentPos = pos;
-    cc.verticalVelocity = 0.0f;
+
+    auto& runtime = entity.get_mut<Scene::CharacterControllerRuntimeComponent>();
+
+    if(runtime.character)
+    {
+        runtime.character->SetPosition(JPH::RVec3(position.x,position.y,position.z));
+    }
+    runtime.prevPos = position;
+    runtime.currentPos = position;
+    runtime.verticalVelocity = 0.0f;
 }
 
-void CharacterController::destroy(flecs::entity e)
+void CharacterController::destroyRuntime(flecs::entity entity)
 {
-    if (e.has<Scene::CharacterControllerComponent>())
+    if (entity.has<Scene::CharacterControllerRuntimeComponent>())
     {
-        auto &cc = e.get_mut<Scene::CharacterControllerComponent>();
-        if (cc.character)
-        {
-            delete cc.character;
-            cc.character = nullptr;
-        }
-
-        e.remove<Scene::CharacterControllerComponent>();
-        Log::Print("Character Controller destroyed for entity", "CharacterController", LogType::LOG_SUCCESS);
+        entity.remove<Scene::CharacterControllerRuntimeComponent>();
     }
 }
+
 } // namespace Cthulhu::Physics
