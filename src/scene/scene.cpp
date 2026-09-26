@@ -144,7 +144,7 @@ bool Scene::renameEntity(EntityId id, std::string_view newName)
 
 EntityId Scene::generateUniqueEntityId() const
 {
-    EntityId id;
+    EntityId id = generateEntityId();
     while (entityLookup.contains(id))
     {
         id = generateEntityId();
@@ -374,6 +374,10 @@ std::optional<EntityId> Scene::duplicateEntityRecursive(flecs::entity source,std
     const std::string name = sourceName ? sourceName->name : "Entity";
 
     flecs::entity duplicate = createEntity(name);
+    if (!duplicate.is_alive())
+    {
+        return std::nullopt;
+    }
 
     const auto* identity = duplicate.try_get<EntityIdentityComponent>();
 

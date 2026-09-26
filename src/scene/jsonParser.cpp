@@ -272,14 +272,25 @@ std::optional<ParsedScene> JsonParser::parseScene(const std::string &path)
     }
 
     auto dirLightJson = dirLightResult.value();
-    auto directionResult = dirLightJson["direction"].get_array();
-    auto colorResult = dirLightJson["color"].get_array();
-    auto intensityResult = dirLightJson["intensity"].get_double();
 
-    if (directionResult.error() || colorResult.error() || intensityResult.error() || !readVec3(directionResult.value(), result.directionalLight.direction) ||
-        !readVec3(colorResult.value(), result.directionalLight.color))
+    auto directionResult = dirLightJson["direction"].get_array();
+    if (directionResult.error() || !readVec3(directionResult.value(), result.directionalLight.direction))
     {
-        Log::Print("INVALID DIRECTIONAL LIGHT DATA", "JsonParser", LogType::LOG_ERROR);
+        Log::Print("INVALID DIRECTIONAL LIGHT DIRECTION", "JsonParser", LogType::LOG_ERROR);
+        return std::nullopt;
+    }
+
+    auto colorResult = dirLightJson["color"].get_array();
+    if (colorResult.error() || !readVec3(colorResult.value(), result.directionalLight.color))
+    {
+        Log::Print("INVALID DIRECTIONAL LIGHT COLOR", "JsonParser", LogType::LOG_ERROR);
+        return std::nullopt;
+    }
+
+    auto intensityResult = dirLightJson["intensity"].get_double();
+    if (intensityResult.error())
+    {
+        Log::Print("INVALID DIRECTIONAL LIGHT INTENSITY", "JsonParser", LogType::LOG_ERROR);
         return std::nullopt;
     }
 
@@ -306,27 +317,39 @@ std::optional<ParsedScene> JsonParser::parseScene(const std::string &path)
         Rendering::PointLight light;
 
         auto positionResult = lightJson["position"].get_array();
+        if (positionResult.error() || !readVec3(positionResult.value(), light.position))
+        {
+            Log::Print("INVALID POINT LIGHT POSITION", "JsonParser", LogType::LOG_ERROR);
+            return std::nullopt;
+        }
+
         auto colorResult = lightJson["color"].get_array();
-        auto intensityResult = lightJson["intensity"].get_double();
-        auto radiusResult = lightJson["radius"]->get_double();
+        if (colorResult.error() || !readVec3(colorResult.value(), light.color))
+        {
+            Log::Print("INVALID POINT LIGHT COLOR", "JsonParser", LogType::LOG_ERROR);
+            return std::nullopt;
+        }
 
-        auto constantResult = lightJson["constant"].get_double();
-        auto linearResult = lightJson["linear"].get_double();
-        auto quadraticResult = lightJson["quadratic"].get_double();
+        auto readFloat = [&](std::string_view key, float& out, bool required) -> bool
+        {
+            auto value = lightJson[key].get_double();
+            if (value.error())
+            {
+                return !required;
+            }
+            out = static_cast<float>(value.value());
+            return true;
+        };
 
-        if (positionResult.error() || colorResult.error() || intensityResult.error() || radiusResult.error() || constantResult.error() ||
-            linearResult.error() || quadraticResult.error() || !readVec3(positionResult.value(), light.position) || 
-            !readVec3(colorResult.value(), light.color))
+        if (!readFloat("intensity", light.intensity, true) ||
+            !readFloat("radius", light.radius, false) ||
+            !readFloat("constant", light.constant, true) ||
+            !readFloat("linear", light.linear, true) ||
+            !readFloat("quadratic", light.quadratic, true))
         {
             Log::Print("INVALID POINT LIGHT DATA", "JsonParser", LogType::LOG_ERROR);
             return std::nullopt;
         }
-
-        light.intensity = static_cast<float>(intensityResult.value());
-        light.radius = static_cast<float>(radiusResult.value());
-        light.constant = static_cast<float>(constantResult.value());
-        light.linear = static_cast<float>(linearResult.value());
-        light.quadratic = static_cast<float>(quadraticResult.value());
 
         result.pointLights.push_back(light);
     }
