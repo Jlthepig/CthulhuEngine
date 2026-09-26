@@ -35,6 +35,17 @@ struct ParsedWeapon
     float firerate = 10.0f;
     float maxRange = 100.0f;
 };
+
+struct ParsedCharacterController
+{
+    float gravity = -9.81f;
+    float jumpVelocity = 5.0f;
+    float capsuleRadius = 0.3f;
+    float capsuleHeight = 2.0f;
+    float maxWalkableSlope = 45.0f;
+    float maxPushStrength = 100.0f;
+};
+
 struct ParsedEntity
 {
     EntityId id;
@@ -50,6 +61,7 @@ struct ParsedEntity
     std::optional<ParsedWeapon>  weapon;
     std::optional<ParsedAudio>   audio;
     std::optional<ParsedMesh>    mesh;
+    std::optional<ParsedCharacterController> characterController;
 
     bool player = false;
 };

@@ -222,7 +222,15 @@ bool SceneWriter::writeScene(const Scene &scene, const std::string &path)
             w.key("physics");
             w.beginObject();
             w.key("type");
-            w.value(p.type);
+            switch (p.type)
+            {
+                case PhysicsBodyType::Static:
+                    w.value(std::string("static"));
+                    break;
+                case PhysicsBodyType::Dynamic:
+                    w.value(std::string("dynamic"));
+                    break;
+            }
             w.vec3("half_extent", p.halfExtent);
             w.key("mass");
             w.value(p.mass);
@@ -235,9 +243,29 @@ bool SceneWriter::writeScene(const Scene &scene, const std::string &path)
             w.key("weapon");
             w.beginObject();
             w.key("firerate");
-            w.value(wp.firerate);
+            w.value(wp.fireRate);
             w.key("maxrange");
             w.value(wp.maxRange);
+            w.endObject();
+        }
+
+        if (e.has<CharacterControllerComponent>())
+        {
+            const auto& controller = e.get<CharacterControllerComponent>();
+            w.key("character_controller");
+            w.beginObject();
+            w.key("gravity");
+            w.value(controller.gravity);
+            w.key("jump_velocity");
+            w.value(controller.jumpVelocity);
+            w.key("capsule_radius");
+            w.value(controller.capsuleRadius);
+            w.key("capsule_height");
+            w.value(controller.capsuleHeight);
+            w.key("max_walkable_slope");
+            w.value(controller.maxWalkableSlope);
+            w.key("max_push_strength");
+            w.value(controller.maxPushStrength);
             w.endObject();
         }
 

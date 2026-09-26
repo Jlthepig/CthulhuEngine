@@ -2,7 +2,6 @@
 
 #include <string>
 
-#include "physics.hpp"
 #include "scene.hpp"
 namespace Cthulhu::Project
 {
@@ -13,7 +12,6 @@ namespace Cthulhu::Scene
 class SceneLoader
 {
   public:
-    static bool load(const std::string &path, Scene &scene, Cthulhu::Physics::PhysicsWorld &physicsWorld,
-                     const Project::Project &project);
+    static bool load(const std::string &path, Scene &scene, const Project::Project &project);
 };
 } // namespace Cthulhu::Scene

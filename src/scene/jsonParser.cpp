@@ -228,6 +228,34 @@ std::optional<ParsedScene> JsonParser::parseScene(const std::string &path)
             entity.audio = a;
         }
 
+        auto characterControllerResult = entityJson["character_controller"].get_object();
+        if (!characterControllerResult.error())
+        {
+            auto controllerJson = characterControllerResult.value();
+            ParsedCharacterController controller;
+
+            auto gravity = controllerJson["gravity"].get_double();
+            if (!gravity.error())
+                controller.gravity = static_cast<float>(gravity.value());
+            auto jumpVelocity = controllerJson["jump_velocity"].get_double();
+            if (!jumpVelocity.error())
+                controller.jumpVelocity = static_cast<float>(jumpVelocity.value());
+            auto capsuleRadius = controllerJson["capsule_radius"].get_double();
+            if (!capsuleRadius.error())
+                controller.capsuleRadius = static_cast<float>(capsuleRadius.value());
+            auto capsuleHeight = controllerJson["capsule_height"].get_double();
+            if (!capsuleHeight.error())
+                controller.capsuleHeight = static_cast<float>(capsuleHeight.value());
+            auto maxWalkableSlope = controllerJson["max_walkable_slope"].get_double();
+            if (!maxWalkableSlope.error())
+                controller.maxWalkableSlope = static_cast<float>(maxWalkableSlope.value());
+            auto maxPushStrength = controllerJson["max_push_strength"].get_double();
+            if (!maxPushStrength.error())
+                controller.maxPushStrength = static_cast<float>(maxPushStrength.value());
+
+            entity.characterController = controller;
+        }
+
         auto playerVal = entityJson["player"].get_bool();
         if (!playerVal.error())
             entity.player = playerVal.value();

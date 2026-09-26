@@ -1,7 +1,6 @@
 #include "sceneLoader.hpp"
 #include "components.hpp"
 #include "jsonParser.hpp"
-#include "physics.hpp"
 #include "project.hpp"
 #include "log_utils.hpp"
 
@@ -9,8 +8,7 @@ using KalaHeaders::KalaLog::Log;
 using KalaHeaders::KalaLog::LogType;
 namespace Cthulhu::Scene
 {
-bool SceneLoader::load(const std::string &path, Scene &scene, Cthulhu::Physics::PhysicsWorld &physicsWorld,
-                       const Cthulhu::Project::Project &project)
+bool SceneLoader::load(const std::string &path, Scene &scene, const Cthulhu::Project::Project &project)
 {
     auto parsed = JsonParser::parseScene(path); // the parsed information provided by the json parser
     if (!parsed.has_value())
@@ -45,11 +43,11 @@ bool SceneLoader::load(const std::string &path, Scene &scene, Cthulhu::Physics::
         {
             const auto& parsedMesh = *parsedEntity.mesh;
 
-            auto& mesh = e.ensure<MeshComponent>();
-
+            MeshComponent mesh;
             mesh.modelPath = parsedMesh.modelPath;
             mesh.boundsMin = parsedMesh.boundsMin;
             mesh.boundsMax = parsedMesh.boundsMax;
+            e.set(mesh);
 
             auto resolvedModelPath = project.resolveResourcePath(mesh.modelPath);
             if (!resolvedModelPath)
@@ -59,34 +57,39 @@ bool SceneLoader::load(const std::string &path, Scene &scene, Cthulhu::Physics::
                 continue;
             }
 
-            mesh.model = scene.getOrLoadModel(mesh.modelPath, *resolvedModelPath);
+            MeshRuntimeComponent runtime;
+            runtime.model = scene.getOrLoadModel(mesh.modelPath, *resolvedModelPath);
+            e.set(runtime);
         }
 
-        // create physics body if there
-        if (parsedEntity.physics.has_value())
+        if (parsedEntity.physics)
         {
-            auto &p = parsedEntity.physics.value();
-            auto &phys = e.ensure<PhysicsComponent>();
-            phys.hasBody = true;
-            phys.type = p.type;
-            phys.halfExtent = p.halfExtent;
-            phys.mass = p.mass;
+            const auto& parsedPhysics = *parsedEntity.physics;
+            PhysicsComponent physics;
+            physics.halfExtent = parsedPhysics.halfExtent;
+            physics.mass = parsedPhysics.mass;
 
-            if (p.type == "static")
+            if (parsedPhysics.type == "static")
             {
-                phys.bodyId = physicsWorld.addStaticBox(parsedEntity.position, p.halfExtent);
-                e.add<TagStatic>();
+                physics.type = PhysicsBodyType::Static;
             }
-            else if (p.type == "dynamic")
+            else if (parsedPhysics.type == "dynamic")
             {
-                phys.bodyId = physicsWorld.addDynamicBox(parsedEntity.position, p.halfExtent, p.mass);
+                physics.type = PhysicsBodyType::Dynamic;
             }
+            else
+            {
+                Log::Print("UNKNOWN PHYSICS BODY TYPE", "SceneLoader", LogType::LOG_ERROR);
+                return false;
+            }
+
+            e.set(physics);
         }
 
         if (parsedEntity.weapon.has_value())
         {
             WeaponComponent w;
-            w.firerate = parsedEntity.weapon->firerate;
+            w.fireRate = parsedEntity.weapon->firerate;
             w.maxRange = parsedEntity.weapon->maxRange;
             e.set(w);
         }
@@ -98,6 +101,19 @@ bool SceneLoader::load(const std::string &path, Scene &scene, Cthulhu::Physics::
             a.volume = parsedEntity.audio->volume;
             a.loop = parsedEntity.audio->loop;
             e.set(a);
+        }
+
+        if (parsedEntity.characterController)
+        {
+            const auto& parsedController = *parsedEntity.characterController;
+            CharacterControllerComponent controller;
+            controller.gravity = parsedController.gravity;
+            controller.jumpVelocity = parsedController.jumpVelocity;
+            controller.capsuleRadius = parsedController.capsuleRadius;
+            controller.capsuleHeight = parsedController.capsuleHeight;
+            controller.maxWalkableSlope = parsedController.maxWalkableSlope;
+            controller.maxPushStrength = parsedController.maxPushStrength;
+            e.set(controller);
         }
 
         if (parsedEntity.player)

@@ -319,51 +319,37 @@ void Scene::copyAuthoringComponents(flecs::entity source,flecs::entity destinati
         dst.matrixDirty = true;
     });
 
-    copyIfPresent<MeshComponent>(source, destination,[](const MeshComponent& src, MeshComponent& dst)
+    if (const auto* component = source.try_get<MeshComponent>())
     {
-        dst.model = src.model;
-        dst.modelPath = src.modelPath;
-        dst.boundsMin = src.boundsMin;
-        dst.boundsMax = src.boundsMax;
-    });
+        destination.set(*component);
 
-    copyIfPresent<PhysicsComponent>(source, destination,[](const PhysicsComponent& src, PhysicsComponent& dst)
-    {
-        dst.type = src.type;
-        dst.halfExtent = src.halfExtent;
-        dst.mass = src.mass;
-
-        // Runtime state deliberately NOT copied.
-        dst.bodyId = 0;
-        dst.hasBody = false;
-    });
-
-    if (const auto* physics = source.try_get<PhysicsComponent>())
-    {
-        if (physics->type == "static")
+        if (const auto* sourceRuntime = source.try_get<MeshRuntimeComponent>())
         {
-            destination.add<TagStatic>();
+            MeshRuntimeComponent runtime;
+            runtime.model = sourceRuntime->model;
+            destination.set(runtime);
         }
     }
 
-    copyIfPresent<WeaponComponent>(source, destination,[](const WeaponComponent& src, WeaponComponent& dst)
+    if (const auto* component = source.try_get<PhysicsComponent>())
     {
-        dst.firerate = src.firerate;
-        dst.maxRange = src.maxRange;
+        destination.set(*component);
+    }
 
-        // Runtime state stays at defaults:
-        // timeSinceLastShot = 0
-        // wantsToFire = false
-    });
-
-    copyIfPresent<AudioSourceComponent>(source, destination,[](const AudioSourceComponent& src, AudioSourceComponent& dst)
+    if (const auto* component = source.try_get<WeaponComponent>())
     {
-        dst.filePath = src.filePath;
-        dst.volume = src.volume;
-        dst.loop = src.loop;
+        destination.set(*component);
+    }
 
-        // Runtime state remains default on purpose.
-    });
+    if (const auto* component = source.try_get<AudioSourceComponent>())
+    {
+        destination.set(*component);
+    }
+
+    if (const auto* component = source.try_get<CharacterControllerComponent>())
+    {
+        destination.set(*component);
+    }
 
     copyIfPresent<CameraComponent>(source, destination,[](const CameraComponent& src, CameraComponent& dst)
     {

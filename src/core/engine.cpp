@@ -254,7 +254,7 @@ bool Engine::loadScene(std::string_view resourcePath)
     }
 
     auto newScene = createSceneInstance();
-    if (!Scene::SceneLoader::load(resolvedPath->string(), *newScene, physicsWorld, *project))
+    if (!Scene::SceneLoader::load(resolvedPath->string(), *newScene, *project))
     {
         Log::Print("FAILED TO LOAD SCENE: " + std::string(resourcePath), "ENGINE", LogType::LOG_ERROR);
         return false;
@@ -385,43 +385,46 @@ void Engine::processFixedUpdate(float fixedDt)
         return;
     }
 
-    activeScene->getWorld().each(
-        [fixedDt, this]([[maybe_unused]] flecs::entity e, Scene::CharacterControllerComponent &cc) {
-            if (!cc.character)
-                return;
+    activeScene->getWorld().each([fixedDt, this](const Scene::CharacterControllerComponent& config, Scene::CharacterControllerRuntimeComponent& runtime)
+    {
+        if (!runtime.character)
+        {
+            return;
+        }
 
-            JPH::RVec3 joltPos = cc.character->GetPosition();
-            cc.prevPos = glm::vec3(joltPos.GetX(), joltPos.GetY(), joltPos.GetZ());
+        JPH::RVec3 charPos = runtime.character->GetPosition();
+        runtime.prevPos = glm::vec3(charPos.GetX(), charPos.GetY(), charPos.GetZ());
 
-            bool isOnGround = cc.character->GetGroundState() == JPH::CharacterBase::EGroundState::OnGround;
-            float gravity = -9.81f;
-            float jumpVel = 5.0f;
+        const bool isOnGround = runtime.character->GetGroundState() == JPH::CharacterBase::EGroundState::OnGround;
 
-            if (isOnGround)
+        if (isOnGround)
+        {
+            runtime.verticalVelocity = 0.0f;
+            if (runtime.pendingJump)
             {
-                cc.verticalVelocity = 0.0f;
-                if (cc.pendingJump)
-                    cc.verticalVelocity = jumpVel;
+                runtime.verticalVelocity = config.jumpVelocity;
             }
-            else
-            {
-                cc.verticalVelocity += gravity * fixedDt;
-            }
+        }
+        else
+        {
+            runtime.verticalVelocity += config.gravity * fixedDt;
+        }
 
-            JPH::Vec3 velocity(cc.pendingMove.x, cc.verticalVelocity, cc.pendingMove.z);
-            cc.character->SetLinearVelocity(velocity);
+        const JPH::Vec3 velocity(runtime.pendingMove.x, runtime.verticalVelocity, runtime.pendingMove.z);
 
-            JPH::CharacterVirtual::ExtendedUpdateSettings s;
-            cc.character->ExtendedUpdate(fixedDt, JPH::Vec3(0, gravity, 0), s,
-                                         physicsWorld.getPhysicsSystem()->GetDefaultBroadPhaseLayerFilter(1), // MOVING
-                                         physicsWorld.getPhysicsSystem()->GetDefaultLayerFilter(1), {}, {},
-                                         *physicsWorld.getTempAllocator());
+        runtime.character->SetLinearVelocity(velocity);
 
-            joltPos = cc.character->GetPosition();
-            cc.currentPos = glm::vec3(joltPos.GetX(), joltPos.GetY(), joltPos.GetZ());
+        JPH::CharacterVirtual::ExtendedUpdateSettings settings;
 
-            cc.pendingJump = false;
-        });
+        runtime.character->ExtendedUpdate(fixedDt, JPH::Vec3(0.0f, config.gravity, 0.0f), settings,
+            physicsWorld.getPhysicsSystem()->GetDefaultBroadPhaseLayerFilter(1),
+            physicsWorld.getPhysicsSystem()->GetDefaultLayerFilter(1), {}, {}, *physicsWorld.getTempAllocator());
+
+        charPos = runtime.character->GetPosition();
+
+        runtime.currentPos = glm::vec3(charPos.GetX(), charPos.GetY(), charPos.GetZ());
+        runtime.pendingJump = false;
+    });
 }
 
 void Engine::applySimStateToSystems()
@@ -519,10 +522,10 @@ void Engine::run()
             if (activeScene)
             {
                 activeScene->getWorld().each(
-                    [&](flecs::entity e, const Scene::TransformComponent &transform, const Scene::MeshComponent &mesh) {
-                        if (e.has<Scene::TagActive>() && mesh.model)
+                    [&](flecs::entity e, const Scene::TransformComponent &transform, const Scene::MeshComponent &mesh, const Scene::MeshRuntimeComponent& meshRuntime) {
+                        if (e.has<Scene::TagActive>() && meshRuntime.model)
                         {
-                            frameRenderables.push_back({mesh.model, transform.cachedModelMatrix,
+                            frameRenderables.push_back({meshRuntime.model, transform.cachedModelMatrix,
                                                         transform.cachedNormalMatrix, mesh.boundsMin, mesh.boundsMax});
                         }
                     });

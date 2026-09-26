@@ -94,7 +94,6 @@ struct WeaponRuntimeComponent {
 };
 
 struct TagActive {};
-struct TagStatic {};
 struct TagPlayer {};
 
 } // namespace Cthulhu::Scene
