@@ -12,6 +12,7 @@ class Audio
     static uint32_t playSound2D(const std::string &filePath, float volume = 1.0f, bool loop = false);
     static void stopSound(uint32_t soundId);
     static size_t getActiveSoundCount();
+    static bool isSoundActive(uint32_t soundId);
 
   private:
     static uint32_t nextInstanceId;

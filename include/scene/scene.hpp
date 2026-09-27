@@ -87,6 +87,7 @@ class Scene
 
     // << asset lighting >> 
     Rendering::Model *getOrLoadModel(const std::string &resourcePath, const std::filesystem::path &fileSystemPath);
+    [[nodiscard]] Rendering::Model *findCachedModel(const std::string &resourcePath);
 
     void setDirectionalLight(const Rendering::DirectionalLight &light)
     {

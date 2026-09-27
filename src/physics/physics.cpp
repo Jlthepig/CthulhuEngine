@@ -156,6 +156,10 @@ uint32_t PhysicsWorld::addStaticBox(glm::vec3 position, glm::vec3 halfExtent)
                                            JPH::Quat::sIdentity(), JPH::EMotionType::Static, ObjectLayers::NON_MOVING);
 
     JPH::BodyID bodyId = bodyInterface.CreateAndAddBody(bodySettings, JPH::EActivation::DontActivate);
+    if (bodyId.IsInvalid())
+    {
+        return 0;
+    }
     return bodyId.GetIndexAndSequenceNumber();
 }
 

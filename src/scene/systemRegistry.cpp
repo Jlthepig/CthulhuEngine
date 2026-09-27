@@ -46,21 +46,15 @@ namespace
             return false;
         }
 
-        if (entity.has<PhysicsRuntimeComponent>())
+        if (const auto* oldRuntime = entity.try_get<PhysicsRuntimeComponent>())
         {
-            auto& runtime = entity.get_mut<PhysicsRuntimeComponent>();
-
-            if (runtime.bodyId != 0)
+            if (oldRuntime->bodyId != 0)
             {
-                engine->getPhysicsWorld().removeBody(runtime.bodyId);
+                engine->getPhysicsWorld().removeBody(oldRuntime->bodyId);
             }
+        }
 
-            runtime.bodyId = bodyId;
-        }
-        else 
-        {
-            entity.set(PhysicsRuntimeComponent{.bodyId = bodyId});
-        }
+        entity.set(PhysicsRuntimeComponent{.bodyId = bodyId});
         return true;
     }
 } // namespace
@@ -72,11 +66,6 @@ void RegisterCoreSystems(flecs::world &world, Cthulhu::Engine *engineContext)
         .event(flecs::OnSet)
         .each([engineContext](flecs::entity entity, PhysicsComponent &)
         {
-            if (entity.has<PhysicsRuntimeComponent>())
-            {
-                entity.remove<PhysicsRuntimeComponent>();
-            }
-
             createPhysicsRuntime(entity, engineContext);
         });
 
@@ -143,7 +132,7 @@ void RegisterCoreSystems(flecs::world &world, Cthulhu::Engine *engineContext)
         .event(flecs::OnRemove)
         .each([](flecs::entity, CharacterControllerRuntimeComponent &runtime)
         {
-            delete runtime.character;
+            Physics::CharacterController::destroyCharacter(runtime.character);
             runtime.character = nullptr;
         });
 
@@ -247,6 +236,12 @@ void RegisterCoreSystems(flecs::world &world, Cthulhu::Engine *engineContext)
     world.system<const AudioSourceComponent, AudioSourceRuntimeComponent>("AudioSystem")
         .each([engineContext](const AudioSourceComponent &source, AudioSourceRuntimeComponent &runtime)
         {
+            if (runtime.isPlaying && !Core::Audio::isSoundActive(runtime.soundInstanceId))
+            {
+                runtime.isPlaying = false;
+                runtime.soundInstanceId = 0;
+            }
+
             if (runtime.playRequested)
             {
                 if (runtime.isPlaying && runtime.soundInstanceId != 0)

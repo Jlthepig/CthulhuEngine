@@ -92,4 +92,9 @@ size_t Audio::getActiveSoundCount()
     return activeSounds.size();
 }
 
+bool Audio::isSoundActive(uint32_t instanceId)
+{
+    return activeSounds.contains(instanceId);
+}
+
 }; // namespace Cthulhu::Core

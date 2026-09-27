@@ -300,6 +300,8 @@ void Engine::activateScene(std::unique_ptr<Scene::Scene> newScene)
     renderer.setPointLights(activeScene->getPointLights());
 
     frameRenderables.clear();
+    
+    applySimStateToSystems();
 }
 
 void Engine::unloadScene()

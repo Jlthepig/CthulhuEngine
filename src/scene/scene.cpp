@@ -34,6 +34,7 @@ flecs::entity Scene::createEntity(const std::string &name)
     entity.set<EntityIdentityComponent>({id});
     entity.set<NameComponent>({name.empty() ? "Entity" : name});
     entity.set<TransformComponent>({});
+    entity.add<TagActive>();
 
     if (!registerEntity(id, entity))
     {
@@ -64,6 +65,7 @@ std::optional<flecs::entity> Scene::createEntityWithId(EntityId id,const std::st
     entity.set<EntityIdentityComponent>({id});
     entity.set<NameComponent>({name.empty() ? "Entity" : name});
     entity.set(TransformComponent{});
+    entity.add<TagActive>();
 
     if (!registerEntity(id,entity))
     {
@@ -323,11 +325,9 @@ void Scene::copyAuthoringComponents(flecs::entity source,flecs::entity destinati
     {
         destination.set(*component);
 
-        if (const auto* sourceRuntime = source.try_get<MeshRuntimeComponent>())
+        if (auto* model = findCachedModel(component->modelPath))
         {
-            MeshRuntimeComponent runtime;
-            runtime.model = sourceRuntime->model;
-            destination.set(runtime);
+            destination.set(MeshRuntimeComponent{model});
         }
     }
 
@@ -461,6 +461,12 @@ std::optional<EntityId> Scene::duplicateEntity(EntityId sourceId)
 }
 
 // << asset lighting >> 
+Rendering::Model *Scene::findCachedModel(const std::string &resourcePath)
+{
+    auto it = modelCache.find(resourcePath);
+    return it != modelCache.end() ? &it->second : nullptr;
+}
+
 Rendering::Model *Scene::getOrLoadModel(const std::string &resourcePath, const std::filesystem::path &fileSystemPath)
 {
     auto it = modelCache.find(resourcePath);

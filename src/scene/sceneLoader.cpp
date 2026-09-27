@@ -49,17 +49,16 @@ bool SceneLoader::load(const std::string &path, Scene &scene, const Cthulhu::Pro
             mesh.boundsMax = parsedMesh.boundsMax;
             e.set(mesh);
 
-            auto resolvedModelPath = project.resolveResourcePath(mesh.modelPath);
-            if (!resolvedModelPath)
+            if (auto resolvedModelPath = project.resolveResourcePath(mesh.modelPath))
             {
-                Log::Print("FAILED TO RESOLVE MODEL RESOURCE: " + mesh.modelPath, "SceneLoader",
-                           LogType::LOG_ERROR);
-                continue;
+                MeshRuntimeComponent runtime;
+                runtime.model = scene.getOrLoadModel(mesh.modelPath, *resolvedModelPath);
+                e.set(runtime);
             }
-
-            MeshRuntimeComponent runtime;
-            runtime.model = scene.getOrLoadModel(mesh.modelPath, *resolvedModelPath);
-            e.set(runtime);
+            else
+            {
+                Log::Print("FAILED TO RESOLVE MODEL RESOURCE: " + mesh.modelPath, "SceneLoader",LogType::LOG_ERROR);
+            }
         }
 
         if (parsedEntity.physics)
@@ -118,8 +117,6 @@ bool SceneLoader::load(const std::string &path, Scene &scene, const Cthulhu::Pro
 
         if (parsedEntity.player)
             e.add<TagPlayer>();
-
-        e.add<TagActive>();
     }
 
     for (const auto &parsedEntity : parsed->entities)
