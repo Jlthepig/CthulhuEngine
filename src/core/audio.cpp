@@ -86,4 +86,10 @@ void Audio::stopSound(uint32_t instanceId)
         activeSounds.erase(it);
     }
 }
+
+size_t Audio::getActiveSoundCount()
+{
+    return activeSounds.size();
+}
+
 }; // namespace Cthulhu::Core

@@ -15,6 +15,11 @@ using KalaHeaders::KalaLog::LogType;
 namespace Cthulhu::Physics
 {
 
+namespace
+{
+int liveCharacterCount = 0;
+}
+
 bool CharacterController::createRuntime(flecs::entity entity, PhysicsWorld &physicsWorld)
 {
     if (!entity.has<Scene::CharacterControllerComponent>() || !entity.has<Scene::TransformComponent>())
@@ -58,11 +63,13 @@ bool CharacterController::createRuntime(flecs::entity entity, PhysicsWorld &phys
     auto* character = new JPH::CharacterVirtual(&settings, JPH::RVec3(transform.position.x, transform.position.y, transform.position.z), 
     JPH::Quat::sIdentity(), physicsSystem);
 
+    ++liveCharacterCount;
+
     if (entity.has<Scene::CharacterControllerRuntimeComponent>())
     {
         auto& oldRuntime = entity.get_mut<Scene::CharacterControllerRuntimeComponent>();
 
-        delete oldRuntime.character;
+        destroyCharacter(oldRuntime.character);
         oldRuntime.character = nullptr;
     }
 
@@ -99,6 +106,22 @@ void CharacterController::destroyRuntime(flecs::entity entity)
     {
         entity.remove<Scene::CharacterControllerRuntimeComponent>();
     }
+}
+
+void CharacterController::destroyCharacter(JPH::CharacterVirtual* character)
+{
+    if (!character)
+    {
+        return;
+    }
+
+    delete character;
+    --liveCharacterCount;
+}
+
+int CharacterController::getLiveCharacterCount()
+{
+    return liveCharacterCount;
 }
 
 } // namespace Cthulhu::Physics

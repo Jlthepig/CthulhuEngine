@@ -5,6 +5,10 @@ namespace flecs
 {
 struct entity;
 }
+namespace JPH
+{
+class CharacterVirtual;
+}
 namespace Cthulhu::Physics
 {
 class PhysicsWorld;
@@ -20,6 +24,9 @@ public:
     static void destroyRuntime(flecs::entity entity);
 
     static void teleport(flecs::entity entity,const glm::vec3& position);
+
+    static void destroyCharacter(JPH::CharacterVirtual* character);
+    static int getLiveCharacterCount();
 };
 
 } // namespace Cthulhu::Physics

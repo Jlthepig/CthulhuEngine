@@ -243,6 +243,11 @@ BodyTransform PhysicsWorld::getBodyTransform(uint32_t bodyIdValue)
     return result;
 }
 
+uint32_t PhysicsWorld::getBodyCount() const
+{
+    return physicsSystem ? physicsSystem->GetNumBodies() : 0;
+}
+
 void PhysicsWorld::removeBody(uint32_t bodyIdValue)
 {
     if (!physicsSystem || bodyIdValue == 0)
