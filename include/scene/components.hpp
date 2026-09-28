@@ -1,8 +1,11 @@
 #pragma once
 #include <cstdint>
 #include <string>
+
 #include <glm.hpp>
+
 #include "entityId.hpp"
+#include "assetHandle.hpp"
 
 namespace Cthulhu::Rendering { struct Model; }
 namespace JPH { class CharacterVirtual; }
@@ -50,7 +53,7 @@ struct MeshComponent {
 };
 
 struct MeshRuntimeComponent {
-    Rendering::Model* model{nullptr};
+    Assets::ModelHandle model{};
 };
 
 enum class PhysicsBodyType : uint8_t { Static, Dynamic };

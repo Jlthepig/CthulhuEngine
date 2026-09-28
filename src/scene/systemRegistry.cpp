@@ -61,6 +61,28 @@ namespace
 
 void RegisterCoreSystems(flecs::world &world, Cthulhu::Engine *engineContext)
 {
+    // << mesh >>
+    world.observer<MeshComponent>("MeshRuntimeCreateObserver")
+        .event(flecs::OnSet)
+        .each([engineContext](flecs::entity entity, MeshComponent &mesh)
+        {
+            const Assets::ModelHandle handle = engineContext->getAssetManager().loadModel(mesh.modelPath);
+            if (!handle.isValid())
+            {
+                entity.remove<MeshRuntimeComponent>();
+                return;
+            }
+
+            entity.set(MeshRuntimeComponent{handle});
+        });
+    
+    world.observer<MeshComponent>("MeshRuntimeRemoveObserver")
+        .event(flecs::OnRemove)
+        .each([](flecs::entity entity, MeshComponent &)
+        {
+            entity.remove<MeshRuntimeComponent>();
+        });
+
     // << physics >>
     world.observer<PhysicsComponent>("PhysicsRuntimeCreateObserver")
         .event(flecs::OnSet)

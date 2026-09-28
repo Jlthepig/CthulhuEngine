@@ -86,9 +86,6 @@ class Scene
     void clear();
 
     // << asset lighting >> 
-    Rendering::Model *getOrLoadModel(const std::string &resourcePath, const std::filesystem::path &fileSystemPath);
-    [[nodiscard]] Rendering::Model *findCachedModel(const std::string &resourcePath);
-
     void setDirectionalLight(const Rendering::DirectionalLight &light)
     {
         directionalLight = light;
@@ -136,7 +133,6 @@ class Scene
 
     Rendering::DirectionalLight directionalLight;
     std::vector<Rendering::PointLight> pointLights;
-    std::unordered_map<std::string, Rendering::Model> modelCache;
 
     bool registerEntity(EntityId id, flecs::entity entity);
     void unregisterEntity(EntityId id);

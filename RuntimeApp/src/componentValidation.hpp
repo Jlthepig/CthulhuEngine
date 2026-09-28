@@ -211,7 +211,8 @@ inline void validateMeshAndDuplication(Engine& engine, CS::Scene& scene, Results
     {
         ++meshCount;
         const auto* rt = e.try_get<CS::MeshRuntimeComponent>();
-        if (!rt || !rt->model || rt->model->meshes.empty())
+        const auto* model = rt ? engine.getAssetManager().getModel(rt->model) : nullptr;
+        if (!model || model->meshes.empty())
         {
             allValid = false;
         }
@@ -237,7 +238,7 @@ inline void validateMeshAndDuplication(Engine& engine, CS::Scene& scene, Results
             const auto* dupMesh = dup ? dup->try_get<CS::MeshComponent>() : nullptr;
             const auto* dupRt = dup ? dup->try_get<CS::MeshRuntimeComponent>() : nullptr;
             check(r, srcMesh && dupMesh && srcMesh->modelPath == dupMesh->modelPath, "11 duplicate copies mesh authoring data");
-            check(r, dupRt && dupRt->model, "11 duplicate has a runtime model");
+            check(r, dupRt && engine.getAssetManager().getModel(dupRt->model), "11 duplicate has a runtime model");
             check(r, dup && dup->has<CS::TagActive>(), "11 duplicate is active/renderable");
             scene.destroyEntity(*dupId);
         }
@@ -444,17 +445,17 @@ inline void validateShutdown(Engine& engine, Results& r)
 inline void validateAssetManager(Engine& engine, Results& r)
 {
     auto& assets = engine.getAssetManager();
-    const size_t base = assets.getLoadedModelCount();
 
     auto a = assets.loadModel("res://assets/models/Floor.glb");
+    const size_t afterFirst = assets.getLoadedModelCount();
     auto b = assets.loadModel("res://assets/models/../models/Floor.glb");
     check(r, a.isValid() && a == b, "A1 same model via different paths -> same handle");
-    check(r, assets.getLoadedModelCount() == base + 1, "A1 model loaded exactly once");
+    check(r, assets.getLoadedModelCount() == afterFirst, "A1 repeat load does not load again");
     check(r, assets.getModel(a) && !assets.getModel(a)->meshes.empty(), "A1 handle resolves to model");
 
     auto missing = assets.loadModel("res://assets/models/missing.glb");
     check(r, !missing.isValid() && !assets.getModel(missing), "A2 missing model -> invalid handle");
-    check(r, assets.getLoadedModelCount() == base + 1, "A2 failed load caches nothing");
+    check(r, assets.getLoadedModelCount() == afterFirst, "A2 failed load caches nothing");
 
     auto stale = a;
     stale.generation += 1;

@@ -2,6 +2,10 @@
 
 #include <cstdint>
 
+namespace Cthulhu::Rendering
+{
+struct Model;
+}
 namespace Cthulhu::Assets
 {
     template <typename T>
@@ -17,4 +21,6 @@ namespace Cthulhu::Assets
 
         friend constexpr bool operator==(const AssetHandle & , const AssetHandle &) noexcept = default;
     };
+
+    using ModelHandle = AssetHandle<Rendering::Model>;
 }

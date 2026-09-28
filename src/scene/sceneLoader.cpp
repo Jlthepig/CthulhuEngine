@@ -8,7 +8,7 @@ using KalaHeaders::KalaLog::Log;
 using KalaHeaders::KalaLog::LogType;
 namespace Cthulhu::Scene
 {
-bool SceneLoader::load(const std::string &path, Scene &scene, const Cthulhu::Project::Project &project)
+bool SceneLoader::load(const std::string &path, Scene &scene, [[maybe_unused]] const Cthulhu::Project::Project &project)
 {
     auto parsed = JsonParser::parseScene(path); // the parsed information provided by the json parser
     if (!parsed.has_value())
@@ -48,17 +48,6 @@ bool SceneLoader::load(const std::string &path, Scene &scene, const Cthulhu::Pro
             mesh.boundsMin = parsedMesh.boundsMin;
             mesh.boundsMax = parsedMesh.boundsMax;
             e.set(mesh);
-
-            if (auto resolvedModelPath = project.resolveResourcePath(mesh.modelPath))
-            {
-                MeshRuntimeComponent runtime;
-                runtime.model = scene.getOrLoadModel(mesh.modelPath, *resolvedModelPath);
-                e.set(runtime);
-            }
-            else
-            {
-                Log::Print("FAILED TO RESOLVE MODEL RESOURCE: " + mesh.modelPath, "SceneLoader",LogType::LOG_ERROR);
-            }
         }
 
         if (parsedEntity.physics)

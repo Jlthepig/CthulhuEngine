@@ -324,11 +324,6 @@ void Scene::copyAuthoringComponents(flecs::entity source,flecs::entity destinati
     if (const auto* component = source.try_get<MeshComponent>())
     {
         destination.set(*component);
-
-        if (auto* model = findCachedModel(component->modelPath))
-        {
-            destination.set(MeshRuntimeComponent{model});
-        }
     }
 
     if (const auto* component = source.try_get<PhysicsComponent>())
@@ -460,44 +455,11 @@ std::optional<EntityId> Scene::duplicateEntity(EntityId sourceId)
     return duplicateId;
 }
 
-// << asset lighting >> 
-Rendering::Model *Scene::findCachedModel(const std::string &resourcePath)
-{
-    auto it = modelCache.find(resourcePath);
-    return it != modelCache.end() ? &it->second : nullptr;
-}
-
-Rendering::Model *Scene::getOrLoadModel(const std::string &resourcePath, const std::filesystem::path &fileSystemPath)
-{
-    auto it = modelCache.find(resourcePath);
-    if (it != modelCache.end())
-    {
-        Log::Print("Resuing model from cache: " + resourcePath, "Scene", LogType::LOG_INFO);
-        return &it->second;
-    }
-    else
-    {
-        Log::Print("Loading model from file: " + resourcePath, "Scene", LogType::LOG_INFO);
-        auto model = Rendering::ModelLoader::loadGltf(fileSystemPath.string());
-        if (!model)
-        {
-            return nullptr;
-        }
-        modelCache[resourcePath] = std::move(*model);
-        return &modelCache[resourcePath];
-    }
-}
-
 void Scene::clear()
 {
     world.delete_with<TransformComponent>();
     entityLookup.clear();
     
-    for (auto &[path, model] : modelCache)
-    {
-        model.destroy();
-    }
-    modelCache.clear();
     nextId = 0;
 
     directionalLight = Rendering::DirectionalLight{};

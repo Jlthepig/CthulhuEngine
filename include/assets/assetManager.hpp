@@ -19,8 +19,6 @@ class Project;
 
 namespace Cthulhu::Assets
 {
-    using ModelHandle = AssetHandle<Rendering::Model>;
-
     [[nodiscard]] std::optional<std::string> normaliseResourcePath(std::string_view resourcePath);
 
     class AssetManager

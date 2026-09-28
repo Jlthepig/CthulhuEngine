@@ -527,13 +527,21 @@ void Engine::run()
             if (activeScene)
             {
                 activeScene->getWorld().each(
-                    [&](flecs::entity e, const Scene::TransformComponent &transform, const Scene::MeshComponent &mesh, const Scene::MeshRuntimeComponent& meshRuntime) {
-                        if (e.has<Scene::TagActive>() && meshRuntime.model)
-                        {
-                            frameRenderables.push_back({meshRuntime.model, transform.cachedModelMatrix,
-                                                        transform.cachedNormalMatrix, mesh.boundsMin, mesh.boundsMax});
-                        }
-                    });
+            [&](flecs::entity e, const Scene::TransformComponent &transform, const Scene::MeshComponent &mesh, const Scene::MeshRuntimeComponent& meshRuntime) {
+                    if (!e.has<Scene::TagActive>())
+                    {
+                        return;
+                    }
+
+                    Rendering::Model *model = assetManager.getModel(meshRuntime.model);
+                    if (!model)
+                    {
+                        return;
+                    }
+
+                    frameRenderables.push_back({model, transform.cachedModelMatrix,
+                                                transform.cachedNormalMatrix, mesh.boundsMin, mesh.boundsMax});
+                });
             }
 
             renderer.render(fbw, fbh, deltaTime, frameRenderables);
