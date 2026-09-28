@@ -60,6 +60,7 @@ bool Engine::init(const std::filesystem::path &projectFilePath)
     }
 
     project = std::move(*openedProject);
+    assetManager.setProject(&*project);
 
     const auto &projectConfig = project->getConfig();
 
@@ -190,6 +191,8 @@ void Engine::shutdown()
     raycastContext = nullptr;
 
     unloadScene();
+
+    assetManager.shutdown();
 
     if (rendererInitialized)
     {

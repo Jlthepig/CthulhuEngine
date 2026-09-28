@@ -6,8 +6,10 @@
 #include <string_view>
 #include <vector>
 
+
 #include "physics.hpp"
 #include "project.hpp"
+#include "assetManager.hpp"
 #include "renderer.hpp"
 
 struct GLFWwindow;
@@ -104,6 +106,10 @@ class Engine
     {
         return physicsWorld;
     }
+    Assets::AssetManager &getAssetManager()
+    {
+        return assetManager;
+    }
 
     Scene::Scene *getActiveScene()
     {
@@ -136,6 +142,7 @@ class Engine
 
     Rendering::Renderer renderer;
     Physics::PhysicsWorld physicsWorld;
+    Assets::AssetManager assetManager;
 
     Scene::Camera *camera = nullptr;
     Core::Window *window = nullptr;

@@ -1,5 +1,9 @@
+#include <string_view>
+
 #include "engine.hpp"
 #include "log_utils.hpp"
+
+#include "componentValidation.hpp"
 
 using KalaHeaders::KalaLog::Log;
 using KalaHeaders::KalaLog::LogType;
@@ -56,6 +60,12 @@ int main(int argc, char* argv[])
     {
         Log::Print("FAILED TO LOAD PROJECT MAIN SCENE", "Runtime",LogType::LOG_ERROR);
         return 1;
+    }
+
+    if (argc >= 3 && std::string_view(argv[2]) == "--validate")
+    {
+        const int failures = Cthulhu::Validation::run(engine);
+        return failures == 0 ? 0 : 1;
     }
 
     engine.run();

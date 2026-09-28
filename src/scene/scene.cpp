@@ -478,8 +478,12 @@ Rendering::Model *Scene::getOrLoadModel(const std::string &resourcePath, const s
     else
     {
         Log::Print("Loading model from file: " + resourcePath, "Scene", LogType::LOG_INFO);
-        Rendering::Model model = Rendering::ModelLoader::loadGltf(fileSystemPath.string());
-        modelCache[resourcePath] = std::move(model);
+        auto model = Rendering::ModelLoader::loadGltf(fileSystemPath.string());
+        if (!model)
+        {
+            return nullptr;
+        }
+        modelCache[resourcePath] = std::move(*model);
         return &modelCache[resourcePath];
     }
 }

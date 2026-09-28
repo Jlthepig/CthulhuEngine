@@ -22,7 +22,7 @@ using KalaHeaders::KalaLog::LogType;
 
 namespace Cthulhu::Rendering
 {
-Model ModelLoader::loadGltf(const std::string &path)
+std::optional<Model> ModelLoader::loadGltf(const std::string &path)
 {
     Model model;
 
@@ -31,7 +31,7 @@ Model ModelLoader::loadGltf(const std::string &path)
     if (data.error() != fastgltf::Error::None)
     {
         Log::Print("FAILED TO LOAD GLTF FILE " + path, "ModelLoader", LogType::LOG_ERROR);
-        return model;
+        return std::nullopt;
     }
 
     // create  a parser and parse the raw data/file
@@ -46,7 +46,7 @@ Model ModelLoader::loadGltf(const std::string &path)
     {
         Log::Print("FAILED TO PARSE GLTF " + path + " Error: " + std::string(fastgltf::getErrorMessage(asset.error())),
                    "ModelLoader", LogType::LOG_ERROR);
-        return model;
+        return std::nullopt;
     }
 
     fastgltf::Asset &gltf = asset.get();
@@ -404,6 +404,14 @@ Model ModelLoader::loadGltf(const std::string &path)
             model.meshes.push_back(std::move(newMesh));
         }
     }
+
+    if (model.meshes.empty())
+    {
+        Log::Print("GLTF CONTAINS NO USABLE MESHES: " + path, "Modelloader", LogType::LOG_ERROR);
+        model.destroy();
+        return std::nullopt;
+    }
+
     return model;
 };
 } // namespace Cthulhu::Rendering
