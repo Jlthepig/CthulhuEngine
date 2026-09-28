@@ -138,6 +138,59 @@ const Rendering::Model *AssetManager::getModel(ModelHandle handle) const
     return slot.model.get();
 }
 
+ModelHandle AssetManager::acquireModel(std::string_view resourcePath)
+{
+    const ModelHandle handle = loadModel(resourcePath);
+    if (handle.isValid())
+    {
+        ++modelSlots[handle.index].refCount;
+    }
+    return handle;
+}
+
+void AssetManager::releaseModel(ModelHandle handle)
+{
+    if (!handle.isValid() || handle.index >= modelSlots.size())
+    {
+        return;
+    }
+
+    auto &slot = modelSlots[handle.index];
+    if (slot.generation != handle.generation)
+    {
+        return;
+    }
+
+    if (slot.refCount == 0)
+    {
+        Log::Print("MODEL RELEASED MORE TIMES THAN ACQUIRED: " + slot.resourcePath, "AssetManager", LogType::LOG_ERROR);
+        return;
+    }
+
+    --slot.refCount;
+}
+
+uint32_t AssetManager::getModelRefCount(ModelHandle handle) const
+{
+    if (!handle.isValid() || handle.index >= modelSlots.size())
+    {
+        return 0;
+    }
+
+    const auto &slot = modelSlots[handle.index];
+    return slot.generation == handle.generation ? slot.refCount : 0;
+}
+
+uint32_t AssetManager::getTotalModelRefCount() const noexcept
+{
+    uint32_t total = 0;
+    for (const auto &slot : modelSlots)
+    {
+        total += slot.refCount;
+    }
+    return total;
+}
+
 std::size_t AssetManager::getLoadedModelCount() const noexcept
 {
     return modelIndexByPath.size();

@@ -422,6 +422,7 @@ inline void validateUnload(Engine& engine, Results& r)
     check(r, bodies(engine) == 0, "14 unload -> all Jolt bodies destroyed");
     check(r, characters() == 0, "14 unload -> all CharacterVirtuals destroyed");
     check(r, sounds() == 0, "14 unload -> all sounds stopped");
+    check(r, engine.getAssetManager().getTotalModelRefCount() == 0, "14 unload -> all model references released");
 
     engine.createEmptyScene("Validation");
 }
@@ -541,6 +542,41 @@ inline void validateBadModelInScene(Engine& engine, Results& r)
     check(r, ok, "B5 missing model keeps mesh authoring and all other components");
 }
 
+// ---------------------------------------------------------------- C refcounting
+inline void validateRefCounting(Engine& engine, CS::Scene& scene, Results& r)
+{
+    auto& assets = engine.getAssetManager();
+    const Assets::ModelHandle floor = assets.loadModel("res://assets/models/Floor.glb");
+    const Assets::ModelHandle helmet = assets.loadModel("res://assets/models/DamagedHelmet.glb");
+    const uint32_t floorBase = assets.getModelRefCount(floor);
+    const uint32_t helmetBase = assets.getModelRefCount(helmet);
+
+    flecs::entity a = scene.createEntity("V_RefA");
+    flecs::entity b = scene.createEntity("V_RefB");
+    a.set(CS::MeshComponent{"res://assets/models/Floor.glb"});
+    b.set(CS::MeshComponent{"res://assets/models/Floor.glb"});
+    check(r, assets.getModelRefCount(floor) == floorBase + 2, "C2 two users -> two references");
+
+    a.set(CS::MeshComponent{"res://assets/models/Floor.glb"});
+    check(r, assets.getModelRefCount(floor) == floorBase + 2, "C2 re-setting same path keeps count stable");
+
+    a.set(CS::MeshComponent{"res://assets/models/DamagedHelmet.glb"});
+    check(r, assets.getModelRefCount(floor) == floorBase + 1 &&
+             assets.getModelRefCount(helmet) == helmetBase + 1, "C2 changing modelPath moves the reference");
+
+    a.set(CS::MeshComponent{"res://assets/models/missing.glb"});
+    check(r, assets.getModelRefCount(helmet) == helmetBase, "C2 bad modelPath releases old reference");
+
+    b.remove<CS::MeshComponent>();
+    check(r, assets.getModelRefCount(floor) == floorBase, "C2 remove MeshComponent releases reference");
+
+    b.set(CS::MeshComponent{"res://assets/models/Floor.glb"});
+    scene.destroyEntity(idOf(b));
+    check(r, assets.getModelRefCount(floor) == floorBase, "C2 destroy entity releases reference");
+
+    scene.destroyEntity(idOf(a));
+}
+
 // ---------------------------------------------------------------- entry
 inline int run(Engine& engine)
 {
@@ -562,6 +598,7 @@ inline int run(Engine& engine)
     validateAudio(engine, scene, r);
     validateMeshAndDuplication(engine, scene, r);
     validateMeshLifecycle(engine, scene, r);
+    validateRefCounting(engine, scene, r);
 
     validateSave(engine, r);
     validateLoadAndSwitch(engine, r);

@@ -66,21 +66,35 @@ void RegisterCoreSystems(flecs::world &world, Cthulhu::Engine *engineContext)
         .event(flecs::OnSet)
         .each([engineContext](flecs::entity entity, MeshComponent &mesh)
         {
-            const Assets::ModelHandle handle = engineContext->getAssetManager().loadModel(mesh.modelPath);
+            auto &assetManager = engineContext->getAssetManager();
+
+            const Assets::ModelHandle handle = assetManager.acquireModel(mesh.modelPath);
             if (!handle.isValid())
             {
                 entity.remove<MeshRuntimeComponent>();
                 return;
             }
 
+            if (const auto *oldRuntime  = entity.try_get<MeshRuntimeComponent>())
+            {
+                assetManager.releaseModel(oldRuntime->model);
+            }
+
             entity.set(MeshRuntimeComponent{handle});
         });
-    
+
     world.observer<MeshComponent>("MeshRuntimeRemoveObserver")
         .event(flecs::OnRemove)
         .each([](flecs::entity entity, MeshComponent &)
         {
             entity.remove<MeshRuntimeComponent>();
+        });
+    
+    world.observer<MeshRuntimeComponent>("MeshRuntimeCleanupObserver")
+        .event(flecs::OnRemove)
+        .each([engineContext](flecs::entity, MeshRuntimeComponent &runtime)
+        {
+            engineContext->getAssetManager().releaseModel(runtime.model);
         });
 
     // << physics >>

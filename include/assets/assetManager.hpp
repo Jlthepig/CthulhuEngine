@@ -40,6 +40,14 @@ namespace Cthulhu::Assets
             [[nodiscard]] Rendering::Model *getModel(ModelHandle handle);
             [[nodiscard]] const Rendering::Model *getModel(ModelHandle handle) const;
 
+            // must pair a valid acquire with releaseModel();
+            [[nodiscard]] ModelHandle acquireModel(std::string_view resourcePath);
+
+            void releaseModel(ModelHandle handle);
+
+            [[nodiscard]] uint32_t getModelRefCount(ModelHandle handle) const;
+            [[nodiscard]] uint32_t getTotalModelRefCount() const noexcept;
+
             [[nodiscard]] std::size_t getLoadedModelCount() const noexcept;
 
             void shutdown();
@@ -50,6 +58,7 @@ namespace Cthulhu::Assets
                 std::unique_ptr<Rendering::Model> model;
                 std::string resourcePath;
                 uint32_t generation{};
+                int32_t refCount{};
             };
 
             const Project::Project *project = nullptr;
