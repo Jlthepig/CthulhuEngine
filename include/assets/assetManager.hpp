@@ -50,6 +50,8 @@ namespace Cthulhu::Assets
 
             [[nodiscard]] std::size_t getLoadedModelCount() const noexcept;
 
+            std::size_t collectUnusedModels();
+
             void shutdown();
 
         private:

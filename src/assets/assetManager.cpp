@@ -97,7 +97,7 @@ ModelHandle AssetManager::loadModel(std::string_view resourcePath)
     ModelSlot slot;
     slot.model = std::make_unique<Rendering::Model>(std::move(*loaded));
     slot.resourcePath = *key;
-    slot.generation = 1;
+    slot.generation = {1};
 
     modelSlots.push_back(std::move(slot));
     modelIndexByPath.emplace(*key, index);
@@ -156,7 +156,7 @@ void AssetManager::releaseModel(ModelHandle handle)
     }
 
     auto &slot = modelSlots[handle.index];
-    if (slot.generation != handle.generation)
+    if (slot.generation != handle.generation || !slot.model)
     {
         return;
     }
@@ -183,7 +183,7 @@ uint32_t AssetManager::getModelRefCount(ModelHandle handle) const
 
 uint32_t AssetManager::getTotalModelRefCount() const noexcept
 {
-    uint32_t total = 0;
+    uint32_t total{};
     for (const auto &slot : modelSlots)
     {
         total += slot.refCount;
@@ -194,6 +194,29 @@ uint32_t AssetManager::getTotalModelRefCount() const noexcept
 std::size_t AssetManager::getLoadedModelCount() const noexcept
 {
     return modelIndexByPath.size();
+}
+
+std::size_t AssetManager::collectUnusedModels()
+{
+    std::size_t freed{};
+
+    for (auto &slot : modelSlots)
+    {
+        if (!slot.model || slot.refCount !=0)
+        {
+            continue;
+        }
+
+        slot.model->destroy();
+        slot.model.reset();
+        modelIndexByPath.erase(slot.resourcePath);
+
+        Log::Print("Unloaded model: " + slot.resourcePath, "AssetManager", LogType::LOG_INFO);
+        slot.resourcePath.clear();
+        ++freed;
+    }
+
+    return freed;
 }
 
 void AssetManager::shutdown()

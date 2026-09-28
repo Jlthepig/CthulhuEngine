@@ -423,6 +423,7 @@ inline void validateUnload(Engine& engine, Results& r)
     check(r, characters() == 0, "14 unload -> all CharacterVirtuals destroyed");
     check(r, sounds() == 0, "14 unload -> all sounds stopped");
     check(r, engine.getAssetManager().getTotalModelRefCount() == 0, "14 unload -> all model references released");
+    check(r, engine.getAssetManager().getLoadedModelCount() == 0, "14 unload -> all unused models freed");
 
     engine.createEmptyScene("Validation");
 }
@@ -577,6 +578,50 @@ inline void validateRefCounting(Engine& engine, CS::Scene& scene, Results& r)
     scene.destroyEntity(idOf(a));
 }
 
+// ---------------------------------------------------------------- D unused collection
+inline void validateUnusedCollection(Engine& engine, Results& r)
+{
+    auto& assets = engine.getAssetManager();
+    constexpr std::string_view floorOnlyPath = "res://.cthulhu/validation_flooronly.scene";
+
+    auto resolved = engine.getProject()->resolveResourcePath(floorOnlyPath);
+    if (!resolved)
+    {
+        check(r, false, "D0 resolve floor-only scene path");
+        return;
+    }
+
+    {
+        std::ofstream out(*resolved, std::ios::trunc);
+        out << R"({
+    "format_version": 2,
+    "name": "validation_flooronly",
+    "entities": [
+        { "id": "aaaabbbbccccddddeeeeffff00001111", "name": "FloorOnly",
+          "model": "res://assets/models/Floor.glb",
+          "position": [0,0,0], "rotation": [0,0,0], "scale": [1,1,1] }
+    ],
+    "directional_light": { "direction": [0,-1,0], "color": [1,1,1], "intensity": 1 },
+    "point_lights": []
+})";
+    }
+
+    // Active scene currently uses both helmet and floor
+    const Assets::ModelHandle floorBefore = assets.loadModel("res://assets/models/Floor.glb");
+    const Assets::ModelHandle helmetBefore = assets.loadModel("res://assets/models/DamagedHelmet.glb");
+
+    const bool loaded = engine.loadScene(floorOnlyPath);
+    check(r, loaded, "D0 floor-only scene loads");
+
+    check(r, !assets.getModel(helmetBefore), "D1 switching to a scene without the helmet unloads it");
+    check(r, assets.getModel(floorBefore) != nullptr, "D1 shared model survives the switch");
+    check(r, assets.loadModel("res://assets/models/Floor.glb") == floorBefore, "D1 shared model was not reloaded");
+
+    const bool back = engine.loadScene(SAVE_PATH);
+    const Assets::ModelHandle helmetAfter = assets.loadModel("res://assets/models/DamagedHelmet.glb");
+    check(r, back && assets.getModel(helmetAfter) != nullptr, "D2 unloaded model reloads when needed again");
+}
+
 // ---------------------------------------------------------------- entry
 inline int run(Engine& engine)
 {
@@ -602,6 +647,7 @@ inline int run(Engine& engine)
 
     validateSave(engine, r);
     validateLoadAndSwitch(engine, r);
+    validateUnusedCollection(engine, r);
     validateFailedLoad(engine, r);
     validateBadModelInScene(engine, r);
     validateSimStateOnSwitch(engine, r);
