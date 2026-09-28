@@ -312,8 +312,11 @@ inline void validateSave(Engine& engine, Results& r)
 // ---------------------------------------------------------------- 13 + 15 load / switch
 inline void validateLoadAndSwitch(Engine& engine, Results& r)
 {
+    const size_t modelsBefore = engine.getAssetManager().getLoadedModelCount();
+
     const bool loaded = engine.loadScene(SAVE_PATH);
     check(r, loaded, "13 load saved scene");
+    check(r, engine.getAssetManager().getLoadedModelCount() == modelsBefore, "C1 scene switch reuses loaded models");
     if (!loaded)
     {
         return;
@@ -439,6 +442,7 @@ inline void validateShutdown(Engine& engine, Results& r)
     check(r, engine.getState() == EngineState::Uninitialized, "16 shutdown completes");
     check(r, characters() == 0, "16 shutdown destroys all CharacterVirtuals");
     check(r, sounds() == 0, "16 shutdown leaves no active sounds");
+    check(r, engine.getAssetManager().getLoadedModelCount() == 0, "16 shutdown frees all model assets");
 }
 
 // ---------------------------------------------------------------- asset manager
@@ -465,6 +469,78 @@ inline void validateAssetManager(Engine& engine, Results& r)
     check(r, !escape.isValid(), "A4 root-escaping path rejected");
 }
 
+// ---------------------------------------------------------------- B mesh lifecycle
+inline void validateMeshLifecycle(Engine& engine, CS::Scene& scene, Results& r)
+{
+    auto& assets = engine.getAssetManager();
+
+    flecs::entity m = scene.createEntity("V_Mesh");
+    m.set(CS::MeshComponent{"res://assets/models/Floor.glb"});
+
+    const auto* rt = m.try_get<CS::MeshRuntimeComponent>();
+    const Assets::ModelHandle floorHandle = rt ? rt->model : Assets::ModelHandle{};
+    check(r, rt && assets.getModel(rt->model), "B1 add MeshComponent -> runtime model");
+
+    m.set(CS::MeshComponent{"res://assets/models/DamagedHelmet.glb"});
+    rt = m.try_get<CS::MeshRuntimeComponent>();
+    check(r, rt && rt->model.isValid() && !(rt->model == floorHandle), "B2 change modelPath -> runtime rebuilt");
+
+    m.set(CS::MeshComponent{"res://assets/models/missing.glb"});
+    check(r, m.has<CS::MeshComponent>() && !m.has<CS::MeshRuntimeComponent>(), "B3 bad modelPath -> authoring kept, no runtime");
+
+    m.set(CS::MeshComponent{"res://assets/models/Floor.glb"});
+    m.remove<CS::MeshComponent>();
+    check(r, !m.has<CS::MeshRuntimeComponent>(), "B4 remove MeshComponent -> runtime removed");
+
+    scene.destroyEntity(idOf(m));
+}
+
+// ---------------------------------------------------------------- B bad model inside a scene file
+inline void validateBadModelInScene(Engine& engine, Results& r)
+{
+    constexpr std::string_view path = "res://.cthulhu/validation_badmodel.scene";
+    auto resolved = engine.getProject()->resolveResourcePath(path);
+    if (!resolved)
+    {
+        check(r, false, "B5 resolve bad-model scene path");
+        return;
+    }
+
+    {
+        std::ofstream out(*resolved, std::ios::trunc);
+        out << R"({
+    "format_version": 2,
+    "name": "validation_badmodel",
+    "entities": [
+        { "id": "11112222333344445555666677778888", "name": "BadModel",
+          "model": "res://assets/models/missing.glb",
+          "position": [0,0,0], "rotation": [0,0,0], "scale": [1,1,1],
+          "physics": { "type": "static", "half_extent": [1,1,1] } }
+    ],
+    "directional_light": { "direction": [0,-1,0], "color": [1,1,1], "intensity": 1 },
+    "point_lights": []
+})";
+    }
+
+    const bool loaded = engine.loadScene(path);
+    check(r, loaded, "B5 scene with missing model still loads");
+    if (!loaded)
+    {
+        return;
+    }
+
+    bool ok = false;
+    engine.getActiveScene()->getWorld().each([&](flecs::entity e, const CS::NameComponent& name)
+    {
+        if (name.name == "BadModel")
+        {
+            ok = e.has<CS::MeshComponent>() && !e.has<CS::MeshRuntimeComponent>() &&
+                 e.has<CS::PhysicsRuntimeComponent>() && e.has<CS::TagActive>();
+        }
+    });
+    check(r, ok, "B5 missing model keeps mesh authoring and all other components");
+}
+
 // ---------------------------------------------------------------- entry
 inline int run(Engine& engine)
 {
@@ -485,10 +561,12 @@ inline int run(Engine& engine)
     validateWeapon(scene, r);
     validateAudio(engine, scene, r);
     validateMeshAndDuplication(engine, scene, r);
+    validateMeshLifecycle(engine, scene, r);
 
     validateSave(engine, r);
     validateLoadAndSwitch(engine, r);
     validateFailedLoad(engine, r);
+    validateBadModelInScene(engine, r);
     validateSimStateOnSwitch(engine, r);
     validateUnload(engine, r);
     validateShutdown(engine, r);
