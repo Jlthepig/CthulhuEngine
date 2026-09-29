@@ -10,6 +10,7 @@
 #include <vector>
 
 #include "assetHandle.hpp"
+#include "assetType.hpp"
 #include "model.hpp"
 
 namespace Cthulhu::Project

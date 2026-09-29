@@ -9,21 +9,24 @@
 #include <Jolt/Physics/Character/CharacterVirtual.h>
 #include <Jolt/Physics/PhysicsSystem.h>
 
-#include "applicationPaths.hpp"
-#include "audio.hpp"
-#include "camera.hpp"
-#include "components.hpp"
-#include "engine.hpp"
-#include "flecs.h"
-#include "input.hpp"
-#include "physics.hpp"
-#include "renderer.hpp"
-#include "scene.hpp"
+
+
 #include "sceneLoader.hpp"
-#include "jsonWriter.hpp"
+#include "scene.hpp"
+#include "physics.hpp"
+#include "audio.hpp"
+#include "renderer.hpp"
+#include "camera.hpp"
+#include "engine.hpp"
 #include "systemRegistry.hpp"
+#include "components.hpp"
+#include "input.hpp"
 #include "window.hpp"
+#include "assetType.hpp"
+#include "jsonWriter.hpp"
+#include "applicationPaths.hpp"
 #include "log_utils.hpp"
+
 
 using KalaHeaders::KalaLog::Log;
 using KalaHeaders::KalaLog::LogType;
@@ -249,6 +252,12 @@ bool Engine::loadScene(std::string_view resourcePath)
         return false;
     }
 
+    if (Assets::getAssetType(resourcePath) != Assets::AssetType::Scene)
+    {
+        Log::Print("NOT A SCENE FILE: " + std::string(resourcePath), "ENGINE", LogType::LOG_ERROR);
+        return false;
+    }
+
     auto resolvedPath = project->resolveResourcePath(resourcePath);
 
     if (!resolvedPath)
@@ -356,7 +365,7 @@ bool Engine::saveActiveSceneAs(std::string_view resourcePath)
         return false;
     }
 
-    if (!resourcePath.ends_with(".scene"))
+    if (Assets::getAssetType(resourcePath) != Assets::AssetType::Scene)
     {
         Log::Print("SCENE FILE MUST USE .scene EXTENSION","ENGINE",LogType::LOG_ERROR);
         return false;

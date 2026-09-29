@@ -67,6 +67,13 @@ ModelHandle AssetManager::loadModel(std::string_view resourcePath)
         return {};
     }
 
+    
+    if (const AssetType type = getAssetType(*key); type != AssetType::Model)
+    {
+        Log::Print("NOT A MODEL ASSET: " + *key + " (type: " + std::string(assetTypeName(type)) + ")","AssetManager", LogType::LOG_ERROR);
+        return {};
+    }
+
     if (auto it = modelIndexByPath.find(*key); it != modelIndexByPath.end())
     {
         const uint32_t index = it->second;

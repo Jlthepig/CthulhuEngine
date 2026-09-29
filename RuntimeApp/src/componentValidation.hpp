@@ -644,6 +644,28 @@ inline void validateUnusedCollection(Engine& engine, Results& r)
     check(r, assets.getModelRefCount(helmetAfter) == refs, "E3 releasing a stale handle cannot affect the new occupant");
 }
 
+// ---------------------------------------------------------------- G asset types
+inline void validateAssetTypes(Engine& engine, Results& r)
+{
+    using Assets::AssetType;
+    using Assets::getAssetType;
+
+    check(r, getAssetType("res://models/Gun.GLB") == AssetType::Model, "G1 .glb (any case) -> Model");
+    check(r, getAssetType("res://audio/shot.wav") == AssetType::Audio, "G1 .wav -> Audio");
+    check(r, getAssetType("res://maps/level.scene") == AssetType::Scene, "G1 .scene -> Scene");
+    check(r, getAssetType("res://folder.v2/readme") == AssetType::Unknown, "G1 dot in directory name -> Unknown");
+    check(r, getAssetType("res://noextension") == AssetType::Unknown, "G1 no extension -> Unknown");
+
+    auto& assets = engine.getAssetManager();
+    const size_t models = assets.getLoadedModelCount();
+    auto wrong = assets.loadModel("res://assets/audio/gunshot.wav");
+    check(r, !wrong.isValid() && assets.getLoadedModelCount() == models, "G2 loadModel rejects a non-model asset");
+
+    const auto* before = engine.getActiveScene();
+    check(r, !engine.loadScene("res://assets/models/Floor.glb") && engine.getActiveScene() == before,
+          "G3 loadScene rejects a non-scene file");
+}
+
 // ---------------------------------------------------------------- entry
 inline int run(Engine& engine)
 {
@@ -657,6 +679,7 @@ inline int run(Engine& engine)
     }
 
     validateAssetManager(engine, r);
+    validateAssetTypes(engine, r);
 
     auto& scene = *engine.getActiveScene();
     validatePhysics(engine, scene, r);
