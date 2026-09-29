@@ -60,6 +60,15 @@ inline uint32_t bodies(Engine& engine) { return engine.getPhysicsWorld().getBody
 inline int characters() { return Physics::CharacterController::getLiveCharacterCount(); }
 inline size_t sounds() { return Core::Audio::getActiveSoundCount(); }
 
+inline void checkRefInvariant(Engine& engine, Results& r, const std::string& label)
+{
+    auto* scene = engine.getActiveScene();
+    const int runtimes = scene ? scene->getWorld().count<CS::MeshRuntimeComponent>() : 0;
+
+    check(r, engine.getAssetManager().getTotalModelRefCount() == static_cast<uint32_t>(runtimes),
+          "F1 model refs == mesh runtimes (" + label + ")");
+}
+
 // ---------------------------------------------------------------- 1-4 physics
 inline void validatePhysics(Engine& engine, CS::Scene& scene, Results& r)
 {
@@ -374,6 +383,7 @@ inline void validateFailedLoad(Engine& engine, Results& r)
     "name": "validation_broken",
     "entities": [
         { "id": "0123456789abcdef0123456789abcdef", "name": "Good",
+                    "model": "res://assets/models/Floor.glb",
           "position": [0,0,0], "rotation": [0,0,0], "scale": [1,1,1],
           "physics": { "type": "static", "half_extent": [1,1,1] },
           "character_controller": {} },
@@ -389,12 +399,16 @@ inline void validateFailedLoad(Engine& engine, Results& r)
     const CS::Scene* before = engine.getActiveScene();
     const uint32_t b = bodies(engine);
     const int c = characters();
+    auto& assets = engine.getAssetManager();
+    const Assets::ModelHandle floor = assets.loadModel("res://assets/models/Floor.glb");
+    const uint32_t floorRefs = assets.getModelRefCount(floor);
 
     const bool loaded = engine.loadScene(BROKEN_PATH);
     check(r, !loaded, "13 broken scene is rejected");
     check(r, engine.getActiveScene() == before, "13 failed load keeps current scene active");
     check(r, bodies(engine) == b, "13 failed load leaks no Jolt bodies");
     check(r, characters() == c, "13 failed load leaks no CharacterVirtuals");
+    check(r, assets.getModelRefCount(floor) == floorRefs, "F2 failed load releases its model references");
 }
 
 // ---------------------------------------------------------------- 15 sim state on switch
@@ -620,6 +634,14 @@ inline void validateUnusedCollection(Engine& engine, Results& r)
     const bool back = engine.loadScene(SAVE_PATH);
     const Assets::ModelHandle helmetAfter = assets.loadModel("res://assets/models/DamagedHelmet.glb");
     check(r, back && assets.getModel(helmetAfter) != nullptr, "D2 unloaded model reloads when needed again");
+
+    check(r, helmetAfter.index == helmetBefore.index && helmetAfter.generation != helmetBefore.generation,
+          "E1 freed slot is reused with a new generation");
+    check(r, !assets.getModel(helmetBefore), "E2 old handle does not resolve to the slot's new occupant");
+
+    const uint32_t refs = assets.getModelRefCount(helmetAfter);
+    assets.releaseModel(helmetBefore);
+    check(r, assets.getModelRefCount(helmetAfter) == refs, "E3 releasing a stale handle cannot affect the new occupant");
 }
 
 // ---------------------------------------------------------------- entry
@@ -644,12 +666,21 @@ inline int run(Engine& engine)
     validateMeshAndDuplication(engine, scene, r);
     validateMeshLifecycle(engine, scene, r);
     validateRefCounting(engine, scene, r);
+    checkRefInvariant(engine, r, "after entity tests");
 
     validateSave(engine, r);
     validateLoadAndSwitch(engine, r);
+    checkRefInvariant(engine, r, "after load/switch");
+
     validateUnusedCollection(engine, r);
+    checkRefInvariant(engine, r, "after unused collection");
+
     validateFailedLoad(engine, r);
+    checkRefInvariant(engine, r, "after failed load");
+
     validateBadModelInScene(engine, r);
+    checkRefInvariant(engine, r, "after bad-model scene");
+
     validateSimStateOnSwitch(engine, r);
     validateUnload(engine, r);
     validateShutdown(engine, r);

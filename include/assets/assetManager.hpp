@@ -66,6 +66,7 @@ namespace Cthulhu::Assets
             const Project::Project *project = nullptr;
 
             std::vector<ModelSlot> modelSlots;
+            std::vector<uint32_t> freeModelSlots;
             std::unordered_map<std::string, uint32_t> modelIndexByPath;
     };
 }

@@ -92,18 +92,30 @@ ModelHandle AssetManager::loadModel(std::string_view resourcePath)
         return {};
     }
 
-    const uint32_t index = static_cast<uint32_t>(modelSlots.size());
+    uint32_t index = 0;
 
-    ModelSlot slot;
+    if (!freeModelSlots.empty())
+    {
+        // Reuse a freed slot; its generation was already bumped on unload
+        index = freeModelSlots.back();
+        freeModelSlots.pop_back();
+    }
+    else
+    {
+        index = static_cast<uint32_t>(modelSlots.size());
+        modelSlots.emplace_back();
+        modelSlots.back().generation = 1;
+    }
+
+    auto &slot = modelSlots[index];
     slot.model = std::make_unique<Rendering::Model>(std::move(*loaded));
     slot.resourcePath = *key;
-    slot.generation = {1};
+    slot.refCount = {};
 
-    modelSlots.push_back(std::move(slot));
     modelIndexByPath.emplace(*key, index);
 
     Log::Print("Loaded model: " + *key, "AssetManager", LogType::LOG_INFO);
-    return ModelHandle{index, 1};
+    return ModelHandle{index, slot.generation};
 }
 
 Rendering::Model *AssetManager::getModel(ModelHandle handle)
@@ -199,10 +211,12 @@ std::size_t AssetManager::getLoadedModelCount() const noexcept
 std::size_t AssetManager::collectUnusedModels()
 {
     std::size_t freed{};
-
-    for (auto &slot : modelSlots)
+    
+    for (uint32_t index = 0; index < static_cast<uint32_t>(modelSlots.size()); ++index)
     {
-        if (!slot.model || slot.refCount !=0)
+        auto &slot = modelSlots[index];
+
+        if (!slot.model || slot.refCount != 0)
         {
             continue;
         }
@@ -213,6 +227,15 @@ std::size_t AssetManager::collectUnusedModels()
 
         Log::Print("Unloaded model: " + slot.resourcePath, "AssetManager", LogType::LOG_INFO);
         slot.resourcePath.clear();
+
+        // Invalidate every outstanding handle to this slot. 0 is reserved for "invalid".
+        ++slot.generation;
+        if (slot.generation == 0)
+        {
+            slot.generation = {1};
+        }
+
+        freeModelSlots.push_back(index);
         ++freed;
     }
 
@@ -230,6 +253,7 @@ void AssetManager::shutdown()
     }
 
     modelSlots.clear();
+    freeModelSlots.clear();
     modelIndexByPath.clear();
     project = nullptr;
 }
