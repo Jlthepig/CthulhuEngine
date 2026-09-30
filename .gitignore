@@ -33,3 +33,14 @@ Thumbs.db
 # Exceptions
 !build/glad.lib
 !build/glfw3.dll
+
+# visual studio nonsense
+*.vsidx
+*.opendb
+*.db-wal
+*.db-shm
+*.db
+*.sqlite
+*.sqlite-journal
+.vs/CMakeWorkspaceSettings.json
+.vs/ProjectSettings.json
