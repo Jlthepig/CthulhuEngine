@@ -1,8 +1,5 @@
 #pragma once
 
-// TEMPORARY: Phase 2 Step 5.5 component-architecture validation.
-// Delete this file and the --validate hook in main.cpp once 5.5 passes.
-
 #include <cstdint>
 #include <filesystem>
 #include <fstream>
@@ -10,6 +7,7 @@
 #include <string>
 #include <string_view>
 
+#include "assetType.hpp"
 #include "audio.hpp"
 #include "characterController.hpp"
 #include "components.hpp"

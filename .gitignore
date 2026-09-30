@@ -44,3 +44,4 @@ Thumbs.db
 *.sqlite-journal
 .vs/CMakeWorkspaceSettings.json
 .vs/ProjectSettings.json
+/.vs

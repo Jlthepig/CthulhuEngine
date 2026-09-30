@@ -2,6 +2,7 @@
 #include <filesystem>
 
 #include "assetManager.hpp"
+#include "assetType.hpp"
 #include "modelLoader.hpp"
 #include "project.hpp"
 #include "log_utils.hpp"
@@ -52,7 +53,7 @@ std::optional<std::string> normalizeResourcePath(std::string_view resourcePath)
 
 AssetManager::~AssetManager()
 {
-    if (!modelSlots.empty())
+    if (modelTable.liveCount() != 0)
     {
         Log::Print("ASSET MANAGER DESTROYED WITHOUT SHUTDOWN", "AssetManager", LogType::LOG_WARNING);
     }
@@ -67,17 +68,16 @@ ModelHandle AssetManager::loadModel(std::string_view resourcePath)
         return {};
     }
 
-    
     if (const AssetType type = getAssetType(*key); type != AssetType::Model)
     {
-        Log::Print("NOT A MODEL ASSET: " + *key + " (type: " + std::string(assetTypeName(type)) + ")","AssetManager", LogType::LOG_ERROR);
+        Log::Print("NOT A MODEL ASSET: " + *key + " (type: " + std::string(assetTypeName(type)) + ")",
+                   "AssetManager", LogType::LOG_ERROR);
         return {};
     }
 
-    if (auto it = modelIndexByPath.find(*key); it != modelIndexByPath.end())
+    if (auto existing = modelTable.find(*key))
     {
-        const uint32_t index = it->second;
-        return ModelHandle{index, modelSlots[index].generation};
+        return ModelHandle{existing->index, existing->generation};
     }
 
     if (!project)
@@ -99,62 +99,15 @@ ModelHandle AssetManager::loadModel(std::string_view resourcePath)
         return {};
     }
 
-    uint32_t index = 0;
-
-    if (!freeModelSlots.empty())
+    const auto slot = modelTable.allocate(*key);
+    if (slot.index >= models.size())
     {
-        // Reuse a freed slot; its generation was already bumped on unload
-        index = freeModelSlots.back();
-        freeModelSlots.pop_back();
+        models.resize(slot.index + 1);
     }
-    else
-    {
-        index = static_cast<uint32_t>(modelSlots.size());
-        modelSlots.emplace_back();
-        modelSlots.back().generation = 1;
-    }
-
-    auto &slot = modelSlots[index];
-    slot.model = std::make_unique<Rendering::Model>(std::move(*loaded));
-    slot.resourcePath = *key;
-    slot.refCount = {};
-
-    modelIndexByPath.emplace(*key, index);
+    models[slot.index] = std::make_unique<Rendering::Model>(std::move(*loaded));
 
     Log::Print("Loaded model: " + *key, "AssetManager", LogType::LOG_INFO);
-    return ModelHandle{index, slot.generation};
-}
-
-Rendering::Model *AssetManager::getModel(ModelHandle handle)
-{
-    if (!handle.isValid() || handle.index >= modelSlots.size())
-    {
-        return nullptr;
-    }
-
-    auto &slot = modelSlots[handle.index];
-    if (slot.generation != handle.generation || !slot.model)
-    {
-        return nullptr;
-    }
-
-    return slot.model.get();
-}
-
-const Rendering::Model *AssetManager::getModel(ModelHandle handle) const
-{
-    if (!handle.isValid() || handle.index >= modelSlots.size())
-    {
-        return nullptr;
-    }
-
-    const auto &slot = modelSlots[handle.index];
-    if (slot.generation != handle.generation || !slot.model)
-    {
-        return nullptr;
-    }
-
-    return slot.model.get();
+    return ModelHandle{slot.index, slot.generation};
 }
 
 ModelHandle AssetManager::acquireModel(std::string_view resourcePath)
@@ -162,106 +115,70 @@ ModelHandle AssetManager::acquireModel(std::string_view resourcePath)
     const ModelHandle handle = loadModel(resourcePath);
     if (handle.isValid())
     {
-        ++modelSlots[handle.index].refCount;
+        modelTable.addRef(handle.index, handle.generation);
     }
     return handle;
 }
 
 void AssetManager::releaseModel(ModelHandle handle)
 {
-    if (!handle.isValid() || handle.index >= modelSlots.size())
-    {
-        return;
-    }
+    modelTable.release(handle.index, handle.generation);
+}
 
-    auto &slot = modelSlots[handle.index];
-    if (slot.generation != handle.generation || !slot.model)
-    {
-        return;
-    }
+Rendering::Model *AssetManager::getModel(ModelHandle handle)
+{
+    return modelTable.isAlive(handle.index, handle.generation) ? models[handle.index].get() : nullptr;
+}
 
-    if (slot.refCount == 0)
-    {
-        Log::Print("MODEL RELEASED MORE TIMES THAN ACQUIRED: " + slot.resourcePath, "AssetManager", LogType::LOG_ERROR);
-        return;
-    }
-
-    --slot.refCount;
+const Rendering::Model *AssetManager::getModel(ModelHandle handle) const
+{
+    return modelTable.isAlive(handle.index, handle.generation) ? models[handle.index].get() : nullptr;
 }
 
 uint32_t AssetManager::getModelRefCount(ModelHandle handle) const
 {
-    if (!handle.isValid() || handle.index >= modelSlots.size())
-    {
-        return 0;
-    }
-
-    const auto &slot = modelSlots[handle.index];
-    return slot.generation == handle.generation ? slot.refCount : 0;
+    return modelTable.refCount(handle.index, handle.generation);
 }
 
 uint32_t AssetManager::getTotalModelRefCount() const noexcept
 {
-    uint32_t total{};
-    for (const auto &slot : modelSlots)
-    {
-        total += slot.refCount;
-    }
-    return total;
+    return modelTable.totalRefCount();
 }
 
 std::size_t AssetManager::getLoadedModelCount() const noexcept
 {
-    return modelIndexByPath.size();
+    return modelTable.liveCount();
 }
 
 std::size_t AssetManager::collectUnusedModels()
 {
-    std::size_t freed{};
-    
-    for (uint32_t index = 0; index < static_cast<uint32_t>(modelSlots.size()); ++index)
+    const auto collected = modelTable.collectUnreferenced();
+
+    for (const auto &entry : collected)
     {
-        auto &slot = modelSlots[index];
-
-        if (!slot.model || slot.refCount != 0)
+        if (auto &model = models[entry.index])
         {
-            continue;
+            model->destroy();
+            model.reset();
         }
-
-        slot.model->destroy();
-        slot.model.reset();
-        modelIndexByPath.erase(slot.resourcePath);
-
-        Log::Print("Unloaded model: " + slot.resourcePath, "AssetManager", LogType::LOG_INFO);
-        slot.resourcePath.clear();
-
-        // Invalidate every outstanding handle to this slot. 0 is reserved for "invalid".
-        ++slot.generation;
-        if (slot.generation == 0)
-        {
-            slot.generation = {1};
-        }
-
-        freeModelSlots.push_back(index);
-        ++freed;
+        Log::Print("Unloaded model: " + entry.key, "AssetManager", LogType::LOG_INFO);
     }
 
-    return freed;
+    return collected.size();
 }
 
 void AssetManager::shutdown()
 {
-    for (auto &slot : modelSlots)
+    for (auto &model : models)
     {
-        if (slot.model)
+        if (model)
         {
-            slot.model->destroy();
+            model->destroy();
         }
     }
 
-    modelSlots.clear();
-    freeModelSlots.clear();
-    modelIndexByPath.clear();
+    models.clear();
+    modelTable.clear();
     project = nullptr;
 }
 } // namespace Cthulhu::Assets

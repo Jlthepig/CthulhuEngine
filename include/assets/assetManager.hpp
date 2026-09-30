@@ -6,11 +6,10 @@
 #include <optional>
 #include <string>
 #include <string_view>
-#include <unordered_map>
 #include <vector>
 
 #include "assetHandle.hpp"
-#include "assetType.hpp"
+#include "assetSlotTable.hpp"
 #include "model.hpp"
 
 namespace Cthulhu::Project
@@ -55,19 +54,10 @@ namespace Cthulhu::Assets
 
             void shutdown();
 
-        private:
-            struct ModelSlot
-            {
-                std::unique_ptr<Rendering::Model> model;
-                std::string resourcePath;
-                uint32_t generation{};
-                int32_t refCount{};
-            };
-
+          private:
             const Project::Project *project = nullptr;
 
-            std::vector<ModelSlot> modelSlots;
-            std::vector<uint32_t> freeModelSlots;
-            std::unordered_map<std::string, uint32_t> modelIndexByPath;
+            AssetSlotTable modelTable;
+            std::vector<std::unique_ptr<Rendering::Model>> models;
     };
 }
