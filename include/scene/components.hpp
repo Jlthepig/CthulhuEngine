@@ -27,6 +27,7 @@ struct AudioSourceComponent {
 };
 
 struct AudioSourceRuntimeComponent {
+    Assets::AudioClipHandle clip{};
     bool playRequested{false};
     bool stopRequested{false};
     bool isPlaying{false};

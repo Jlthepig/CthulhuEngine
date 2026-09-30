@@ -7,7 +7,15 @@
 #include "log_utils.hpp"
 namespace Cthulhu::Core
 {
+
 static ma_engine g_audioEngine;
+static bool g_audioReady = false;
+
+struct AudioClipData
+{
+    ma_sound sound;
+};
+
 std::unordered_map<uint32_t, ma_sound *> activeSounds;
 uint32_t Audio::nextInstanceId = 1;
 
@@ -20,6 +28,8 @@ void Audio::init()
                                          KalaHeaders::KalaLog::LogType::LOG_ERROR);
         return;
     }
+
+    g_audioReady = true;
     KalaHeaders::KalaLog::Log::Print("Miniaudio Engine initialized", "Audio",
                                      KalaHeaders::KalaLog::LogType::LOG_SUCCESS);
 }
@@ -33,6 +43,7 @@ void Audio::shutdown()
     }
     activeSounds.clear();
     ma_engine_uninit(&g_audioEngine);
+    g_audioReady = false;
 }
 
 void Audio::update()
@@ -53,26 +64,6 @@ void Audio::update()
     }
 }
 
-uint32_t Audio::playSound2D(const std::string &filePath, float volume, bool loop)
-{
-    ma_sound *pSound = new ma_sound();
-    ma_result result =
-        ma_sound_init_from_file(&g_audioEngine, filePath.c_str(), MA_SOUND_FLAG_DECODE, NULL, NULL, pSound);
-    if (result != MA_SUCCESS)
-    {
-        KalaHeaders::KalaLog::Log::Print("Failed to play sound: " + std::string(filePath), "Audio",
-                                         KalaHeaders::KalaLog::LogType::LOG_ERROR);
-        delete pSound;
-        return 0;
-    }
-    ma_sound_set_volume(pSound, volume);
-    ma_sound_set_looping(pSound, loop);
-    ma_sound_start(pSound);
-    uint32_t instanceId = nextInstanceId++;
-    activeSounds[instanceId] = pSound;
-    return instanceId;
-}
-
 void Audio::stopSound(uint32_t instanceId)
 {
     if (instanceId == 0)
@@ -85,6 +76,64 @@ void Audio::stopSound(uint32_t instanceId)
         delete pSound;
         activeSounds.erase(it);
     }
+}
+
+AudioClipData *Audio::loadClip(const std::string &filePath)
+{
+    if (!g_audioReady)
+    {
+        return nullptr;
+    }
+
+    auto *clip = new AudioClipData();
+    const ma_result result =
+        ma_sound_init_from_file(&g_audioEngine, filePath.c_str(), MA_SOUND_FLAG_DECODE, NULL, NULL, &clip->sound);
+
+    if (result != MA_SUCCESS)
+    {
+        KalaHeaders::KalaLog::Log::Print("Failed to load audio clip: " + filePath, "Audio",KalaHeaders::KalaLog::LogType::LOG_ERROR);
+        delete clip;
+        return nullptr;
+    }
+
+    return clip;
+}
+
+void Audio::destroyClip(AudioClipData *clip)
+{
+    if (!clip)
+    {
+        return;
+    }
+
+    ma_sound_uninit(&clip->sound);
+    delete clip;
+}
+
+uint32_t Audio::playClip(const AudioClipData *clip, float volume, bool loop)
+{
+    if (!g_audioReady || !clip)
+    {
+        return 0;
+    }
+
+    ma_sound *pSound = new ma_sound();
+    const ma_result result = ma_sound_init_copy(&g_audioEngine, &clip->sound, 0, NULL, pSound);
+
+    if (result != MA_SUCCESS)
+    {
+        KalaHeaders::KalaLog::Log::Print("Failed to play audio clip", "Audio",KalaHeaders::KalaLog::LogType::LOG_ERROR);
+        delete pSound;
+        return 0;
+    }
+
+    ma_sound_set_volume(pSound, volume);
+    ma_sound_set_looping(pSound, loop);
+    ma_sound_start(pSound);
+
+    const uint32_t instanceId = nextInstanceId++;
+    activeSounds[instanceId] = pSound;
+    return instanceId;
 }
 
 size_t Audio::getActiveSoundCount()

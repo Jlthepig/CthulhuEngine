@@ -61,10 +61,13 @@ inline size_t sounds() { return Core::Audio::getActiveSoundCount(); }
 inline void checkRefInvariant(Engine& engine, Results& r, const std::string& label)
 {
     auto* scene = engine.getActiveScene();
-    const int runtimes = scene ? scene->getWorld().count<CS::MeshRuntimeComponent>() : 0;
+    const int meshUsers = scene ? scene->getWorld().count<CS::MeshRuntimeComponent>() : 0;
+    const int audioUsers = scene ? scene->getWorld().count<CS::AudioSourceRuntimeComponent>() : 0;
 
-    check(r, engine.getAssetManager().getTotalModelRefCount() == static_cast<uint32_t>(runtimes),
-          "F1 model refs == mesh runtimes (" + label + ")");
+    auto& assets = engine.getAssetManager();
+    check(r, assets.getTotalModelRefCount() == static_cast<uint32_t>(meshUsers) &&
+             assets.getTotalAudioClipRefCount() == static_cast<uint32_t>(audioUsers),
+          "F1 asset refs == runtime users (" + label + ")");
 }
 
 // ---------------------------------------------------------------- 1-4 physics
@@ -436,6 +439,8 @@ inline void validateUnload(Engine& engine, Results& r)
     check(r, sounds() == 0, "14 unload -> all sounds stopped");
     check(r, engine.getAssetManager().getTotalModelRefCount() == 0, "14 unload -> all model references released");
     check(r, engine.getAssetManager().getLoadedModelCount() == 0, "14 unload -> all unused models freed");
+        check(r, engine.getAssetManager().getTotalAudioClipRefCount() == 0 &&
+             engine.getAssetManager().getLoadedAudioClipCount() == 0, "14 unload -> audio clips released and freed");
 
     engine.createEmptyScene("Validation");
 }
@@ -457,6 +462,7 @@ inline void validateShutdown(Engine& engine, Results& r)
     check(r, characters() == 0, "16 shutdown destroys all CharacterVirtuals");
     check(r, sounds() == 0, "16 shutdown leaves no active sounds");
     check(r, engine.getAssetManager().getLoadedModelCount() == 0, "16 shutdown frees all model assets");
+    check(r, engine.getAssetManager().getLoadedAudioClipCount() == 0, "16 shutdown frees all audio clips");
 }
 
 // ---------------------------------------------------------------- asset manager
@@ -664,6 +670,55 @@ inline void validateAssetTypes(Engine& engine, Results& r)
           "G3 loadScene rejects a non-scene file");
 }
 
+// ---------------------------------------------------------------- H audio clips
+inline void validateAudioClips(Engine& engine, CS::Scene& scene, Results& r)
+{
+    const auto* project = engine.getProject();
+    auto resolved = project ? project->resolveResourcePath(TEST_AUDIO) : std::optional<std::filesystem::path>{};
+    if (!resolved || !std::filesystem::exists(*resolved))
+    {
+        Log::Print("SKIP  H audio clip checks (set TEST_AUDIO to a real file)", "Validation", LogType::LOG_WARNING);
+        return;
+    }
+
+    auto& assets = engine.getAssetManager();
+    const std::string path(TEST_AUDIO);
+
+    const Assets::AudioClipHandle clip = assets.loadAudioClip(TEST_AUDIO);
+    const uint32_t base = assets.getAudioClipRefCount(clip);
+    const size_t loadedClips = assets.getLoadedAudioClipCount();
+    const size_t baseSounds = sounds();
+
+    flecs::entity a = scene.createEntity("V_ClipA");
+    flecs::entity b = scene.createEntity("V_ClipB");
+    a.set(CS::AudioSourceComponent{path, 0.0f, true});
+    b.set(CS::AudioSourceComponent{path, 0.0f, true});
+
+    const auto* ra = a.try_get<CS::AudioSourceRuntimeComponent>();
+    const auto* rb = b.try_get<CS::AudioSourceRuntimeComponent>();
+    check(r, ra && rb && ra->clip == rb->clip && assets.getAudioClipRefCount(clip) == base + 2 &&
+             assets.getLoadedAudioClipCount() == loadedClips, "H1 two sources share one clip");
+
+    a.get_mut<CS::AudioSourceRuntimeComponent>().playRequested = true;
+    b.get_mut<CS::AudioSourceRuntimeComponent>().playRequested = true;
+    scene.getWorld().progress(0.0f);
+    check(r, sounds() == baseSounds + 2 && assets.getLoadedAudioClipCount() == loadedClips,
+          "H2 playing does not reload the clip");
+
+    a.set(CS::AudioSourceComponent{path, 0.5f, true});
+    ra = a.try_get<CS::AudioSourceRuntimeComponent>();
+    check(r, ra && ra->isPlaying && sounds() == baseSounds + 2, "H3 editing a same-clip source keeps playback");
+
+    a.set(CS::AudioSourceComponent{"res://assets/models/Floor.glb", 0.5f, true});
+    check(r, !a.has<CS::AudioSourceRuntimeComponent>() && assets.getAudioClipRefCount(clip) == base + 1 &&
+             sounds() == baseSounds + 1, "H4 wrong-type path -> old sound stopped, clip released");
+
+    scene.destroyEntity(idOf(a));
+    scene.destroyEntity(idOf(b));
+    check(r, assets.getAudioClipRefCount(clip) == base && sounds() == baseSounds,
+          "H5 destroying sources releases the clip and stops sounds");
+}
+
 // ---------------------------------------------------------------- entry
 inline int run(Engine& engine)
 {
@@ -684,6 +739,7 @@ inline int run(Engine& engine)
     validateCharacter(scene, r);
     validateWeapon(scene, r);
     validateAudio(engine, scene, r);
+    validateAudioClips(engine,scene, r);
     validateMeshAndDuplication(engine, scene, r);
     validateMeshLifecycle(engine, scene, r);
     validateRefCounting(engine, scene, r);

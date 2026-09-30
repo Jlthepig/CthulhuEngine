@@ -261,12 +261,36 @@ void RegisterCoreSystems(flecs::world &world, Cthulhu::Engine *engineContext)
     // << audio >>
     world.observer<AudioSourceComponent>("AudioRuntimeCreateObserver")
         .event(flecs::OnSet)
-        .each([](flecs::entity entity, AudioSourceComponent &)
+        .each([engineContext](flecs::entity entity, AudioSourceComponent &source)
         {
-            if (!entity.has<AudioSourceRuntimeComponent>())
+            auto &assets = engineContext->getAssetManager();
+
+            const Assets::AudioClipHandle clip = assets.acquireAudioClip(source.filePath);
+
+            if (!clip.isValid())
             {
-                entity.set(AudioSourceRuntimeComponent{});
+                entity.remove<AudioSourceRuntimeComponent>();
+                return;
             }
+
+            AudioSourceRuntimeComponent runtime{};
+
+            if (const auto *old = entity.try_get<AudioSourceRuntimeComponent>())
+            {
+                if (old->clip == clip)
+                {
+                    runtime = *old; // same clip keep playback state
+                }
+                else if (old->isPlaying && old->soundInstanceId != 0)
+                {
+                    Core::Audio::stopSound(old->soundInstanceId);
+                }
+
+                assets.releaseAudioClip(old->clip);
+            }
+
+            runtime.clip = clip;
+            entity.set(runtime);
         });
 
     world.system<const AudioSourceComponent, AudioSourceRuntimeComponent>("AudioSystem")
@@ -288,23 +312,14 @@ void RegisterCoreSystems(flecs::world &world, Cthulhu::Engine *engineContext)
                     runtime.soundInstanceId = 0;
                 }
 
-                const auto *activeProject = engineContext->getProject();
-
-                if (!activeProject)
+                const Core::AudioClipData *clip = engineContext->getAssetManager().getAudioClip(runtime.clip);
+                if (!clip)
                 {
                     runtime.playRequested = false;
                     return;
                 }
 
-                auto resolvedAudioPath = activeProject->resolveResourcePath(source.filePath);
-
-                if (!resolvedAudioPath)
-                {
-                    runtime.playRequested = false;
-                    return;
-                }
-
-                runtime.soundInstanceId = Core::Audio::playSound2D(resolvedAudioPath->string(), source.volume, source.loop);
+                runtime.soundInstanceId = Core::Audio::playClip(clip, source.volume, source.loop);
 
                 runtime.isPlaying = runtime.soundInstanceId != 0;
                 runtime.playRequested = false;
@@ -332,12 +347,14 @@ void RegisterCoreSystems(flecs::world &world, Cthulhu::Engine *engineContext)
 
     world.observer<AudioSourceRuntimeComponent>("AudioCleanupObserver")
         .event(flecs::OnRemove)
-        .each([](flecs::entity, AudioSourceRuntimeComponent &runtime)
+        .each([engineContext](flecs::entity, AudioSourceRuntimeComponent &runtime)
         {
             if (runtime.isPlaying && runtime.soundInstanceId != 0)
             {
                 Core::Audio::stopSound(runtime.soundInstanceId);
             }
+
+            engineContext->getAssetManager().releaseAudioClip(runtime.clip);
         });
 }
 

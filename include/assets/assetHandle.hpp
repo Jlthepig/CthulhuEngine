@@ -6,6 +6,11 @@ namespace Cthulhu::Rendering
 {
 struct Model;
 }
+namespace Cthulhu::Core
+{
+struct AudioClipData;
+}
+
 namespace Cthulhu::Assets
 {
     template <typename T>
@@ -23,4 +28,5 @@ namespace Cthulhu::Assets
     };
 
     using ModelHandle = AssetHandle<Rendering::Model>;
+    using AudioClipHandle = AssetHandle<Core::AudioClipData>;
 }

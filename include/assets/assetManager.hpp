@@ -10,6 +10,7 @@
 
 #include "assetHandle.hpp"
 #include "assetSlotTable.hpp"
+#include "assetType.hpp"
 #include "model.hpp"
 
 namespace Cthulhu::Project
@@ -43,6 +44,20 @@ namespace Cthulhu::Assets
             // must pair a valid acquire with releaseModel();
             [[nodiscard]] ModelHandle acquireModel(std::string_view resourcePath);
 
+            [[nodiscard]] AudioClipHandle loadAudioClip(std::string_view resourcePath);
+            [[nodiscard]] AudioClipHandle acquireAudioClip(std::string_view resourcePath);
+            void releaseAudioClip(AudioClipHandle handle);
+
+            [[nodiscard]] const Core::AudioClipData *getAudioClip(AudioClipHandle handle) const;
+            [[nodiscard]] uint32_t getAudioClipRefCount(AudioClipHandle handle) const;
+            [[nodiscard]] uint32_t getTotalAudioClipRefCount() const noexcept;
+            [[nodiscard]] std::size_t getLoadedAudioClipCount() const noexcept;
+
+            std::size_t collectUnusedAudioClips();
+
+            // Collects every asset type. This is what the engine calls at safe points.
+            std::size_t collectUnusedAssets();
+
             void releaseModel(ModelHandle handle);
 
             [[nodiscard]] uint32_t getModelRefCount(ModelHandle handle) const;
@@ -59,5 +74,10 @@ namespace Cthulhu::Assets
 
             AssetSlotTable modelTable;
             std::vector<std::unique_ptr<Rendering::Model>> models;
+
+            AssetSlotTable audioClipTable;
+            std::vector<Core::AudioClipData *> audioClips;
+
+            [[nodiscard]] std::optional<std::string> makeAssetKey(std::string_view resourcePath, AssetType expected) const;
     };
 }

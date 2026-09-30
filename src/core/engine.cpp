@@ -271,7 +271,7 @@ bool Engine::loadScene(std::string_view resourcePath)
         Log::Print("FAILED TO LOAD SCENE: " + std::string(resourcePath), "ENGINE", LogType::LOG_ERROR);
 
         newScene.reset();
-        assetManager.collectUnusedModels();
+        assetManager.collectUnusedAssets();
         return false;
     }
 
@@ -327,7 +327,7 @@ void Engine::unloadScene()
     activeScene->clear();
     activeScene.reset();
 
-    assetManager.collectUnusedModels();
+    assetManager.collectUnusedAssets();
 
     renderer.setScene(nullptr);
     renderer.setPointLights({});

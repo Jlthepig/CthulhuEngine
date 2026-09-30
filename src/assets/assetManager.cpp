@@ -2,7 +2,7 @@
 #include <filesystem>
 
 #include "assetManager.hpp"
-#include "assetType.hpp"
+#include "audio.hpp"
 #include "modelLoader.hpp"
 #include "project.hpp"
 #include "log_utils.hpp"
@@ -53,7 +53,7 @@ std::optional<std::string> normalizeResourcePath(std::string_view resourcePath)
 
 AssetManager::~AssetManager()
 {
-    if (modelTable.liveCount() != 0)
+    if (modelTable.liveCount() != 0 || audioClipTable.liveCount() != 0)
     {
         Log::Print("ASSET MANAGER DESTROYED WITHOUT SHUTDOWN", "AssetManager", LogType::LOG_WARNING);
     }
@@ -61,17 +61,9 @@ AssetManager::~AssetManager()
 
 ModelHandle AssetManager::loadModel(std::string_view resourcePath)
 {
-    auto key = normalizeResourcePath(resourcePath);
+    auto key = makeAssetKey(resourcePath, AssetType::Model);
     if (!key)
     {
-        Log::Print("INVALID MODEL RESOURCE PATH: " + std::string(resourcePath), "AssetManager", LogType::LOG_ERROR);
-        return {};
-    }
-
-    if (const AssetType type = getAssetType(*key); type != AssetType::Model)
-    {
-        Log::Print("NOT A MODEL ASSET: " + *key + " (type: " + std::string(assetTypeName(type)) + ")",
-                   "AssetManager", LogType::LOG_ERROR);
         return {};
     }
 
@@ -167,6 +159,123 @@ std::size_t AssetManager::collectUnusedModels()
     return collected.size();
 }
 
+std::optional<std::string> AssetManager::makeAssetKey(std::string_view resourcePath, AssetType expected) const
+{
+    auto key = normalizeResourcePath(resourcePath);
+    if (!key)
+    {
+        Log::Print("INVALID RESOURCE PATH: " + std::string(resourcePath), "AssetManager", LogType::LOG_ERROR);
+        return std::nullopt;
+    }
+
+    if (const AssetType type = getAssetType(*key); type != expected)
+    {
+        Log::Print("EXPECTED " + std::string(assetTypeName(expected)) + " ASSET, GOT " +
+                       std::string(assetTypeName(type)) + ": " + *key,
+                   "AssetManager", LogType::LOG_ERROR);
+        return std::nullopt;
+    }
+
+    return key;
+}
+
+AudioClipHandle AssetManager::loadAudioClip(std::string_view resourcePath)
+{
+    auto key = makeAssetKey(resourcePath, AssetType::Audio);
+    if (!key)
+    {
+        return {};
+    }
+
+    if (auto existing = audioClipTable.find(*key))
+    {
+        return AudioClipHandle{existing->index, existing->generation};
+    }
+
+    if (!project)
+    {
+        Log::Print("CANNOT LOAD AUDIO CLIP WITHOUT A PROJECT: " + *key, "AssetManager", LogType::LOG_ERROR);
+        return {};
+    }
+
+    auto filePath = project->resolveResourcePath(*key);
+    if (!filePath)
+    {
+        return {};
+    }
+
+    Core::AudioClipData *clip = Core::Audio::loadClip(filePath->string());
+    if (!clip)
+    {
+        Log::Print("FAILED TO LOAD AUDIO CLIP: " + *key, "AssetManager", LogType::LOG_ERROR);
+        return {};
+    }
+
+    const auto slot = audioClipTable.allocate(*key);
+    if (slot.index >= audioClips.size())
+    {
+        audioClips.resize(slot.index + 1, nullptr);
+    }
+    audioClips[slot.index] = clip;
+
+    Log::Print("Loaded audio clip: " + *key, "AssetManager", LogType::LOG_INFO);
+    return AudioClipHandle{slot.index, slot.generation};
+}
+
+AudioClipHandle AssetManager::acquireAudioClip(std::string_view resourcePath)
+{
+    const AudioClipHandle handle = loadAudioClip(resourcePath);
+    if (handle.isValid())
+    {
+        audioClipTable.addRef(handle.index, handle.generation);
+    }
+    return handle;
+}
+
+void AssetManager::releaseAudioClip(AudioClipHandle handle)
+{
+    audioClipTable.release(handle.index, handle.generation);
+}
+
+const Core::AudioClipData *AssetManager::getAudioClip(AudioClipHandle handle) const
+{
+    return audioClipTable.isAlive(handle.index, handle.generation) ? audioClips[handle.index] : nullptr;
+}
+
+uint32_t AssetManager::getAudioClipRefCount(AudioClipHandle handle) const
+{
+    return audioClipTable.refCount(handle.index, handle.generation);
+}
+
+uint32_t AssetManager::getTotalAudioClipRefCount() const noexcept
+{
+    return audioClipTable.totalRefCount();
+}
+
+std::size_t AssetManager::getLoadedAudioClipCount() const noexcept
+{
+    return audioClipTable.liveCount();
+}
+
+std::size_t AssetManager::collectUnusedAudioClips()
+{
+    const auto collected = audioClipTable.collectUnreferenced();
+
+    for (const auto &entry : collected)
+    {
+        Core::Audio::destroyClip(audioClips[entry.index]);
+        audioClips[entry.index] = nullptr;
+        Log::Print("Unloaded audio clip: " + entry.key, "AssetManager", LogType::LOG_INFO);
+    }
+
+    return collected.size();
+}
+
+std::size_t AssetManager::collectUnusedAssets()
+{
+    return collectUnusedModels() + collectUnusedAudioClips();
+}
+
 void AssetManager::shutdown()
 {
     for (auto &model : models)
@@ -179,6 +288,14 @@ void AssetManager::shutdown()
 
     models.clear();
     modelTable.clear();
+
+    for (auto *clip : audioClips)
+    {
+        Core::Audio::destroyClip(clip);
+    }
+
+    audioClips.clear();
+    audioClipTable.clear();
     project = nullptr;
 }
 } // namespace Cthulhu::Assets
