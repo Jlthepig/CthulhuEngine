@@ -9,6 +9,7 @@
 #include <vector>
 
 #include "assetHandle.hpp"
+#include "assetRegistry.hpp"
 #include "assetSlotTable.hpp"
 #include "assetType.hpp"
 #include "model.hpp"
@@ -36,6 +37,18 @@ namespace Cthulhu::Assets
                 project = activeProject;
             }
 
+            AssetRegistry::ScanResult refreshRegistry();
+
+            [[nodiscard]] AssetRegistry &getRegistry() noexcept
+            {
+                return registry;
+            }
+
+            [[nodiscard]] const AssetRegistry &getRegistry() const  noexcept
+            {
+                return registry;
+            }
+
             [[nodiscard]] ModelHandle loadModel(std::string_view resourcePath);
             
             [[nodiscard]] Rendering::Model *getModel(ModelHandle handle);
@@ -55,7 +68,7 @@ namespace Cthulhu::Assets
 
             std::size_t collectUnusedAudioClips();
 
-            // Collects every asset type. This is what the engine calls at safe points.
+            // Collects every asset type This is what the engine calls at safe points
             std::size_t collectUnusedAssets();
 
             void releaseModel(ModelHandle handle);
@@ -71,6 +84,9 @@ namespace Cthulhu::Assets
 
           private:
             const Project::Project *project = nullptr;
+
+            AssetRegistry registry;
+            bool registryLoaded;
 
             AssetSlotTable modelTable;
             std::vector<std::unique_ptr<Rendering::Model>> models;

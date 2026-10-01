@@ -4,6 +4,70 @@
 
 namespace Cthulhu::Validation
 {
+inline void validateAssetRegistry(Engine& engine, Results& r)
+{
+    auto& registry = engine.getAssetManager().getRegistry();
+    const auto* project = engine.getProject();
+    const auto root = project->getRootPath();
+
+    const auto* floor = registry.findByPath("res://assets/models/Floor.glb");
+    check(r, floor && floor->id.isValid() &&
+             registry.findByPath("res://assets/models/DamagedHelmet.glb") &&
+             registry.findByPath(TEST_AUDIO) &&
+             registry.findByPath("res://assets/scenes/test.scene"),
+          "J1 project assets are registered with IDs");
+    if (!floor)
+    {
+        return;
+    }
+    const Assets::AssetId floorId = floor->id; // records may move on rescan; keep the ID, not the pointer
+
+    check(r, registry.findByPath("res://.cthulhu/validation.scene") == nullptr,
+          "J5 .cthulhu contents are never registered");
+
+    Assets::AssetRegistry reloaded;
+    const auto* again = reloaded.load(root / ".cthulhu" / "assets.json")
+                            ? reloaded.findByPath("res://assets/models/Floor.glb") : nullptr;
+    check(r, again && again->id == floorId, "J2 IDs persist on disk");
+
+    const auto rescan = registry.scan(*project);
+    const auto* floorAfter = registry.findByPath("res://assets/models/Floor.glb");
+    check(r, rescan.ok && rescan.added == 0 && floorAfter && floorAfter->id == floorId,
+          "J3 rescan keeps IDs and adds nothing");
+
+    const auto tempDir = root / "validation_tmp";
+    std::error_code error;
+    std::filesystem::create_directories(tempDir, error);
+    std::filesystem::copy_file(root / "assets/models/Floor.glb", tempDir / "V_Copy.glb",
+                               std::filesystem::copy_options::overwrite_existing, error);
+
+    const auto added = registry.scan(*project);
+    const auto* copy = registry.findByPath("res://validation_tmp/V_Copy.glb");
+    const Assets::AssetId copyId = copy ? copy->id : Assets::AssetId{};
+    check(r, !error && added.added == 1 && copy && !copy->missing && copyId != floorId,
+          "J4 new file gets a new ID");
+
+    std::filesystem::remove_all(tempDir, error);
+    registry.scan(*project);
+    const auto* gone = registry.findById(copyId);
+    check(r, gone && gone->missing, "J4 deleted file is flagged missing but keeps its ID");
+    check(r, registry.forget(copyId) && !registry.findById(copyId), "J4 forgetting a missing asset removes it");
+
+    const auto badFile = root / ".cthulhu" / "validation_badregistry.json";
+    {
+        std::ofstream out(badFile, std::ios::trunc);
+        out << "{ this is not json";
+    }
+
+    Assets::AssetRegistry corrupt;
+    const bool loadedBad = corrupt.load(badFile);
+    const auto badScan = corrupt.scan(*project);
+    const bool savedBad = corrupt.save();
+    const std::string content = Utils::FileReader::readFile(badFile.string());
+    check(r, !loadedBad && !badScan.ok && !savedBad && content == "{ this is not json",
+          "J6 corrupt registry is never overwritten");
+}
+
 inline void validateAssetManager(Engine& engine, Results& r)
 {
 	auto& assets = engine.getAssetManager();

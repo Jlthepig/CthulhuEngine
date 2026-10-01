@@ -65,7 +65,7 @@ class AssetRegistry
 
         std::vector<AssetRecord> records;
         std::unordered_map<AssetId, std::size_t, AssetIdHash> indexById;
-        std::unordered_map<std::string, std::size_t, AssetIdHash> indexByPath;
+        std::unordered_map<std::string, std::size_t> indexByPath;
 
         void add(AssetId id, std::string path);
         void rebuildIndices();

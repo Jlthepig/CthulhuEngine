@@ -18,6 +18,7 @@ inline int run(Engine& engine)
 	}
 	validateAssetManager(engine, r);
 	validateAssetTypes(engine, r);
+	validateAssetRegistry(engine, r);
 	auto& scene = *engine.getActiveScene();
 	validatePhysics(engine, scene, r);
 	validateCharacter(scene, r);

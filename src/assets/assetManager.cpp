@@ -12,7 +12,7 @@ using KalaHeaders::KalaLog::LogType;
 
 namespace Cthulhu::Assets
 {
-std::optional<std::string> normalizeResourcePath(std::string_view resourcePath)
+std::optional<std::string> normaliseResourcePath(std::string_view resourcePath)
 {
     constexpr std::string_view prefix = "res://";
 
@@ -57,6 +57,22 @@ AssetManager::~AssetManager()
     {
         Log::Print("ASSET MANAGER DESTROYED WITHOUT SHUTDOWN", "AssetManager", LogType::LOG_WARNING);
     }
+}
+
+AssetRegistry::ScanResult AssetManager::refreshRegistry()
+{
+    if (!project)
+    {
+        return {};
+    }
+
+    if (!registryLoaded)
+    {
+        registry.load(project->getRootPath() / ".cthulhu" / "assets.json");
+        registryLoaded = true;
+    }
+
+    return registry.scan(*project);
 }
 
 ModelHandle AssetManager::loadModel(std::string_view resourcePath)
@@ -161,7 +177,7 @@ std::size_t AssetManager::collectUnusedModels()
 
 std::optional<std::string> AssetManager::makeAssetKey(std::string_view resourcePath, AssetType expected) const
 {
-    auto key = normalizeResourcePath(resourcePath);
+    auto key = normaliseResourcePath(resourcePath);
     if (!key)
     {
         Log::Print("INVALID RESOURCE PATH: " + std::string(resourcePath), "AssetManager", LogType::LOG_ERROR);
@@ -296,6 +312,8 @@ void AssetManager::shutdown()
 
     audioClips.clear();
     audioClipTable.clear();
+    registry.clear();
+    registryLoaded = false;
     project = nullptr;
 }
 } // namespace Cthulhu::Assets
