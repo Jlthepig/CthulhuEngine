@@ -1,4 +1,5 @@
 #include "sceneLoader.hpp"
+#include "assetRegistry.hpp"
 #include "components.hpp"
 #include "jsonParser.hpp"
 #include "project.hpp"
@@ -8,7 +9,32 @@ using KalaHeaders::KalaLog::Log;
 using KalaHeaders::KalaLog::LogType;
 namespace Cthulhu::Scene
 {
-bool SceneLoader::load(const std::string &path, Scene &scene, [[maybe_unused]] const Cthulhu::Project::Project &project)
+namespace
+{
+std::string resolveReference(const Assets::AssetRegistry &registry, const std::optional<Assets::AssetId> &id,
+                             const std::string &pathHint)
+{
+    if (!id)
+    {
+        return pathHint;
+    }
+
+    if (const auto *record = registry.findById(*id))
+    {
+        if (record->path != pathHint)
+        {
+            Log::Print("Asset moved: " + pathHint + " -> " + record->path, "SceneLoader", LogType::LOG_INFO);
+        }
+        return record->path;
+    }
+
+    Log::Print("UNKNOWN ASSET ID, FALLING BACK TO PATH: " + pathHint, "SceneLoader", LogType::LOG_WARNING);
+    return pathHint;
+}
+} // namespace
+
+bool SceneLoader::load(const std::string &path, Scene &scene, [[maybe_unused]] const Cthulhu::Project::Project &project,
+                       const Assets::AssetRegistry &registry)
 {
     auto parsed = JsonParser::parseScene(path); // the parsed information provided by the json parser
     if (!parsed.has_value())
@@ -44,7 +70,7 @@ bool SceneLoader::load(const std::string &path, Scene &scene, [[maybe_unused]] c
             const auto& parsedMesh = *parsedEntity.mesh;
 
             MeshComponent mesh;
-            mesh.modelPath = parsedMesh.modelPath;
+            mesh.modelPath = resolveReference(registry, parsedMesh.modelId, parsedMesh.modelPath);
             mesh.boundsMin = parsedMesh.boundsMin;
             mesh.boundsMax = parsedMesh.boundsMax;
             e.set(mesh);
@@ -85,7 +111,7 @@ bool SceneLoader::load(const std::string &path, Scene &scene, [[maybe_unused]] c
         if (parsedEntity.audio.has_value())
         {
             AudioSourceComponent a;
-            a.filePath = parsedEntity.audio->file;
+            a.filePath = resolveReference(registry, parsedEntity.audio->fileId, parsedEntity.audio->file);
             a.volume = parsedEntity.audio->volume;
             a.loop = parsedEntity.audio->loop;
             e.set(a);

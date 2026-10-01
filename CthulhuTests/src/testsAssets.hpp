@@ -4,6 +4,101 @@
 
 namespace Cthulhu::Validation
 {
+inline void validateAssetReferences(Engine& engine, Results& r)
+{
+    auto& registry = engine.getAssetManager().getRegistry();
+    const auto* floorRecord = registry.findByPath("res://assets/models/Floor.glb");
+    const auto* clipRecord = registry.findByPath(TEST_AUDIO);
+    if (!floorRecord || !clipRecord)
+    {
+        check(r, false, "K0 registry knows floor and audio");
+        return;
+    }
+
+    const std::string floorId = Assets::assetIdToString(floorRecord->id);
+    const std::string clipId = Assets::assetIdToString(clipRecord->id);
+
+    auto writeScene = [&](std::string_view resourcePath, const std::string& entity) {
+        auto resolved = engine.getProject()->resolveResourcePath(resourcePath);
+        if (!resolved)
+        {
+            return;
+        }
+        std::ofstream out(*resolved, std::ios::trunc);
+        out << R"({ "format_version": 3, "name": "validation_refs", "entities": [ )" << entity
+            << R"( ], "directional_light": { "direction": [0,-1,0], "color": [1,1,1], "intensity": 1 }, "point_lights": [] })";
+    };
+
+    auto findNamed = [&](const std::string& wanted) -> std::optional<flecs::entity> {
+        std::optional<flecs::entity> found;
+        engine.getActiveScene()->getWorld().each([&](flecs::entity e, const CS::NameComponent& name) {
+            if (name.name == wanted)
+            {
+                found = e;
+            }
+        });
+        return found;
+    };
+
+    constexpr std::string_view movedPath = "res://.cthulhu/validation_refs_moved.scene";
+    writeScene(movedPath,
+               R"({ "id": "12121212343434345656565678787878", "name": "Moved",
+                    "model": "res://assets/models/OldFloorName.glb", "model_id": ")" + floorId + R"(",
+                    "position": [0,0,0], "rotation": [0,0,0], "scale": [1,1,1],
+                    "audio": { "file": "res://assets/audio/old_name.wav", "file_id": ")" + clipId +
+                   R"(", "volume": 0.0, "loop": false } })");
+
+    bool k1 = false;
+    if (engine.loadScene(movedPath))
+    {
+        if (auto e = findNamed("Moved"))
+        {
+            const auto* mesh = e->try_get<CS::MeshComponent>();
+            const auto* audio = e->try_get<CS::AudioSourceComponent>();
+            k1 = mesh && mesh->modelPath == "res://assets/models/Floor.glb" && e->has<CS::MeshRuntimeComponent>() &&
+                 audio && audio->filePath == std::string(TEST_AUDIO) && e->has<CS::AudioSourceRuntimeComponent>();
+        }
+    }
+    check(r, k1, "K1 asset ID wins over a stale path hint");
+
+    constexpr std::string_view savedPath = "res://.cthulhu/validation_refs_saved.scene";
+    const bool saved = engine.saveActiveSceneAs(savedPath);
+    auto resolvedSaved = engine.getProject()->resolveResourcePath(savedPath);
+    const std::string text = resolvedSaved ? Utils::FileReader::readFile(resolvedSaved->string()) : "";
+    check(r, saved && text.find("\"model_id\": \"" + floorId + "\"") != std::string::npos &&
+             text.find("\"file_id\": \"" + clipId + "\"") != std::string::npos &&
+             text.find("OldFloorName") == std::string::npos,
+          "K2 save writes asset IDs and refreshed path hints");
+
+    // ID unknown to this registry fall back to the path
+    constexpr std::string_view unknownPath = "res://.cthulhu/validation_refs_unknown.scene";
+    writeScene(unknownPath,
+               R"({ "id": "abababababababababababababababab", "name": "Unknown",
+                    "model": "res://assets/models/Floor.glb", "model_id": "99999999999999999999999999999999",
+                    "position": [0,0,0], "rotation": [0,0,0], "scale": [1,1,1] })");
+
+    bool k3 = false;
+    if (engine.loadScene(unknownPath))
+    {
+        if (auto e = findNamed("Unknown"))
+        {
+            k3 = e->has<CS::MeshRuntimeComponent>();
+        }
+    }
+    check(r, k3, "K3 unknown asset ID falls back to the path");
+
+    // corrupted ID	scene rejected current scene untouched
+    constexpr std::string_view badPath = "res://.cthulhu/validation_refs_bad.scene";
+    writeScene(badPath,
+               R"({ "id": "cdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcd", "name": "Bad",
+                    "model": "res://assets/models/Floor.glb", "model_id": "not-an-id",
+                    "position": [0,0,0], "rotation": [0,0,0], "scale": [1,1,1] })");
+
+    const auto* before = engine.getActiveScene();
+    check(r, !engine.loadScene(badPath) && engine.getActiveScene() == before,
+          "K4 malformed asset ID rejects the scene");
+}	
+
 inline void validateAssetRegistry(Engine& engine, Results& r)
 {
     auto& registry = engine.getAssetManager().getRegistry();
@@ -20,7 +115,7 @@ inline void validateAssetRegistry(Engine& engine, Results& r)
     {
         return;
     }
-    const Assets::AssetId floorId = floor->id; // records may move on rescan; keep the ID, not the pointer
+    const Assets::AssetId floorId = floor->id; 
 
     check(r, registry.findByPath("res://.cthulhu/validation.scene") == nullptr,
           "J5 .cthulhu contents are never registered");

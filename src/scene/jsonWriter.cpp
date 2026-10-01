@@ -4,6 +4,7 @@
 #include <unordered_set>
 
 #include "jsonWriter.hpp"
+#include "assetRegistry.hpp"
 #include "components.hpp"
 #include "jsonParser.hpp"
 #include "scene.hpp"
@@ -145,7 +146,7 @@ struct JsonWriter
 };
 } // namespace
 
-bool SceneWriter::writeScene(const Scene &scene, const std::string &path)
+bool SceneWriter::writeScene(const Scene &scene, const std::string &path, const Assets::AssetRegistry &registry)
 {
     JsonWriter w;
     w.beginObject();
@@ -208,6 +209,11 @@ bool SceneWriter::writeScene(const Scene &scene, const std::string &path)
             const auto &m = e.get<MeshComponent>();
             w.key("model");
             w.value(m.modelPath);
+            if (const auto *record = registry.findByPath(m.modelPath))
+            {
+                w.key("model_id");
+                w.value(Assets::assetIdToString(record->id));
+            }
             w.key("bounds");
             w.beginObject();
             w.vec3("min", m.boundsMin);
@@ -276,6 +282,11 @@ bool SceneWriter::writeScene(const Scene &scene, const std::string &path)
             w.beginObject();
             w.key("file");
             w.value(au.filePath);
+            if (const auto *record = registry.findByPath(au.filePath))
+            {
+                w.key("file_id");
+                w.value(Assets::assetIdToString(record->id));
+            }
             w.key("volume");
             w.value(au.volume);
             w.key("loop");

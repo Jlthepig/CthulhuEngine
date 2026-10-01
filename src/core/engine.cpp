@@ -267,7 +267,7 @@ bool Engine::loadScene(std::string_view resourcePath)
     }
 
     auto newScene = createSceneInstance();
-    if (!Scene::SceneLoader::load(resolvedPath->string(), *newScene, *project))
+    if (!Scene::SceneLoader::load(resolvedPath->string(), *newScene, *project, assetManager.getRegistry()))
     {
         Log::Print("FAILED TO LOAD SCENE: " + std::string(resourcePath), "ENGINE", LogType::LOG_ERROR);
 
@@ -388,7 +388,7 @@ bool Engine::saveActiveSceneAs(std::string_view resourcePath)
         return false;
     }
 
-    if (!Scene::SceneWriter::writeScene(*activeScene, resolvedPath->string()))
+    if (!Scene::SceneWriter::writeScene(*activeScene, resolvedPath->string(), assetManager.getRegistry()))
     {
         return false;
     }

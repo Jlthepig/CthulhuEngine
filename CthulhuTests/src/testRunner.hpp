@@ -38,6 +38,9 @@ inline int run(Engine& engine)
 	checkRefInvariant(engine, r, "after failed load");
 	validateBadModelInScene(engine, r);
 	checkRefInvariant(engine, r, "after bad-model scene");
+
+	validateAssetReferences(engine, r);
+	checkRefInvariant(engine, r, "after asset references");
 	validateSimStateOnSwitch(engine, r);
 	validateUnload(engine, r);
 	validateShutdown(engine, r);

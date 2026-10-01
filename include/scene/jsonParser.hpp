@@ -4,15 +4,17 @@
 #include <string>
 #include <vector>
 
+#include "assetId.hpp"
 #include "entityId.hpp"
 #include "light.hpp"
 namespace Cthulhu::Scene
 {
 
-inline constexpr uint32_t SCENE_FORMAT_VERSION = 2;
+inline constexpr uint32_t SCENE_FORMAT_VERSION = 3;
 struct ParsedAudio
 {
     std::string file;
+    std::optional<Assets::AssetId> fileId;
     float volume = 1.0f;
     bool loop = false;
 };
@@ -26,6 +28,7 @@ struct ParsedPhysics
 struct ParsedMesh
 {
     std::string modelPath;
+    std::optional<Assets::AssetId> modelId;
     glm::vec3 boundsMin;
     glm::vec3 boundsMax;
 };

@@ -58,7 +58,7 @@ std::optional<ParsedScene> JsonParser::parseScene(const std::string &path)
     }
 
     const uint64_t version = versionResult.value();
-    if (version != SCENE_FORMAT_VERSION)
+    if (version != 2 && version != SCENE_FORMAT_VERSION)
     {
         Log::Print("UNSUPPORTED SCENE FORMAT VERSION: " + std::to_string(version), "SceneParser", LogType::LOG_ERROR);
         return std::nullopt;
@@ -156,6 +156,18 @@ std::optional<ParsedScene> JsonParser::parseScene(const std::string &path)
             ParsedMesh mesh;
             mesh.modelPath = std::string(modelResult.value());
 
+            auto modelIdResult = entityJson["model_id"].get_string();
+            if (!modelIdResult.error())
+            {
+                auto modelId = Assets::assetIdFromString(modelIdResult.value());
+                if (!modelId)
+                {
+                    Log::Print("INVALID model_id: " + entity.name, "SceneParser", LogType::LOG_ERROR);
+                    return std::nullopt;
+                }
+                mesh.modelId = *modelId;
+            }
+
             auto boundsResult = entityJson["bounds"].get_object();
             if (!boundsResult.error())
             {
@@ -219,6 +231,19 @@ std::optional<ParsedScene> JsonParser::parseScene(const std::string &path)
             auto aj = audioResult.value();
             ParsedAudio a;
             a.file = std::string(aj["file"].get_string().value());
+
+            auto fileIdResult = aj["file_id"].get_string();
+            if (!fileIdResult.error())
+            {
+                auto fileId = Assets::assetIdFromString(fileIdResult.value());
+                if (!fileId)
+                {
+                    Log::Print("INVALID audio file_id: " + entity.name, "SceneParser", LogType::LOG_ERROR);
+                    return std::nullopt;
+                }
+                a.fileId = *fileId;
+            }
+
             auto vol = aj["volume"].get_double();
             if (!vol.error())
                 a.volume = static_cast<float>(vol.value());
