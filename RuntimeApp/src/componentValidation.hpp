@@ -296,6 +296,9 @@ inline void validateSave(Engine& engine, Results& r)
     ch.set(CS::CharacterControllerComponent{});
     ch.get_mut<CS::CharacterControllerRuntimeComponent>().verticalVelocity = 12.0f;
 
+    flecs::entity au = scene.createEntity("V_SavedAudio");
+    au.set(CS::AudioSourceComponent{std::string(TEST_AUDIO), 0.25f, false});
+
     const bool saved = engine.saveActiveSceneAs(SAVE_PATH);
     check(r, saved, "12 save scene");
     check(r, !scene.isDirty(), "12 successful save marks scene clean");
@@ -344,6 +347,7 @@ inline void validateLoadAndSwitch(Engine& engine, Results& r)
 
     bool weaponOk = false;
     bool characterOk = false;
+    bool audioOk = false;
 
     world.each([&](flecs::entity e, const CS::NameComponent& name)
     {
@@ -354,6 +358,13 @@ inline void validateLoadAndSwitch(Engine& engine, Results& r)
             weaponOk = cfg && cfg->fireRate == 7.0f && cfg->maxRange == 70.0f &&
                        rt && rt->timeSinceLastShot == 0.0f && !rt->wantsToFire;
         }
+        else if (name.name == "V_SavedAudio")
+        {
+            const auto* cfg = e.try_get<CS::AudioSourceComponent>();
+            const auto* rt = e.try_get<CS::AudioSourceRuntimeComponent>();
+            audioOk = cfg && cfg->volume == 0.25f && !cfg->loop &&
+                      rt && engine.getAssetManager().getAudioClip(rt->clip) && !rt->isPlaying;
+        }
         else if (name.name == "V_SavedCharacter")
         {
             const auto* rt = e.try_get<CS::CharacterControllerRuntimeComponent>();
@@ -363,6 +374,7 @@ inline void validateLoadAndSwitch(Engine& engine, Results& r)
 
     check(r, weaponOk, "13 weapon authoring restored with fresh runtime");
     check(r, characterOk, "13 character controller restored with fresh runtime");
+    check(r, audioOk, "I1 audio source restored with a live clip and fresh runtime");
     check(r, !scene.isDirty(), "13 loaded scene is clean");
 }
 
@@ -387,6 +399,7 @@ inline void validateFailedLoad(Engine& engine, Results& r)
                     "model": "res://assets/models/Floor.glb",
           "position": [0,0,0], "rotation": [0,0,0], "scale": [1,1,1],
           "physics": { "type": "static", "half_extent": [1,1,1] },
+                      "audio": { "file": "res://assets/audio/gunshot.wav", "volume": 0.0, "loop": false },
           "character_controller": {} },
         { "id": "fedcba9876543210fedcba9876543210", "name": "Bad",
           "position": [0,0,0], "rotation": [0,0,0], "scale": [1,1,1],
@@ -403,6 +416,8 @@ inline void validateFailedLoad(Engine& engine, Results& r)
     auto& assets = engine.getAssetManager();
     const Assets::ModelHandle floor = assets.loadModel("res://assets/models/Floor.glb");
     const uint32_t floorRefs = assets.getModelRefCount(floor);
+    const Assets::AudioClipHandle clip = assets.loadAudioClip(TEST_AUDIO);
+    const uint32_t clipRefs = assets.getAudioClipRefCount(clip);
 
     const bool loaded = engine.loadScene(BROKEN_PATH);
     check(r, !loaded, "13 broken scene is rejected");
@@ -410,6 +425,7 @@ inline void validateFailedLoad(Engine& engine, Results& r)
     check(r, bodies(engine) == b, "13 failed load leaks no Jolt bodies");
     check(r, characters() == c, "13 failed load leaks no CharacterVirtuals");
     check(r, assets.getModelRefCount(floor) == floorRefs, "F2 failed load releases its model references");
+    check(r, assets.getAudioClipRefCount(clip) == clipRefs, "F2 failed load releases its audio clip references");
 }
 
 // ---------------------------------------------------------------- 15 sim state on switch
@@ -628,8 +644,12 @@ inline void validateUnusedCollection(Engine& engine, Results& r)
     const Assets::ModelHandle floorBefore = assets.loadModel("res://assets/models/Floor.glb");
     const Assets::ModelHandle helmetBefore = assets.loadModel("res://assets/models/DamagedHelmet.glb");
 
+        const Assets::AudioClipHandle clipBefore = assets.loadAudioClip(TEST_AUDIO);
+
     const bool loaded = engine.loadScene(floorOnlyPath);
     check(r, loaded, "D0 floor-only scene loads");
+        check(r, !assets.getAudioClip(clipBefore) && assets.getLoadedAudioClipCount() == 0,
+            "I2 switching to a scene without audio frees the clip");
 
     check(r, !assets.getModel(helmetBefore), "D1 switching to a scene without the helmet unloads it");
     check(r, assets.getModel(floorBefore) != nullptr, "D1 shared model survives the switch");
@@ -646,6 +666,11 @@ inline void validateUnusedCollection(Engine& engine, Results& r)
     const uint32_t refs = assets.getModelRefCount(helmetAfter);
     assets.releaseModel(helmetBefore);
     check(r, assets.getModelRefCount(helmetAfter) == refs, "E3 releasing a stale handle cannot affect the new occupant");
+
+    const Assets::AudioClipHandle clipAfter = assets.loadAudioClip(TEST_AUDIO);
+    check(r, assets.getAudioClip(clipAfter) && !assets.getAudioClip(clipBefore) &&
+             clipAfter.index == clipBefore.index && clipAfter.generation != clipBefore.generation,
+          "I3 clip reloads into its old slot with a new generation; stale handle -> nullptr");
 }
 
 // ---------------------------------------------------------------- G asset types
