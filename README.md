@@ -1,5 +1,12 @@
 <img width="1000" height="500" alt="Cthulhu Engine" src="https://github.com/user-attachments/assets/6eb22c1a-5b1a-4fed-8f5c-548693e3a9f9" />
 
+![GitHub top language](https://img.shields.io/github/languages/top/Jlthepig/CthulhuEngine?color=green) ![GitHub License](https://img.shields.io/github/license/Jlthepig/CthulhuEngine?color=dark%20green) ![GitHub Repo stars](https://img.shields.io/github/stars/Jlthepig/CthulhuEngine?style=flat&color=%2339FF14)
+
+
+
+
+
+
 # What is Cthulhu?
 
 Cthulhu is a custom 3D game engine written in **C++** for the sole purpose of building **first-person shooter games**.
