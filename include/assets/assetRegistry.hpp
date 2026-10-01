@@ -17,12 +17,21 @@ class Project;
 
 namespace Cthulhu::Assets
 {
+
+struct AudioImportSettings
+{
+    bool stream = false;
+
+    friend bool operator==(const AudioImportSettings &, const AudioImportSettings &) = default;
+};
 struct AssetRecord
 {
     AssetId id;
     std::string path;
     AssetType type = AssetType::Unknown;
     bool missing = false;
+
+    AudioImportSettings audio;
 };
 
 // will be located in .cthulhu/assets.json as a project wide database for all assets must be committed or you might break your project!
@@ -42,6 +51,8 @@ class AssetRegistry
 
         ScanResult scan(const Project::Project &project);
 
+        bool setAudioImportSettings(AssetId id, const AudioImportSettings &settings);
+        
         bool forget(AssetId id);
 
         [[nodiscard]] const AssetRecord *findById(AssetId id) const;

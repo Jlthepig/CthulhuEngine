@@ -36,11 +36,16 @@ inline int run(Engine& engine)
 	checkRefInvariant(engine, r, "after unused collection");
 	validateFailedLoad(engine, r);
 	checkRefInvariant(engine, r, "after failed load");
+
 	validateBadModelInScene(engine, r);
 	checkRefInvariant(engine, r, "after bad-model scene");
 
 	validateAssetReferences(engine, r);
 	checkRefInvariant(engine, r, "after asset references");
+
+	validateImportSettings(engine, r);
+    checkRefInvariant(engine, r, "after import settings");
+
 	validateSimStateOnSwitch(engine, r);
 	validateUnload(engine, r);
 	validateShutdown(engine, r);

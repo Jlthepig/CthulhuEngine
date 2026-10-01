@@ -13,6 +13,9 @@ static bool g_audioReady = false;
 
 struct AudioClipData
 {
+    std::string filePath;
+    bool stream = false;
+    bool hasTemplate = false;
     ma_sound sound;
 };
 
@@ -78,7 +81,7 @@ void Audio::stopSound(uint32_t instanceId)
     }
 }
 
-AudioClipData *Audio::loadClip(const std::string &filePath)
+AudioClipData *Audio::loadClip(const std::string &filePath, bool stream)
 {
     if (!g_audioReady)
     {
@@ -86,6 +89,23 @@ AudioClipData *Audio::loadClip(const std::string &filePath)
     }
 
     auto *clip = new AudioClipData();
+    clip->filePath = filePath;
+    clip->stream = stream;
+
+    if (stream)
+    {
+        ma_sound probe;
+        if (ma_sound_init_from_file(&g_audioEngine, filePath.c_str(), MA_SOUND_FLAG_STREAM, NULL, NULL, &probe) !=
+            MA_SUCCESS)
+        {
+            KalaHeaders::KalaLog::Log::Print("Failed to open audio stream: " + filePath, "Audio",KalaHeaders::KalaLog::LogType::LOG_ERROR);
+            delete clip;
+            return nullptr;
+        }
+        ma_sound_uninit(&probe);
+        return clip;
+    }
+
     const ma_result result =
         ma_sound_init_from_file(&g_audioEngine, filePath.c_str(), MA_SOUND_FLAG_DECODE, NULL, NULL, &clip->sound);
 
@@ -96,6 +116,7 @@ AudioClipData *Audio::loadClip(const std::string &filePath)
         return nullptr;
     }
 
+    clip->hasTemplate = true;
     return clip;
 }
 
@@ -106,7 +127,10 @@ void Audio::destroyClip(AudioClipData *clip)
         return;
     }
 
-    ma_sound_uninit(&clip->sound);
+    if (clip->hasTemplate)
+    {
+        ma_sound_uninit(&clip->sound);
+    }
     delete clip;
 }
 
@@ -118,7 +142,9 @@ uint32_t Audio::playClip(const AudioClipData *clip, float volume, bool loop)
     }
 
     ma_sound *pSound = new ma_sound();
-    const ma_result result = ma_sound_init_copy(&g_audioEngine, &clip->sound, 0, NULL, pSound);
+    const ma_result result = clip->stream 
+    ? ma_sound_init_from_file(&g_audioEngine, clip->filePath.c_str(), MA_SOUND_FLAG_STREAM, NULL, NULL, pSound) 
+    : ma_sound_init_copy(&g_audioEngine, &clip->sound, 0, NULL, pSound);
 
     if (result != MA_SUCCESS)
     {
@@ -134,6 +160,11 @@ uint32_t Audio::playClip(const AudioClipData *clip, float volume, bool loop)
     const uint32_t instanceId = nextInstanceId++;
     activeSounds[instanceId] = pSound;
     return instanceId;
+}
+
+bool Audio::isClipStreamed(const AudioClipData *clip)
+{
+    return clip && clip->stream;
 }
 
 size_t Audio::getActiveSoundCount()

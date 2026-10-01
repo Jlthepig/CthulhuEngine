@@ -4,6 +4,50 @@
 
 namespace Cthulhu::Validation
 {
+
+inline void validateImportSettings(Engine& engine, Results& r)
+{
+    auto& assets = engine.getAssetManager();
+    auto& registry = assets.getRegistry();
+
+    const auto* record = registry.findByPath(TEST_AUDIO);
+    if (!record)
+    {
+        check(r, false, "L0 registry knows the test audio");
+        return;
+    }
+    const Assets::AssetId clipId = record->id;
+    check(r, !record->audio.stream, "L1 audio defaults to decode");
+
+    // Floor only scene has no audio users clip is unloaded at the switch
+    check(r, engine.loadScene("res://.cthulhu/validation_flooronly.scene") && assets.getLoadedAudioClipCount() == 0,
+          "L0 setup: test clip unloaded");
+
+    check(r, registry.setAudioImportSettings(clipId, Assets::AudioImportSettings{true}), "L2 set stream import setting");
+
+    Assets::AssetRegistry reloaded;
+    const auto* persisted = reloaded.load(engine.getProject()->getRootPath() / ".cthulhu" / "assets.json")
+                                ? reloaded.findById(clipId) : nullptr;
+    check(r, persisted && persisted->audio.stream, "L2 import setting persists to disk");
+
+    const Assets::AudioClipHandle clip = assets.loadAudioClip(TEST_AUDIO);
+    check(r, Core::Audio::isClipStreamed(assets.getAudioClip(clip)), "L3 setting applies on next load");
+
+    auto& scene = *engine.getActiveScene();
+    flecs::entity e = scene.createEntity("V_Stream");
+    e.set(CS::AudioSourceComponent{std::string(TEST_AUDIO), 0.0f, true});
+    e.get_mut<CS::AudioSourceRuntimeComponent>().playRequested = true;
+    scene.getWorld().progress(0.0f);
+
+    const auto* rt = e.try_get<CS::AudioSourceRuntimeComponent>();
+    check(r, rt && rt->isPlaying, "L4 streamed clip plays");
+    scene.destroyEntity(idOf(e));
+
+    // Restore the project's setting and drop the streamed clip
+    registry.setAudioImportSettings(clipId, Assets::AudioImportSettings{false});
+    assets.collectUnusedAssets();
+}
+
 inline void validateAssetReferences(Engine& engine, Results& r)
 {
     auto& registry = engine.getAssetManager().getRegistry();

@@ -220,7 +220,13 @@ AudioClipHandle AssetManager::loadAudioClip(std::string_view resourcePath)
         return {};
     }
 
-    Core::AudioClipData *clip = Core::Audio::loadClip(filePath->string());
+    AudioImportSettings settings;
+    if (const auto *record = registry.findByPath(*key))
+    {
+        settings = record->audio;
+    }
+
+    Core::AudioClipData *clip = Core::Audio::loadClip(filePath->string(), settings.stream);
     if (!clip)
     {
         Log::Print("FAILED TO LOAD AUDIO CLIP: " + *key, "AssetManager", LogType::LOG_ERROR);
@@ -234,7 +240,7 @@ AudioClipHandle AssetManager::loadAudioClip(std::string_view resourcePath)
     }
     audioClips[slot.index] = clip;
 
-    Log::Print("Loaded audio clip: " + *key, "AssetManager", LogType::LOG_INFO);
+        Log::Print("Loaded audio clip: " + *key + (settings.stream ? " (streamed)" : ""), "AssetManager",LogType::LOG_INFO);
     return AudioClipHandle{slot.index, slot.generation};
 }
 

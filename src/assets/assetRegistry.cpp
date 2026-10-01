@@ -118,6 +118,16 @@ bool AssetRegistry::load(const std::filesystem::path &registryFile)
         }
 
         add(*id, std::move(*path));
+
+        auto import = object.value()["import"].get_object();
+        if (!import.error())
+        {
+            auto stream = import.value()["stream"].get_bool();
+            if (!stream.error())
+            {
+                records.back().audio.stream = stream.value();
+            }
+        }
     }
 
     usable = true;
@@ -154,8 +164,17 @@ bool AssetRegistry::save() const
         out << "{\n    \"format_version\": " << REGISTRY_FORMAT_VERSION << ",\n    \"assets\": [";
         for (std::size_t i = 0; i < sorted.size(); ++i)
         {
-            out << (i == 0 ? "\n" : ",\n") << "        { \"id\": \"" << assetIdToString(sorted[i]->id)
-                << "\", \"path\": \"" << escapeJson(sorted[i]->path) << "\" }";
+            const AssetRecord &record = *sorted[i];
+
+            out << (i == 0 ? "\n" : ",\n") << "        { \"id\": \"" << assetIdToString(record.id)
+                << "\", \"path\": \"" << escapeJson(record.path) << "\"";
+
+            if (record.type == AssetType::Audio && record.audio != AudioImportSettings{})
+            {
+                out << ", \"import\": { \"stream\": " << (record.audio.stream ? "true" : "false") << " }";
+            }
+
+            out << " }";
         }
         out << (sorted.empty() ? "]\n}\n" : "\n    ]\n}\n");
 
@@ -268,6 +287,35 @@ AssetRegistry::ScanResult AssetRegistry::scan(const Project::Project &project)
                    " new, " + std::to_string(result.missing) + " missing)",
                "AssetRegistry", LogType::LOG_INFO);
     return result;
+}
+
+bool AssetRegistry::setAudioImportSettings(AssetId id, const AudioImportSettings &settings)
+{
+    if (!usable)
+    {
+        return false;
+    }
+
+    auto it = indexById.find(id);
+    if (it == indexById.end())
+    {
+        return false;
+    }
+
+    AssetRecord &record = records[it->second];
+    if (record.type != AssetType::Audio)
+    {
+        Log::Print("NOT AN AUDIO ASSET: " + record.path, "AssetRegistry", LogType::LOG_ERROR);
+        return false;
+    }
+
+    if (record.audio == settings)
+    {
+        return true;
+    }
+
+    record.audio = settings;
+    return save();
 }
 
 bool AssetRegistry::forget(AssetId id)

@@ -15,12 +15,14 @@ class Audio
     static uint32_t playSound2D(const std::string &filePath, float volume = 1.0f, bool loop = false);
     static void stopSound(uint32_t soundId);
     
-    static AudioClipData *loadClip(const std::string &filePath);
+    static AudioClipData *loadClip(const std::string &filePath, bool stream = false);
     static void destroyClip(AudioClipData *clip);
     static uint32_t playClip(const AudioClipData *clip, float volume = 1.0f, bool loop = false);
 
     static size_t getActiveSoundCount();
     static bool isSoundActive(uint32_t soundId);
+
+    static bool isClipStreamed(const AudioClipData *clip);
 
   private:
     static uint32_t nextInstanceId;
