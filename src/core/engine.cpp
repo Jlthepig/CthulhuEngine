@@ -308,6 +308,7 @@ void Engine::activateScene(std::unique_ptr<Scene::Scene> newScene)
     unloadScene();
 
     activeScene = std::move(newScene);
+    ++sceneGeneration;
 
     renderer.setScene(activeScene.get());
 
@@ -327,6 +328,7 @@ void Engine::unloadScene()
 
     activeScene->clear();
     activeScene.reset();
+    ++sceneGeneration;
 
     assetManager.collectUnusedAssets();
 

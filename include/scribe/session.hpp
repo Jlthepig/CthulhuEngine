@@ -1,0 +1,69 @@
+#pragma once
+
+#include <cstdint>
+#include <memory>
+#include <string_view>
+#include <vector>
+
+#include "command.hpp"
+#include "history.hpp"
+
+namespace Cthulhu::Scribe
+{
+    // << shalll not be used by runtime code! >>
+class Session
+{
+  public:
+    explicit Session(Engine &engine);
+
+    Session(const Session &) = delete;
+    Session &operator=(const Session &) = delete;
+
+    Result execute(std::unique_ptr<Command> command);
+
+    bool undo();
+    bool redo();
+
+    [[nodiscard]] bool canUndo() const noexcept
+    {
+        return history.canUndo();
+    }
+
+    [[nodiscard]] bool canRedo() const noexcept
+    {
+        return history.canRedo();
+    }
+
+    [[nodiscard]] std::string_view undoName() const noexcept
+    {
+        return history.undoName();
+    }
+
+    [[nodiscard]] std::string_view redoName() const noexcept
+    {
+        return history.redoName();
+    }
+
+    // must be called when a drag or typing interaction of some kind finishes thus the next edit becomes its own undo step
+    void endMerge() noexcept
+    {
+        history.endMerge();
+    }
+
+    Result save();
+    Result saveAs(std::string_view resourcePath);
+
+    [[nodiscard]] std::vector<ChangeEvent> takeEvents();
+
+    Result renameScene(std::string_view newName);
+
+  private:
+    Engine &engine;
+    History history;
+    std::vector<ChangeEvent> events;
+    uint64_t boundGeneration = 0;
+
+    Scene::Scene *syncScene();
+    void refreshDirty(Scene::Scene &scene);
+};
+} // namespace Cthulhu::Scribe

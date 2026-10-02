@@ -126,6 +126,11 @@ class Engine
         return activeScene != nullptr;
     }
 
+    uint64_t getSceneGeneration() const
+    {
+        return sceneGeneration;
+    }
+
     const Project::Project *getProject() const
     {
         return project ? &*project : nullptr;
@@ -152,6 +157,8 @@ class Engine
     void activateScene(std::unique_ptr<Scene::Scene> newScene);
 
     std::unique_ptr<Cthulhu::Scene::Scene> activeScene;
+    uint64_t sceneGeneration = 0;
+    
     std::vector<Rendering::Renderable> frameRenderables;
 
     UpdateCallback updateCallback = nullptr;

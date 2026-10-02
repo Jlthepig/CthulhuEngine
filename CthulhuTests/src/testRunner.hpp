@@ -4,6 +4,7 @@
 #include "testsComponents.hpp"
 #include "testsAssets.hpp"
 #include "testsScene.hpp"
+#include "testsScribe.hpp"
 
 namespace Cthulhu::Validation
 {
@@ -46,6 +47,8 @@ inline int run(Engine& engine)
 
 	validateImportSettings(engine, r);
     checkRefInvariant(engine, r, "after import settings");
+
+	validateScribeCore(engine, r);
 
 	validateSimStateOnSwitch(engine, r);
 	validateUnload(engine, r);
