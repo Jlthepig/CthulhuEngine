@@ -247,6 +247,9 @@ std::optional<Model> ModelLoader::loadGltf(const std::string &path)
     }
 
     // pass 2 load meshes
+    glm::vec3 modelMin(FLT_MAX);
+    glm::vec3 modelMax(-FLT_MAX);
+
     for (auto &mesh : gltf.meshes)
     {
         for (auto &primitive : mesh.primitives)
@@ -274,6 +277,9 @@ std::optional<Model> ModelLoader::loadGltf(const std::string &path)
                 vertexData[index * 3 + 1] = pos.y;
                 vertexData[index * 3 + 2] = pos.z;
             });
+
+            modelMin = glm::min(modelMin, meshMin);
+            modelMax = glm::max(modelMax, meshMax);
 
             attributes.push_back({0, 3, currentOffset});
             currentOffset += 3 * sizeof(float);
@@ -403,6 +409,12 @@ std::optional<Model> ModelLoader::loadGltf(const std::string &path)
 
             model.meshes.push_back(std::move(newMesh));
         }
+    }
+
+    if (modelMin.x <= modelMax.x)
+    {
+        model.boundsMin = modelMin;
+        model.boundsMax = modelMax;
     }
 
     if (model.meshes.empty())

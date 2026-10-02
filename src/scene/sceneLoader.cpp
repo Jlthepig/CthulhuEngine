@@ -71,8 +71,6 @@ bool SceneLoader::load(const std::string &path, Scene &scene, [[maybe_unused]] c
 
             MeshComponent mesh;
             mesh.modelPath = resolveReference(registry, parsedMesh.modelId, parsedMesh.modelPath);
-            mesh.boundsMin = parsedMesh.boundsMin;
-            mesh.boundsMax = parsedMesh.boundsMax;
             e.set(mesh);
         }
 

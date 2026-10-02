@@ -542,7 +542,7 @@ void Engine::run()
             if (activeScene)
             {
                 activeScene->getWorld().each(
-            [&](flecs::entity e, const Scene::TransformComponent &transform, const Scene::MeshComponent &mesh, const Scene::MeshRuntimeComponent& meshRuntime) {
+            [&](flecs::entity e, const Scene::TransformComponent &transform, const Scene::MeshComponent &, const Scene::MeshRuntimeComponent& meshRuntime) {
                     if (!e.has<Scene::TagActive>())
                     {
                         return;
@@ -555,7 +555,7 @@ void Engine::run()
                     }
 
                     frameRenderables.push_back({model, transform.cachedModelMatrix,
-                                                transform.cachedNormalMatrix, mesh.boundsMin, mesh.boundsMax});
+                                                transform.cachedNormalMatrix, model->boundsMin, model->boundsMax});
                 });
             }
 

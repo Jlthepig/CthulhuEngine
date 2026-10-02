@@ -5,6 +5,24 @@
 namespace Cthulhu::Validation
 {
 
+inline void validateModelBounds(Engine& engine, Results& r)
+{
+    auto& assets = engine.getAssetManager();
+    const auto* model = assets.getModel(assets.loadModel("res://assets/models/DamagedHelmet.glb"));
+
+    const bool sane = model &&
+                      glm::all(glm::lessThan(model->boundsMin, model->boundsMax)) &&
+                      glm::all(glm::lessThan(glm::abs(model->boundsMax), glm::vec3(1.0e6f)));
+    check(r, sane, "M1 loaded model carries computed bounds");
+
+    constexpr std::string_view path = "res://.cthulhu/validation_bounds.scene";
+    const bool saved = engine.saveActiveSceneAs(path);
+    auto resolved = engine.getProject()->resolveResourcePath(path);
+    const std::string text = resolved ? Utils::FileReader::readFile(resolved->string()) : "";
+    check(r, saved && text.find("\"model\"") != std::string::npos && text.find("\"bounds\"") == std::string::npos,
+          "M2 scenes no longer store hand-typed bounds");
+}
+
 inline void validateImportSettings(Engine& engine, Results& r)
 {
     auto& assets = engine.getAssetManager();

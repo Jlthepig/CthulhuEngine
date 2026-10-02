@@ -168,25 +168,6 @@ std::optional<ParsedScene> JsonParser::parseScene(const std::string &path)
                 mesh.modelId = *modelId;
             }
 
-            auto boundsResult = entityJson["bounds"].get_object();
-            if (!boundsResult.error())
-            {
-                auto boundsJson = boundsResult.value();
-
-                auto minResult = boundsJson["min"].get_array();
-                auto maxResult = boundsJson["max"].get_array();
-
-                if (!minResult.error())
-                {
-                    readVec3(minResult.value(), mesh.boundsMin);
-                }
-
-                if (!maxResult.error())
-                {
-                    readVec3(maxResult.value(), mesh.boundsMax);
-                }
-            }
-
             entity.mesh = std::move(mesh);
         }
 

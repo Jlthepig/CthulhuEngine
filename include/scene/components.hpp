@@ -49,8 +49,6 @@ struct TransformComponent {
 
 struct MeshComponent {
     std::string modelPath{""};
-    glm::vec3 boundsMin{-1.0f};
-    glm::vec3 boundsMax{1.0f};
 };
 
 struct MeshRuntimeComponent {

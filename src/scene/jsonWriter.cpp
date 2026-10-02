@@ -214,11 +214,6 @@ bool SceneWriter::writeScene(const Scene &scene, const std::string &path, const 
                 w.key("model_id");
                 w.value(Assets::assetIdToString(record->id));
             }
-            w.key("bounds");
-            w.beginObject();
-            w.vec3("min", m.boundsMin);
-            w.vec3("max", m.boundsMax);
-            w.endObject();
         }
 
         if (e.has<PhysicsComponent>())

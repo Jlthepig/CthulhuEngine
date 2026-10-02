@@ -29,8 +29,6 @@ struct ParsedMesh
 {
     std::string modelPath;
     std::optional<Assets::AssetId> modelId;
-    glm::vec3 boundsMin;
-    glm::vec3 boundsMax;
 };
 
 struct ParsedWeapon
