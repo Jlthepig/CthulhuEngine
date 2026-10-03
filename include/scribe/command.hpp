@@ -52,6 +52,17 @@ namespace Cthulhu::Scribe
         }
     };
 
+    struct EntityResult
+    {
+        Result result;
+        Scene::EntityId id{};
+
+        [[nodiscard]] bool ok() const noexcept
+        {
+            return result.ok();
+        }
+    };
+
     enum class ChangeType : uint8_t
     {
         SceneReplaced, // active scene switched history cleared rebuild all ui

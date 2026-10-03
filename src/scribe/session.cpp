@@ -1,6 +1,7 @@
 #include <string>
 
 #include "engine.hpp"
+#include "entityCommands.hpp"
 #include "scene.hpp"
 #include "session.hpp"
 #include "log_utils.hpp"
@@ -204,4 +205,59 @@ Result Session::renameScene(std::string_view newName)
 {
     return execute(std::make_unique<RenameSceneCommand>(std::string(newName)));
 }
+
+EntityResult Session::createEntity(std::string_view name, std::optional<Scene::EntityId> parent)
+{
+    Scene::Scene *scene = syncScene();
+    if (!scene)
+    {
+        return {Result::failed("NO ACTIVE SCENE"), {}};
+    }
+
+    Scene::EntityId id = Scene::generateEntityId();
+    while (scene->isEntityAlive(id))
+    {
+        id = Scene::generateEntityId();
+    }
+
+    Result result = execute(Commands::createEntity(id, std::string(name), parent));
+    return {result, result.status == Result::Status::Applied ? id : Scene::EntityId{}};
+}
+
+Result Session::deleteEntity(Scene::EntityId id)
+{
+    return execute(Commands::deleteEntity(id));
+}
+
+EntityResult Session::duplicateEntity(Scene::EntityId id)
+{
+    const std::size_t firstEvent = events.size();
+    Result result = execute(Commands::duplicateEntity(id));
+
+    EntityResult out{result, {}};
+    if (result.status == Result::Status::Applied)
+    {
+        // The command emits the new root's EntityCreated first
+        for (std::size_t i = firstEvent; i < events.size(); ++i)
+        {
+            if (events[i].type == ChangeType::EntityCreated)
+            {
+                out.id = events[i].entityId;
+                break;
+            }
+        }
+    }
+    return out;
+}
+
+Result Session::renameEntity(Scene::EntityId id, std::string_view newName)
+{
+    return execute(Commands::renameEntity(id, std::string(newName)));
+}
+
+Result Session::reparentEntity(Scene::EntityId child, std::optional<Scene::EntityId> newParent)
+{
+    return execute(Commands::reparentEntity(child, newParent));
+}
+
 } // namespace Cthulhu::Scribe

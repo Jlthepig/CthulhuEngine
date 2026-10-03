@@ -17,6 +17,22 @@
 
 namespace Cthulhu::Scene
 {
+
+struct EntitySnapshot
+{
+    EntityId id;
+    std::optional<EntityId> parentId;
+    std::string name;
+
+    TransformComponent transform;
+    std::optional<MeshComponent> mesh;
+    std::optional<PhysicsComponent> physics;
+    std::optional<WeaponComponent> weapon;
+    std::optional<AudioSourceComponent> audio;
+    std::optional<CharacterControllerComponent> characterController;
+    std::optional<CameraComponent> camera;
+    bool player = false;
+};
 class Scene
 {
   public:
@@ -83,6 +99,10 @@ class Scene
 
     [[nodiscard]] std::optional<EntityId> duplicateEntity(EntityId sourceId);
 
+    [[nodiscard]] std::optional<std::vector<EntitySnapshot>> captureSubtree(EntityId rootId) const;
+
+    bool restoreSubtree(const std::vector<EntitySnapshot>& snapshots);
+
     void clear();
 
     // << asset lighting >> 
@@ -144,6 +164,7 @@ class Scene
     [[nodiscard]] std::optional<EntityId> duplicateEntityRecursive(flecs::entity sourceEntity, std::optional<EntityId> parentId); 
     
     void copyAuthoringComponents(flecs::entity sourceEntity, flecs::entity destinationEntity);
+    void captureRecursive(flecs::entity entity, std::vector<EntitySnapshot>& out) const;
 
     [[nodiscard]]
     EntityId generateUniqueEntityId() const;

@@ -2,6 +2,7 @@
 
 #include <cstdint>
 #include <memory>
+#include <optional>
 #include <string_view>
 #include <vector>
 
@@ -56,6 +57,12 @@ class Session
     [[nodiscard]] std::vector<ChangeEvent> takeEvents();
 
     Result renameScene(std::string_view newName);
+
+    EntityResult createEntity(std::string_view name, std::optional<Scene::EntityId> parent = std::nullopt);
+    Result deleteEntity(Scene::EntityId id);
+    EntityResult duplicateEntity(Scene::EntityId id);
+    Result renameEntity(Scene::EntityId id, std::string_view newName);
+    Result reparentEntity(Scene::EntityId child, std::optional<Scene::EntityId> newParent);
 
   private:
     Engine &engine;

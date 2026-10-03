@@ -49,6 +49,8 @@ inline int run(Engine& engine)
     checkRefInvariant(engine, r, "after import settings");
 
 	validateScribeCore(engine, r);
+	validateScribeEntities(engine, r);
+    checkRefInvariant(engine, r, "after scribe entities");
 
 	validateSimStateOnSwitch(engine, r);
 	validateUnload(engine, r);

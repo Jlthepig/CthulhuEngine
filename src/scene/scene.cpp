@@ -1,6 +1,5 @@
 #include "scene.hpp"
 #include "light.hpp"
-#include "modelLoader.hpp"
 #include "log_utils.hpp"
 
 using KalaHeaders::KalaLog::Log;
@@ -453,6 +452,139 @@ std::optional<EntityId> Scene::duplicateEntity(EntityId sourceId)
 
     markDirty();
     return duplicateId;
+}
+
+std::optional<std::vector<EntitySnapshot>> Scene::captureSubtree(EntityId rootId) const
+{
+    auto root = findEntity(rootId);
+    if (!root)
+    {
+        return std::nullopt;
+    }
+
+    std::vector<EntitySnapshot> snapshots;
+    captureRecursive(*root, snapshots);
+    return snapshots;
+}
+
+void Scene::captureRecursive(flecs::entity entity, std::vector<EntitySnapshot> &out) const
+{
+    const auto *identity = entity.try_get<EntityIdentityComponent>();
+    if (!identity)
+    {
+        return;
+    }
+
+    EntitySnapshot snapshot;
+    snapshot.id = identity->id;
+    snapshot.parentId = getParent(identity->id);
+
+    if (const auto *name = entity.try_get<NameComponent>())
+    {
+        snapshot.name = name->name;
+    }
+
+    if (const auto *transform = entity.try_get<TransformComponent>())
+    {
+        snapshot.transform = *transform;
+    }
+
+    if (const auto *c = entity.try_get<MeshComponent>())
+    {
+        snapshot.mesh = *c;
+    }
+    if (const auto *c = entity.try_get<PhysicsComponent>())
+    {
+        snapshot.physics = *c;
+    }
+    if (const auto *c = entity.try_get<WeaponComponent>())
+    {
+        snapshot.weapon = *c;
+    }
+    if (const auto *c = entity.try_get<AudioSourceComponent>())
+    {
+        snapshot.audio = *c;
+    }
+    if (const auto *c = entity.try_get<CharacterControllerComponent>())
+    {
+        snapshot.characterController = *c;
+    }
+    if (const auto *c = entity.try_get<CameraComponent>())
+    {
+        snapshot.camera = *c;
+    }
+    snapshot.player = entity.has<TagPlayer>();
+
+    out.push_back(std::move(snapshot));
+
+    entity.children([&](flecs::entity child) { captureRecursive(child, out); });
+}
+
+bool Scene::restoreSubtree(const std::vector<EntitySnapshot> &snapshots)
+{
+    std::vector<EntityId> created;
+
+    auto rollback = [&]() {
+        for (auto it = created.rbegin(); it != created.rend(); ++it)
+        {
+            destroyEntity(*it);
+        }
+    };
+
+    for (const auto &snapshot : snapshots)
+    {
+        auto entity = createEntityWithId(snapshot.id, snapshot.name);
+        if (!entity)
+        {
+            rollback();
+            return false;
+        }
+        created.push_back(snapshot.id);
+
+        TransformComponent transform = snapshot.transform;
+        transform.matrixDirty = true;
+        entity->set(transform);
+
+        if (snapshot.mesh)
+        {
+            entity->set(*snapshot.mesh);
+        }
+        if (snapshot.physics)
+        {
+            entity->set(*snapshot.physics);
+        }
+        if (snapshot.weapon)
+        {
+            entity->set(*snapshot.weapon);
+        }
+        if (snapshot.audio)
+        {
+            entity->set(*snapshot.audio);
+        }
+        if (snapshot.characterController)
+        {
+            entity->set(*snapshot.characterController);
+        }
+        if (snapshot.camera)
+        {
+            entity->set(*snapshot.camera);
+        }
+        if (snapshot.player)
+        {
+            entity->add<TagPlayer>();
+        }
+    }
+
+    for (const auto &snapshot : snapshots)
+    {
+        if (snapshot.parentId && !setParent(snapshot.id, *snapshot.parentId))
+        {
+            rollback();
+            return false;
+        }
+    }
+
+    return true;
 }
 
 void Scene::clear()
