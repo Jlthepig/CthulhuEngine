@@ -1,4 +1,5 @@
 #include "entityCommands.hpp"
+#include "components.hpp"
 #include "scene.hpp"
 #include "log_utils.hpp"
 

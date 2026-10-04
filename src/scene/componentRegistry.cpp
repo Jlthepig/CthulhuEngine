@@ -240,4 +240,92 @@ namespace
         fieldDescriptor->set(entity, *clean);
         return true;
     }
+
+    std::vector<ComponentSnapshot> ComponentRegistry::capture(flecs::entity entity) const
+    {
+        std::vector<ComponentSnapshot> out;
+        if (!entity.is_alive())
+        {
+            return out;
+        }
+
+        for (const auto& d : descriptors)
+        {
+            if (!d.has(entity))
+            {
+                continue;
+            }
+
+            ComponentSnapshot snapshot;
+            snapshot.component = d.name;
+            snapshot.fields.reserve(d.fields.size());
+
+            for (const auto& f : d.fields)
+            {
+                snapshot.fields.push_back({f.name, f.get(entity)});
+            }
+
+            out.push_back(std::move(snapshot));
+        }
+
+        return out;
+    }
+
+    bool ComponentRegistry::apply(flecs::entity entity, const std::vector<ComponentSnapshot>& components) const
+    {
+        if (!entity.is_alive())
+        {
+            return false;
+        }
+
+        for (const auto& c : components)
+        {
+            const ComponentDescriptor* d = find(c.component);
+            if (!d)
+            {
+                Log::Print("SNAPSHOT HAS UNKNOWN COMPONENT: " + c.component, "Components", LogType::LOG_ERROR);
+                return false;
+            }
+
+            if (!d->has(entity) && !d->add)
+            {
+                Log::Print("CANNOT ADD COMPONENT: " + c.component, "Components", LogType::LOG_ERROR);
+                return false;
+            }
+
+            for (const auto& f : c.fields)
+            {
+                const FieldDescriptor* fd = findField(*d, f.field);
+                if (!fd || !fieldValueMatches(fd->type, f.value))
+                {
+                    Log::Print("SNAPSHOT HAS BAD FIELD: " + c.component + "." + f.field, "Components",
+                            LogType::LOG_ERROR);
+                    return false;
+                }
+            }
+        }
+
+        for (const auto& c : components)
+        {
+            const ComponentDescriptor* d = find(c.component);
+            if (!d->has(entity))
+            {
+                d->add(entity);
+            }
+
+            for (const auto& f : c.fields)
+            {
+                const FieldDescriptor* fd = findField(*d, f.field);
+
+                // skip unchanged fields OnSet observers fire as little as it possibly can
+                if (!(fd->get(entity) == f.value))
+                {
+                    fd->set(entity, f.value);
+                }
+            }
+        }
+
+        return true;
+    }
+
 } // namespace Cthulhu::Scene

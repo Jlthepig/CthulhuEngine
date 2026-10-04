@@ -1,4 +1,5 @@
 #include "scene.hpp"
+#include "components.hpp"
 #include "light.hpp"
 #include "log_utils.hpp"
 
@@ -6,22 +7,6 @@ using KalaHeaders::KalaLog::Log;
 using KalaHeaders::KalaLog::LogType;
 namespace Cthulhu::Scene
 {
-
-namespace 
-{
-
-template <typename T, typename CopyFn>
-void copyIfPresent(flecs::entity source, flecs::entity destination, CopyFn&& copyFn)
-{
-    if (const auto* src = source.try_get<T>())
-    {
-        T dst{};
-        copyFn(*src, dst);
-        destination.set(dst);
-    }
-}
-
-} // namespace
 
 // << entity management >>
 flecs::entity Scene::createEntity(const std::string &name)
@@ -310,52 +295,6 @@ void Scene::collectSubtreeEntityIds(flecs::entity entity,std::vector<EntityId>& 
     }
 }
 
-void Scene::copyAuthoringComponents(flecs::entity source,flecs::entity destination)
-{
-    copyIfPresent<TransformComponent>(source, destination,[](const TransformComponent& src, TransformComponent& dst)
-    {
-        dst.position = src.position;
-        dst.rotation = src.rotation;
-        dst.scale = src.scale;
-        dst.matrixDirty = true;
-    });
-
-    if (const auto* component = source.try_get<MeshComponent>())
-    {
-        destination.set(*component);
-    }
-
-    if (const auto* component = source.try_get<PhysicsComponent>())
-    {
-        destination.set(*component);
-    }
-
-    if (const auto* component = source.try_get<WeaponComponent>())
-    {
-        destination.set(*component);
-    }
-
-    if (const auto* component = source.try_get<AudioSourceComponent>())
-    {
-        destination.set(*component);
-    }
-
-    if (const auto* component = source.try_get<CharacterControllerComponent>())
-    {
-        destination.set(*component);
-    }
-
-    copyIfPresent<CameraComponent>(source, destination,[](const CameraComponent& src, CameraComponent& dst)
-    {
-        dst.front = src.front;
-    });
-
-    if (source.has<TagPlayer>())
-    {
-        destination.add<TagPlayer>();
-    }
-}
-
 std::optional<EntityId> Scene::duplicateEntityRecursive(flecs::entity source,std::optional<EntityId> parentId)
 {
     if (!source.is_alive())
@@ -383,7 +322,11 @@ std::optional<EntityId> Scene::duplicateEntityRecursive(flecs::entity source,std
 
     const EntityId duplicateId = identity->id;
 
-    copyAuthoringComponents(source, duplicate);
+    if (!componentRegistry->apply(duplicate, componentRegistry->capture(source)))
+    {
+        destroyEntity(duplicateId);
+        return std::nullopt;
+    }
 
     if (parentId)
     {
@@ -484,36 +427,7 @@ void Scene::captureRecursive(flecs::entity entity, std::vector<EntitySnapshot> &
         snapshot.name = name->name;
     }
 
-    if (const auto *transform = entity.try_get<TransformComponent>())
-    {
-        snapshot.transform = *transform;
-    }
-
-    if (const auto *c = entity.try_get<MeshComponent>())
-    {
-        snapshot.mesh = *c;
-    }
-    if (const auto *c = entity.try_get<PhysicsComponent>())
-    {
-        snapshot.physics = *c;
-    }
-    if (const auto *c = entity.try_get<WeaponComponent>())
-    {
-        snapshot.weapon = *c;
-    }
-    if (const auto *c = entity.try_get<AudioSourceComponent>())
-    {
-        snapshot.audio = *c;
-    }
-    if (const auto *c = entity.try_get<CharacterControllerComponent>())
-    {
-        snapshot.characterController = *c;
-    }
-    if (const auto *c = entity.try_get<CameraComponent>())
-    {
-        snapshot.camera = *c;
-    }
-    snapshot.player = entity.has<TagPlayer>();
+    snapshot.components = componentRegistry->capture(entity);
 
     out.push_back(std::move(snapshot));
 
@@ -541,37 +455,10 @@ bool Scene::restoreSubtree(const std::vector<EntitySnapshot> &snapshots)
         }
         created.push_back(snapshot.id);
 
-        TransformComponent transform = snapshot.transform;
-        transform.matrixDirty = true;
-        entity->set(transform);
-
-        if (snapshot.mesh)
+        if (!componentRegistry->apply(*entity, snapshot.components))
         {
-            entity->set(*snapshot.mesh);
-        }
-        if (snapshot.physics)
-        {
-            entity->set(*snapshot.physics);
-        }
-        if (snapshot.weapon)
-        {
-            entity->set(*snapshot.weapon);
-        }
-        if (snapshot.audio)
-        {
-            entity->set(*snapshot.audio);
-        }
-        if (snapshot.characterController)
-        {
-            entity->set(*snapshot.characterController);
-        }
-        if (snapshot.camera)
-        {
-            entity->set(*snapshot.camera);
-        }
-        if (snapshot.player)
-        {
-            entity->add<TagPlayer>();
+            rollback();
+            return false;
         }
     }
 

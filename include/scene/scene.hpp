@@ -1,7 +1,6 @@
 #pragma once
 
 #include <cstdint>
-#include <filesystem>
 #include <string>
 #include <unordered_map>
 #include <vector>
@@ -11,28 +10,17 @@
 #include <flecs.h>
 
 #include "entityId.hpp"
-#include "components.hpp"
+#include "componentRegistry.hpp"
 #include "light.hpp"
-#include "model.hpp"
 
 namespace Cthulhu::Scene
 {
-class ComponentRegistry;
-
 struct EntitySnapshot
 {
     EntityId id;
     std::optional<EntityId> parentId;
     std::string name;
-
-    TransformComponent transform;
-    std::optional<MeshComponent> mesh;
-    std::optional<PhysicsComponent> physics;
-    std::optional<WeaponComponent> weapon;
-    std::optional<AudioSourceComponent> audio;
-    std::optional<CharacterControllerComponent> characterController;
-    std::optional<CameraComponent> camera;
-    bool player = false;
+    std::vector<ComponentSnapshot> components;
 };
 class Scene
 {
@@ -174,7 +162,6 @@ class Scene
 
     [[nodiscard]] std::optional<EntityId> duplicateEntityRecursive(flecs::entity sourceEntity, std::optional<EntityId> parentId); 
     
-    void copyAuthoringComponents(flecs::entity sourceEntity, flecs::entity destinationEntity);
     void captureRecursive(flecs::entity entity, std::vector<EntitySnapshot>& out) const;
 
     [[nodiscard]]

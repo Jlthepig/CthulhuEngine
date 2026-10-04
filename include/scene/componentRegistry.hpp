@@ -70,7 +70,17 @@ struct ComponentDescriptor
 
     std::vector<FieldDescriptor> fields;
 };
+struct FieldSnapshot
+{
+    std::string field;
+    FieldValue value;
+};
 
+struct ComponentSnapshot
+{
+    std::string component;
+    std::vector<FieldSnapshot> fields;
+};
 class ComponentRegistry
 {
   public:
@@ -86,6 +96,10 @@ class ComponentRegistry
     [[nodiscard]] std::optional<FieldValue> getField(flecs::entity entity, std::string_view component,std::string_view field) const;
 
     bool setField(flecs::entity entity, std::string_view component, std::string_view field, const FieldValue& value) const;
+
+    [[nodiscard]] std::vector<ComponentSnapshot> capture(flecs::entity entity) const;
+
+    bool apply(flecs::entity entity, const std::vector<ComponentSnapshot>& components) const;
 
   private:
     std::vector<ComponentDescriptor> descriptors;

@@ -30,6 +30,7 @@ inline int run(Engine& engine)
 	validateAudioClips(engine, scene, r);
 	validateMeshAndDuplication(engine, scene, r);
 	validateComponentDescriptors(engine, scene, r);
+	validateDescriptorSnapshots(engine, scene, r);
 	validateMeshLifecycle(engine, scene, r);
 	validateRefCounting(engine, scene, r);
 	checkRefInvariant(engine, r, "after entity tests");
