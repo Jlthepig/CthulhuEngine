@@ -1,6 +1,7 @@
 #include <string>
 
 #include "engine.hpp"
+#include "componentCommands.hpp"
 #include "entityCommands.hpp"
 #include "scene.hpp"
 #include "session.hpp"
@@ -258,6 +259,23 @@ Result Session::renameEntity(Scene::EntityId id, std::string_view newName)
 Result Session::reparentEntity(Scene::EntityId child, std::optional<Scene::EntityId> newParent)
 {
     return execute(Commands::reparentEntity(child, newParent));
+}
+
+
+Result Session::addComponent(Scene::EntityId id, std::string_view component)
+{
+    return execute(Commands::addComponent(id, std::string(component)));
+}
+
+Result Session::removeComponent(Scene::EntityId id, std::string_view component)
+{
+    return execute(Commands::removeComponent(id, std::string(component)));
+}
+
+Result Session::setField(Scene::EntityId id, std::string_view component, std::string_view field,
+                         const Scene::FieldValue& value)
+{
+    return execute(Commands::setField(id, std::string(component), std::string(field), value));
 }
 
 } // namespace Cthulhu::Scribe

@@ -3,6 +3,7 @@
 #include <limits>
 
 #include "componentRegistry.hpp"
+#include "session.hpp"
 #include "testCommon.hpp"
 
 namespace Cthulhu::Validation
@@ -156,6 +157,92 @@ inline void validateDescriptorSnapshots(Engine& engine, CS::Scene& scene, Result
 	broken.components.push_back({"NoSuchComponent", {}});
 	check(r, !scene.restoreSubtree({broken}), "S5 restore with unknown component fails");
 	check(r, !scene.isEntityAlive(broken.id), "S5 failed restore leaves nothing behind");
+}
+
+inline void validateScribeComponents(Engine& engine, Results& r)
+{
+	using Scribe::ChangeType;
+	using Status = Scribe::Result::Status;
+
+	Scribe::Session session(engine);
+
+	auto hasEvent = [](const std::vector<Scribe::ChangeEvent>& events, ChangeType type, std::string_view component) {
+		for (const auto& e : events)
+		{
+			if (e.type == type && e.component == component)
+			{
+				return true;
+			}
+		}
+		return false;
+	};
+
+	auto* scene = engine.getActiveScene();
+	auto created = session.createEntity("V_ScribeComponents");
+	auto entity = scene ? scene->findEntity(created.id) : std::nullopt;
+	if (!created.ok() || !entity)
+	{
+		check(r, false, "C0 entity created for component commands");
+		return;
+	}
+	const CS::EntityId id = created.id;
+	(void)session.takeEvents();
+
+	auto weapon = [&]() { return entity->try_get<CS::WeaponComponent>(); };
+
+	check(r, session.addComponent(id, "Weapon").status == Status::Applied && weapon() &&
+				 entity->has<CS::WeaponRuntimeComponent>(),
+		  "C1 addComponent adds component and runtime");
+	check(r, hasEvent(session.takeEvents(), ChangeType::ComponentAdded, "Weapon"), "C1 addComponent emits ComponentAdded");
+	check(r, session.addComponent(id, "Weapon").status == Status::NoChange, "C1 adding an existing component is NoChange");
+	check(r, !session.addComponent(id, "Transform").ok() && !session.addComponent(id, "NoSuchComponent").ok(),
+		  "C2 core and unknown components rejected");
+
+	session.endMerge();
+	check(r, session.setField(id, "Weapon", "fireRate", 7.0f).status == Status::Applied && weapon() &&
+				 weapon()->fireRate == 7.0f,
+		  "C3 setField applies");
+	check(r, hasEvent(session.takeEvents(), ChangeType::ComponentChanged, "Weapon"), "C3 setField emits ComponentChanged");
+	check(r, session.undoName() == "Set Weapon.fireRate", "C3 undo label names the field");
+	check(r, session.setField(id, "Weapon", "fireRate", 7.0f).status == Status::NoChange, "C4 same value is NoChange");
+
+	session.endMerge();
+	session.setField(id, "Weapon", "fireRate", 8.0f);
+	session.setField(id, "Weapon", "fireRate", 9.0f); // like a slider drag
+	session.undo();
+	const bool mergedBack = weapon() && weapon()->fireRate == 7.0f;
+	session.undo();
+	check(r, mergedBack && weapon() && weapon()->fireRate == 10.0f, "C5 a drag merges into one undo step");
+
+	session.endMerge();
+	session.setField(id, "Weapon", "fireRate", -3.0f);
+	const bool clamped = weapon() && weapon()->fireRate == 0.0f;
+	session.undo();
+	check(r, clamped && weapon() && weapon()->fireRate == 10.0f, "C6 clamped edit undoes to the old value");
+
+	const std::string labelBefore(session.undoName());
+	check(r, !session.setField(id, "Weapon", "fireRate", 3).ok() && session.undoName() == labelBefore,
+		  "C7 wrong value type fails and records nothing");
+
+	session.endMerge();
+	session.setField(id, "Weapon", "maxRange", 77.0f);
+	(void)session.takeEvents();
+	const bool removed = session.removeComponent(id, "Weapon").status == Status::Applied && !weapon() &&
+						 !entity->has<CS::WeaponRuntimeComponent>();
+	check(r, removed && hasEvent(session.takeEvents(), ChangeType::ComponentRemoved, "Weapon"),
+		  "C8 removeComponent removes and emits");
+	session.undo();
+	check(r, weapon() && weapon()->maxRange == 77.0f, "C8 undo remove restores field values");
+	session.redo();
+	check(r, !weapon(), "C9 redo remove removes again");
+	check(r, session.removeComponent(id, "Weapon").status == Status::NoChange, "C9 removing a missing component is NoChange");
+
+	const bool userAdded = session.addComponent(id, "V_Health").status == Status::Applied &&
+						   session.setField(id, "V_Health", "health", 5.0f).status == Status::Applied;
+	const auto* hp = entity->try_get<ValidationHealth>();
+	check(r, userAdded && hp && hp->health == 5.0f, "C10 user component works through Scribe");
+
+	session.deleteEntity(id);
 }
 
 } // namespace Cthulhu::Validation

@@ -99,6 +99,8 @@ class ComponentRegistry
 
     [[nodiscard]] std::vector<ComponentSnapshot> capture(flecs::entity entity) const;
 
+    [[nodiscard]] std::optional<ComponentSnapshot> captureComponent(flecs::entity entity, std::string_view) const;
+
     bool apply(flecs::entity entity, const std::vector<ComponentSnapshot>& components) const;
 
   private:

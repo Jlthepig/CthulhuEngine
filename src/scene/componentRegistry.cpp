@@ -94,6 +94,21 @@ namespace
 
         return value;
     }
+
+    ComponentSnapshot snapshotOf(const ComponentDescriptor& d, flecs::entity entity)
+    {
+        ComponentSnapshot snapshot;
+        snapshot.component = d.name;
+        snapshot.fields.reserve(d.fields.size());
+
+        for (const auto& f : d.fields)
+        {
+            snapshot.fields.push_back({f.name, f.get(entity)});
+        }
+
+        return snapshot;
+    }
+
 } // namespace
 
     bool fieldValueMatches(FieldType type, const FieldValue& value)
@@ -256,19 +271,21 @@ namespace
                 continue;
             }
 
-            ComponentSnapshot snapshot;
-            snapshot.component = d.name;
-            snapshot.fields.reserve(d.fields.size());
-
-            for (const auto& f : d.fields)
-            {
-                snapshot.fields.push_back({f.name, f.get(entity)});
-            }
-
-            out.push_back(std::move(snapshot));
+            out.push_back(snapshotOf(d, entity));
         }
 
         return out;
+    }
+
+    std::optional<ComponentSnapshot> ComponentRegistry::captureComponent(flecs::entity entity, std::string_view component) const
+    {
+        const ComponentDescriptor* d = find(component);
+        if (!d || !entity.is_alive() || !d->has(entity))
+        {
+            return std::nullopt;
+        }
+
+        return snapshotOf(*d, entity);
     }
 
     bool ComponentRegistry::apply(flecs::entity entity, const std::vector<ComponentSnapshot>& components) const
