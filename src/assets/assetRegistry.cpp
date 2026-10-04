@@ -356,6 +356,41 @@ std::optional<AssetId> AssetRegistry::registerFile(std::string_view resourcePath
     return id;
 }
 
+bool AssetRegistry::setPath(AssetId id, std::string_view resourcePath)
+{
+    if (!usable)
+    {
+        return false;
+    }
+
+    auto key = normaliseResourcePath(resourcePath);
+    auto found = indexById.find(id);
+    if (!key || found == indexById.end())
+    {
+        return false;
+    }
+
+    if (auto other = indexByPath.find(*key); other != indexByPath.end() && other->second != found->second)
+    {
+        Log::Print("ANOTHER ASSET RECORD USES THIS PATH: " + *key, "AssetRegistry", LogType::LOG_ERROR);
+        return false;
+    }
+
+    AssetRecord &record = records[found->second];
+    std::string oldPath = std::move(record.path);
+    record.path = std::move(*key);
+    rebuildIndices();
+
+    if (!save())
+    {
+        record.path = std::move(oldPath);
+        rebuildIndices();
+        return false;
+    }
+
+    return true;
+}
+
 bool AssetRegistry::forget(AssetId id)
 {
     auto it = indexById.find(id);

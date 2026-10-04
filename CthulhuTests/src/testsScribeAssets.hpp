@@ -97,4 +97,98 @@ inline void validateScribeImport(Engine& engine, Results& r)
 	cleanImportFolder(engine);
 	check(r, assets.getRegistry().findByPath(IMPORT_PATH) == nullptr, "I6 cleanup leaves the registry clean");
 }
+
+inline void validateScribeMove(Engine& engine, Results& r)
+{
+	using Status = Scribe::Result::Status;
+	constexpr std::string_view floorPath = "res://assets/models/Floor.glb";
+	constexpr std::string_view startPath = "res://validation_import/V_Move.glb";
+	constexpr std::string_view movedPath = "res://validation_import/moved/V_Moved.glb";
+
+	const auto* project = engine.getProject();
+	auto* scene = engine.getActiveScene();
+	auto source = project ? project->resolveResourcePath(floorPath) : std::nullopt;
+	if (!scene || !source)
+	{
+		check(r, false, "M0 move test setup");
+		return;
+	}
+
+	cleanImportFolder(engine);
+	Scribe::Session session(engine);
+	auto& assets = engine.getAssetManager();
+
+	auto imported = session.importAsset(*source, startPath);
+	auto created = session.createEntity("V_MoveUser");
+	session.addComponent(created.id, "Mesh");
+	session.setField(created.id, "Mesh", "modelPath", std::string(startPath));
+	auto entity = scene->findEntity(created.id);
+	if (!imported.ok() || !entity || !entity->has<CS::MeshRuntimeComponent>())
+	{
+		check(r, false, "M0 move test setup");
+		session.deleteEntity(created.id);
+		cleanImportFolder(engine);
+		return;
+	}
+
+	auto meshPath = [&]() { return entity->get<CS::MeshComponent>().modelPath; };
+
+	const size_t loadedBefore = assets.getLoadedModelCount();
+	(void) session.takeEvents();
+
+	const auto moved = session.moveAsset(imported.id, movedPath);
+	const auto* record = assets.getRegistry().findById(imported.id);
+	auto oldFile = project->resolveResourcePath(startPath);
+	auto newFile = project->resolveResourcePath(movedPath);
+	check(r, moved.status == Status::Applied && oldFile && newFile && !std::filesystem::exists(*oldFile) &&
+				 std::filesystem::exists(*newFile),
+		  "M1 move moves the file");
+	check(r, record && record->path == movedPath, "M1 record keeps its ID and gets the new path");
+
+	Assets::AssetRegistry reloaded;
+	const auto* onDisk = reloaded.load(project->getRootPath() / ".cthulhu" / "assets.json")
+						 ? reloaded.findById(imported.id) : nullptr;
+	check(r, onDisk && onDisk->path == movedPath, "M2 move is saved to the registry file");
+
+	check(r, meshPath() == movedPath, "M3 open scene reference follows the move");
+	check(r, entity->has<CS::MeshRuntimeComponent>() && assets.getLoadedModelCount() == loadedBefore,
+		  "M3 loaded model is reused, not reloaded");
+
+	bool sawMoved = false;
+	bool sawChanged = false;
+	for (const auto& e : session.takeEvents())
+	{
+		sawMoved = sawMoved || (e.type == Scribe::ChangeType::AssetMoved && e.assetId == imported.id);
+		sawChanged = sawChanged || (e.type == Scribe::ChangeType::ComponentChanged && e.entityId == created.id);
+	}
+	check(r, sawMoved && sawChanged, "M4 move emits AssetMoved and ComponentChanged");
+	check(r, scene->isDirty(), "M5 move marks the scene dirty");
+
+	check(r, !session.moveAsset(imported.id, floorPath).ok(), "M6 move never overwrites");
+	check(r, !session.moveAsset(imported.id, "res://validation_import/V_Move.wav").ok(),
+		  "M6 move cannot change the asset type");
+	check(r, session.moveAsset(imported.id, movedPath).status == Status::NoChange, "M6 move to the same path is NoChange");
+
+	session.endMerge();
+	const bool replaced = session.replaceReferences(movedPath, floorPath).status == Status::Applied && meshPath() == floorPath;
+	session.undo();
+	check(r, replaced, "R1 replaceReferences points the scene at another asset");
+	check(r, meshPath() == movedPath, "R1 undo restores the old reference");
+
+	check(r, !session.replaceReferences(movedPath, TEST_AUDIO).ok() && meshPath() == movedPath,
+		  "R2 wrong asset type rejected");
+
+	const bool cleared = session.replaceReferences(movedPath, "").status == Status::Applied && meshPath().empty() &&
+				 !entity->has<CS::MeshRuntimeComponent>();
+	session.undo();
+	check(r, cleared, "R3 empty path clears references (Remove)");
+	check(r, meshPath() == movedPath && entity->has<CS::MeshRuntimeComponent>(), "R3 undo brings the reference back");
+
+	check(r, session.replaceReferences("res://validation_import/nothing.glb", floorPath).status == Status::NoChange,
+		  "R4 no references is NoChange");
+
+	session.deleteEntity(created.id);
+	assets.collectUnusedModels();
+	cleanImportFolder(engine);
+}
 } // namespace Cthulhu::Validation

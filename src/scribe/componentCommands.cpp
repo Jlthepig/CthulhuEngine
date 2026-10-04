@@ -1,4 +1,5 @@
 #include "componentCommands.hpp"
+#include "assetManager.hpp"
 #include "scene.hpp"
 #include "log_utils.hpp"
 
@@ -223,6 +224,108 @@ class SetFieldCommand final : public Command
     std::string label;
     Scene::FieldValue oldValue;
 };
+
+class ReplaceReferencesCommand final : public Command
+{
+  public:
+    ReplaceReferencesCommand(std::string fromPath, std::string toPath) : from(std::move(fromPath)), to(std::move(toPath))
+    {
+    }
+
+    std::string_view name() const override
+    {
+        return "Replace References";
+    }
+
+    Result apply(Context& context) override
+    {
+        if (!to.empty())
+        {
+            auto key = Assets::normaliseResourcePath(to);
+            if (!key)
+            {
+                return Result::failed("BAD PATH: " + to);
+            }
+
+            if (Assets::normaliseResourcePath(from) == key)
+            {
+                return Result::noChange();
+            }
+            to = *key;
+        }
+
+        const auto& registry = *context.scene.getComponentRegistry();
+        const auto references = context.scene.findAssetReferences(from);
+        if (references.empty())
+        {
+            return Result::noChange();
+        }
+
+        // check every field first so a wrong type changes nothing
+        const Assets::AssetType newType = to.empty() ? Assets::AssetType::Unknown : Assets::getAssetType(to);
+        for (const auto& ref : references)
+        {
+            const auto* descriptor = registry.find(ref.component);
+            const auto* field = descriptor ? Scene::findField(*descriptor, ref.field) : nullptr;
+            if (!field)
+            {
+                return Result::failed("UNKNOWN FIELD " + ref.component + "." + ref.field);
+            }
+
+            if (!to.empty() && field->assetType != newType)
+            {
+                return Result::failed("WRONG ASSET TYPE FOR " + ref.component + "." + ref.field);
+            }
+        }
+
+        changed.clear();
+        for (const auto& ref : references)
+        {
+            auto entity = context.scene.findEntity(ref.entity);
+            auto old = entity ? registry.getField(*entity, ref.component, ref.field) : std::nullopt;
+            if (!old || !registry.setField(*entity, ref.component, ref.field, Scene::FieldValue{to}))
+            {
+                continue;
+            }
+
+            changed.push_back({ref, std::get<std::string>(*old)});
+            context.emit(ChangeType::ComponentChanged, ref.entity, ref.component);
+        }
+
+        return changed.empty() ? Result::noChange() : Result::applied();
+    }
+
+    void revert(Context& context) override
+    {
+        const auto& registry = *context.scene.getComponentRegistry();
+
+        for (const auto& change : changed)
+        {
+            auto entity = context.scene.findEntity(change.reference.entity);
+            Scene::ComponentSnapshot snapshot{change.reference.component,
+                                              {{change.reference.field, Scene::FieldValue{change.oldValue}}}};
+
+            if (!entity || !registry.apply(*entity, {snapshot}))
+            {
+                Log::Print("UNDO REPLACE FAILED: " + change.reference.component, "Scribe", LogType::LOG_ERROR);
+                continue;
+            }
+
+            context.emit(ChangeType::ComponentChanged, change.reference.entity, change.reference.component);
+        }
+    }
+
+  private:
+    struct Change
+    {
+        Scene::AssetReference reference;
+        std::string oldValue;
+    };
+
+    std::string from;
+    std::string to;
+    std::vector<Change> changed;
+};
 } // namespace
 
 std::unique_ptr<Command> addComponent(Scene::EntityId id, std::string component)
@@ -238,5 +341,10 @@ std::unique_ptr<Command> removeComponent(Scene::EntityId id, std::string compone
 std::unique_ptr<Command> setField(Scene::EntityId id, std::string component, std::string field,Scene::FieldValue value)
 {
     return std::make_unique<SetFieldCommand>(id, std::move(component), std::move(field), std::move(value));
+}
+
+std::unique_ptr<Command> replaceReferences(std::string from, std::string to)
+{
+    return std::make_unique<ReplaceReferencesCommand>(std::move(from), std::move(to));
 }
 } // namespace Cthulhu::Scribe::Commands

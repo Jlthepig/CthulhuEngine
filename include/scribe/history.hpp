@@ -42,6 +42,8 @@ namespace Cthulhu::Scribe
 
             void markSaved() noexcept;
 
+            void invalidateSavePoint() noexcept;
+
             [[nodiscard]] bool isAtSavePoint() const noexcept
             {
                 return currentSerial() == savedSerial;

@@ -15,6 +15,13 @@
 
 namespace Cthulhu::Scene
 {
+struct AssetReference
+{
+    EntityId entity;
+    std::string component;
+    std::string field;
+};
+
 struct EntitySnapshot
 {
     EntityId id;
@@ -100,6 +107,8 @@ class Scene
     [[nodiscard]] std::optional<std::vector<EntitySnapshot>> captureSubtree(EntityId rootId) const;
 
     bool restoreSubtree(const std::vector<EntitySnapshot>& snapshots);
+    // every asset field in this scene that points at resourcePath
+    [[nodiscard]] std::vector<AssetReference> findAssetReferences(std::string_view resourcePath) const;
 
     void clear();
 

@@ -41,6 +41,8 @@ namespace Cthulhu::Assets
             AssetRegistry::ScanResult refreshRegistry();
 
             [[nodiscard]] std::optional<AssetId> importFile(const std::filesystem::path &sourceFile,std::string_view destination);
+    
+            [[nodiscard]] bool moveFile(AssetId id, std::string_view destination);
 
             [[nodiscard]] AssetRegistry &getRegistry() noexcept
             {
@@ -57,7 +59,6 @@ namespace Cthulhu::Assets
             [[nodiscard]] Rendering::Model *getModel(ModelHandle handle);
             [[nodiscard]] const Rendering::Model *getModel(ModelHandle handle) const;
 
-            // must pair a valid acquire with releaseModel();
             [[nodiscard]] ModelHandle acquireModel(std::string_view resourcePath);
 
             [[nodiscard]] AudioClipHandle loadAudioClip(std::string_view resourcePath);
@@ -71,7 +72,6 @@ namespace Cthulhu::Assets
 
             std::size_t collectUnusedAudioClips();
 
-            // Collects every asset type This is what the engine calls at safe points
             std::size_t collectUnusedAssets();
 
             void releaseModel(ModelHandle handle);

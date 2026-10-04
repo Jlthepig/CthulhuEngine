@@ -56,6 +56,8 @@ class AssetRegistry
         
         // registers the file so it's essentially able to save and it now exists at resource path
         [[nodiscard]] std::optional<AssetId> registerFile(std::string_view resourcePath);
+        // changes a record's path << same id >> and saves. will fail if another record uses the path
+        bool setPath(AssetId id, std::string_view resourcePath);
 
         bool forget(AssetId id);
 

@@ -72,6 +72,10 @@ class Session
     
     // << assets applied immediately never undoable >>
     AssetResult importAsset(const std::filesystem::path& sourceFile, std::string_view destination);
+    
+    Result moveAsset(Assets::AssetId id, std::string_view destination);
+
+    Result replaceReferences(std::string_view from, std::string_view to);
 
   private:
     Engine &engine;
@@ -81,5 +85,6 @@ class Session
 
     Scene::Scene *syncScene();
     void refreshDirty(Scene::Scene &scene);
+    void rewriteReferences(Scene::Scene &scene, std::string_view from, std::string_view to);
 };
 } // namespace Cthulhu::Scribe

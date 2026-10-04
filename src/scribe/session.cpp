@@ -297,4 +297,68 @@ AssetResult Session::importAsset(const std::filesystem::path& sourceFile, std::s
     return {Result::applied(), *id};
 }
 
+Result Session::moveAsset(Assets::AssetId id, std::string_view destination)
+{
+    Scene::Scene *scene = syncScene();
+    auto &assets = engine.getAssetManager();
+
+    const auto *record = assets.getRegistry().findById(id);
+    if (!record)
+    {
+        return Result::failed("UNKNOWN ASSET");
+    }
+
+    const std::string oldPath = record->path;
+    const auto newPath = Assets::normaliseResourcePath(destination);
+    if (newPath && *newPath == oldPath)
+    {
+        return Result::noChange();
+    }
+
+    if (!newPath || !assets.moveFile(id, destination))
+    {
+        return Result::failed("MOVE FAILED: " + oldPath);
+    }
+
+    ChangeEvent event;
+    event.type = ChangeType::AssetMoved;
+    event.assetId = id;
+    events.push_back(std::move(event));
+
+    if (scene)
+    {
+        rewriteReferences(*scene, oldPath, *newPath);
+    }
+
+    return Result::applied();
+}
+
+Result Session::replaceReferences(std::string_view from, std::string_view to)
+{
+    return execute(Commands::replaceReferences(std::string(from), std::string(to)));
+}
+
+// not undoable on purpose: the file already moved, so going back would break the reference
+void Session::rewriteReferences(Scene::Scene &scene, std::string_view from, std::string_view to)
+{
+    const auto references = scene.findAssetReferences(from);
+    if (references.empty())
+    {
+        return;
+    }
+
+    const auto &registry = *scene.getComponentRegistry();
+    for (const auto &ref : references)
+    {
+        auto entity = scene.findEntity(ref.entity);
+        if (entity && registry.setField(*entity, ref.component, ref.field, Scene::FieldValue{std::string(to)}))
+        {
+            events.push_back({ChangeType::ComponentChanged, ref.entity, ref.component});
+        }
+    }
+
+    scene.markDirty();
+    history.invalidateSavePoint();
+}
+
 } // namespace Cthulhu::Scribe

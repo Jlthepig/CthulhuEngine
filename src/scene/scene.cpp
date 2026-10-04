@@ -1,3 +1,4 @@
+#include "assetManager.hpp"
 #include "scene.hpp"
 #include "components.hpp"
 #include "light.hpp"
@@ -432,6 +433,44 @@ void Scene::captureRecursive(flecs::entity entity, std::vector<EntitySnapshot> &
     out.push_back(std::move(snapshot));
 
     entity.children([&](flecs::entity child) { captureRecursive(child, out); });
+}
+
+std::vector<AssetReference> Scene::findAssetReferences(std::string_view resourcePath) const
+{
+    std::vector<AssetReference> out;
+
+    const auto target = Assets::normaliseResourcePath(resourcePath);
+    if (!target)
+    {
+        return out;
+    }
+
+    for (const auto& [id, entity] : entityLookup)
+    {
+        for (const auto& descriptor : componentRegistry->getAll())
+        {
+            if (!descriptor.has(entity))
+            {
+                continue;
+            }
+
+            for (const auto& field : descriptor.fields)
+            {
+                if (field.type != FieldType::AssetRef)
+                {
+                    continue;
+                }
+
+                const auto path = Assets::normaliseResourcePath(std::get<std::string>(field.get(entity)));
+                if (path && *path == *target)
+                {
+                    out.push_back({id, descriptor.name, field.name});
+                }
+            }
+        }
+    }
+
+    return out;
 }
 
 bool Scene::restoreSubtree(const std::vector<EntitySnapshot> &snapshots)

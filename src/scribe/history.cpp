@@ -100,6 +100,12 @@ void History::markSaved() noexcept
     savedSerial = currentSerial();
 }
 
+void History::invalidateSavePoint() noexcept
+{
+    mergeOpen = false;
+    savedSerial = UNREACHABLE;
+}
+
 void History::clear() noexcept
 {
     undoStack.clear();

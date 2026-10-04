@@ -347,6 +347,12 @@ std::optional<AssetId> importFailed(const std::string &why)
     return std::nullopt;
 }
 
+bool moveFailed(const std::string &why)
+{
+    Log::Print("MOVE FAILED: " + why, "AssetManager", LogType::LOG_ERROR);
+    return false;
+}
+
 }
 
 std::optional<AssetId> AssetManager::importFile(const std::filesystem::path &sourceFile, std::string_view destination)
@@ -420,6 +426,91 @@ std::optional<AssetId> AssetManager::importFile(const std::filesystem::path &sou
 
     Log::Print("Imported " + *key, "AssetManager", LogType::LOG_SUCCESS);
     return id;
+}
+
+bool AssetManager::moveFile(AssetId id, std::string_view destination)
+{
+    if (!project)
+    {
+        return moveFailed("NO PROJECT");
+    }
+
+    if (!registry.isUsable())
+    {
+        return moveFailed("ASSET REGISTRY IS UNUSABLE");
+    }
+
+    const AssetRecord *record = registry.findById(id);
+    if (!record)
+    {
+        return moveFailed("UNKNOWN ASSET");
+    }
+
+    if (record->missing)
+    {
+        return moveFailed("ASSET FILE IS MISSING: " + record->path);
+    }
+
+    const std::string oldKey = record->path;
+    const AssetType type = record->type;
+
+    auto key = normaliseResourcePath(destination);
+    if (!key)
+    {
+        return moveFailed("BAD DESTINATION PATH: " + std::string(destination));
+    }
+
+    if (*key == oldKey)
+    {
+        return true;
+    }
+
+    if (getAssetType(*key) != type)
+    {
+        return moveFailed("A MOVE CANNOT CHANGE THE ASSET TYPE: " + *key);
+    }
+
+    if (isInHiddenFolder(*key))
+    {
+        return moveFailed("DESTINATION IS IN A HIDDEN FOLDER: " + *key);
+    }
+
+    auto from = project->resolveResourcePath(oldKey);
+    auto to = project->resolveResourcePath(*key);
+    if (!from || !to)
+    {
+        return moveFailed("PATH IS OUTSIDE THE PROJECT: " + *key);
+    }
+
+    std::error_code error;
+    if (std::filesystem::exists(*to, error))
+    {
+        return moveFailed("DESTINATION ALREADY EXISTS: " + *key);
+    }
+
+    std::filesystem::create_directories(to->parent_path(), error);
+    if (error)
+    {
+        return moveFailed("CANNOT CREATE FOLDER FOR: " + *key);
+    }
+
+    std::filesystem::rename(*from, *to, error);
+    if (error)
+    {
+        return moveFailed("RENAME FAILED: " + error.message());
+    }
+
+    if (!registry.setPath(id, *key))
+    {
+        std::filesystem::rename(*to, *from, error);
+        return moveFailed("COULD NOT UPDATE REGISTRY: " + *key);
+    }
+
+    modelTable.renameKey(oldKey, *key);
+    audioClipTable.renameKey(oldKey, *key);
+
+    Log::Print("Moved " + oldKey + " -> " + *key, "AssetManager", LogType::LOG_SUCCESS);
+    return true;
 }
 
 } // namespace Cthulhu::Assets

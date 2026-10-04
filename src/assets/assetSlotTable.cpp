@@ -16,6 +16,21 @@ std::optional<AssetSlotTable::SlotId> AssetSlotTable::find(const std::string &ke
     return SlotId{it->second, slots[it->second].generation};
 }
 
+bool AssetSlotTable::renameKey(const std::string &oldKey, const std::string &newKey)
+{
+    auto it = indexByKey.find(oldKey);
+    if (it == indexByKey.end() || indexByKey.contains(newKey))
+    {
+        return false;
+    }
+
+    const uint32_t index = it->second;
+    indexByKey.erase(it);
+    indexByKey[newKey] = index;
+    slots[index].key = newKey;
+    return true;
+}
+
 AssetSlotTable::SlotId AssetSlotTable::allocate(const std::string &key)
 {
     uint32_t index = 0;
