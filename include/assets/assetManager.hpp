@@ -2,6 +2,7 @@
 
 #include <cstddef>
 #include <cstdint>
+#include <filesystem>
 #include <memory>
 #include <optional>
 #include <string>
@@ -38,6 +39,8 @@ namespace Cthulhu::Assets
             }
 
             AssetRegistry::ScanResult refreshRegistry();
+
+            [[nodiscard]] std::optional<AssetId> importFile(const std::filesystem::path &sourceFile,std::string_view destination);
 
             [[nodiscard]] AssetRegistry &getRegistry() noexcept
             {
@@ -86,7 +89,7 @@ namespace Cthulhu::Assets
             const Project::Project *project = nullptr;
 
             AssetRegistry registry;
-            bool registryLoaded;
+            bool registryLoaded = false;
 
             AssetSlotTable modelTable;
             std::vector<std::unique_ptr<Rendering::Model>> models;

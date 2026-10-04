@@ -278,4 +278,23 @@ Result Session::setField(Scene::EntityId id, std::string_view component, std::st
     return execute(Commands::setField(id, std::string(component), std::string(field), value));
 }
 
+
+AssetResult Session::importAsset(const std::filesystem::path& sourceFile, std::string_view destination)
+{
+    syncScene();
+
+    auto id = engine.getAssetManager().importFile(sourceFile, destination);
+    if (!id)
+    {
+        return {Result::failed("IMPORT FAILED: " + std::string(destination)), {}};
+    }
+
+    ChangeEvent event;
+    event.type = ChangeType::AssetImported;
+    event.assetId = *id;
+    events.push_back(std::move(event));
+
+    return {Result::applied(), *id};
+}
+
 } // namespace Cthulhu::Scribe

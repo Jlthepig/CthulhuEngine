@@ -5,6 +5,7 @@
 #include <string_view>
 #include <vector>
 
+#include "assetId.hpp"
 #include "entityId.hpp"
 
 namespace Cthulhu
@@ -63,6 +64,17 @@ namespace Cthulhu::Scribe
         }
     };
 
+    struct AssetResult
+    {
+        Result result;
+        Assets::AssetId id{};
+
+        [[nodiscard]] bool ok() const noexcept
+        {
+            return result.ok();
+        }
+    };
+
     enum class ChangeType : uint8_t
     {
         SceneReplaced, // active scene switched history cleared rebuild all ui
@@ -73,7 +85,9 @@ namespace Cthulhu::Scribe
         EntityReparented,
         ComponentAdded,
         ComponentRemoved,
-        ComponentChanged
+        ComponentChanged,
+
+        AssetImported
     };
 
     struct ChangeEvent
@@ -81,6 +95,7 @@ namespace Cthulhu::Scribe
         ChangeType type = ChangeType::SceneReplaced;
         Scene::EntityId entityId{};
         std::string component{};
+        Assets::AssetId assetId{};
     };
 
     struct Context

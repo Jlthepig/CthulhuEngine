@@ -2,6 +2,7 @@
 
 #include <cstddef>
 #include <filesystem>
+#include <optional>
 #include <string>
 #include <string_view>
 #include <unordered_map>
@@ -53,6 +54,9 @@ class AssetRegistry
 
         bool setAudioImportSettings(AssetId id, const AudioImportSettings &settings);
         
+        // registers the file so it's essentially able to save and it now exists at resource path
+        [[nodiscard]] std::optional<AssetId> registerFile(std::string_view resourcePath);
+
         bool forget(AssetId id);
 
         [[nodiscard]] const AssetRecord *findById(AssetId id) const;

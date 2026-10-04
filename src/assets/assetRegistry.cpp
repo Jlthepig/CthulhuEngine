@@ -318,6 +318,44 @@ bool AssetRegistry::setAudioImportSettings(AssetId id, const AudioImportSettings
     return save();
 }
 
+std::optional<AssetId> AssetRegistry::registerFile(std::string_view resourcePath)
+{
+    if (!usable)
+    {
+        return std::nullopt;
+    }
+
+    auto key = normaliseResourcePath(resourcePath);
+    if (!key || getAssetType(*key) == AssetType::Unknown)
+    {
+        return std::nullopt;
+    }
+
+    if (auto found = indexByPath.find(*key); found != indexByPath.end())
+    {
+        AssetRecord &record = records[found->second];
+        record.missing = false;
+        return record.id;
+    }
+
+    AssetId id = generateAssetId();
+    while (indexById.contains(id))
+    {
+        id = generateAssetId();
+    }
+
+    add(id, std::move(*key));
+
+    if (!save())
+    {
+        records.pop_back();
+        rebuildIndices();
+        return std::nullopt;
+    }
+
+    return id;
+}
+
 bool AssetRegistry::forget(AssetId id)
 {
     auto it = indexById.find(id);

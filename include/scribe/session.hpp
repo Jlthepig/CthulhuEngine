@@ -1,6 +1,7 @@
 #pragma once
 
 #include <cstdint>
+#include <filesystem>
 #include <memory>
 #include <optional>
 #include <string_view>
@@ -68,6 +69,9 @@ class Session
     Result removeComponent(Scene::EntityId id, std::string_view component);
 
     Result setField(Scene::EntityId id, std::string_view component, std::string_view field, const Scene::FieldValue& value);
+    
+    // << assets applied immediately never undoable >>
+    AssetResult importAsset(const std::filesystem::path& sourceFile, std::string_view destination);
 
   private:
     Engine &engine;

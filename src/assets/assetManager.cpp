@@ -322,4 +322,104 @@ void AssetManager::shutdown()
     registryLoaded = false;
     project = nullptr;
 }
+
+namespace
+{
+
+bool isInHiddenFolder(std::string_view key)
+{
+    const std::filesystem::path relative(std::string(key.substr(std::string_view("res://").size())));
+
+    for (const auto &part : relative.parent_path())
+    {
+        const std::string name = part.string();
+        if (!name.empty() && name.front() == '.')
+        {
+            return true;
+        }
+    }
+    return false;
+}
+
+std::optional<AssetId> importFailed(const std::string &why)
+{
+    Log::Print("IMPORT FAILED: " + why, "AssetManager", LogType::LOG_ERROR);
+    return std::nullopt;
+}
+
+}
+
+std::optional<AssetId> AssetManager::importFile(const std::filesystem::path &sourceFile, std::string_view destination)
+{
+    if (!project)
+    {
+        return importFailed("NO PROJECT");
+    }
+
+    if (!registry.isUsable())
+    {
+        return importFailed("ASSET REGISTRY IS UNUSABLE");
+    }
+
+    auto key = normaliseResourcePath(destination);
+    if (!key)
+    {
+        return importFailed("BAD DESTINATION PATH: " + std::string(destination));
+    }
+
+    const AssetType type = getAssetType(*key);
+    if (type == AssetType::Unknown)
+    {
+        return importFailed("UNKNOWN ASSET TYPE: " + *key);
+    }
+
+    if (getAssetType(sourceFile.generic_string()) != type)
+    {
+        return importFailed("SOURCE AND DESTINATION TYPES DIFFER: " + *key);
+    }
+
+    if (isInHiddenFolder(*key))
+    {
+        return importFailed("DESTINATION IS IN A HIDDEN FOLDER: " + *key);
+    }
+
+    std::error_code error;
+    if (!std::filesystem::is_regular_file(sourceFile, error))
+    {
+        return importFailed("SOURCE IS NOT A FILE: " + sourceFile.string());
+    }
+
+    auto target = project->resolveResourcePath(*key);
+    if (!target)
+    {
+        return importFailed("DESTINATION IS OUTSIDE THE PROJECT: " + *key);
+    }
+
+    if (std::filesystem::exists(*target, error))
+    {
+        return importFailed("DESTINATION ALREADY EXISTS: " + *key);
+    }
+
+    std::filesystem::create_directories(target->parent_path(), error);
+    if (error)
+    {
+        return importFailed("CANNOT CREATE FOLDER FOR: " + *key);
+    }
+
+    if (!std::filesystem::copy_file(sourceFile, *target, std::filesystem::copy_options::none, error) || error)
+    {
+        return importFailed("COPY FAILED: " + error.message());
+    }
+
+    auto id = registry.registerFile(*key);
+    if (!id)
+    {
+        std::filesystem::remove(*target, error);
+        return importFailed("COULD NOT REGISTER: " + *key);
+    }
+
+    Log::Print("Imported " + *key, "AssetManager", LogType::LOG_SUCCESS);
+    return id;
+}
+
 } // namespace Cthulhu::Assets
