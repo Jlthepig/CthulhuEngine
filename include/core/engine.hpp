@@ -10,6 +10,7 @@
 #include "physics.hpp"
 #include "project.hpp"
 #include "assetManager.hpp"
+#include "componentRegistry.hpp"
 #include "renderer.hpp"
 
 struct GLFWwindow;
@@ -111,6 +112,15 @@ class Engine
         return assetManager;
     }
 
+    Scene::ComponentRegistry &getComponentRegistry()
+    {
+        return componentRegistry;
+    }
+    const Scene::ComponentRegistry &getComponentRegistry() const
+    {
+        return componentRegistry;
+    }
+
     Scene::Scene *getActiveScene()
     {
         return activeScene.get();
@@ -148,6 +158,7 @@ class Engine
     Rendering::Renderer renderer;
     Physics::PhysicsWorld physicsWorld;
     Assets::AssetManager assetManager;
+    Scene::ComponentRegistry componentRegistry;
 
     Scene::Camera *camera = nullptr;
     Core::Window *window = nullptr;

@@ -2,6 +2,7 @@
 
 #include "testCommon.hpp"
 #include "testsComponents.hpp"
+#include "testsDescriptors.hpp"
 #include "testsAssets.hpp"
 #include "testsScene.hpp"
 #include "testsScribe.hpp"
@@ -28,6 +29,7 @@ inline int run(Engine& engine)
 	validateAudio(engine, scene, r);
 	validateAudioClips(engine, scene, r);
 	validateMeshAndDuplication(engine, scene, r);
+	validateComponentDescriptors(engine, scene, r);
 	validateMeshLifecycle(engine, scene, r);
 	validateRefCounting(engine, scene, r);
 	checkRefInvariant(engine, r, "after entity tests");

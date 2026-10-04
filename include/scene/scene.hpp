@@ -17,6 +17,7 @@
 
 namespace Cthulhu::Scene
 {
+class ComponentRegistry;
 
 struct EntitySnapshot
 {
@@ -36,6 +37,15 @@ struct EntitySnapshot
 class Scene
 {
   public:
+    explicit Scene(const ComponentRegistry& registry) : componentRegistry(&registry)
+    {
+    }
+
+    [[nodiscard]] const ComponentRegistry* getComponentRegistry() const noexcept
+    {
+        return componentRegistry;
+    }
+
     // << serialization >>
     [[nodiscard]] const std::optional<std::string>& getResourcePath() const noexcept
     {
@@ -143,10 +153,11 @@ class Scene
     }
 
   private:
+    const ComponentRegistry* componentRegistry = nullptr;
     std::string name;
     std::optional<std::string>  resourcePath;
     bool dirty = false;
-    uint32_t nextId = 0;
+    uint32_t nextId{};
 
     flecs::world world;
     std::unordered_map<EntityId, flecs::entity, EntityIdHash> entityLookup;

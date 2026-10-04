@@ -19,6 +19,7 @@
 #include "camera.hpp"
 #include "engine.hpp"
 #include "systemRegistry.hpp"
+#include "builtinComponents.hpp"
 #include "components.hpp"
 #include "input.hpp"
 #include "window.hpp"
@@ -39,7 +40,13 @@ static void physicsFixedUpdateCallback(void *context, float fixedDt)
 namespace Cthulhu
 {
 
-Engine::Engine() = default;
+Engine::Engine()
+{
+    if (!Scene::registerBuiltinComponents(componentRegistry))
+    {
+        Log::Print("FAILED TO REGISTER BUILT-IN COMPONENTS", "ENGINE", LogType::LOG_ERROR);
+    }
+}
 
 Engine::~Engine()
 {
@@ -239,7 +246,7 @@ void Engine::shutdown()
 
 std::unique_ptr<Scene::Scene> Engine::createSceneInstance()
 {
-    auto newScene = std::make_unique<Scene::Scene>();
+    auto newScene = std::make_unique<Scene::Scene>(componentRegistry);
 
     Scene::RegisterCoreSystems(newScene->getWorld(), this);
     return newScene;
