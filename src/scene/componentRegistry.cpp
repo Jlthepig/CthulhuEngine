@@ -119,6 +119,19 @@ namespace
         return false;
     }
 
+    FieldDescriptor makeField(std::string name, FieldType type, FieldGetter get, FieldSetter set, float min, float max, float step)
+    {
+        FieldDescriptor f;
+        f.name = std::move(name);
+        f.type = type;
+        f.get = get;
+        f.set = set;
+        f.min = min;
+        f.max = max;
+        f.step = step;
+        return f;
+    }
+
     const FieldDescriptor* findField(const ComponentDescriptor& component, std::string_view field)
     {
         for (const auto& f : component.fields)

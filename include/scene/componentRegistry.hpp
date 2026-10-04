@@ -4,6 +4,7 @@
 #include <optional>
 #include <string>
 #include <string_view>
+#include <type_traits>
 #include <variant>
 #include <vector>
 
@@ -92,5 +93,28 @@ class ComponentRegistry
 
 [[nodiscard]] const FieldDescriptor* findField(const ComponentDescriptor& component, std::string_view field);
 [[nodiscard]] bool fieldValueMatches(FieldType type, const FieldValue& value);
+
+[[nodiscard]] FieldDescriptor makeField(std::string name, FieldType type, FieldGetter get, FieldSetter set, float min = 0.0f, float max = 0.0f, float step = 0.0f);
+
+template <typename T>
+[[nodiscard]] ComponentDescriptor makeComponentDescriptor(std::string name)
+{
+    ComponentDescriptor d;
+    d.name = std::move(name);
+    d.has = [](flecs::entity e) {return e.has<T>();};
+    d.add = [](flecs::entity e)
+    {
+        if constexpr (std::is_empty_v<T>) 
+        {
+            e.add<T>();
+        }
+        else
+        {
+            e.set(T{});
+        }
+    };
+    d.remove = [](flecs::entity e) {e.remove<T>();};
+    return d;
+}
 
 } // namespace Cthulhu::Scene
