@@ -391,6 +391,14 @@ bool AssetRegistry::setPath(AssetId id, std::string_view resourcePath)
     return true;
 }
 
+void AssetRegistry::markMissing(AssetId id)
+{
+    if (auto it = indexById.find(id); it != indexById.end())
+    {
+        records[it->second].missing = true;
+    }
+}
+
 bool AssetRegistry::forget(AssetId id)
 {
     auto it = indexById.find(id);

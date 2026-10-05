@@ -44,6 +44,8 @@ namespace Cthulhu::Assets
     
             [[nodiscard]] bool moveFile(AssetId id, std::string_view destination);
 
+            [[nodiscard]] bool deleteFile(AssetId id);
+
             [[nodiscard]] AssetRegistry &getRegistry() noexcept
             {
                 return registry;

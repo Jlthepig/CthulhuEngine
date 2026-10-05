@@ -5,6 +5,7 @@
 #include "audio.hpp"
 #include "modelLoader.hpp"
 #include "project.hpp"
+#include "platform.hpp"
 #include "log_utils.hpp"
 
 using KalaHeaders::KalaLog::Log;
@@ -353,6 +354,13 @@ bool moveFailed(const std::string &why)
     return false;
 }
 
+
+bool deleteFailed(const std::string &why)
+{
+    Log::Print("DELETE FAILED: " + why, "AssetManager", LogType::LOG_ERROR);
+    return false;
+}
+
 }
 
 std::optional<AssetId> AssetManager::importFile(const std::filesystem::path &sourceFile, std::string_view destination)
@@ -510,6 +518,52 @@ bool AssetManager::moveFile(AssetId id, std::string_view destination)
     audioClipTable.renameKey(oldKey, *key);
 
     Log::Print("Moved " + oldKey + " -> " + *key, "AssetManager", LogType::LOG_SUCCESS);
+    return true;
+}
+
+bool AssetManager::deleteFile(AssetId id)
+{
+    if (!project)
+    {
+        return deleteFailed("NO PROJECT");
+    }
+
+    if (!registry.isUsable())
+    {
+        return deleteFailed("ASSET REGISTRY IS UNUSABLE");
+    }
+
+    const AssetRecord *record = registry.findById(id);
+    if (!record)
+    {
+        return deleteFailed("UNKNOWN ASSET");
+    }
+
+    const std::string key = record->path;
+
+    if (!record->missing)
+    {
+        collectUnusedAssets();
+
+        if (modelTable.find(key) || audioClipTable.find(key))
+        {
+            return deleteFailed("ASSET IS STILL IN USE: " + key);
+        }
+
+        auto file = project->resolveResourcePath(key);
+        if (!file || !Core::Platform::moveToTrash(*file))
+        {
+            return deleteFailed("COULD NOT MOVE TO THE RECYCLE BIN: " + key);
+        }
+    }
+
+    registry.markMissing(id);
+    if (!registry.forget(id))
+    {
+        return deleteFailed("FILE TRASHED BUT REGISTRY NOT UPDATED: " + key);
+    }
+
+    Log::Print("Deleted " + key, "AssetManager", LogType::LOG_SUCCESS);
     return true;
 }
 

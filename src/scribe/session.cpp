@@ -338,7 +338,41 @@ Result Session::replaceReferences(std::string_view from, std::string_view to)
     return execute(Commands::replaceReferences(std::string(from), std::string(to)));
 }
 
-// not undoable on purpose: the file already moved, so going back would break the reference
+
+Result Session::deleteAsset(Assets::AssetId id)
+{
+    Scene::Scene *scene = syncScene();
+    auto &assets = engine.getAssetManager();
+
+    const auto *record = assets.getRegistry().findById(id);
+    if (!record)
+    {
+        return Result::failed("UNKNOWN ASSET");
+    }
+
+    if (scene)
+    {
+        const auto references = scene->findAssetReferences(record->path);
+        if (!references.empty())
+        {
+            return Result::failed("ASSET IS USED BY " + std::to_string(references.size()) + " REFERENCE(S) IN THE OPEN SCENE: " + record->path);
+        }
+    }
+
+    if (!assets.deleteFile(id))
+    {
+        return Result::failed("DELETE FAILED");
+    }
+
+    ChangeEvent event;
+    event.type = ChangeType::AssetDeleted;
+    event.assetId = id;
+    events.push_back(std::move(event));
+
+    return Result::applied();
+}
+
+// not undoable on purpose <<the file already moved>> <<going back would break the reference>>
 void Session::rewriteReferences(Scene::Scene &scene, std::string_view from, std::string_view to)
 {
     const auto references = scene.findAssetReferences(from);

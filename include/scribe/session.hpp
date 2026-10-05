@@ -77,6 +77,8 @@ class Session
 
     Result replaceReferences(std::string_view from, std::string_view to);
 
+    Result deleteAsset(Assets::AssetId id);
+
   private:
     Engine &engine;
     History history;

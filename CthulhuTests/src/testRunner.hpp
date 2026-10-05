@@ -57,6 +57,7 @@ inline int run(Engine& engine)
 	validateScribeComponents(engine, r);
 	validateScribeImport(engine, r);
 	validateScribeMove(engine, r);
+	validateScribeDelete(engine, r);
     checkRefInvariant(engine, r, "after scribe entities");
 
 	validateSimStateOnSwitch(engine, r);

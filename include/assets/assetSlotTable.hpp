@@ -26,7 +26,7 @@ class AssetSlotTable
     };
 
     [[nodiscard]] std::optional<SlotId> find(const std::string &key) const;
-    // re-keys a loaded asset after its file moved. False if oldKey isn't loaded or newKey is taken
+    // will re key a loaded asset after its file has been moved will be false if oldKey isn't loaded or newKey is taken
     bool renameKey(const std::string &oldKey, const std::string &newKey);
 
     [[nodiscard]] SlotId allocate(const std::string &key);

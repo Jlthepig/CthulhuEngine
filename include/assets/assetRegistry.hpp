@@ -59,6 +59,8 @@ class AssetRegistry
         // changes a record's path << same id >> and saves. will fail if another record uses the path
         bool setPath(AssetId id, std::string_view resourcePath);
 
+        void markMissing(AssetId id);
+
         bool forget(AssetId id);
 
         [[nodiscard]] const AssetRecord *findById(AssetId id) const;

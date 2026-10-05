@@ -88,7 +88,8 @@ namespace Cthulhu::Scribe
         ComponentChanged,
 
         AssetImported,
-        AssetMoved
+        AssetMoved,
+        AssetDeleted
     };
 
     struct ChangeEvent

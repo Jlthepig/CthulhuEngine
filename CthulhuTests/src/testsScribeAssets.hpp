@@ -191,4 +191,83 @@ inline void validateScribeMove(Engine& engine, Results& r)
 	assets.collectUnusedModels();
 	cleanImportFolder(engine);
 }
+
+inline void validateScribeDelete(Engine& engine, Results& r)
+{
+	using Status = Scribe::Result::Status;
+	constexpr std::string_view floorPath = "res://assets/models/Floor.glb";
+	constexpr std::string_view deletePath = "res://validation_import/V_Delete.glb";
+	constexpr std::string_view gonePath = "res://validation_import/V_Gone.glb";
+
+	const auto* project = engine.getProject();
+	auto* scene = engine.getActiveScene();
+	auto source = project ? project->resolveResourcePath(floorPath) : std::nullopt;
+	if (!scene || !source)
+	{
+		check(r, false, "D0 delete test setup");
+		return;
+	}
+
+	cleanImportFolder(engine);
+	Scribe::Session session(engine);
+	auto& assets = engine.getAssetManager();
+
+	auto imported = session.importAsset(*source, deletePath);
+	auto created = session.createEntity("V_DeleteUser");
+	session.addComponent(created.id, "Mesh");
+	session.setField(created.id, "Mesh", "modelPath", std::string(deletePath));
+	auto file = project->resolveResourcePath(deletePath);
+	if (!imported.ok() || !file)
+	{
+		check(r, false, "D0 delete test setup");
+		session.deleteEntity(created.id);
+		cleanImportFolder(engine);
+		return;
+	}
+
+	check(r, !session.deleteAsset(imported.id).ok(), "D1 delete refused while the open scene uses the asset");
+	check(r, std::filesystem::exists(*file) && assets.getRegistry().findById(imported.id),
+		  "D1 refused delete changes nothing");
+
+	session.deleteEntity(created.id);
+	(void) session.takeEvents();
+
+	const bool deleted = session.deleteAsset(imported.id).status == Status::Applied;
+	check(r, deleted && !std::filesystem::exists(*file), "D2 delete moves the file out of the project");
+
+	Assets::AssetRegistry reloaded;
+	const bool onDisk = reloaded.load(project->getRootPath() / ".cthulhu" / "assets.json") &&
+						reloaded.findById(imported.id) != nullptr;
+	check(r, !assets.getRegistry().findById(imported.id) && !onDisk, "D2 delete forgets the record (memory and disk)");
+
+	bool sawDeleted = false;
+	for (const auto& e : session.takeEvents())
+	{
+		sawDeleted = sawDeleted || (e.type == Scribe::ChangeType::AssetDeleted && e.assetId == imported.id);
+	}
+	check(r, sawDeleted, "D2 delete emits AssetDeleted");
+
+	check(r, !session.deleteAsset(imported.id).ok(), "D3 deleting an unknown asset fails");
+
+	auto gone = session.importAsset(*source, gonePath);
+	auto goneFile = project->resolveResourcePath(gonePath);
+	std::error_code error;
+	if (goneFile)
+	{
+		std::filesystem::remove(*goneFile, error);
+	}
+	assets.refreshRegistry();
+	check(r, gone.ok() && session.deleteAsset(gone.id).status == Status::Applied && !assets.getRegistry().findById(gone.id),
+		  "D4 deleting a missing asset just forgets it");
+
+	auto held = session.importAsset(*source, deletePath);
+	auto handle = assets.acquireModel(deletePath);
+	check(r, held.ok() && handle.isValid() && !session.deleteAsset(held.id).ok(),
+		  "D5 delete refused while the asset is loaded");
+	assets.releaseModel(handle);
+	assets.collectUnusedModels();
+
+	cleanImportFolder(engine);
+}
+
 } // namespace Cthulhu::Validation
