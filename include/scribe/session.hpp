@@ -8,11 +8,21 @@
 #include <vector>
 
 #include "command.hpp"
+#include "assetRegistry.hpp"
+#include "command.hpp"
 #include "componentRegistry.hpp"
 #include "history.hpp"
+#include "scene.hpp"
 
 namespace Cthulhu::Scribe
 {
+
+struct MissingAsset
+{
+    std::string path;
+    std::vector<Scene::AssetReference> references;
+};
+
     // << shalll not be used by runtime code! >>
 class Session
 {
@@ -78,6 +88,11 @@ class Session
     Result replaceReferences(std::string_view from, std::string_view to);
 
     Result deleteAsset(Assets::AssetId id);
+
+    // gets fixed with replace ref
+    [[nodiscard]] std::vector<MissingAsset> findMissingAssets();
+
+    Result setAudioImportSettings(Assets::AssetId id, const Assets::AudioImportSettings& settings);
 
   private:
     Engine &engine;

@@ -435,15 +435,9 @@ void Scene::captureRecursive(flecs::entity entity, std::vector<EntitySnapshot> &
     entity.children([&](flecs::entity child) { captureRecursive(child, out); });
 }
 
-std::vector<AssetReference> Scene::findAssetReferences(std::string_view resourcePath) const
+std::vector<AssetReference> Scene::getAssetReferences() const
 {
     std::vector<AssetReference> out;
-
-    const auto target = Assets::normaliseResourcePath(resourcePath);
-    if (!target)
-    {
-        return out;
-    }
 
     for (const auto& [id, entity] : entityLookup)
     {
@@ -461,12 +455,33 @@ std::vector<AssetReference> Scene::findAssetReferences(std::string_view resource
                     continue;
                 }
 
-                const auto path = Assets::normaliseResourcePath(std::get<std::string>(field.get(entity)));
-                if (path && *path == *target)
+                std::string path = std::get<std::string>(field.get(entity));
+                if (!path.empty())
                 {
-                    out.push_back({id, descriptor.name, field.name});
+                    out.push_back({id, descriptor.name, field.name, std::move(path)});
                 }
             }
+        }
+    }
+
+    return out;
+}
+
+std::vector<AssetReference> Scene::findAssetReferences(std::string_view resourcePath) const
+{
+   
+    auto keyOf = [](std::string_view path) {
+        return Assets::normaliseResourcePath(path).value_or(std::string(path));
+    };
+
+    const std::string target = keyOf(resourcePath);
+
+    std::vector<AssetReference> out;
+    for (auto& ref : getAssetReferences())
+    {
+        if (keyOf(ref.path) == target)
+        {
+            out.push_back(std::move(ref));
         }
     }
 

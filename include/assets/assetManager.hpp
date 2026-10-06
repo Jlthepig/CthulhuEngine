@@ -46,6 +46,8 @@ namespace Cthulhu::Assets
 
             [[nodiscard]] bool deleteFile(AssetId id);
 
+            [[nodiscard]] bool setAudioImportSettings(AssetId id, const AudioImportSettings &settings);
+
             [[nodiscard]] AssetRegistry &getRegistry() noexcept
             {
                 return registry;

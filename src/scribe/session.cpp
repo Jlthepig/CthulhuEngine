@@ -1,3 +1,4 @@
+#include <algorithm>
 #include <string>
 
 #include "engine.hpp"
@@ -372,6 +373,41 @@ Result Session::deleteAsset(Assets::AssetId id)
     return Result::applied();
 }
 
+std::vector<MissingAsset> Session::findMissingAssets()
+{
+    std::vector<MissingAsset> out;
+
+    Scene::Scene *scene = syncScene();
+    const auto *project = engine.getProject();
+    if (!scene || !project)
+    {
+        return out;
+    }
+
+    for (auto &ref : scene->getAssetReferences())
+    {
+        const auto file = project->resolveResourcePath(ref.path);
+        std::error_code error;
+        if (file && std::filesystem::is_regular_file(*file, error))
+        {
+            continue;
+        }
+
+        const std::string key = Assets::normaliseResourcePath(ref.path).value_or(ref.path);
+        auto group = std::find_if(out.begin(), out.end(), [&](const MissingAsset &m) { return m.path == key; });
+        if (group == out.end())
+        {
+            out.push_back({key, {}});
+            group = out.end() - 1;
+        }
+
+        group->references.push_back(std::move(ref));
+    }
+
+    std::sort(out.begin(), out.end(), [](const MissingAsset &a, const MissingAsset &b) { return a.path < b.path; });
+    return out;
+}
+
 // not undoable on purpose <<the file already moved>> <<going back would break the reference>>
 void Session::rewriteReferences(Scene::Scene &scene, std::string_view from, std::string_view to)
 {
@@ -393,6 +429,38 @@ void Session::rewriteReferences(Scene::Scene &scene, std::string_view from, std:
 
     scene.markDirty();
     history.invalidateSavePoint();
+}
+
+
+
+Result Session::setAudioImportSettings(Assets::AssetId id, const Assets::AudioImportSettings &settings)
+{
+    syncScene();
+    auto &assets = engine.getAssetManager();
+
+    const auto *record = assets.getRegistry().findById(id);
+    if (!record)
+    {
+        return Result::failed("UNKNOWN ASSET");
+    }
+
+    const std::string path = record->path;
+    if (record->type == Assets::AssetType::Audio && record->audio == settings)
+    {
+        return Result::noChange();
+    }
+
+    if (!assets.setAudioImportSettings(id, settings))
+    {
+        return Result::failed("IMPORT SETTINGS FAILED: " + path);
+    }
+
+    ChangeEvent event;
+    event.type = ChangeType::AssetSettingsChanged;
+    event.assetId = id;
+    events.push_back(std::move(event));
+
+    return Result::applied();
 }
 
 } // namespace Cthulhu::Scribe

@@ -1,5 +1,6 @@
 #pragma once
 #include <cstdint>
+#include <cstddef>
 #include <string>
 namespace Cthulhu::Core
 {
@@ -14,6 +15,7 @@ class Audio
     static void shutdown();
     static uint32_t playSound2D(const std::string &filePath, float volume = 1.0f, bool loop = false);
     static void stopSound(uint32_t soundId);
+    static std::size_t stopClipSounds(const AudioClipData *clip);
     
     static AudioClipData *loadClip(const std::string &filePath, bool stream = false);
     static void destroyClip(AudioClipData *clip);

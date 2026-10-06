@@ -270,4 +270,125 @@ inline void validateScribeDelete(Engine& engine, Results& r)
 	cleanImportFolder(engine);
 }
 
+inline void validateMissingAssets(Engine& engine, Results& r)
+{
+	using Status = Scribe::Result::Status;
+	constexpr std::string_view floorPath = "res://assets/models/Floor.glb";
+	constexpr std::string_view missingPath = "res://validation_import/V_NotThere.glb";
+
+	Scribe::Session session(engine);
+
+	auto groupFor = [&](std::string_view path) -> std::optional<Scribe::MissingAsset> {
+		for (auto& missing : session.findMissingAssets())
+		{
+			if (missing.path == path)
+			{
+				return missing;
+			}
+		}
+		return std::nullopt;
+	};
+
+	auto a = session.createEntity("V_MissingA");
+	auto b = session.createEntity("V_MissingB");
+	for (const auto id : {a.id, b.id})
+	{
+		session.addComponent(id, "Mesh");
+		session.setField(id, "Mesh", "modelPath", std::string(missingPath));
+	}
+
+	auto group = groupFor(missingPath);
+	check(r, group.has_value(), "Q1 missing asset is reported");
+	check(r, group && group->references.size() == 2, "Q1 references are grouped per missing file");
+	check(r, !groupFor(floorPath), "Q1 existing assets are not reported");
+
+	session.endMerge();
+	const bool relocated = session.replaceReferences(missingPath, floorPath).status == Status::Applied &&
+						   !groupFor(missingPath);
+	session.undo();
+	check(r, relocated, "Q2 Relocate fixes the missing asset");
+	check(r, groupFor(missingPath).has_value(), "Q2 undo Relocate reports it again");
+
+	check(r, session.replaceReferences(missingPath, "").status == Status::Applied && !groupFor(missingPath),
+		  "Q3 Remove clears the missing asset");
+
+	session.deleteEntity(a.id);
+	session.deleteEntity(b.id);
+}
+
+
+inline void validateReimport(Engine& engine, Results& r)
+{
+	using Status = Scribe::Result::Status;
+	constexpr std::string_view clipPath = "res://validation_import/V_Reimport.wav";
+
+	const auto* project = engine.getProject();
+	auto* scene = engine.getActiveScene();
+	auto source = project ? project->resolveResourcePath(TEST_AUDIO) : std::nullopt;
+	if (!scene || !source || !std::filesystem::exists(*source))
+	{
+		Log::Print("SKIP  E reimport checks (set TEST_AUDIO to a real file)", "Validation", LogType::LOG_WARNING);
+		return;
+	}
+
+	cleanImportFolder(engine);
+	Scribe::Session session(engine);
+	auto& assets = engine.getAssetManager();
+
+	auto imported = session.importAsset(*source, clipPath);
+	flecs::entity e = scene->createEntity("V_Reimport");
+	e.set(CS::AudioSourceComponent{std::string(clipPath), 0.0f, true}); // silent, looping
+	if (!imported.ok() || !e.has<CS::AudioSourceRuntimeComponent>())
+	{
+		check(r, false, "E0 reimport test setup");
+		scene->destroyEntity(idOf(e));
+		cleanImportFolder(engine);
+		return;
+	}
+
+	auto play = [&]() {
+		e.get_mut<CS::AudioSourceRuntimeComponent>().playRequested = true;
+		scene->getWorld().progress(0.0f);
+	};
+
+	const size_t base = sounds();
+	play();
+	const auto handle = e.get<CS::AudioSourceRuntimeComponent>().clip;
+	const uint32_t refsBefore = assets.getAudioClipRefCount(handle);
+	(void) session.takeEvents();
+
+	Assets::AudioImportSettings streamed;
+	streamed.stream = true;
+	check(r, session.setAudioImportSettings(imported.id, streamed).status == Status::Applied,
+		  "E1 import settings change applies");
+	check(r, Core::Audio::isClipStreamed(assets.getAudioClip(handle)) && assets.getAudioClipRefCount(handle) == refsBefore,
+		  "E1 loaded clip is rebuilt in place (same handle)");
+	check(r, sounds() == base, "E2 sounds of the old clip are stopped");
+
+	Assets::AssetRegistry reloaded;
+	const auto* onDisk = reloaded.load(project->getRootPath() / ".cthulhu" / "assets.json")
+							 ? reloaded.findById(imported.id) : nullptr;
+	check(r, onDisk && onDisk->audio.stream, "E3 new settings are saved to the registry file");
+
+	check(r, session.setAudioImportSettings(imported.id, streamed).status == Status::NoChange,
+		  "E4 same settings is NoChange");
+
+	bool sawChanged = false;
+	for (const auto& ev : session.takeEvents())
+	{
+		sawChanged = sawChanged || (ev.type == Scribe::ChangeType::AssetSettingsChanged && ev.assetId == imported.id);
+	}
+	check(r, sawChanged, "E5 emits AssetSettingsChanged");
+
+	const auto* floor = assets.getRegistry().findByPath("res://assets/models/Floor.glb");
+	check(r, floor && !session.setAudioImportSettings(floor->id, streamed).ok(), "E6 non-audio asset rejected");
+
+	play();
+	check(r, sounds() == base + 1, "E7 the rebuilt clip plays");
+
+	scene->destroyEntity(idOf(e));
+	assets.collectUnusedAudioClips();
+	cleanImportFolder(engine);
+}
+
 } // namespace Cthulhu::Validation

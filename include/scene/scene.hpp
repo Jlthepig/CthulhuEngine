@@ -20,6 +20,7 @@ struct AssetReference
     EntityId entity;
     std::string component;
     std::string field;
+    std::string path;
 };
 
 struct EntitySnapshot
@@ -107,6 +108,9 @@ class Scene
     [[nodiscard]] std::optional<std::vector<EntitySnapshot>> captureSubtree(EntityId rootId) const;
 
     bool restoreSubtree(const std::vector<EntitySnapshot>& snapshots);
+    
+    [[nodiscard]] std::vector<AssetReference> getAssetReferences() const;
+
     // every asset field in this scene that points at resourcePath
     [[nodiscard]] std::vector<AssetReference> findAssetReferences(std::string_view resourcePath) const;
 

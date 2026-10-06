@@ -361,6 +361,13 @@ bool deleteFailed(const std::string &why)
     return false;
 }
 
+
+bool settingsFailed(const std::string &why)
+{
+    Log::Print("IMPORT SETTINGS FAILED: " + why, "AssetManager", LogType::LOG_ERROR);
+    return false;
+}
+
 }
 
 std::optional<AssetId> AssetManager::importFile(const std::filesystem::path &sourceFile, std::string_view destination)
@@ -564,6 +571,52 @@ bool AssetManager::deleteFile(AssetId id)
     }
 
     Log::Print("Deleted " + key, "AssetManager", LogType::LOG_SUCCESS);
+    return true;
+}
+
+bool AssetManager::setAudioImportSettings(AssetId id, const AudioImportSettings &settings)
+{
+    const AssetRecord *record = registry.findById(id);
+    if (!record || record->type != AssetType::Audio)
+    {
+        return settingsFailed("NOT AN AUDIO ASSET");
+    }
+
+    if (record->audio == settings)
+    {
+        return true;
+    }
+
+    const std::string key = record->path;
+
+    Core::AudioClipData *rebuilt = nullptr;
+    const auto slot = audioClipTable.find(key);
+    if (slot)
+    {
+        auto file = project ? project->resolveResourcePath(key) : std::nullopt;
+        rebuilt = file ? Core::Audio::loadClip(file->string(), settings.stream) : nullptr;
+        if (!rebuilt)
+        {
+            return settingsFailed("COULD NOT REIMPORT: " + key);
+        }
+    }
+
+    if (!registry.setAudioImportSettings(id, settings))
+    {
+        Core::Audio::destroyClip(rebuilt);
+        return settingsFailed("COULD NOT SAVE: " + key);
+    }
+
+    if (slot)
+    {
+        Core::AudioClipData *&current = audioClips[slot->index];
+        Core::Audio::stopClipSounds(current);
+        Core::Audio::destroyClip(current);
+        current = rebuilt;
+
+        Log::Print("Reimported " + key + (settings.stream ? " (streamed)" : ""), "AssetManager", LogType::LOG_SUCCESS);
+    }
+
     return true;
 }
 

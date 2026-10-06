@@ -1,4 +1,5 @@
 #include <unordered_map>
+#include <vector>
 
 #define MINIAUDIO_IMPLEMENTATION
 #include <miniaudio.h>
@@ -20,6 +21,7 @@ struct AudioClipData
 };
 
 std::unordered_map<uint32_t, ma_sound *> activeSounds;
+std::unordered_map<uint32_t, const AudioClipData *> soundClips;
 uint32_t Audio::nextInstanceId = 1;
 
 void Audio::init()
@@ -45,6 +47,7 @@ void Audio::shutdown()
         delete pair.second;
     }
     activeSounds.clear();
+    soundClips.clear();
     ma_engine_uninit(&g_audioEngine);
     g_audioReady = false;
 }
@@ -58,6 +61,7 @@ void Audio::update()
         {
             ma_sound_uninit(pSound);
             delete pSound;
+            soundClips.erase(it->first);
             it = activeSounds.erase(it);
         }
         else
@@ -78,7 +82,27 @@ void Audio::stopSound(uint32_t instanceId)
         ma_sound_uninit(pSound);
         delete pSound;
         activeSounds.erase(it);
+        soundClips.erase(instanceId);
     }
+}
+
+std::size_t Audio::stopClipSounds(const AudioClipData *clip)
+{
+    std::vector<uint32_t> ids;
+    for (const auto &[id, source] : soundClips)
+    {
+        if (source == clip)
+        {
+            ids.push_back(id);
+        }
+    }
+
+    for (const uint32_t id : ids)
+    {
+        stopSound(id);
+    }
+
+    return ids.size();
 }
 
 AudioClipData *Audio::loadClip(const std::string &filePath, bool stream)
@@ -159,6 +183,7 @@ uint32_t Audio::playClip(const AudioClipData *clip, float volume, bool loop)
 
     const uint32_t instanceId = nextInstanceId++;
     activeSounds[instanceId] = pSound;
+    soundClips[instanceId] = clip;
     return instanceId;
 }
 
