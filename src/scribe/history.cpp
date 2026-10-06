@@ -75,7 +75,8 @@ bool History::redo(Context &context)
     if (!result.ok())
     {
         // only really possible if something edited the scene outside Scribe
-        Log::Print("REDO FAILED: " + std::string(entry.command->name()) + ": " + result.error, "Scribe",LogType::LOG_ERROR);
+        Log::Print("REDO FAILED: " + std::string(entry.command->name()) + ": " + result.error, "Scribe",
+                   LogType::LOG_ERROR);
         redoStack.clear();
         return false;
     }

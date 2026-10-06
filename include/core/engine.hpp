@@ -6,11 +6,10 @@
 #include <string_view>
 #include <vector>
 
-
-#include "physics.hpp"
-#include "project.hpp"
 #include "assetManager.hpp"
 #include "componentRegistry.hpp"
+#include "physics.hpp"
+#include "project.hpp"
 #include "renderer.hpp"
 
 struct GLFWwindow;
@@ -169,7 +168,7 @@ class Engine
 
     std::unique_ptr<Cthulhu::Scene::Scene> activeScene;
     uint64_t sceneGeneration = 0;
-    
+
     std::vector<Rendering::Renderable> frameRenderables;
 
     UpdateCallback updateCallback = nullptr;
@@ -187,7 +186,7 @@ class Engine
     SimulationState simState = SimulationState::Running;
     void applySimStateToSystems(); // toggle systems based on the simState
 
-    float  deltaTime{};
+    float deltaTime{};
     double lastFrame{};
 };
 } // namespace Cthulhu

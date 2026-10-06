@@ -5,8 +5,8 @@
 #include <string>
 #include <string_view>
 
-#include "projectParser.hpp"
 #include "log_utils.hpp"
+#include "projectParser.hpp"
 
 using KalaHeaders::KalaLog::Log;
 using KalaHeaders::KalaLog::LogType;

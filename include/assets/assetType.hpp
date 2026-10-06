@@ -6,7 +6,7 @@
 namespace Cthulhu::Assets
 {
 
-enum class AssetType: uint8_t
+enum class AssetType : uint8_t
 {
     Unknown,
     Model,
@@ -17,4 +17,4 @@ enum class AssetType: uint8_t
 [[nodiscard]] AssetType getAssetType(std::string_view resourcePath);
 [[nodiscard]] std::string_view assetTypeName(AssetType type);
 
-}
+} // namespace Cthulhu::Assets

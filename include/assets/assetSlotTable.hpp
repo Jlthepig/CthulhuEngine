@@ -9,7 +9,7 @@
 
 namespace Cthulhu::Assets
 {
-    
+
 class AssetSlotTable
 {
   public:
@@ -34,7 +34,7 @@ class AssetSlotTable
     [[nodiscard]] bool isAlive(uint32_t index, uint32_t generation) const noexcept;
 
     bool addRef(uint32_t index, uint32_t generation) noexcept;
-    void release(uint32_t index, uint32_t generation); 
+    void release(uint32_t index, uint32_t generation);
 
     [[nodiscard]] uint32_t refCount(uint32_t index, uint32_t generation) const noexcept;
     [[nodiscard]] uint32_t totalRefCount() const noexcept;

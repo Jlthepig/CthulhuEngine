@@ -1,12 +1,12 @@
 #include <algorithm>
 #include <string>
 
-#include "engine.hpp"
 #include "componentCommands.hpp"
+#include "engine.hpp"
 #include "entityCommands.hpp"
+#include "log_utils.hpp"
 #include "scene.hpp"
 #include "session.hpp"
-#include "log_utils.hpp"
 
 using KalaHeaders::KalaLog::Log;
 using KalaHeaders::KalaLog::LogType;
@@ -262,7 +262,6 @@ Result Session::reparentEntity(Scene::EntityId child, std::optional<Scene::Entit
     return execute(Commands::reparentEntity(child, newParent));
 }
 
-
 Result Session::addComponent(Scene::EntityId id, std::string_view component)
 {
     return execute(Commands::addComponent(id, std::string(component)));
@@ -274,13 +273,12 @@ Result Session::removeComponent(Scene::EntityId id, std::string_view component)
 }
 
 Result Session::setField(Scene::EntityId id, std::string_view component, std::string_view field,
-                         const Scene::FieldValue& value)
+                         const Scene::FieldValue &value)
 {
     return execute(Commands::setField(id, std::string(component), std::string(field), value));
 }
 
-
-AssetResult Session::importAsset(const std::filesystem::path& sourceFile, std::string_view destination)
+AssetResult Session::importAsset(const std::filesystem::path &sourceFile, std::string_view destination)
 {
     syncScene();
 
@@ -339,7 +337,6 @@ Result Session::replaceReferences(std::string_view from, std::string_view to)
     return execute(Commands::replaceReferences(std::string(from), std::string(to)));
 }
 
-
 Result Session::deleteAsset(Assets::AssetId id)
 {
     Scene::Scene *scene = syncScene();
@@ -356,7 +353,8 @@ Result Session::deleteAsset(Assets::AssetId id)
         const auto references = scene->findAssetReferences(record->path);
         if (!references.empty())
         {
-            return Result::failed("ASSET IS USED BY " + std::to_string(references.size()) + " REFERENCE(S) IN THE OPEN SCENE: " + record->path);
+            return Result::failed("ASSET IS USED BY " + std::to_string(references.size()) +
+                                  " REFERENCE(S) IN THE OPEN SCENE: " + record->path);
         }
     }
 
@@ -430,8 +428,6 @@ void Session::rewriteReferences(Scene::Scene &scene, std::string_view from, std:
     scene.markDirty();
     history.invalidateSavePoint();
 }
-
-
 
 Result Session::setAudioImportSettings(Assets::AssetId id, const Assets::AudioImportSettings &settings)
 {

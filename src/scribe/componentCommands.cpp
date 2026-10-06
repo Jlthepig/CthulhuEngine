@@ -1,7 +1,7 @@
 #include "componentCommands.hpp"
 #include "assetManager.hpp"
-#include "scene.hpp"
 #include "log_utils.hpp"
+#include "scene.hpp"
 
 using KalaHeaders::KalaLog::Log;
 using KalaHeaders::KalaLog::LogType;
@@ -13,12 +13,12 @@ namespace
 struct Target
 {
     flecs::entity entity;
-    const Scene::ComponentDescriptor* descriptor = nullptr;
+    const Scene::ComponentDescriptor *descriptor = nullptr;
 };
 
-Result findTarget(Context& context, Scene::EntityId id, const std::string& component, bool allowCore, Target& out)
+Result findTarget(Context &context, Scene::EntityId id, const std::string &component, bool allowCore, Target &out)
 {
-    const auto* descriptor = context.scene.getComponentRegistry()->find(component);
+    const auto *descriptor = context.scene.getComponentRegistry()->find(component);
     if (!descriptor)
     {
         return Result::failed("UNKNOWN COMPONENT: " + component);
@@ -42,7 +42,8 @@ Result findTarget(Context& context, Scene::EntityId id, const std::string& compo
 class AddComponentCommand final : public Command
 {
   public:
-    AddComponentCommand(Scene::EntityId entityId, std::string componentName) : id(entityId), component(std::move(componentName)), label("Add " + component)
+    AddComponentCommand(Scene::EntityId entityId, std::string componentName)
+        : id(entityId), component(std::move(componentName)), label("Add " + component)
     {
     }
 
@@ -51,7 +52,7 @@ class AddComponentCommand final : public Command
         return label;
     }
 
-    Result apply(Context& context) override
+    Result apply(Context &context) override
     {
         Target target;
         if (Result found = findTarget(context, id, component, false, target); !found.ok())
@@ -69,7 +70,7 @@ class AddComponentCommand final : public Command
         return Result::applied();
     }
 
-    void revert(Context& context) override
+    void revert(Context &context) override
     {
         Target target;
         if (!findTarget(context, id, component, false, target).ok())
@@ -91,7 +92,8 @@ class AddComponentCommand final : public Command
 class RemoveComponentCommand final : public Command
 {
   public:
-    RemoveComponentCommand(Scene::EntityId entityId, std::string componentName) : id(entityId), component(std::move(componentName)), label("Remove " + component)
+    RemoveComponentCommand(Scene::EntityId entityId, std::string componentName)
+        : id(entityId), component(std::move(componentName)), label("Remove " + component)
     {
     }
 
@@ -100,7 +102,7 @@ class RemoveComponentCommand final : public Command
         return label;
     }
 
-    Result apply(Context& context) override
+    Result apply(Context &context) override
     {
         Target target;
         if (Result found = findTarget(context, id, component, false, target); !found.ok())
@@ -120,7 +122,7 @@ class RemoveComponentCommand final : public Command
         return Result::applied();
     }
 
-    void revert(Context& context) override
+    void revert(Context &context) override
     {
         auto entity = context.scene.findEntity(id);
         if (!entity || !context.scene.getComponentRegistry()->apply(*entity, {saved}))
@@ -153,7 +155,7 @@ class SetFieldCommand final : public Command
         return label;
     }
 
-    Result apply(Context& context) override
+    Result apply(Context &context) override
     {
         Target target;
         if (Result found = findTarget(context, id, component, true, target); !found.ok())
@@ -161,7 +163,7 @@ class SetFieldCommand final : public Command
             return found;
         }
 
-        const auto& registry = *context.scene.getComponentRegistry();
+        const auto &registry = *context.scene.getComponentRegistry();
 
         auto current = registry.getField(target.entity, component, field);
         if (!current)
@@ -189,7 +191,7 @@ class SetFieldCommand final : public Command
         return Result::applied();
     }
 
-    void revert(Context& context) override
+    void revert(Context &context) override
     {
         auto entity = context.scene.findEntity(id);
         Scene::ComponentSnapshot snapshot{component, {{field, oldValue}}};
@@ -204,9 +206,9 @@ class SetFieldCommand final : public Command
         context.emit(ChangeType::ComponentChanged, id, component);
     }
 
-    bool mergeWith(const Command& next) override
+    bool mergeWith(const Command &next) override
     {
-        const auto* edit = dynamic_cast<const SetFieldCommand*>(&next);
+        const auto *edit = dynamic_cast<const SetFieldCommand *>(&next);
         if (!edit || edit->id != id || edit->component != component || edit->field != field)
         {
             return false;
@@ -228,7 +230,8 @@ class SetFieldCommand final : public Command
 class ReplaceReferencesCommand final : public Command
 {
   public:
-    ReplaceReferencesCommand(std::string fromPath, std::string toPath) : from(std::move(fromPath)), to(std::move(toPath))
+    ReplaceReferencesCommand(std::string fromPath, std::string toPath)
+        : from(std::move(fromPath)), to(std::move(toPath))
     {
     }
 
@@ -237,7 +240,7 @@ class ReplaceReferencesCommand final : public Command
         return "Replace References";
     }
 
-    Result apply(Context& context) override
+    Result apply(Context &context) override
     {
         if (!to.empty())
         {
@@ -254,7 +257,7 @@ class ReplaceReferencesCommand final : public Command
             to = *key;
         }
 
-        const auto& registry = *context.scene.getComponentRegistry();
+        const auto &registry = *context.scene.getComponentRegistry();
         const auto references = context.scene.findAssetReferences(from);
         if (references.empty())
         {
@@ -263,10 +266,10 @@ class ReplaceReferencesCommand final : public Command
 
         // check every field first so a wrong type changes nothing
         const Assets::AssetType newType = to.empty() ? Assets::AssetType::Unknown : Assets::getAssetType(to);
-        for (const auto& ref : references)
+        for (const auto &ref : references)
         {
-            const auto* descriptor = registry.find(ref.component);
-            const auto* field = descriptor ? Scene::findField(*descriptor, ref.field) : nullptr;
+            const auto *descriptor = registry.find(ref.component);
+            const auto *field = descriptor ? Scene::findField(*descriptor, ref.field) : nullptr;
             if (!field)
             {
                 return Result::failed("UNKNOWN FIELD " + ref.component + "." + ref.field);
@@ -279,7 +282,7 @@ class ReplaceReferencesCommand final : public Command
         }
 
         changed.clear();
-        for (const auto& ref : references)
+        for (const auto &ref : references)
         {
             auto entity = context.scene.findEntity(ref.entity);
             auto old = entity ? registry.getField(*entity, ref.component, ref.field) : std::nullopt;
@@ -295,11 +298,11 @@ class ReplaceReferencesCommand final : public Command
         return changed.empty() ? Result::noChange() : Result::applied();
     }
 
-    void revert(Context& context) override
+    void revert(Context &context) override
     {
-        const auto& registry = *context.scene.getComponentRegistry();
+        const auto &registry = *context.scene.getComponentRegistry();
 
-        for (const auto& change : changed)
+        for (const auto &change : changed)
         {
             auto entity = context.scene.findEntity(change.reference.entity);
             Scene::ComponentSnapshot snapshot{change.reference.component,
@@ -338,7 +341,7 @@ std::unique_ptr<Command> removeComponent(Scene::EntityId id, std::string compone
     return std::make_unique<RemoveComponentCommand>(id, std::move(component));
 }
 
-std::unique_ptr<Command> setField(Scene::EntityId id, std::string component, std::string field,Scene::FieldValue value)
+std::unique_ptr<Command> setField(Scene::EntityId id, std::string component, std::string field, Scene::FieldValue value)
 {
     return std::make_unique<SetFieldCommand>(id, std::move(component), std::move(field), std::move(value));
 }

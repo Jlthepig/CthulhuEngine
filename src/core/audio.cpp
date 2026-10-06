@@ -122,7 +122,8 @@ AudioClipData *Audio::loadClip(const std::string &filePath, bool stream)
         if (ma_sound_init_from_file(&g_audioEngine, filePath.c_str(), MA_SOUND_FLAG_STREAM, NULL, NULL, &probe) !=
             MA_SUCCESS)
         {
-            KalaHeaders::KalaLog::Log::Print("Failed to open audio stream: " + filePath, "Audio",KalaHeaders::KalaLog::LogType::LOG_ERROR);
+            KalaHeaders::KalaLog::Log::Print("Failed to open audio stream: " + filePath, "Audio",
+                                             KalaHeaders::KalaLog::LogType::LOG_ERROR);
             delete clip;
             return nullptr;
         }
@@ -135,7 +136,8 @@ AudioClipData *Audio::loadClip(const std::string &filePath, bool stream)
 
     if (result != MA_SUCCESS)
     {
-        KalaHeaders::KalaLog::Log::Print("Failed to load audio clip: " + filePath, "Audio",KalaHeaders::KalaLog::LogType::LOG_ERROR);
+        KalaHeaders::KalaLog::Log::Print("Failed to load audio clip: " + filePath, "Audio",
+                                         KalaHeaders::KalaLog::LogType::LOG_ERROR);
         delete clip;
         return nullptr;
     }
@@ -166,13 +168,14 @@ uint32_t Audio::playClip(const AudioClipData *clip, float volume, bool loop)
     }
 
     ma_sound *pSound = new ma_sound();
-    const ma_result result = clip->stream 
-    ? ma_sound_init_from_file(&g_audioEngine, clip->filePath.c_str(), MA_SOUND_FLAG_STREAM, NULL, NULL, pSound) 
-    : ma_sound_init_copy(&g_audioEngine, &clip->sound, 0, NULL, pSound);
+    const ma_result result = clip->stream ? ma_sound_init_from_file(&g_audioEngine, clip->filePath.c_str(),
+                                                                    MA_SOUND_FLAG_STREAM, NULL, NULL, pSound)
+                                          : ma_sound_init_copy(&g_audioEngine, &clip->sound, 0, NULL, pSound);
 
     if (result != MA_SUCCESS)
     {
-        KalaHeaders::KalaLog::Log::Print("Failed to play audio clip", "Audio",KalaHeaders::KalaLog::LogType::LOG_ERROR);
+        KalaHeaders::KalaLog::Log::Print("Failed to play audio clip", "Audio",
+                                         KalaHeaders::KalaLog::LogType::LOG_ERROR);
         delete pSound;
         return 0;
     }

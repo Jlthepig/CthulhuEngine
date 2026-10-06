@@ -6,8 +6,8 @@
 
 #include "assetManager.hpp"
 #include "assetRegistry.hpp"
-#include "project.hpp"
 #include "log_utils.hpp"
+#include "project.hpp"
 
 using KalaHeaders::KalaLog::Log;
 using KalaHeaders::KalaLog::LogType;
@@ -166,8 +166,8 @@ bool AssetRegistry::save() const
         {
             const AssetRecord &record = *sorted[i];
 
-            out << (i == 0 ? "\n" : ",\n") << "        { \"id\": \"" << assetIdToString(record.id)
-                << "\", \"path\": \"" << escapeJson(record.path) << "\"";
+            out << (i == 0 ? "\n" : ",\n") << "        { \"id\": \"" << assetIdToString(record.id) << "\", \"path\": \""
+                << escapeJson(record.path) << "\"";
 
             if (record.type == AssetType::Audio && record.audio != AudioImportSettings{})
             {
@@ -213,8 +213,8 @@ AssetRegistry::ScanResult AssetRegistry::scan(const Project::Project &project)
     std::vector<bool> seen(records.size(), false);
 
     std::error_code error;
-    std::filesystem::recursive_directory_iterator it(
-        root, std::filesystem::directory_options::skip_permission_denied, error);
+    std::filesystem::recursive_directory_iterator it(root, std::filesystem::directory_options::skip_permission_denied,
+                                                     error);
 
     if (error)
     {

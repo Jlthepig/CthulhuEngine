@@ -1,8 +1,8 @@
 #include <gtc/type_ptr.hpp>
 
 #include "fileReader.hpp"
-#include "shader.hpp"
 #include "log_utils.hpp"
+#include "shader.hpp"
 
 using KalaHeaders::KalaLog::Log;
 using KalaHeaders::KalaLog::LogType;

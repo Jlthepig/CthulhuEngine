@@ -13,20 +13,19 @@ struct AudioClipData;
 
 namespace Cthulhu::Assets
 {
-    template <typename T>
-    struct AssetHandle
+template <typename T> struct AssetHandle
+{
+    uint32_t index{};
+    uint32_t generation{};
+
+    [[nodiscard]] constexpr bool isValid() const noexcept
     {
-        uint32_t index{};
-        uint32_t generation{};
+        return generation != 0;
+    }
 
-        [[nodiscard]] constexpr bool isValid() const noexcept
-        {
-            return generation != 0;
-        }
+    friend constexpr bool operator==(const AssetHandle &, const AssetHandle &) noexcept = default;
+};
 
-        friend constexpr bool operator==(const AssetHandle & , const AssetHandle &) noexcept = default;
-    };
-
-    using ModelHandle = AssetHandle<Rendering::Model>;
-    using AudioClipHandle = AssetHandle<Core::AudioClipData>;
-}
+using ModelHandle = AssetHandle<Rendering::Model>;
+using AudioClipHandle = AssetHandle<Core::AudioClipData>;
+} // namespace Cthulhu::Assets

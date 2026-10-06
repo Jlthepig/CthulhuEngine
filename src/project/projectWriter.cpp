@@ -1,8 +1,8 @@
 #include <fstream>
 #include <string>
 
-#include "projectWriter.hpp"
 #include "log_utils.hpp"
+#include "projectWriter.hpp"
 
 using KalaHeaders::KalaLog::Log;
 using KalaHeaders::KalaLog::LogType;

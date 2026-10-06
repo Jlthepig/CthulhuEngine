@@ -9,25 +9,22 @@
 #include <Jolt/Physics/Character/CharacterVirtual.h>
 #include <Jolt/Physics/PhysicsSystem.h>
 
-
-
-#include "sceneLoader.hpp"
-#include "scene.hpp"
-#include "physics.hpp"
-#include "audio.hpp"
-#include "renderer.hpp"
-#include "camera.hpp"
-#include "engine.hpp"
-#include "systemRegistry.hpp"
-#include "builtinComponents.hpp"
-#include "components.hpp"
-#include "input.hpp"
-#include "window.hpp"
-#include "assetType.hpp"
-#include "jsonWriter.hpp"
 #include "applicationPaths.hpp"
+#include "assetType.hpp"
+#include "audio.hpp"
+#include "builtinComponents.hpp"
+#include "camera.hpp"
+#include "components.hpp"
+#include "engine.hpp"
+#include "input.hpp"
+#include "jsonWriter.hpp"
 #include "log_utils.hpp"
-
+#include "physics.hpp"
+#include "renderer.hpp"
+#include "scene.hpp"
+#include "sceneLoader.hpp"
+#include "systemRegistry.hpp"
+#include "window.hpp"
 
 using KalaHeaders::KalaLog::Log;
 using KalaHeaders::KalaLog::LogType;
@@ -324,7 +321,7 @@ void Engine::activateScene(std::unique_ptr<Scene::Scene> newScene)
     renderer.setPointLights(activeScene->getPointLights());
 
     frameRenderables.clear();
-    
+
     applySimStateToSystems();
 }
 
@@ -371,17 +368,17 @@ bool Engine::saveActiveSceneAs(std::string_view resourcePath)
 
     if (!resourcePath.starts_with("res://"))
     {
-        Log::Print("SCENE PATH MUST USE res://","ENGINE",LogType::LOG_ERROR);
+        Log::Print("SCENE PATH MUST USE res://", "ENGINE", LogType::LOG_ERROR);
         return false;
     }
 
     if (Assets::getAssetType(resourcePath) != Assets::AssetType::Scene)
     {
-        Log::Print("SCENE FILE MUST USE .scene EXTENSION","ENGINE",LogType::LOG_ERROR);
+        Log::Print("SCENE FILE MUST USE .scene EXTENSION", "ENGINE", LogType::LOG_ERROR);
         return false;
     }
 
-    auto resolvedPath =project->resolveResourcePath(resourcePath);
+    auto resolvedPath = project->resolveResourcePath(resourcePath);
 
     if (!resolvedPath)
     {
@@ -393,7 +390,8 @@ bool Engine::saveActiveSceneAs(std::string_view resourcePath)
     std::filesystem::create_directories(resolvedPath->parent_path(), error);
     if (error)
     {
-        Log::Print("FAILED TO CREATE SCENE DIRECTORY: " + resolvedPath->parent_path().string(), "ENGINE", LogType::LOG_ERROR);
+        Log::Print("FAILED TO CREATE SCENE DIRECTORY: " + resolvedPath->parent_path().string(), "ENGINE",
+                   LogType::LOG_ERROR);
         return false;
     }
 
@@ -414,8 +412,8 @@ void Engine::processFixedUpdate(float fixedDt)
         return;
     }
 
-    activeScene->getWorld().each([fixedDt, this](const Scene::CharacterControllerComponent& config, Scene::CharacterControllerRuntimeComponent& runtime)
-    {
+    activeScene->getWorld().each([fixedDt, this](const Scene::CharacterControllerComponent &config,
+                                                 Scene::CharacterControllerRuntimeComponent &runtime) {
         if (!runtime.character)
         {
             return;
@@ -446,8 +444,9 @@ void Engine::processFixedUpdate(float fixedDt)
         JPH::CharacterVirtual::ExtendedUpdateSettings settings;
 
         runtime.character->ExtendedUpdate(fixedDt, JPH::Vec3(0.0f, config.gravity, 0.0f), settings,
-            physicsWorld.getPhysicsSystem()->GetDefaultBroadPhaseLayerFilter(1),
-            physicsWorld.getPhysicsSystem()->GetDefaultLayerFilter(1), {}, {}, *physicsWorld.getTempAllocator());
+                                          physicsWorld.getPhysicsSystem()->GetDefaultBroadPhaseLayerFilter(1),
+                                          physicsWorld.getPhysicsSystem()->GetDefaultLayerFilter(1), {}, {},
+                                          *physicsWorld.getTempAllocator());
 
         charPos = runtime.character->GetPosition();
 
@@ -550,8 +549,9 @@ void Engine::run()
         {
             if (activeScene)
             {
-                activeScene->getWorld().each(
-            [&](flecs::entity e, const Scene::TransformComponent &transform, const Scene::MeshComponent &, const Scene::MeshRuntimeComponent& meshRuntime) {
+                activeScene->getWorld().each([&](flecs::entity e, const Scene::TransformComponent &transform,
+                                                 const Scene::MeshComponent &,
+                                                 const Scene::MeshRuntimeComponent &meshRuntime) {
                     if (!e.has<Scene::TagActive>())
                     {
                         return;
@@ -563,8 +563,8 @@ void Engine::run()
                         return;
                     }
 
-                    frameRenderables.push_back({model, transform.cachedModelMatrix,
-                                                transform.cachedNormalMatrix, model->boundsMin, model->boundsMax});
+                    frameRenderables.push_back({model, transform.cachedModelMatrix, transform.cachedNormalMatrix,
+                                                model->boundsMin, model->boundsMax});
                 });
             }
 

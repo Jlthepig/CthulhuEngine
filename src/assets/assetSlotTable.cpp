@@ -58,8 +58,7 @@ AssetSlotTable::SlotId AssetSlotTable::allocate(const std::string &key)
 
 bool AssetSlotTable::isAlive(uint32_t index, uint32_t generation) const noexcept
 {
-    return generation != 0 && index < slots.size() && slots[index].alive &&
-           slots[index].generation == generation;
+    return generation != 0 && index < slots.size() && slots[index].alive && slots[index].generation == generation;
 }
 
 bool AssetSlotTable::addRef(uint32_t index, uint32_t generation) noexcept

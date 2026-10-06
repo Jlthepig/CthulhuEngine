@@ -2,7 +2,7 @@
 
 namespace Cthulhu::Scene
 {
-    class ComponentRegistry;
+class ComponentRegistry;
 
-    bool registerBuiltinComponents(ComponentRegistry& registry);
-}
+bool registerBuiltinComponents(ComponentRegistry &registry);
+} // namespace Cthulhu::Scene

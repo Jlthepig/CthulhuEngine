@@ -1,8 +1,8 @@
 #include <glad.h>
 #include <stb_image.h>
 
-#include "texture.hpp"
 #include "log_utils.hpp"
+#include "texture.hpp"
 
 using KalaHeaders::KalaLog::Log;
 using KalaHeaders::KalaLog::LogType;

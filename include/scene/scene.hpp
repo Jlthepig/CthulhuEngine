@@ -1,16 +1,16 @@
 #pragma once
 
 #include <cstdint>
+#include <optional>
 #include <string>
+#include <string_view>
 #include <unordered_map>
 #include <vector>
-#include <optional>
-#include <string_view>
 
 #include <flecs.h>
 
-#include "entityId.hpp"
 #include "componentRegistry.hpp"
+#include "entityId.hpp"
 #include "light.hpp"
 
 namespace Cthulhu::Scene
@@ -33,17 +33,17 @@ struct EntitySnapshot
 class Scene
 {
   public:
-    explicit Scene(const ComponentRegistry& registry) : componentRegistry(&registry)
+    explicit Scene(const ComponentRegistry &registry) : componentRegistry(&registry)
     {
     }
 
-    [[nodiscard]] const ComponentRegistry* getComponentRegistry() const noexcept
+    [[nodiscard]] const ComponentRegistry *getComponentRegistry() const noexcept
     {
         return componentRegistry;
     }
 
     // << serialization >>
-    [[nodiscard]] const std::optional<std::string>& getResourcePath() const noexcept
+    [[nodiscard]] const std::optional<std::string> &getResourcePath() const noexcept
     {
         return resourcePath;
     }
@@ -90,7 +90,7 @@ class Scene
 
     // << entity management >>
     flecs::entity createEntity(const std::string &name = "Entity");
-    [[nodiscard]] std::optional<flecs::entity> createEntityWithId(EntityId id, const std::string& name);
+    [[nodiscard]] std::optional<flecs::entity> createEntityWithId(EntityId id, const std::string &name);
 
     [[nodiscard]] std::optional<flecs::entity> findEntity(EntityId id) const;
     [[nodiscard]] bool isEntityAlive(EntityId id) const;
@@ -107,8 +107,8 @@ class Scene
 
     [[nodiscard]] std::optional<std::vector<EntitySnapshot>> captureSubtree(EntityId rootId) const;
 
-    bool restoreSubtree(const std::vector<EntitySnapshot>& snapshots);
-    
+    bool restoreSubtree(const std::vector<EntitySnapshot> &snapshots);
+
     [[nodiscard]] std::vector<AssetReference> getAssetReferences() const;
 
     // every asset field in this scene that points at resourcePath
@@ -116,7 +116,7 @@ class Scene
 
     void clear();
 
-    // << asset lighting >> 
+    // << asset lighting >>
     void setDirectionalLight(const Rendering::DirectionalLight &light)
     {
         directionalLight = light;
@@ -154,9 +154,9 @@ class Scene
     }
 
   private:
-    const ComponentRegistry* componentRegistry = nullptr;
+    const ComponentRegistry *componentRegistry = nullptr;
     std::string name;
-    std::optional<std::string>  resourcePath;
+    std::optional<std::string> resourcePath;
     bool dirty = false;
     uint32_t nextId{};
 
@@ -170,12 +170,13 @@ class Scene
     void unregisterEntity(EntityId id);
 
     [[nodiscard]] bool shouldCreateHierarchyCycle(flecs::entity child, flecs::entity newParent) const;
-    
-    void collectSubtreeEntityIds(flecs::entity entity, std::vector<EntityId>& ids) const;
 
-    [[nodiscard]] std::optional<EntityId> duplicateEntityRecursive(flecs::entity sourceEntity, std::optional<EntityId> parentId); 
-    
-    void captureRecursive(flecs::entity entity, std::vector<EntitySnapshot>& out) const;
+    void collectSubtreeEntityIds(flecs::entity entity, std::vector<EntityId> &ids) const;
+
+    [[nodiscard]] std::optional<EntityId> duplicateEntityRecursive(flecs::entity sourceEntity,
+                                                                   std::optional<EntityId> parentId);
+
+    void captureRecursive(flecs::entity entity, std::vector<EntitySnapshot> &out) const;
 
     [[nodiscard]]
     EntityId generateUniqueEntityId() const;

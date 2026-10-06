@@ -3,8 +3,8 @@
 
 #include <stb_image.h>
 
-#include "skybox.hpp"
 #include "log_utils.hpp"
+#include "skybox.hpp"
 
 using KalaHeaders::KalaLog::Log;
 using KalaHeaders::KalaLog::LogType;

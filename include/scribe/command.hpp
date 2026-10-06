@@ -20,112 +20,112 @@ class Scene;
 
 namespace Cthulhu::Scribe
 {
-    struct Result
+struct Result
+{
+    enum class Status : uint8_t
     {
-        enum class Status : uint8_t
-        {
-            Applied,
-            NoChange,
-            Failed
-        };
-
-        Status status = Status::Applied;
-        std::string error;
-
-        [[nodiscard]] bool ok() const noexcept
-        {
-            return status != Status::Failed;
-        }
-
-        [[nodiscard]] static Result applied()
-        {
-            return {};
-        }
-
-        [[nodiscard]] static Result noChange()
-        {
-            return {Status::NoChange, {}};
-        }
-
-        [[nodiscard]] static Result failed(std::string message)
-        {
-            return {Status::Failed, std::move(message)};
-        }
+        Applied,
+        NoChange,
+        Failed
     };
 
-    struct EntityResult
+    Status status = Status::Applied;
+    std::string error;
+
+    [[nodiscard]] bool ok() const noexcept
     {
-        Result result;
-        Scene::EntityId id{};
+        return status != Status::Failed;
+    }
 
-        [[nodiscard]] bool ok() const noexcept
-        {
-            return result.ok();
-        }
-    };
-
-    struct AssetResult
+    [[nodiscard]] static Result applied()
     {
-        Result result;
-        Assets::AssetId id{};
+        return {};
+    }
 
-        [[nodiscard]] bool ok() const noexcept
-        {
-            return result.ok();
-        }
-    };
-
-    enum class ChangeType : uint8_t
+    [[nodiscard]] static Result noChange()
     {
-        SceneReplaced, // active scene switched history cleared rebuild all ui
-        SceneRenamed,
-        EntityCreated,
-        EntityDestroyed,
-        EntityRenamed,
-        EntityReparented,
-        ComponentAdded,
-        ComponentRemoved,
-        ComponentChanged,
+        return {Status::NoChange, {}};
+    }
 
-        AssetImported,
-        AssetMoved,
-        AssetDeleted,
-        AssetSettingsChanged
-    };
-
-    struct ChangeEvent
+    [[nodiscard]] static Result failed(std::string message)
     {
-        ChangeType type = ChangeType::SceneReplaced;
-        Scene::EntityId entityId{};
-        std::string component{};
-        Assets::AssetId assetId{};
-    };
+        return {Status::Failed, std::move(message)};
+    }
+};
 
-    struct Context
+struct EntityResult
+{
+    Result result;
+    Scene::EntityId id{};
+
+    [[nodiscard]] bool ok() const noexcept
     {
-        Engine &engine;
-        Scene::Scene &scene;
-        std::vector<ChangeEvent> &events;
+        return result.ok();
+    }
+};
 
-        void emit(ChangeType type, Scene::EntityId entityId = {}, std::string component = {})
-        {
-            events.push_back({type, entityId, std::move(component)});
-        }
-    };
+struct AssetResult
+{
+    Result result;
+    Assets::AssetId id{};
 
-    class Command
+    [[nodiscard]] bool ok() const noexcept
     {
-    public:
-        virtual ~Command() = default;
+        return result.ok();
+    }
+};
 
-        [[nodiscard]] virtual std::string_view name() const = 0;
-        
-        virtual Result apply(Context &context) = 0;
-        virtual void revert(Context &context) = 0;
+enum class ChangeType : uint8_t
+{
+    SceneReplaced, // active scene switched history cleared rebuild all ui
+    SceneRenamed,
+    EntityCreated,
+    EntityDestroyed,
+    EntityRenamed,
+    EntityReparented,
+    ComponentAdded,
+    ComponentRemoved,
+    ComponentChanged,
 
-        virtual bool mergeWith(const Command &)
-        {
-            return false;
-        }
-    };
+    AssetImported,
+    AssetMoved,
+    AssetDeleted,
+    AssetSettingsChanged
+};
+
+struct ChangeEvent
+{
+    ChangeType type = ChangeType::SceneReplaced;
+    Scene::EntityId entityId{};
+    std::string component{};
+    Assets::AssetId assetId{};
+};
+
+struct Context
+{
+    Engine &engine;
+    Scene::Scene &scene;
+    std::vector<ChangeEvent> &events;
+
+    void emit(ChangeType type, Scene::EntityId entityId = {}, std::string component = {})
+    {
+        events.push_back({type, entityId, std::move(component)});
+    }
+};
+
+class Command
+{
+  public:
+    virtual ~Command() = default;
+
+    [[nodiscard]] virtual std::string_view name() const = 0;
+
+    virtual Result apply(Context &context) = 0;
+    virtual void revert(Context &context) = 0;
+
+    virtual bool mergeWith(const Command &)
+    {
+        return false;
+    }
+};
 } // namespace Cthulhu::Scribe

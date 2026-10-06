@@ -4,29 +4,40 @@
 
 #include <glm.hpp>
 
-#include "entityId.hpp"
 #include "assetHandle.hpp"
+#include "entityId.hpp"
 
-namespace Cthulhu::Rendering { struct Model; }
-namespace JPH { class CharacterVirtual; }
+namespace Cthulhu::Rendering
+{
+struct Model;
+}
+namespace JPH
+{
+class CharacterVirtual;
+}
 
-namespace Cthulhu::Scene {
+namespace Cthulhu::Scene
+{
 
-struct EntityIdentityComponent {
+struct EntityIdentityComponent
+{
     EntityId id{};
 };
 
-struct NameComponent {
+struct NameComponent
+{
     std::string name{"Entity"};
 };
 
-struct AudioSourceComponent {
+struct AudioSourceComponent
+{
     std::string filePath{""};
     float volume{1.0f};
     bool loop{false};
 };
 
-struct AudioSourceRuntimeComponent {
+struct AudioSourceRuntimeComponent
+{
     Assets::AudioClipHandle clip{};
     bool playRequested{false};
     bool stopRequested{false};
@@ -34,11 +45,13 @@ struct AudioSourceRuntimeComponent {
     uint32_t soundInstanceId{0};
 };
 
-struct CameraComponent {
+struct CameraComponent
+{
     glm::vec3 front{0.0f, 0.0f, -1.0f};
 };
 
-struct TransformComponent {
+struct TransformComponent
+{
     glm::vec3 position{0.0f};
     glm::vec3 rotation{0.0f};
     glm::vec3 scale{1.0f};
@@ -47,27 +60,36 @@ struct TransformComponent {
     glm::mat4 cachedNormalMatrix{1.0f};
 };
 
-struct MeshComponent {
+struct MeshComponent
+{
     std::string modelPath{""};
 };
 
-struct MeshRuntimeComponent {
+struct MeshRuntimeComponent
+{
     Assets::ModelHandle model{};
 };
 
-enum class PhysicsBodyType : uint8_t { Static, Dynamic };
-
-struct PhysicsComponent {
-    PhysicsBodyType type{PhysicsBodyType::Static};
-    glm::vec3 halfExtent{0.5f};
-    float mass{1.0f}; 
+enum class PhysicsBodyType : uint8_t
+{
+    Static,
+    Dynamic
 };
 
-struct PhysicsRuntimeComponent {
+struct PhysicsComponent
+{
+    PhysicsBodyType type{PhysicsBodyType::Static};
+    glm::vec3 halfExtent{0.5f};
+    float mass{1.0f};
+};
+
+struct PhysicsRuntimeComponent
+{
     uint32_t bodyId{0};
 };
 
-struct CharacterControllerComponent {
+struct CharacterControllerComponent
+{
     float gravity{-9.81f};
     float jumpVelocity{5.0f};
     float capsuleRadius{0.3f};
@@ -76,8 +98,9 @@ struct CharacterControllerComponent {
     float maxPushStrength{100.0f};
 };
 
-struct CharacterControllerRuntimeComponent {
-    JPH::CharacterVirtual* character{nullptr};
+struct CharacterControllerRuntimeComponent
+{
+    JPH::CharacterVirtual *character{nullptr};
     float verticalVelocity{0.0f};
     glm::vec3 prevPos{0.0f};
     glm::vec3 currentPos{0.0f};
@@ -85,17 +108,23 @@ struct CharacterControllerRuntimeComponent {
     bool pendingJump{false};
 };
 
-struct WeaponComponent {
+struct WeaponComponent
+{
     float fireRate{10.0f};
     float maxRange{100.0f};
 };
 
-struct WeaponRuntimeComponent {
+struct WeaponRuntimeComponent
+{
     float timeSinceLastShot{0.0f};
     bool wantsToFire{false};
 };
 
-struct TagActive {};
-struct TagPlayer {};
+struct TagActive
+{
+};
+struct TagPlayer
+{
+};
 
 } // namespace Cthulhu::Scene

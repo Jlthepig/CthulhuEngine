@@ -1,7 +1,7 @@
 #include "project.hpp"
+#include "log_utils.hpp"
 #include "projectParser.hpp"
 #include "projectWriter.hpp"
-#include "log_utils.hpp"
 
 using namespace KalaHeaders::KalaLog;
 

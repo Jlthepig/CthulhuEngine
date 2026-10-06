@@ -1,5 +1,5 @@
-#include "assetManager.hpp"
 #include "scene.hpp"
+#include "assetManager.hpp"
 #include "components.hpp"
 #include "light.hpp"
 #include "log_utils.hpp"
@@ -32,7 +32,7 @@ flecs::entity Scene::createEntity(const std::string &name)
     return entity;
 }
 
-std::optional<flecs::entity> Scene::createEntityWithId(EntityId id,const std::string& name)
+std::optional<flecs::entity> Scene::createEntityWithId(EntityId id, const std::string &name)
 {
     if (!id.isValid())
     {
@@ -41,18 +41,19 @@ std::optional<flecs::entity> Scene::createEntityWithId(EntityId id,const std::st
 
     if (entityLookup.contains(id))
     {
-        Log::Print("ATTEMPTED TO CREATE ENTITY WITH DUPLICATE ID: " + entityIdToString(id),"Scene",LogType::LOG_ERROR);
+        Log::Print("ATTEMPTED TO CREATE ENTITY WITH DUPLICATE ID: " + entityIdToString(id), "Scene",
+                   LogType::LOG_ERROR);
         return std::nullopt;
     }
 
-    auto entity =world.entity();
+    auto entity = world.entity();
 
     entity.set<EntityIdentityComponent>({id});
     entity.set<NameComponent>({name.empty() ? "Entity" : name});
     entity.set(TransformComponent{});
     entity.add<TagActive>();
 
-    if (!registerEntity(id,entity))
+    if (!registerEntity(id, entity))
     {
         entity.destruct();
         return std::nullopt;
@@ -71,7 +72,7 @@ bool Scene::destroyEntity(EntityId id)
 
     std::vector<EntityId> subtreeIds;
 
-    collectSubtreeEntityIds(*entity,subtreeIds);
+    collectSubtreeEntityIds(*entity, subtreeIds);
     entity->destruct();
 
     for (const EntityId subtreeId : subtreeIds)
@@ -230,7 +231,7 @@ bool Scene::clearParent(EntityId childId)
         return true;
     }
 
-    child->remove(flecs::ChildOf,parent);
+    child->remove(flecs::ChildOf, parent);
     markDirty();
     return true;
 }
@@ -270,8 +271,7 @@ std::vector<EntityId> Scene::getChildren(EntityId parentId) const
         return children;
     }
 
-    parent->children([&](flecs::entity child)
-    {
+    parent->children([&](flecs::entity child) {
         if (!child.has<EntityIdentityComponent>())
         {
             return;
@@ -283,12 +283,9 @@ std::vector<EntityId> Scene::getChildren(EntityId parentId) const
     return children;
 }
 
-void Scene::collectSubtreeEntityIds(flecs::entity entity,std::vector<EntityId>& ids) const
+void Scene::collectSubtreeEntityIds(flecs::entity entity, std::vector<EntityId> &ids) const
 {
-    entity.children([&](flecs::entity child)
-    {
-        collectSubtreeEntityIds(child,ids);
-    });
+    entity.children([&](flecs::entity child) { collectSubtreeEntityIds(child, ids); });
 
     if (entity.has<EntityIdentityComponent>())
     {
@@ -296,14 +293,14 @@ void Scene::collectSubtreeEntityIds(flecs::entity entity,std::vector<EntityId>& 
     }
 }
 
-std::optional<EntityId> Scene::duplicateEntityRecursive(flecs::entity source,std::optional<EntityId> parentId)
+std::optional<EntityId> Scene::duplicateEntityRecursive(flecs::entity source, std::optional<EntityId> parentId)
 {
     if (!source.is_alive())
     {
         return std::nullopt;
     }
 
-    const auto* sourceName =source.try_get<NameComponent>();
+    const auto *sourceName = source.try_get<NameComponent>();
 
     const std::string name = sourceName ? sourceName->name : "Entity";
 
@@ -313,7 +310,7 @@ std::optional<EntityId> Scene::duplicateEntityRecursive(flecs::entity source,std
         return std::nullopt;
     }
 
-    const auto* identity = duplicate.try_get<EntityIdentityComponent>();
+    const auto *identity = duplicate.try_get<EntityIdentityComponent>();
 
     if (!identity)
     {
@@ -331,7 +328,7 @@ std::optional<EntityId> Scene::duplicateEntityRecursive(flecs::entity source,std
 
     if (parentId)
     {
-        if (!setParent(duplicateId,*parentId))
+        if (!setParent(duplicateId, *parentId))
         {
             destroyEntity(duplicateId);
             return std::nullopt;
@@ -340,25 +337,24 @@ std::optional<EntityId> Scene::duplicateEntityRecursive(flecs::entity source,std
 
     bool success = true;
 
-    source.children([&](flecs::entity sourceChild)
+    source.children([&](flecs::entity sourceChild) {
+        if (!success)
         {
-            if (!success)
-            {
-                return;
-            }
+            return;
+        }
 
-            if (!sourceChild.has<EntityIdentityComponent>())
-            {
-                Log::Print("ENTITY HIERARCHY CHILD HAS NO ENTITY ID","Scene",LogType::LOG_ERROR);
-                success = false;
-                return;
-            }
+        if (!sourceChild.has<EntityIdentityComponent>())
+        {
+            Log::Print("ENTITY HIERARCHY CHILD HAS NO ENTITY ID", "Scene", LogType::LOG_ERROR);
+            success = false;
+            return;
+        }
 
-            if (!duplicateEntityRecursive(sourceChild,duplicateId))
-            {
-                success = false;
-            }
-        });
+        if (!duplicateEntityRecursive(sourceChild, duplicateId))
+        {
+            success = false;
+        }
+    });
 
     if (!success)
     {
@@ -378,10 +374,10 @@ std::optional<EntityId> Scene::duplicateEntity(EntityId sourceId)
         return std::nullopt;
     }
 
-    const bool wasDirty =isDirty();
+    const bool wasDirty = isDirty();
     const std::optional<EntityId> parentId = getParent(sourceId);
 
-    auto duplicateId = duplicateEntityRecursive(*source,parentId);
+    auto duplicateId = duplicateEntityRecursive(*source, parentId);
 
     if (!duplicateId)
     {
@@ -390,7 +386,7 @@ std::optional<EntityId> Scene::duplicateEntity(EntityId sourceId)
             markClean();
         }
 
-        Log::Print("FAILED TO DUPLICATE ENTITY","Scene",LogType::LOG_ERROR);
+        Log::Print("FAILED TO DUPLICATE ENTITY", "Scene", LogType::LOG_ERROR);
         return std::nullopt;
     }
 
@@ -439,16 +435,16 @@ std::vector<AssetReference> Scene::getAssetReferences() const
 {
     std::vector<AssetReference> out;
 
-    for (const auto& [id, entity] : entityLookup)
+    for (const auto &[id, entity] : entityLookup)
     {
-        for (const auto& descriptor : componentRegistry->getAll())
+        for (const auto &descriptor : componentRegistry->getAll())
         {
             if (!descriptor.has(entity))
             {
                 continue;
             }
 
-            for (const auto& field : descriptor.fields)
+            for (const auto &field : descriptor.fields)
             {
                 if (field.type != FieldType::AssetRef)
                 {
@@ -469,15 +465,13 @@ std::vector<AssetReference> Scene::getAssetReferences() const
 
 std::vector<AssetReference> Scene::findAssetReferences(std::string_view resourcePath) const
 {
-   
-    auto keyOf = [](std::string_view path) {
-        return Assets::normaliseResourcePath(path).value_or(std::string(path));
-    };
+
+    auto keyOf = [](std::string_view path) { return Assets::normaliseResourcePath(path).value_or(std::string(path)); };
 
     const std::string target = keyOf(resourcePath);
 
     std::vector<AssetReference> out;
-    for (auto& ref : getAssetReferences())
+    for (auto &ref : getAssetReferences())
     {
         if (keyOf(ref.path) == target)
         {
@@ -532,7 +526,7 @@ void Scene::clear()
 {
     world.delete_with<TransformComponent>();
     entityLookup.clear();
-    
+
     nextId = 0;
 
     directionalLight = Rendering::DirectionalLight{};

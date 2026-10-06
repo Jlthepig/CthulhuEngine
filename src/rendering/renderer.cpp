@@ -1,14 +1,14 @@
 #include <ext/matrix_clip_space.hpp>
 #include <ext/matrix_transform.hpp>
 
-#include "renderer.hpp"
 #include "components.hpp"
+#include "log_utils.hpp"
 #include "mesh.hpp"
 #include "model.hpp"
+#include "renderer.hpp"
 #include "sceneUniforms.hpp"
 #include "shader.hpp"
 #include "shadowMap.hpp"
-#include "log_utils.hpp"
 
 using KalaHeaders::KalaLog::Log;
 using KalaHeaders::KalaLog::LogType;

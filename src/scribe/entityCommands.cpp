@@ -1,7 +1,7 @@
 #include "entityCommands.hpp"
 #include "components.hpp"
-#include "scene.hpp"
 #include "log_utils.hpp"
+#include "scene.hpp"
 
 using KalaHeaders::KalaLog::Log;
 using KalaHeaders::KalaLog::LogType;
@@ -19,97 +19,100 @@ std::string currentName(const Scene::Scene &scene, Scene::EntityId id)
 
 class CreateEntityCommand final : public Command
 {
-    public:
-        CreateEntityCommand(Scene::EntityId id, std::string name, std::optional<Scene::EntityId> parent): id(id), requestedName(std::move(name)), parent(parent)
-        {}   
-        
-        std::string_view name() const override
+  public:
+    CreateEntityCommand(Scene::EntityId id, std::string name, std::optional<Scene::EntityId> parent)
+        : id(id), requestedName(std::move(name)), parent(parent)
+    {
+    }
+
+    std::string_view name() const override
+    {
+        return "Create Entity";
+    }
+
+    Result apply(Context &context) override
+    {
+        auto &scene = context.scene;
+
+        if (parent && !scene.isEntityAlive(*parent))
         {
-            return "Create Entity";
+            return Result::failed("PARENT ENTITY DOES NOT EXIST");
         }
 
-        Result apply(Context &context) override
+        if (!scene.createEntityWithId(id, requestedName.empty() ? "Entity" : requestedName))
         {
-            auto &scene = context.scene;
-
-            if (parent && !scene.isEntityAlive(*parent))
-            {
-                return Result::failed("PARENT ENTITY DOES NOT EXIST");
-            }
-
-            if (!scene.createEntityWithId(id, requestedName.empty() ? "Entity" : requestedName))
-            {
-                return Result::failed("FAILED TO CREATE ENTITY");
-            }
-
-            if (parent && !scene.setParent(id, *parent))
-            {
-                scene.destroyEntity(id);
-                return Result::failed("FAILED TO PARENT NEW ENTITY");
-            }
-
-            context.emit(ChangeType::EntityCreated, id);
-            return Result::applied();
+            return Result::failed("FAILED TO CREATE ENTITY");
         }
 
-        void revert(Context &context) override
+        if (parent && !scene.setParent(id, *parent))
         {
-            context.scene.destroyEntity(id);
-            context.emit(ChangeType::EntityDestroyed, id);
+            scene.destroyEntity(id);
+            return Result::failed("FAILED TO PARENT NEW ENTITY");
         }
 
-    private:
-        Scene::EntityId id;
-        std::string requestedName;
-        std::optional<Scene::EntityId> parent;
-}; 
+        context.emit(ChangeType::EntityCreated, id);
+        return Result::applied();
+    }
+
+    void revert(Context &context) override
+    {
+        context.scene.destroyEntity(id);
+        context.emit(ChangeType::EntityDestroyed, id);
+    }
+
+  private:
+    Scene::EntityId id;
+    std::string requestedName;
+    std::optional<Scene::EntityId> parent;
+};
 
 class DeleteEntityCommand final : public Command
 {
-    public:
-        explicit DeleteEntityCommand(Scene::EntityId id): id(id)
-        {}
+  public:
+    explicit DeleteEntityCommand(Scene::EntityId id) : id(id)
+    {
+    }
 
-        std::string_view name() const override
+    std::string_view name() const override
+    {
+        return "Delete Entity";
+    }
+
+    Result apply(Context &context) override
+    {
+        auto snapshot = context.scene.captureSubtree(id);
+        if (!snapshot)
         {
-            return "Delete Entity";
+            return Result::failed("ENTITY DOES NOT EXIST");
         }
 
-        Result apply(Context &context) override
+        subtree = std::move(*snapshot);
+        context.scene.destroyEntity(id);
+
+        for (auto it = subtree.rbegin(); it != subtree.rend(); ++it)
         {
-            auto snapshot = context.scene.captureSubtree(id);
-            if (!snapshot)
-            {
-                return Result::failed("ENTITY DOES NOT EXIST");
-            }
+            context.emit(ChangeType::EntityDestroyed, it->id);
+        }
+        return Result::applied();
+    }
 
-            subtree = std::move(*snapshot);
-            context.scene.destroyEntity(id);
-
-            for (auto it = subtree.rbegin(); it != subtree.rend(); ++it)
-            {
-                context.emit(ChangeType::EntityDestroyed, it->id);
-            }
-            return Result::applied();
+    void revert(Context &context) override
+    {
+        if (!context.scene.restoreSubtree(subtree))
+        {
+            Log::Print("UNDO DELETE FAILED TO RESTORE SUBTREE", "Scribe", LogType::LOG_ERROR);
+            return;
         }
 
-        void revert(Context &context) override
+        for (const auto &snapshot : subtree)
         {
-            if (!context.scene.restoreSubtree(subtree))
-            {
-                Log::Print("UNDO DELETE FAILED TO RESTORE SUBTREE","Scribe",LogType::LOG_ERROR);
-                return;
-            }
-
-            for (const auto &snapshot : subtree)
-            {
-                context.emit(ChangeType::EntityCreated, snapshot.id);
-            }
+            context.emit(ChangeType::EntityCreated, snapshot.id);
         }
+    }
 
-    private:
-        Scene::EntityId id;
-        std::vector<Scene::EntitySnapshot> subtree;
+  private:
+    Scene::EntityId id;
+    std::vector<Scene::EntitySnapshot> subtree;
 };
 
 class DuplicateEntityCommand final : public Command
@@ -286,7 +289,7 @@ class ReparentEntityCommand final : public Command
     std::optional<Scene::EntityId> newParent;
     std::optional<Scene::EntityId> oldParent;
 };
-}  // namespace
+} // namespace
 
 std::unique_ptr<Command> createEntity(Scene::EntityId id, std::string name, std::optional<Scene::EntityId> parent)
 {

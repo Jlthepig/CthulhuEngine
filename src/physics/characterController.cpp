@@ -5,10 +5,10 @@
 
 #include <flecs.h>
 
-#include "physics.hpp"
 #include "characterController.hpp"
 #include "components.hpp"
 #include "log_utils.hpp"
+#include "physics.hpp"
 
 using KalaHeaders::KalaLog::Log;
 using KalaHeaders::KalaLog::LogType;
@@ -27,14 +27,14 @@ bool CharacterController::createRuntime(flecs::entity entity, PhysicsWorld &phys
         return false;
     }
 
-    JPH::PhysicsSystem* physicsSystem = physicsWorld.getPhysicsSystem();
+    JPH::PhysicsSystem *physicsSystem = physicsWorld.getPhysicsSystem();
     if (!physicsSystem)
     {
         return false;
     }
 
-    const auto& config = entity.get<Scene::CharacterControllerComponent>();
-    const auto& transform = entity.get<Scene::TransformComponent>();
+    const auto &config = entity.get<Scene::CharacterControllerComponent>();
+    const auto &transform = entity.get<Scene::TransformComponent>();
 
     JPH::CapsuleShapeSettings capsuleSettings(config.capsuleHeight * 0.5f, config.capsuleRadius);
 
@@ -44,8 +44,9 @@ bool CharacterController::createRuntime(flecs::entity entity, PhysicsWorld &phys
         return false;
     }
 
-    JPH::RotatedTranslatedShapeSettings offsetSettings(JPH::Vec3(0.0f, config.capsuleRadius + config.capsuleHeight * 0.5f, 0.0f), 
-    JPH::Quat::sIdentity(), capsuleShape.Get());
+    JPH::RotatedTranslatedShapeSettings offsetSettings(
+        JPH::Vec3(0.0f, config.capsuleRadius + config.capsuleHeight * 0.5f, 0.0f), JPH::Quat::sIdentity(),
+        capsuleShape.Get());
 
     auto offsetShape = offsetSettings.Create();
     if (offsetShape.HasError())
@@ -60,14 +61,15 @@ bool CharacterController::createRuntime(flecs::entity entity, PhysicsWorld &phys
     settings.mUp = JPH::Vec3::sAxisY();
     settings.mCharacterPadding = 0.02f;
 
-    auto* character = new JPH::CharacterVirtual(&settings, JPH::RVec3(transform.position.x, transform.position.y, transform.position.z), 
-    JPH::Quat::sIdentity(), physicsSystem);
+    auto *character = new JPH::CharacterVirtual(
+        &settings, JPH::RVec3(transform.position.x, transform.position.y, transform.position.z), JPH::Quat::sIdentity(),
+        physicsSystem);
 
     ++liveCharacterCount;
 
     if (entity.has<Scene::CharacterControllerRuntimeComponent>())
     {
-        auto& oldRuntime = entity.get_mut<Scene::CharacterControllerRuntimeComponent>();
+        auto &oldRuntime = entity.get_mut<Scene::CharacterControllerRuntimeComponent>();
 
         destroyCharacter(oldRuntime.character);
         oldRuntime.character = nullptr;
@@ -89,11 +91,11 @@ void CharacterController::teleport(flecs::entity entity, const glm::vec3 &positi
         return;
     }
 
-    auto& runtime = entity.get_mut<Scene::CharacterControllerRuntimeComponent>();
+    auto &runtime = entity.get_mut<Scene::CharacterControllerRuntimeComponent>();
 
-    if(runtime.character)
+    if (runtime.character)
     {
-        runtime.character->SetPosition(JPH::RVec3(position.x,position.y,position.z));
+        runtime.character->SetPosition(JPH::RVec3(position.x, position.y, position.z));
     }
     runtime.prevPos = position;
     runtime.currentPos = position;
@@ -108,7 +110,7 @@ void CharacterController::destroyRuntime(flecs::entity entity)
     }
 }
 
-void CharacterController::destroyCharacter(JPH::CharacterVirtual* character)
+void CharacterController::destroyCharacter(JPH::CharacterVirtual *character)
 {
     if (!character)
     {

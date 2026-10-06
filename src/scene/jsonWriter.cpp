@@ -4,13 +4,13 @@
 #include <sstream>
 #include <unordered_set>
 
-#include "jsonWriter.hpp"
 #include "assetRegistry.hpp"
 #include "components.hpp"
 #include "jsonParser.hpp"
-#include "scene.hpp"
+#include "jsonWriter.hpp"
 #include "light.hpp"
 #include "log_utils.hpp"
+#include "scene.hpp"
 
 using KalaHeaders::KalaLog::Log;
 using KalaHeaders::KalaLog::LogType;
@@ -160,21 +160,22 @@ bool SceneWriter::writeScene(const Scene &scene, const std::string &path, const 
 
     w.key("entities");
     w.beginArray();
-    
+
     bool valid = true;
 
     std::unordered_set<EntityId, EntityIdHash> writtenIds;
-    scene.getWorld().each([&](flecs::entity e, const EntityIdentityComponent &identity, const NameComponent &name, const TransformComponent &transform) {
+    scene.getWorld().each([&](flecs::entity e, const EntityIdentityComponent &identity, const NameComponent &name,
+                              const TransformComponent &transform) {
         if (!identity.id.isValid())
         {
-            Log::Print("CANNOT SAVE ENTITY WITH INVALID ID","SceneWriter",LogType::LOG_ERROR);
+            Log::Print("CANNOT SAVE ENTITY WITH INVALID ID", "SceneWriter", LogType::LOG_ERROR);
             valid = false;
             return;
         }
 
         if (!writtenIds.insert(identity.id).second)
         {
-            Log::Print("CANNOT SAVE SCENE WITH DUPLICATE ENTITY IDs","SceneWriter",LogType::LOG_ERROR);
+            Log::Print("CANNOT SAVE SCENE WITH DUPLICATE ENTITY IDs", "SceneWriter", LogType::LOG_ERROR);
             valid = false;
             return;
         }
@@ -220,18 +221,18 @@ bool SceneWriter::writeScene(const Scene &scene, const std::string &path, const 
         if (e.has<PhysicsComponent>())
         {
             const auto &p = e.get<PhysicsComponent>();
-            
+
             w.key("physics");
             w.beginObject();
             w.key("type");
             switch (p.type)
             {
-                case PhysicsBodyType::Static:
-                    w.value(std::string("static"));
-                    break;
-                case PhysicsBodyType::Dynamic:
-                    w.value(std::string("dynamic"));
-                    break;
+            case PhysicsBodyType::Static:
+                w.value(std::string("static"));
+                break;
+            case PhysicsBodyType::Dynamic:
+                w.value(std::string("dynamic"));
+                break;
             }
             w.vec3("half_extent", p.halfExtent);
             w.key("mass");
@@ -253,7 +254,7 @@ bool SceneWriter::writeScene(const Scene &scene, const std::string &path, const 
 
         if (e.has<CharacterControllerComponent>())
         {
-            const auto& controller = e.get<CharacterControllerComponent>();
+            const auto &controller = e.get<CharacterControllerComponent>();
             w.key("character_controller");
             w.beginObject();
             w.key("gravity");

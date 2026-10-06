@@ -3,10 +3,10 @@
 
 #include "assetManager.hpp"
 #include "audio.hpp"
-#include "modelLoader.hpp"
-#include "project.hpp"
-#include "platform.hpp"
 #include "log_utils.hpp"
+#include "modelLoader.hpp"
+#include "platform.hpp"
+#include "project.hpp"
 
 using KalaHeaders::KalaLog::Log;
 using KalaHeaders::KalaLog::LogType;
@@ -241,7 +241,8 @@ AudioClipHandle AssetManager::loadAudioClip(std::string_view resourcePath)
     }
     audioClips[slot.index] = clip;
 
-        Log::Print("Loaded audio clip: " + *key + (settings.stream ? " (streamed)" : ""), "AssetManager",LogType::LOG_INFO);
+    Log::Print("Loaded audio clip: " + *key + (settings.stream ? " (streamed)" : ""), "AssetManager",
+               LogType::LOG_INFO);
     return AudioClipHandle{slot.index, slot.generation};
 }
 
@@ -354,13 +355,11 @@ bool moveFailed(const std::string &why)
     return false;
 }
 
-
 bool deleteFailed(const std::string &why)
 {
     Log::Print("DELETE FAILED: " + why, "AssetManager", LogType::LOG_ERROR);
     return false;
 }
-
 
 bool settingsFailed(const std::string &why)
 {
@@ -368,7 +367,7 @@ bool settingsFailed(const std::string &why)
     return false;
 }
 
-}
+} // namespace
 
 std::optional<AssetId> AssetManager::importFile(const std::filesystem::path &sourceFile, std::string_view destination)
 {

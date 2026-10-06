@@ -7,7 +7,6 @@
 #include <string_view>
 #include <vector>
 
-#include "command.hpp"
 #include "assetRegistry.hpp"
 #include "command.hpp"
 #include "componentRegistry.hpp"
@@ -23,7 +22,7 @@ struct MissingAsset
     std::vector<Scene::AssetReference> references;
 };
 
-    // << shalll not be used by runtime code! >>
+// << shalll not be used by runtime code! >>
 class Session
 {
   public:
@@ -57,7 +56,8 @@ class Session
         return history.redoName();
     }
 
-    // must be called when a drag or typing interaction of some kind finishes thus the next edit becomes its own undo step
+    // must be called when a drag or typing interaction of some kind finishes thus the next edit becomes its own undo
+    // step
     void endMerge() noexcept
     {
         history.endMerge();
@@ -78,11 +78,12 @@ class Session
     Result addComponent(Scene::EntityId id, std::string_view component);
     Result removeComponent(Scene::EntityId id, std::string_view component);
 
-    Result setField(Scene::EntityId id, std::string_view component, std::string_view field, const Scene::FieldValue& value);
-    
+    Result setField(Scene::EntityId id, std::string_view component, std::string_view field,
+                    const Scene::FieldValue &value);
+
     // << assets applied immediately never undoable >>
-    AssetResult importAsset(const std::filesystem::path& sourceFile, std::string_view destination);
-    
+    AssetResult importAsset(const std::filesystem::path &sourceFile, std::string_view destination);
+
     Result moveAsset(Assets::AssetId id, std::string_view destination);
 
     Result replaceReferences(std::string_view from, std::string_view to);
@@ -92,7 +93,7 @@ class Session
     // gets fixed with replace ref
     [[nodiscard]] std::vector<MissingAsset> findMissingAssets();
 
-    Result setAudioImportSettings(Assets::AssetId id, const Assets::AudioImportSettings& settings);
+    Result setAudioImportSettings(Assets::AssetId id, const Assets::AudioImportSettings &settings);
 
   private:
     Engine &engine;

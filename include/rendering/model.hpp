@@ -2,9 +2,9 @@
 
 #include <vector>
 
-#include "texture.hpp"
 #include "material.hpp"
 #include "mesh.hpp"
+#include "texture.hpp"
 namespace Cthulhu::Rendering
 {
 struct Model

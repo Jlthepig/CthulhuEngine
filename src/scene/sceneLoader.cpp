@@ -2,8 +2,8 @@
 #include "assetRegistry.hpp"
 #include "components.hpp"
 #include "jsonParser.hpp"
-#include "project.hpp"
 #include "log_utils.hpp"
+#include "project.hpp"
 
 using KalaHeaders::KalaLog::Log;
 using KalaHeaders::KalaLog::LogType;
@@ -53,7 +53,8 @@ bool SceneLoader::load(const std::string &path, Scene &scene, [[maybe_unused]] c
         auto entity = scene.createEntityWithId(parsedEntity.id, parsedEntity.name);
         if (!entity)
         {
-            Log::Print("FAILED TO CREATE ENTITY FROM SCENE: " + entityIdToString(parsedEntity.id),"SceneLoader",LogType::LOG_ERROR);
+            Log::Print("FAILED TO CREATE ENTITY FROM SCENE: " + entityIdToString(parsedEntity.id), "SceneLoader",
+                       LogType::LOG_ERROR);
             return false;
         }
 
@@ -67,7 +68,7 @@ bool SceneLoader::load(const std::string &path, Scene &scene, [[maybe_unused]] c
 
         if (parsedEntity.mesh)
         {
-            const auto& parsedMesh = *parsedEntity.mesh;
+            const auto &parsedMesh = *parsedEntity.mesh;
 
             MeshComponent mesh;
             mesh.modelPath = resolveReference(registry, parsedMesh.modelId, parsedMesh.modelPath);
@@ -76,7 +77,7 @@ bool SceneLoader::load(const std::string &path, Scene &scene, [[maybe_unused]] c
 
         if (parsedEntity.physics)
         {
-            const auto& parsedPhysics = *parsedEntity.physics;
+            const auto &parsedPhysics = *parsedEntity.physics;
             PhysicsComponent physics;
             physics.halfExtent = parsedPhysics.halfExtent;
             physics.mass = parsedPhysics.mass;
@@ -117,7 +118,7 @@ bool SceneLoader::load(const std::string &path, Scene &scene, [[maybe_unused]] c
 
         if (parsedEntity.characterController)
         {
-            const auto& parsedController = *parsedEntity.characterController;
+            const auto &parsedController = *parsedEntity.characterController;
             CharacterControllerComponent controller;
             controller.gravity = parsedController.gravity;
             controller.jumpVelocity = parsedController.jumpVelocity;
@@ -141,13 +142,14 @@ bool SceneLoader::load(const std::string &path, Scene &scene, [[maybe_unused]] c
 
         if (!scene.isEntityAlive(*parsedEntity.parentId))
         {
-            Log::Print("ENTITY REFERENCES MISSING PARENT: " + entityIdToString(*parsedEntity.parentId),"SceneLoader",LogType::LOG_ERROR);
+            Log::Print("ENTITY REFERENCES MISSING PARENT: " + entityIdToString(*parsedEntity.parentId), "SceneLoader",
+                       LogType::LOG_ERROR);
             return false;
         }
 
         if (!scene.setParent(parsedEntity.id, *parsedEntity.parentId))
         {
-            Log::Print("FAILED TO RESTORE ENTITY HIERARCHY","SceneLoader",LogType::LOG_ERROR);
+            Log::Print("FAILED TO RESTORE ENTITY HIERARCHY", "SceneLoader", LogType::LOG_ERROR);
             return false;
         }
     }

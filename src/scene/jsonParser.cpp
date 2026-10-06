@@ -11,7 +11,7 @@ using KalaHeaders::KalaLog::LogType;
 namespace Cthulhu::Scene
 {
 
-static bool readVec3(simdjson::ondemand::array array,glm::vec3& result)
+static bool readVec3(simdjson::ondemand::array array, glm::vec3 &result)
 {
     size_t index = 0;
 
@@ -84,37 +84,38 @@ std::optional<ParsedScene> JsonParser::parseScene(const std::string &path)
         auto idResult = entityJson["id"].get_string();
         if (idResult.error())
         {
-            Log::Print("ENTITY IS MISSING ID","JsonParser",LogType::LOG_ERROR);
+            Log::Print("ENTITY IS MISSING ID", "JsonParser", LogType::LOG_ERROR);
             return std::nullopt;
         }
 
         auto parsedId = entityIdFromString(idResult.value());
         if (!parsedId)
         {
-            Log::Print("ENTITY HAS INVALID ID","JsonParser",LogType::LOG_ERROR);
+            Log::Print("ENTITY HAS INVALID ID", "JsonParser", LogType::LOG_ERROR);
             return std::nullopt;
         }
         entity.id = *parsedId;
 
         if (!parsedEntityIds.insert(entity.id).second)
         {
-            Log::Print("SCENE CONTAINS DUPLICATE ENTITY ID: " +entityIdToString(entity.id),"JsonParser",LogType::LOG_ERROR);
+            Log::Print("SCENE CONTAINS DUPLICATE ENTITY ID: " + entityIdToString(entity.id), "JsonParser",
+                       LogType::LOG_ERROR);
             return std::nullopt;
         }
 
-        auto parentResult =entityJson["parent"].get_string();
+        auto parentResult = entityJson["parent"].get_string();
         if (!parentResult.error())
         {
-            auto parsedParent =entityIdFromString(parentResult.value());
+            auto parsedParent = entityIdFromString(parentResult.value());
             if (!parsedParent)
             {
-                Log::Print("ENTITY HAS INVALID PARENT ID","JsonParser",LogType::LOG_ERROR);
+                Log::Print("ENTITY HAS INVALID PARENT ID", "JsonParser", LogType::LOG_ERROR);
                 return std::nullopt;
             }
 
             if (*parsedParent == entity.id)
             {
-                Log::Print("ENTITY CANNOT BE ITS OWN PARENT","JsonParser",LogType::LOG_ERROR);
+                Log::Print("ENTITY CANNOT BE ITS OWN PARENT", "JsonParser", LogType::LOG_ERROR);
                 return std::nullopt;
             }
 
@@ -142,7 +143,7 @@ std::optional<ParsedScene> JsonParser::parseScene(const std::string &path)
             Log::Print("INVALID ROTATION: " + entity.name, "SceneParser", LogType::LOG_ERROR);
             return std::nullopt;
         }
-        
+
         auto scale = entityJson["scale"].get_array();
         if (scale.error() || !readVec3(scale.value(), entity.scale))
         {
@@ -336,8 +337,7 @@ std::optional<ParsedScene> JsonParser::parseScene(const std::string &path)
             return std::nullopt;
         }
 
-        auto readFloat = [&](std::string_view key, float& out, bool required) -> bool
-        {
+        auto readFloat = [&](std::string_view key, float &out, bool required) -> bool {
             auto value = lightJson[key].get_double();
             if (value.error())
             {
@@ -347,10 +347,8 @@ std::optional<ParsedScene> JsonParser::parseScene(const std::string &path)
             return true;
         };
 
-        if (!readFloat("intensity", light.intensity, true) ||
-            !readFloat("radius", light.radius, false) ||
-            !readFloat("constant", light.constant, true) ||
-            !readFloat("linear", light.linear, true) ||
+        if (!readFloat("intensity", light.intensity, true) || !readFloat("radius", light.radius, false) ||
+            !readFloat("constant", light.constant, true) || !readFloat("linear", light.linear, true) ||
             !readFloat("quadratic", light.quadratic, true))
         {
             Log::Print("INVALID POINT LIGHT DATA", "JsonParser", LogType::LOG_ERROR);

@@ -4,9 +4,8 @@
 #include <glfw3.h>
 
 #include "camera.hpp"
-#include "window.hpp"
 #include "log_utils.hpp"
-
+#include "window.hpp"
 
 using KalaHeaders::KalaLog::Log;
 using KalaHeaders::KalaLog::LogType;

@@ -9,14 +9,14 @@ using KalaHeaders::KalaLog::Log;
 using KalaHeaders::KalaLog::LogType;
 namespace Cthulhu::Core
 {
-    
+
 GLFWwindow *Input::windowHandle = nullptr;
 bool Input::currentKeys[GLFW_KEY_LAST + 1] = {};
 bool Input::previousKeys[GLFW_KEY_LAST + 1] = {};
 bool Input::currentMouseButtons[GLFW_MOUSE_BUTTON_LAST + 1] = {};
 bool Input::previousMouseButtons[GLFW_MOUSE_BUTTON_LAST + 1] = {};
-float Input::mouseDeltaX {};
-float Input::mouseDeltaY {};
+float Input::mouseDeltaX{};
+float Input::mouseDeltaY{};
 float Input::scrollDeltaY{};
 bool Input::firstMouse = true;
 float Input::lastX{};

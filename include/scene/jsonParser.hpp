@@ -59,9 +59,9 @@ struct ParsedEntity
     glm::vec3 scale = glm::vec3(1.0f);
 
     std::optional<ParsedPhysics> physics;
-    std::optional<ParsedWeapon>  weapon;
-    std::optional<ParsedAudio>   audio;
-    std::optional<ParsedMesh>    mesh;
+    std::optional<ParsedWeapon> weapon;
+    std::optional<ParsedAudio> audio;
+    std::optional<ParsedMesh> mesh;
     std::optional<ParsedCharacterController> characterController;
 
     bool player = false;
