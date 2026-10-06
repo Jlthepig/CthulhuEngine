@@ -1,5 +1,6 @@
 #include <fstream>
 #include <iomanip>
+#include <limits>
 #include <sstream>
 #include <unordered_set>
 
@@ -107,7 +108,7 @@ struct JsonWriter
     }
     void value(float v)
     {
-        oss << std::setprecision(7) << v;
+        oss << std::setprecision(std::numeric_limits<float>::max_digits10) << v;
     }
     void value(int v)
     {

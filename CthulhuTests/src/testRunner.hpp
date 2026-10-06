@@ -7,6 +7,7 @@
 #include "testsScene.hpp"
 #include "testsScribe.hpp"
 #include "testsScribeAssets.hpp"
+#include "testsEditorDay.hpp"
 
 namespace Cthulhu::Validation
 {
@@ -60,6 +61,7 @@ inline int run(Engine& engine)
 	validateScribeDelete(engine, r);
 	validateMissingAssets(engine, r);
 	validateReimport(engine, r);
+	validateEditorDay(engine, r);
     checkRefInvariant(engine, r, "after scribe entities");
 
 	validateSimStateOnSwitch(engine, r);

@@ -56,9 +56,20 @@ void onUpdate([[maybe_unused]] void* context, [[maybe_unused]] float deltaTime)
 int main()
 {
     Cthulhu::Engine engine;
-    engine.init();
-    engine.loadScene("assets/scenes/test.scene");
-    engine.setUpdateCallback(onUpdate,&engine);
+    if (!engine.init("C:\\Users\\jarri\\Desktop\\CthulhuSandbox\\project.cthulhu"))
+    {
+        KalaHeaders::KalaLog::Log::Print("FAILED TO INITIALIZE PROJECT", "Editor", KalaHeaders::KalaLog::LogType::LOG_ERROR);
+        return 1;
+    }
+
+    if (!engine.loadScene("res://assets/scenes/test.scene"))
+    {
+        KalaHeaders::KalaLog::Log::Print("FAILED TO LOAD EDITOR SCENE", "Editor", KalaHeaders::KalaLog::LogType::LOG_ERROR);
+        engine.shutdown();
+        return 1;
+    }
+
+    engine.setUpdateCallback(onUpdate, &engine);
 
     glfwSetInputMode(engine.getWindow()->getWindow(), GLFW_CURSOR, GLFW_CURSOR_NORMAL);
     glfwSetMouseButtonCallback(engine.getWindow()->getWindow(), nullptr);
