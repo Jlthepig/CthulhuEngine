@@ -38,6 +38,13 @@ enum SimulationState
     Paused,
     Stepping,
 };
+
+enum class WorldMode : uint8_t
+{
+    Edit,
+    Play
+};
+
 class Engine
 {
   public:
@@ -88,6 +95,17 @@ class Engine
         return simState;
     }
     void stepSimulation();
+
+    void setWorldMode(WorldMode mode);
+    WorldMode getWorldMode() const
+    {
+        return worldMode;
+    }
+
+    bool isSimulating() const
+    {
+        return worldMode == WorldMode::Play && (simState == SimulationState::Running || simState == SimulationState::Stepping);
+    }
 
     Scene::Camera *getCamera()
     {
@@ -184,6 +202,7 @@ class Engine
     bool rendererInitialized = false;
 
     SimulationState simState = SimulationState::Running;
+    WorldMode worldMode = WorldMode::Play;
     void applySimStateToSystems(); // toggle systems based on the simState
 
     float deltaTime{};

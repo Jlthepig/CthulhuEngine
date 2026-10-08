@@ -459,25 +459,28 @@ void Engine::applySimStateToSystems()
 {
     if (!activeScene)
         return;
-    bool gameActive = (simState == SimulationState::Running || simState == SimulationState::Stepping);
+    const bool gameActive = isSimulating();
     auto &world = activeScene->getWorld();
 
-    // game systems disabled in editor
-    auto toggle = [&](const char *name) {
-        flecs::entity system = world.lookup(name);
-        if (system)
-        {
-            if (gameActive)
-                system.enable();
-            else
-                system.disable();
-        }
-    };
+    std::vector<flecs::entity> systems;
+    world.query_builder()
+        .with<Scene::GameplaySystem>()
+        .with(flecs::Disabled)
+        .optional()
+        .build()
+        .each([&](flecs::entity system) {systems.push_back(system);});
 
-    toggle("PhysicsSyncSystem");
-    toggle("CharacterInterpolationSystem");
-    toggle("WeaponSystem");
-    toggle("AudioSystem");
+    for (flecs::entity system : systems)
+    {
+        if (gameActive)
+        {
+            system.enable();
+        }
+        else
+        {
+            system.disable();
+        }
+    }
 }
 
 void Engine::setSimulationState(SimulationState state)
@@ -488,7 +491,23 @@ void Engine::setSimulationState(SimulationState state)
 
 void Engine::stepSimulation()
 {
+    if (worldMode != WorldMode::Play)
+    {
+        return;
+    }
+
     simState = SimulationState::Stepping;
+    applySimStateToSystems();
+}
+
+void Engine::setWorldMode(WorldMode mode)
+{
+    if (worldMode == mode)
+    {
+        return;
+    }
+
+    worldMode = mode;
     applySimStateToSystems();
 }
 
@@ -518,7 +537,7 @@ void Engine::run()
         Core::Input::update();
         Core::Audio::update();
 
-        if (simState == SimulationState::Running || simState == SimulationState::Stepping)
+        if (isSimulating())
         {
             physicsWorld.step(deltaTime);
         }

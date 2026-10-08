@@ -108,7 +108,9 @@ void RegisterCoreSystems(flecs::world &world, Cthulhu::Engine *engineContext)
             transform.position = bodyTransform.position;
             transform.rotation = bodyTransform.rotation;
             transform.matrixDirty = true;
-        });
+        })
+        .add<GameplaySystem>();
+        
 
     world.observer<PhysicsComponent>("PhysicsRuntimeRemoveObserver")
         .event(flecs::OnRemove)
@@ -136,7 +138,8 @@ void RegisterCoreSystems(flecs::world &world, Cthulhu::Engine *engineContext)
 
             transform.position = glm::mix(runtime.prevPos, runtime.currentPos, alpha);
             transform.matrixDirty = true;
-        });
+        })
+        .add<GameplaySystem>();
 
     world.observer<CharacterControllerComponent>("CharacterControllerRuntimeRemoveObserver")
         .event(flecs::OnRemove)
@@ -229,7 +232,8 @@ void RegisterCoreSystems(flecs::world &world, Cthulhu::Engine *engineContext)
             }
 
             runtime.wantsToFire = false;
-        });
+        })
+        .add<GameplaySystem>();
 
     world.observer<WeaponComponent>("WeaponRuntimeRemoveObserver")
         .event(flecs::OnRemove)
@@ -311,7 +315,8 @@ void RegisterCoreSystems(flecs::world &world, Cthulhu::Engine *engineContext)
                 runtime.soundInstanceId = 0;
                 runtime.stopRequested = false;
             }
-        });
+        })
+        .add<GameplaySystem>();
 
     world.observer<AudioSourceComponent>("AudioRuntimeRemoveObserver")
         .event(flecs::OnRemove)

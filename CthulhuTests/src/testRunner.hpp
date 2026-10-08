@@ -8,6 +8,7 @@
 #include "testsScribe.hpp"
 #include "testsScribeAssets.hpp"
 #include "testsEditorDay.hpp"
+#include "testsWorldModes.hpp"
 
 namespace Cthulhu::Validation
 {
@@ -65,6 +66,7 @@ inline int run(Engine& engine)
     checkRefInvariant(engine, r, "after scribe entities");
 
 	validateSimStateOnSwitch(engine, r);
+	validateWorldModes(engine, r);
 	validateUnload(engine, r);
 	validateShutdown(engine, r);
 	Log::Print("==== RESULT: " + std::to_string(r.passed) + " passed, " + std::to_string(r.failed) + " failed ====",

@@ -6,11 +6,12 @@
 #include <variant>
 #include <vector>
 
+#include <glm.hpp>
+
 #include "fastgltf/tools.hpp"
 #include <fastgltf/core.hpp>
 #include <fastgltf/glm_element_traits.hpp>
 #include <fastgltf/types.hpp>
-#include <glm.hpp>
 
 #include "log_utils.hpp"
 #include "material.hpp"
