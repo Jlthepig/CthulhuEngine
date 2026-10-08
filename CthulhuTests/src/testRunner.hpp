@@ -69,6 +69,8 @@ inline int run(Engine& engine)
 	validateSimStateOnSwitch(engine, r);
 	validateWorldModes(engine, r);
 	validateSceneSnapshot(engine, r);
+	validatePlayStop(engine, r);
+	checkRefInvariant(engine, r, "after play/stop");
 	validateUnload(engine, r);
 	validateShutdown(engine, r);
 	Log::Print("==== RESULT: " + std::to_string(r.passed) + " passed, " + std::to_string(r.failed) + " failed ====",

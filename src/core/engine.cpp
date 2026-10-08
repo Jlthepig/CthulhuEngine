@@ -191,6 +191,7 @@ void Engine::shutdown()
     }
 
     state = EngineState::ShuttingDown;
+    editSnapshot.reset();
 
     updateCallback = nullptr;
     updateContext = nullptr;
@@ -307,12 +308,15 @@ bool Engine::createEmptyScene(const std::string &name)
     return true;
 }
 
-void Engine::activateScene(std::unique_ptr<Scene::Scene> newScene)
+void Engine::activateScene(std::unique_ptr<Scene::Scene> newScene, bool newDocument)
 {
-    unloadScene();
+    releaseActiveScene();
 
     activeScene = std::move(newScene);
-    ++sceneGeneration;
+    if (newDocument)
+    {
+        ++sceneGeneration;
+    }
 
     renderer.setScene(activeScene.get());
 
@@ -330,9 +334,17 @@ void Engine::unloadScene()
     if (!activeScene)
         return;
 
+    releaseActiveScene();
+    ++sceneGeneration;
+}
+
+void Engine::releaseActiveScene()
+{
+    if (!activeScene)
+        return;
+
     activeScene->clear();
     activeScene.reset();
-    ++sceneGeneration;
 
     assetManager.collectUnusedAssets();
 
@@ -350,6 +362,12 @@ bool Engine::saveActiveScene()
         return false;
     }
 
+    if (isPlaying())
+    {
+        Log::Print("CANNOT SAVE WHILE PLAYING", "ENGINE", LogType::LOG_ERROR);
+        return false;
+    }
+
     if (!activeScene->hasResourcePath())
     {
         Log::Print("ACTIVE SCENE HAS NO RESOURCEPATH, SAVE AS IS REQUIRED", "ENGINE", LogType::LOG_ERROR);
@@ -361,6 +379,12 @@ bool Engine::saveActiveScene()
 
 bool Engine::saveActiveSceneAs(std::string_view resourcePath)
 {
+    if (isPlaying())
+    {
+        Log::Print("CANNOT SAVE WHILE PLAYING", "ENGINE", LogType::LOG_ERROR);
+        return false;
+    }
+
     if (!project || !activeScene)
     {
         return false;
@@ -509,6 +533,56 @@ void Engine::setWorldMode(WorldMode mode)
 
     worldMode = mode;
     applySimStateToSystems();
+}
+
+bool Engine::play()
+{
+    if (!activeScene || isPlaying() || worldMode != WorldMode::Edit)
+    {
+        Log::Print("PLAY NEEDS AN ACTIVE SCENE IN EDIT MODE", "ENGINE", LogType::LOG_ERROR);
+        return false;
+    }
+
+    auto snapshot = std::make_unique<Scene::SceneSnapshot>(activeScene->captureScene());
+
+    
+    auto playScene = createSceneInstance();
+    if (!playScene->restoreScene(*snapshot))
+    {
+        Log::Print("FAILED TO BUILD THE PLAY SCENE", "ENGINE", LogType::LOG_ERROR);
+        return false;
+    }
+
+    editSnapshot = std::move(snapshot);
+    worldMode = WorldMode::Play;
+    simState = SimulationState::Running;
+    activateScene(std::move(playScene), false);
+
+    Log::Print("Play", "ENGINE", LogType::LOG_INFO);
+    return true;
+}
+
+bool Engine::stop()
+{
+    if (!isPlaying())
+    {
+        Log::Print("STOP CALLED WHILE NOT PLAYING", "ENGINE", LogType::LOG_ERROR);
+        return false;
+    }
+
+    auto editScene = createSceneInstance();
+    if (!editScene->restoreScene(*editSnapshot))
+    {
+        Log::Print("FAILED TO RESTORE THE EDIT SCENE, STILL PLAYING", "ENGINE", LogType::LOG_ERROR);
+        return false;
+    }
+
+    editSnapshot.reset();
+    worldMode = WorldMode::Edit;
+    activateScene(std::move(editScene), false);
+
+    Log::Print("Stop", "ENGINE", LogType::LOG_INFO);
+    return true;
 }
 
 void Engine::run()

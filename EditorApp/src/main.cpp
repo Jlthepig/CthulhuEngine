@@ -28,6 +28,12 @@ void onUpdate([[maybe_unused]] void* context, [[maybe_unused]] float deltaTime)
         }
     }
 
+    if (Cthulhu::Core::Input::isKeyPressed(GLFW_KEY_F5))
+    {
+        const bool ok = engine->isPlaying() ? engine->stop() : engine->play();
+        (void)ok;
+    }
+
     float scrollDeltaY = Cthulhu::Core::Input::getScrollDeltaY();
 
     if (camera && Cthulhu::Core::Input::isMouseButtonDown(GLFW_MOUSE_BUTTON_2))
@@ -69,6 +75,7 @@ int main()
         return 1;
     }
 
+    engine.setWorldMode(Cthulhu::WorldMode::Edit);
     engine.setUpdateCallback(onUpdate, &engine);
 
     glfwSetInputMode(engine.getWindow()->getWindow(), GLFW_CURSOR, GLFW_CURSOR_NORMAL);

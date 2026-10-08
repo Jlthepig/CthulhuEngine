@@ -17,6 +17,7 @@ namespace Cthulhu::Scene
 {
 class Scene;
 class Camera;
+struct SceneSnapshot;
 } // namespace Cthulhu::Scene
 namespace Cthulhu::Core
 {
@@ -107,6 +108,14 @@ class Engine
         return worldMode == WorldMode::Play && (simState == SimulationState::Running || simState == SimulationState::Stepping);
     }
 
+    
+    bool play(); 
+    bool stop(); 
+    bool isPlaying() const
+    {
+        return editSnapshot != nullptr;
+    }
+
     Scene::Camera *getCamera()
     {
         return camera;
@@ -182,10 +191,13 @@ class Engine
     GLFWwindow *glfwWindow = nullptr;
 
     std::unique_ptr<Scene::Scene> createSceneInstance();
-    void activateScene(std::unique_ptr<Scene::Scene> newScene);
+    
+    void activateScene(std::unique_ptr<Scene::Scene> newScene, bool newDocument = true);
+    void releaseActiveScene();
 
     std::unique_ptr<Cthulhu::Scene::Scene> activeScene;
     uint64_t sceneGeneration = 0;
+    std::unique_ptr<Scene::SceneSnapshot> editSnapshot; 
 
     std::vector<Rendering::Renderable> frameRenderables;
 
