@@ -196,8 +196,9 @@ class Engine
     void releaseActiveScene();
 
     std::unique_ptr<Cthulhu::Scene::Scene> activeScene;
-    uint64_t sceneGeneration = 0;
+    uint64_t sceneGeneration{};
     std::unique_ptr<Scene::SceneSnapshot> editSnapshot; 
+    uint64_t editGeneration{};
 
     std::vector<Rendering::Renderable> frameRenderables;
 

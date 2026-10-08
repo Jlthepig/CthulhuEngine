@@ -553,6 +553,7 @@ bool Engine::play()
         return false;
     }
 
+    editGeneration = sceneGeneration;
     editSnapshot = std::move(snapshot);
     worldMode = WorldMode::Play;
     simState = SimulationState::Running;
@@ -580,6 +581,7 @@ bool Engine::stop()
     editSnapshot.reset();
     worldMode = WorldMode::Edit;
     activateScene(std::move(editScene), false);
+    sceneGeneration = editGeneration;
 
     Log::Print("Stop", "ENGINE", LogType::LOG_INFO);
     return true;

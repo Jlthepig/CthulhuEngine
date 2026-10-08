@@ -90,7 +90,10 @@ enum class ChangeType : uint8_t
     AssetImported,
     AssetMoved,
     AssetDeleted,
-    AssetSettingsChanged
+    AssetSettingsChanged,
+
+    PlayStarted,
+    PlayStopped
 };
 
 struct ChangeEvent

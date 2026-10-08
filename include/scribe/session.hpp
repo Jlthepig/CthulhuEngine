@@ -36,15 +36,8 @@ class Session
     bool undo();
     bool redo();
 
-    [[nodiscard]] bool canUndo() const noexcept
-    {
-        return history.canUndo();
-    }
-
-    [[nodiscard]] bool canRedo() const noexcept
-    {
-        return history.canRedo();
-    }
+    [[nodiscard]] bool canUndo() const noexcept;
+    [[nodiscard]] bool canRedo() const noexcept;
 
     [[nodiscard]] std::string_view undoName() const noexcept
     {
@@ -99,10 +92,15 @@ class Session
     Engine &engine;
     History history;
     std::vector<ChangeEvent> events;
-    uint64_t boundGeneration = 0;
+
+    uint64_t boundGeneration{};
+    bool boundPlaying = false;
 
     Scene::Scene *syncScene();
     void refreshDirty(Scene::Scene &scene);
+
+    bool refuseDuringPlay();
+
     void rewriteReferences(Scene::Scene &scene, std::string_view from, std::string_view to);
 };
 } // namespace Cthulhu::Scribe

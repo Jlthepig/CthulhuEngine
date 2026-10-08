@@ -70,6 +70,7 @@ inline int run(Engine& engine)
 	validateWorldModes(engine, r);
 	validateSceneSnapshot(engine, r);
 	validatePlayStop(engine, r);
+	validateSessionDuringPlay(engine, r);
 	checkRefInvariant(engine, r, "after play/stop");
 	validateUnload(engine, r);
 	validateShutdown(engine, r);

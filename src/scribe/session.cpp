@@ -75,14 +75,47 @@ Session::Session(Engine &engine) : engine(engine), boundGeneration(engine.getSce
 
 Scene::Scene *Session::syncScene()
 {
-    const uint64_t generation = engine.getSceneGeneration();
-    if (generation != boundGeneration)
+    const bool playing = engine.isPlaying();
+    if (playing != boundPlaying)
     {
-        boundGeneration = generation;
-        history.clear();
-        events.push_back({ChangeType::SceneReplaced});
+        boundPlaying = playing;
+        history.endMerge();
+        events.push_back({playing ? ChangeType::PlayStarted : ChangeType::PlayStopped});
+    }
+
+    if (!playing)
+    {
+        const uint64_t generation = engine.getSceneGeneration();
+        if (generation != boundGeneration)
+        {
+            boundGeneration = generation;
+            history.clear();
+            events.push_back({ChangeType::SceneReplaced});
+        }
     }
     return engine.getActiveScene();
+}
+
+bool Session::refuseDuringPlay()
+{
+    syncScene();
+    if (!engine.isPlaying())
+    {
+        return false;
+    }
+
+    Log::Print("CANNOT EDIT DURING PLAY", "Scribe", LogType::LOG_ERROR);
+    return true;
+}
+
+bool Session::canUndo() const noexcept
+{
+    return !engine.isPlaying() && history.canUndo();
+}
+
+bool Session::canRedo() const noexcept
+{
+    return !engine.isPlaying() && history.canRedo();
 }
 
 void Session::refreshDirty(Scene::Scene &scene)
@@ -99,6 +132,11 @@ void Session::refreshDirty(Scene::Scene &scene)
 
 Result Session::execute(std::unique_ptr<Command> command)
 {
+    if (refuseDuringPlay())
+    {
+        return Result::failed("CANNOT EDIT DURING PLAY");
+    }
+
     Scene::Scene *scene = syncScene();
     if (!scene)
     {
@@ -128,6 +166,11 @@ Result Session::execute(std::unique_ptr<Command> command)
 
 bool Session::undo()
 {
+    if (refuseDuringPlay())
+    {
+        return false;
+    }
+
     Scene::Scene *scene = syncScene();
     if (!scene)
     {
@@ -146,6 +189,11 @@ bool Session::undo()
 
 bool Session::redo()
 {
+    if (refuseDuringPlay())
+    {
+        return false;
+    }
+
     Scene::Scene *scene = syncScene();
     if (!scene)
     {
@@ -164,6 +212,11 @@ bool Session::redo()
 
 Result Session::save()
 {
+    if (refuseDuringPlay())
+    {
+        return Result::failed("CANNOT EDIT DURING PLAY");
+    }
+
     if (!syncScene())
     {
         return Result::failed("NO ACTIVE SCENE");
@@ -180,6 +233,11 @@ Result Session::save()
 
 Result Session::saveAs(std::string_view resourcePath)
 {
+    if (refuseDuringPlay())
+    {
+        return Result::failed("CANNOT EDIT DURING PLAY");
+    }
+
     if (!syncScene())
     {
         return Result::failed("NO ACTIVE SCENE");
@@ -280,6 +338,11 @@ Result Session::setField(Scene::EntityId id, std::string_view component, std::st
 
 AssetResult Session::importAsset(const std::filesystem::path &sourceFile, std::string_view destination)
 {
+    if (refuseDuringPlay())
+    {
+        return {Result::failed("CANNOT EDIT DURING PLAY"), {}};
+    }
+
     syncScene();
 
     auto id = engine.getAssetManager().importFile(sourceFile, destination);
@@ -298,6 +361,11 @@ AssetResult Session::importAsset(const std::filesystem::path &sourceFile, std::s
 
 Result Session::moveAsset(Assets::AssetId id, std::string_view destination)
 {
+    if (refuseDuringPlay())
+    {
+        return Result::failed("CANNOT EDIT DURING PLAY");
+    }
+
     Scene::Scene *scene = syncScene();
     auto &assets = engine.getAssetManager();
 
@@ -339,6 +407,11 @@ Result Session::replaceReferences(std::string_view from, std::string_view to)
 
 Result Session::deleteAsset(Assets::AssetId id)
 {
+    if (refuseDuringPlay())
+    {
+        return Result::failed("CANNOT EDIT DURING PLAY");
+    }
+
     Scene::Scene *scene = syncScene();
     auto &assets = engine.getAssetManager();
 
@@ -431,6 +504,11 @@ void Session::rewriteReferences(Scene::Scene &scene, std::string_view from, std:
 
 Result Session::setAudioImportSettings(Assets::AssetId id, const Assets::AudioImportSettings &settings)
 {
+    if (refuseDuringPlay())
+    {
+        return Result::failed("CANNOT EDIT DURING PLAY");
+    }
+
     syncScene();
     auto &assets = engine.getAssetManager();
 

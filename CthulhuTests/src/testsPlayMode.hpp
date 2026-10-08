@@ -4,6 +4,7 @@
 #include "testsDescriptors.hpp"
 #include "testsEditorDay.hpp"
 #include "testsWorldModes.hpp"
+#include "session.hpp"
 
 namespace Cthulhu::Validation
 {
@@ -126,6 +127,76 @@ inline void validatePlayStop(Engine& engine, Results& r)
 	engine.stop();
 	expectSame(r, fingerprint(*engine.getActiveScene()), before,
 			   "T12 stop after a level switch still returns to the edit scene");
+
+	engine.setWorldMode(WorldMode::Play);
+	engine.loadScene(SAVE_PATH);
+}
+
+inline void validateSessionDuringPlay(Engine& engine, Results& r)
+{
+	using Scribe::ChangeType;
+
+	if (!engine.loadScene(SAVE_PATH))
+	{
+		check(r, false, "S0 session play test setup");
+		return;
+	}
+	engine.setWorldMode(WorldMode::Edit);
+
+	Scribe::Session session(engine);
+	(void)session.takeEvents();
+
+	auto saw = [](const std::vector<Scribe::ChangeEvent>& events, ChangeType type) {
+		for (const auto& e : events)
+		{
+			if (e.type == type)
+			{
+				return true;
+			}
+		}
+		return false;
+	};
+
+	auto nameOf = [&](CS::EntityId id) {
+		auto e = engine.getActiveScene()->findEntity(id);
+		const auto* n = e ? e->try_get<CS::NameComponent>() : nullptr;
+		return n ? n->name : std::string{};
+	};
+
+	const auto created = session.createEntity("V_BeforePlay");
+	session.endMerge();
+	session.renameEntity(created.id, "V_RenamedBeforePlay");
+	session.endMerge();
+
+	engine.play();
+	auto events = session.takeEvents();
+	check(r, saw(events, ChangeType::PlayStarted) && !saw(events, ChangeType::SceneReplaced),
+		  "SP1 play is announced as PlayStarted, not a scene replacement");
+
+	check(r, !session.createEntity("V_DuringPlay").ok() && !session.renameScene("V_DuringPlay").ok(),
+		  "SP2 edits are refused while playing");
+	check(r, !session.undo() && !session.redo() && !session.canUndo(), "SP3 undo/redo are refused while playing");
+	check(r, !session.save().ok(), "SP4 saving is refused while playing");
+
+	const auto* project = engine.getProject();
+	auto floorFile = project ? project->resolveResourcePath("res://assets/models/Floor.glb") : std::nullopt;
+	auto playImport = project ? project->resolveResourcePath("res://validation_import/V_Play.glb") : std::nullopt;
+	check(r, floorFile && playImport && !session.importAsset(*floorFile, "res://validation_import/V_Play.glb").ok() &&
+				 !std::filesystem::exists(*playImport),
+		  "SP5 asset operations are refused while playing");
+
+	engine.createEmptyScene("V_PlayLevel"); // the game switches level mid-play
+	(void)session.takeEvents();             // a sync during play must not wipe the history
+	engine.stop();
+
+	events = session.takeEvents();
+	check(r, saw(events, ChangeType::PlayStopped) && !saw(events, ChangeType::SceneReplaced),
+		  "SP6 stop is announced as PlayStopped, not a scene replacement");
+
+	check(r, session.undo() && nameOf(created.id) == "V_BeforePlay", "SP7 history from before Play still undoes");
+	check(r, session.undo() && !engine.getActiveScene()->isEntityAlive(created.id),
+		  "SP8 history reaches all the way back");
+	check(r, !engine.getActiveScene()->isDirty(), "SP9 undoing back to the save point is clean");
 
 	engine.setWorldMode(WorldMode::Play);
 	engine.loadScene(SAVE_PATH);
