@@ -4,6 +4,7 @@
 #include "testsComponents.hpp"
 #include "testsDescriptors.hpp"
 #include "testsAssets.hpp"
+#include "testsPlayMode.hpp"
 #include "testsScene.hpp"
 #include "testsScribe.hpp"
 #include "testsScribeAssets.hpp"
@@ -67,6 +68,7 @@ inline int run(Engine& engine)
 
 	validateSimStateOnSwitch(engine, r);
 	validateWorldModes(engine, r);
+	validateSceneSnapshot(engine, r);
 	validateUnload(engine, r);
 	validateShutdown(engine, r);
 	Log::Print("==== RESULT: " + std::to_string(r.passed) + " passed, " + std::to_string(r.failed) + " failed ====",

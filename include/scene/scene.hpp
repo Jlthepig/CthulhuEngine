@@ -30,6 +30,16 @@ struct EntitySnapshot
     std::string name;
     std::vector<ComponentSnapshot> components;
 };
+
+struct SceneSnapshot
+{
+    std::string name;
+    std::optional<std::string> resourcePath;
+    bool dirty = false;
+    Rendering::DirectionalLight directionalLight;
+    std::vector<Rendering::PointLight> pointLights;
+    std::vector<EntitySnapshot> entities;
+};
 class Scene
 {
   public:
@@ -108,6 +118,10 @@ class Scene
     [[nodiscard]] std::optional<std::vector<EntitySnapshot>> captureSubtree(EntityId rootId) const;
 
     bool restoreSubtree(const std::vector<EntitySnapshot> &snapshots);
+
+    [[nodiscard]] SceneSnapshot captureScene() const;
+
+    bool restoreScene(const SceneSnapshot& snapshot);
 
     [[nodiscard]] std::vector<AssetReference> getAssetReferences() const;
 

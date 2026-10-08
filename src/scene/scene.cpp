@@ -522,6 +522,55 @@ bool Scene::restoreSubtree(const std::vector<EntitySnapshot> &snapshots)
     return true;
 }
 
+SceneSnapshot Scene::captureScene() const
+{
+    SceneSnapshot snapshot;
+    snapshot.name = name;
+    snapshot.resourcePath = resourcePath;
+    snapshot.dirty = dirty;
+    snapshot.directionalLight = directionalLight;
+    snapshot.pointLights = pointLights;
+
+    for (const auto& [id, entity] : entityLookup)
+    {
+        if (getParent(id))
+        {
+            continue; 
+        }
+
+        if (auto subtree = captureSubtree(id))
+        {
+            for (auto& entitySnapshot : *subtree)
+            {
+                snapshot.entities.push_back(std::move(entitySnapshot));
+            }
+        }
+    }
+
+    return snapshot;
+}
+
+bool Scene::restoreScene(const SceneSnapshot& snapshot)
+{
+    if (!entityLookup.empty())
+    {
+        return false;
+    }
+
+    if (!restoreSubtree(snapshot.entities))
+    {
+        return false;
+    }
+
+    name = snapshot.name;
+    resourcePath = snapshot.resourcePath;
+    directionalLight = snapshot.directionalLight;
+    pointLights = snapshot.pointLights;
+
+    dirty = snapshot.dirty; 
+    return true;
+}
+
 void Scene::clear()
 {
     world.delete_with<TransformComponent>();
