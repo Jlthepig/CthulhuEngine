@@ -57,6 +57,8 @@ int main(int argc, char* argv[])
         Log::Print("FAILED TO LOAD PROJECT MAIN SCENE", "Runtime",LogType::LOG_ERROR);
         return 1;
     }
+    
+    engine.setWorldMode(Cthulhu::WorldMode::Play);
 
     engine.run();
     engine.shutdown();
