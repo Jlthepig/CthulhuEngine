@@ -26,7 +26,7 @@ I'm currently 16 years old.
 
 Cthulhu is still in early development.
 
-Cthulhu engine atm is currently undergoing major foundational work to prepare it for its future editor and eventual FPS demos or projects. Contributing is not possible yet and there are currently no docs.
+The foundations for the editor finally are now in place, and I will begin moving on to work on the editor itself which will use OctoGUI a custom ui library. Contributing is not possible yet and there are currently no docs.
 
 Current features and systems include:
 
@@ -35,19 +35,20 @@ Current features and systems include:
 - Jolt Physics integration with an FPS character controller
 - Flecs ECS integration
 - Directional and point light shadow mapping
-- HDR skybox with irradiance maps, prefiltered environment maps, tonemapping, and gamma correction
-- Scene loading and serialization
-- Project system using `project.cthulhu`
-- Project-relative resources using `res://`
-- Separate engine and project resources
-- External Cthulhu projects independent of the engine repository
-- Generic `CthulhuRuntime` for running Cthulhu projects
-- Scene creation, loading, unloading, and switching
-- Scene identity and unsaved-change tracking
+- HDR skybox with irradiance and prefiltered environment maps, tonemapping, and gamma correction
 - Miniaudio integration
 - Debug rendering
+- Project system with `project.cthulhu`, `res://` paths, and projects independent of the engine itself
+- Generic `CthulhuRuntime` for running Cthulhu projects
+- Scene loading, serialization, and unsaved-change tracking
+- Stable entity and asset IDs, with a project-wide asset registry
+- Component descriptors that drive the inspector, undo, and copying for built-in and user components
+- Scribe, the editor command API: undo/redo, merged edits, and change events
+- Asset operations: import, move/rename with references following, Recycle Bin delete, and missing-asset reporting
+- Edit and Play modes, with Play/Stop restoring the edited scene exactly
+- Extension points for game systems, and a runtime API safe to use inside systems
 
-The editor is not ready at all yet. Its current focus is building the scene, asset, and editor facing architecture that the editor will eventually need to use and work with.
+The editor UI is not built yet, but the architecture underneath the hood which powers the whole thing eg. Scribe, component descriptors, asset operations and Play/Stop is complete. The editor is now my priority and is next
 
 ---
 
@@ -141,14 +142,14 @@ Cthulhu is currently being developed in 4 major architectural phases.
 
 ```text
 Phase 1 — Project Foundation                    COMPLETE
-Phase 2 — Scene, Asset & Editor Architecture    IN PROGRESS
-Phase 3 — OctoGUI Editor
+Phase 2 — Scene, Asset & Editor Architecture    COMPLETE
+Phase 3 — Editor powered by OctoGUI             IN PROGRESS
 Phase 4 — FPS / Game Systems Expansion
 ```
 
 Phase 1 established the project format, resource paths, runtime, project creation, and engine lifecycle.
 
-Phase 2 is focused on making scenes, assets, entities, components, and engine APIs robust enough for the future editor.
+Phase 2 made scenes, assets, entities, components, and engine APIs robust enough for the editor, and added Play/Stop and a runtime gameplay API.
 
 ---
 
