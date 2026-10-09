@@ -247,6 +247,12 @@ std::unique_ptr<Scene::Scene> Engine::createSceneInstance()
     auto newScene = std::make_unique<Scene::Scene>(componentRegistry);
 
     Scene::RegisterCoreSystems(newScene->getWorld(), this);
+
+    for (const auto &entry : systemRegistrations)
+    {
+        entry.registration(entry.contex, newScene->getWorld(), *this);
+    }
+
     return newScene;
 }
 
@@ -533,6 +539,21 @@ void Engine::setWorldMode(WorldMode mode)
 
     worldMode = mode;
     applySimStateToSystems();
+}
+
+void Engine::addSystemRegistration(SystemRegistration registration, void *context)
+{
+    if (!registration)
+    {
+        return;
+    }
+
+    systemRegistrations.push_back({registration,context});
+    if (activeScene)
+    {
+        registration(context, activeScene->getWorld(), *this);
+        applySimStateToSystems();
+    }
 }
 
 bool Engine::play()

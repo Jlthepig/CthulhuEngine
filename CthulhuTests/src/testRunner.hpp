@@ -10,6 +10,7 @@
 #include "testsScribeAssets.hpp"
 #include "testsEditorDay.hpp"
 #include "testsWorldModes.hpp"
+#include "testsUserSystems.hpp"
 
 namespace Cthulhu::Validation
 {
@@ -71,6 +72,7 @@ inline int run(Engine& engine)
 	validateSceneSnapshot(engine, r);
 	validatePlayStop(engine, r);
 	validateSessionDuringPlay(engine, r);
+	validateUserSystems(engine, r);
 	checkRefInvariant(engine, r, "after play/stop");
 	validateUnload(engine, r);
 	validateShutdown(engine, r);

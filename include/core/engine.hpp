@@ -79,6 +79,9 @@ class Engine
         }
     }
 
+    using SystemRegistration = void (*)(void *context, flecs::world &world, Engine &engine);
+    void addSystemRegistration(SystemRegistration registration, void *context = nullptr);
+
     void processFixedUpdate(float fixedDt);
 
     EngineState getState() const
@@ -207,6 +210,14 @@ class Engine
 
     RaycastCallback raycastCallback = nullptr;
     void *raycastContext = nullptr;
+
+    struct SystemRegistrationEntry
+    {
+        SystemRegistration registration = nullptr;
+        void *contex = nullptr;
+    };
+    std::vector<SystemRegistrationEntry> systemRegistrations;
+
 
     EngineState state = EngineState::Uninitialized;
     bool glfwInitialized = false;
