@@ -9,6 +9,31 @@ using KalaHeaders::KalaLog::LogType;
 namespace Cthulhu::Scene
 {
 
+Scene::Scene(const ComponentRegistry& registry) : componentRegistry(&registry)
+{
+    world.observer<const EntityIdentityComponent>("EntityLookupAdd")
+        .event(flecs::OnSet)
+        .each([this](flecs::entity entity, const EntityIdentityComponent& identity) {
+            auto [it, inserted] = entityLookup.try_emplace(identity.id, entity);
+            if (!inserted && it->second != entity && it->second.is_alive())
+            {
+                Log::Print("DUPLICATE ENTITY ID: " + entityIdToString(identity.id), "Scene", LogType::LOG_ERROR);
+                return;
+            }
+            it->second = entity;
+        });
+
+    world.observer<const EntityIdentityComponent>("EntityLookupRemove")
+        .event(flecs::OnRemove)
+        .each([this](flecs::entity entity, const EntityIdentityComponent& identity) {
+            auto it = entityLookup.find(identity.id);
+            if (it != entityLookup.end() && it->second == entity)
+            {
+                entityLookup.erase(it);
+            }
+        });
+}
+
 // << entity management >>
 flecs::entity Scene::createEntity(const std::string &name)
 {
@@ -20,13 +45,6 @@ flecs::entity Scene::createEntity(const std::string &name)
     entity.set<NameComponent>({name.empty() ? "Entity" : name});
     entity.set<TransformComponent>({});
     entity.add<TagActive>();
-
-    if (!registerEntity(id, entity))
-    {
-        entity.destruct();
-        Log::Print("FAILED TO REGISTER ENTITY", "Scene", LogType::LOG_ERROR);
-        return flecs::entity::null();
-    }
 
     markDirty();
     return entity;
@@ -53,12 +71,6 @@ std::optional<flecs::entity> Scene::createEntityWithId(EntityId id, const std::s
     entity.set(TransformComponent{});
     entity.add<TagActive>();
 
-    if (!registerEntity(id, entity))
-    {
-        entity.destruct();
-        return std::nullopt;
-    }
-
     return entity;
 }
 
@@ -70,16 +82,7 @@ bool Scene::destroyEntity(EntityId id)
         return false;
     }
 
-    std::vector<EntityId> subtreeIds;
-
-    collectSubtreeEntityIds(*entity, subtreeIds);
     entity->destruct();
-
-    for (const EntityId subtreeId : subtreeIds)
-    {
-        entityLookup.erase(subtreeId);
-    }
-
     markDirty();
     return true;
 }
@@ -110,6 +113,19 @@ bool Scene::isEntityAlive(EntityId id) const
     return findEntity(id).has_value();
 }
 
+std::optional<EntityId> Scene::findEntityByName(std::string_view name) const
+{
+    for (const auto& [id, entity] : entityLookup)
+    {
+        const auto* entityName = entity.try_get<NameComponent>();
+        if (entityName && entityName->name == name)
+        {
+            return id;
+        }
+    }
+    return std::nullopt;
+}
+
 bool Scene::renameEntity(EntityId id, std::string_view newName)
 {
     if (newName.empty())
@@ -138,27 +154,6 @@ EntityId Scene::generateUniqueEntityId() const
         id = generateEntityId();
     }
     return id;
-}
-
-bool Scene::registerEntity(EntityId id, flecs::entity entity)
-{
-    if (!id.isValid() || !entity.is_alive())
-    {
-        return false;
-    }
-
-    if (entityLookup.contains(id))
-    {
-        return false;
-    }
-
-    entityLookup.emplace(id, entity);
-    return true;
-}
-
-void Scene::unregisterEntity(EntityId id)
-{
-    entityLookup.erase(id);
 }
 
 bool Scene::shouldCreateHierarchyCycle(flecs::entity child, flecs::entity newParent) const
@@ -283,16 +278,6 @@ std::vector<EntityId> Scene::getChildren(EntityId parentId) const
     return children;
 }
 
-void Scene::collectSubtreeEntityIds(flecs::entity entity, std::vector<EntityId> &ids) const
-{
-    entity.children([&](flecs::entity child) { collectSubtreeEntityIds(child, ids); });
-
-    if (entity.has<EntityIdentityComponent>())
-    {
-        ids.push_back(entity.get<EntityIdentityComponent>().id);
-    }
-}
-
 std::optional<EntityId> Scene::duplicateEntityRecursive(flecs::entity source, std::optional<EntityId> parentId)
 {
     if (!source.is_alive())
@@ -367,6 +352,12 @@ std::optional<EntityId> Scene::duplicateEntityRecursive(flecs::entity source, st
 
 std::optional<EntityId> Scene::duplicateEntity(EntityId sourceId)
 {
+    if (world.is_deferred())
+    {
+        Log::Print("DUPLICATE CANNOT RUN INSIDE A SYSTEM", "Scene", LogType::LOG_ERROR);
+        return std::nullopt;
+    }
+
     auto source = findEntity(sourceId);
 
     if (!source)

@@ -43,9 +43,7 @@ struct SceneSnapshot
 class Scene
 {
   public:
-    explicit Scene(const ComponentRegistry &registry) : componentRegistry(&registry)
-    {
-    }
+    explicit Scene(const ComponentRegistry &registry);
 
     [[nodiscard]] const ComponentRegistry *getComponentRegistry() const noexcept
     {
@@ -104,6 +102,14 @@ class Scene
 
     [[nodiscard]] std::optional<flecs::entity> findEntity(EntityId id) const;
     [[nodiscard]] bool isEntityAlive(EntityId id) const;
+
+    // keep in mind names are not unique so it will fetch the first entity with this name
+    [[nodiscard]] std::optional<EntityId> findEntityByName(std::string_view name) const;
+
+    [[nodiscard]] std::size_t getEntityCount() const noexcept
+    {
+        return entityLookup.size();
+    }
 
     bool renameEntity(EntityId id, std::string_view newName);
     bool destroyEntity(EntityId id);
@@ -174,18 +180,13 @@ class Scene
     bool dirty = false;
     uint32_t nextId{};
 
-    flecs::world world;
     std::unordered_map<EntityId, flecs::entity, EntityIdHash> entityLookup;
+    flecs::world world;
 
     Rendering::DirectionalLight directionalLight;
     std::vector<Rendering::PointLight> pointLights;
 
-    bool registerEntity(EntityId id, flecs::entity entity);
-    void unregisterEntity(EntityId id);
-
     [[nodiscard]] bool shouldCreateHierarchyCycle(flecs::entity child, flecs::entity newParent) const;
-
-    void collectSubtreeEntityIds(flecs::entity entity, std::vector<EntityId> &ids) const;
 
     [[nodiscard]] std::optional<EntityId> duplicateEntityRecursive(flecs::entity sourceEntity,
                                                                    std::optional<EntityId> parentId);
