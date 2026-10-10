@@ -1,9 +1,12 @@
+#include <algorithm>
+#include <cmath>
+
 #include "sceneLoader.hpp"
 #include "assetRegistry.hpp"
 #include "components.hpp"
 #include "jsonParser.hpp"
-#include "log_utils.hpp"
 #include "project.hpp"
+#include "log_utils.hpp"
 
 using KalaHeaders::KalaLog::Log;
 using KalaHeaders::KalaLog::LogType;
@@ -30,6 +33,132 @@ std::string resolveReference(const Assets::AssetRegistry &registry, const std::o
 
     Log::Print("UNKNOWN ASSET ID, FALLING BACK TO PATH: " + pathHint, "SceneLoader", LogType::LOG_WARNING);
     return pathHint;
+}
+
+std::optional<FieldValue> toFieldValue(const FieldDescriptor &field, const ParsedValue &value,
+                                       const Assets::AssetRegistry &assets)
+{
+    const auto *number = std::get_if<double>(&value);
+    const auto *text = std::get_if<std::string>(&value);
+
+    switch (field.type)
+    {
+    case FieldType::Float:
+        if (number)
+        {
+            return FieldValue{static_cast<float>(*number)};
+        }
+        return std::nullopt;
+    case FieldType::Int:
+        if (number && std::floor(*number) == *number)
+        {
+            return FieldValue{static_cast<int>(*number)};
+        }
+        return std::nullopt;
+    case FieldType::Bool:
+        if (const auto *flag = std::get_if<bool>(&value))
+        {
+            return FieldValue{*flag};
+        }
+        return std::nullopt;
+    case FieldType::Vec3:
+    case FieldType::Color:
+        if (const auto *vector = std::get_if<glm::vec3>(&value))
+        {
+            return FieldValue{*vector};
+        }
+        return std::nullopt;
+    case FieldType::String:
+        if (text)
+        {
+            return FieldValue{*text};
+        }
+        return std::nullopt;
+    case FieldType::Enum:
+        if (text)
+        {
+            for (size_t i = 0; i < field.enumNames.size(); ++i)
+            {
+                if (field.enumNames[i] == *text)
+                {
+                    return FieldValue{static_cast<int>(i)};
+                }
+            }
+        }
+        return std::nullopt;
+    case FieldType::AssetRef:
+        if (const auto *ref = std::get_if<ParsedAssetRef>(&value))
+        {
+            return FieldValue{resolveReference(assets, ref->id, ref->path)};
+        }
+        if (text)
+        {
+            return FieldValue{*text};
+        }
+        return std::nullopt;
+    case FieldType::EntityRef:
+        if (text)
+        {
+            if (auto id = entityIdFromString(*text))
+            {
+                return FieldValue{*id};
+            }
+        }
+        return std::nullopt;
+    }
+    return std::nullopt;
+}
+
+bool applyComponents(flecs::entity entity, const ParsedEntity &parsed, const ComponentRegistry &components,
+                     const Assets::AssetRegistry &assets)
+{
+    for (const auto &parsedComponent : parsed.components)
+    {
+        if (!components.find(parsedComponent.name))
+        {
+            Log::Print("UNKNOWN COMPONENT SKIPPED (lost if saved): " + parsedComponent.name + " on " + parsed.name,"SceneLoader", LogType::LOG_WARNING);
+        }
+    }
+
+    // registration order
+    for (const auto &descriptor : components.getAll())
+    {
+        const auto found = std::find_if(parsed.components.begin(), parsed.components.end(),
+                                        [&](const ParsedComponent &c) { return c.name == descriptor.name; });
+        if (found == parsed.components.end())
+        {
+            continue;
+        }
+
+        ComponentSnapshot snapshot{descriptor.name, {}};
+        for (const auto &parsedField : found->fields)
+        {
+            const FieldDescriptor *field = findField(descriptor, parsedField.name);
+            if (!field)
+            {
+                Log::Print("UNKNOWN FIELD IGNORED: " + descriptor.name + "." + parsedField.name + " on " + parsed.name,
+                           "SceneLoader", LogType::LOG_WARNING);
+                continue;
+            }
+
+            auto value = toFieldValue(*field, parsedField.value, assets);
+            if (!value)
+            {
+                Log::Print("INVALID VALUE FOR " + descriptor.name + "." + field->name + " on " + parsed.name,
+                           "SceneLoader", LogType::LOG_ERROR);
+                return false;
+            }
+
+            snapshot.fields.push_back({field->name, std::move(*value)});
+        }
+
+        if (!components.apply(entity, {snapshot}))
+        {
+            return false;
+        }
+    }
+
+    return true;
 }
 } // namespace
 
@@ -58,79 +187,11 @@ bool SceneLoader::load(const std::string &path, Scene &scene, [[maybe_unused]] c
             return false;
         }
 
-        auto e = *entity;
-
-        auto &transform = e.ensure<TransformComponent>();
-        transform.position = parsedEntity.position;
-        transform.rotation = parsedEntity.rotation;
-        transform.scale = parsedEntity.scale;
-        transform.matrixDirty = true;
-
-        if (parsedEntity.mesh)
+        if (!applyComponents(*entity, parsedEntity, *scene.getComponentRegistry(), registry))
         {
-            const auto &parsedMesh = *parsedEntity.mesh;
-
-            MeshComponent mesh;
-            mesh.modelPath = resolveReference(registry, parsedMesh.modelId, parsedMesh.modelPath);
-            e.set(mesh);
+            Log::Print("FAILED TO LOAD COMPONENTS OF: " + parsedEntity.name, "SceneLoader", LogType::LOG_ERROR);
+            return false;
         }
-
-        if (parsedEntity.physics)
-        {
-            const auto &parsedPhysics = *parsedEntity.physics;
-            PhysicsComponent physics;
-            physics.halfExtent = parsedPhysics.halfExtent;
-            physics.mass = parsedPhysics.mass;
-
-            if (parsedPhysics.type == "static")
-            {
-                physics.type = PhysicsBodyType::Static;
-            }
-            else if (parsedPhysics.type == "dynamic")
-            {
-                physics.type = PhysicsBodyType::Dynamic;
-            }
-            else
-            {
-                Log::Print("UNKNOWN PHYSICS BODY TYPE", "SceneLoader", LogType::LOG_ERROR);
-                return false;
-            }
-
-            e.set(physics);
-        }
-
-        if (parsedEntity.weapon.has_value())
-        {
-            WeaponComponent w;
-            w.fireRate = parsedEntity.weapon->firerate;
-            w.maxRange = parsedEntity.weapon->maxRange;
-            e.set(w);
-        }
-
-        if (parsedEntity.audio.has_value())
-        {
-            AudioSourceComponent a;
-            a.filePath = resolveReference(registry, parsedEntity.audio->fileId, parsedEntity.audio->file);
-            a.volume = parsedEntity.audio->volume;
-            a.loop = parsedEntity.audio->loop;
-            e.set(a);
-        }
-
-        if (parsedEntity.characterController)
-        {
-            const auto &parsedController = *parsedEntity.characterController;
-            CharacterControllerComponent controller;
-            controller.gravity = parsedController.gravity;
-            controller.jumpVelocity = parsedController.jumpVelocity;
-            controller.capsuleRadius = parsedController.capsuleRadius;
-            controller.capsuleHeight = parsedController.capsuleHeight;
-            controller.maxWalkableSlope = parsedController.maxWalkableSlope;
-            controller.maxPushStrength = parsedController.maxPushStrength;
-            e.set(controller);
-        }
-
-        if (parsedEntity.player)
-            e.add<TagPlayer>();
     }
 
     for (const auto &parsedEntity : parsed->entities)

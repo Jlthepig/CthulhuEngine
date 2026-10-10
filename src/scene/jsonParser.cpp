@@ -35,6 +35,286 @@ static bool readVec3(simdjson::ondemand::array array, glm::vec3 &result)
     return index == 3;
 }
 
+using EntityJson = simdjson::simdjson_result<simdjson::ondemand::value>;
+
+static bool readValue(simdjson::simdjson_result<simdjson::ondemand::value> json, ParsedValue& out)
+{
+    simdjson::ondemand::json_type type;
+    if (json.type().get(type))
+    {
+        return false;
+    }
+
+    switch (type)
+    {
+        case simdjson::ondemand::json_type::number:
+        {
+            double number = 0.0;
+            if (json.get_double().get(number))
+            {
+                return false;
+            }
+            out = number;
+            return true;
+        }
+        case simdjson::ondemand::json_type::boolean:
+        {
+            bool flag = false;
+            if (json.get_bool().get(flag))
+            {
+                return false;
+            }
+            out = flag;
+            return true;
+        }
+        case simdjson::ondemand::json_type::string:
+        {
+            std::string_view text;
+            if (json.get_string().get(text))
+            {
+                return false;
+            }
+            out = std::string(text);
+            return true;
+        }
+        case simdjson::ondemand::json_type::array:
+        {
+            simdjson::ondemand::array array;
+            glm::vec3 vector{};
+            if (json.get_array().get(array) || !readVec3(array, vector))
+            {
+                return false;
+            }
+            out = vector;
+            return true;
+        }
+        case simdjson::ondemand::json_type::object:
+        {
+            simdjson::ondemand::object object;
+            std::string_view assetPath;
+            if (json.get_object().get(object) || object["path"].get_string().get(assetPath))
+            {
+                return false;
+            }
+
+            ParsedAssetRef ref;
+            ref.path = std::string(assetPath);
+
+            std::string_view idText;
+            if (!object["id"].get_string().get(idText))
+            {
+                ref.id = Assets::assetIdFromString(idText);
+                if (!ref.id)
+                {
+                    return false;
+                }
+            }
+
+            out = std::move(ref);
+            return true;
+        }
+        default:
+            return false;
+    }
+}
+
+static bool readComponents(EntityJson& entityJson, ParsedEntity& entity)
+{
+    simdjson::ondemand::object components;
+    if (entityJson["components"].get_object().get(components))
+    {
+        Log::Print("ENTITY HAS NO components: " + entity.name, "SceneParser", LogType::LOG_ERROR);
+        return false;
+    }
+
+    for (auto componentJson : components)
+    {
+        std::string_view componentName;
+        simdjson::ondemand::object fieldsJson;
+        if (componentJson.unescaped_key().get(componentName) || componentJson.value().get_object().get(fieldsJson))
+        {
+            Log::Print("INVALID COMPONENT ON: " + entity.name, "SceneParser", LogType::LOG_ERROR);
+            return false;
+        }
+
+        ParsedComponent component;
+        component.name = std::string(componentName);
+
+        for (auto fieldJson : fieldsJson)
+        {
+            std::string_view fieldName;
+            if (fieldJson.unescaped_key().get(fieldName))
+            {
+                Log::Print("INVALID FIELD IN " + component.name + " ON: " + entity.name, "SceneParser", LogType::LOG_ERROR);
+                return false;
+            }
+
+            ParsedField field;
+            field.name = std::string(fieldName);
+            if (!readValue(fieldJson.value(), field.value))
+            {
+                Log::Print("INVALID VALUE FOR " + component.name + "." + field.name + " ON: " + entity.name,
+                           "SceneParser", LogType::LOG_ERROR);
+                return false;
+            }
+
+            component.fields.push_back(std::move(field));
+        }
+
+        entity.components.push_back(std::move(component));
+    }
+
+    return true;
+}
+
+static void readLegacyNumber(simdjson::ondemand::object& json, const char* key, const char* field, ParsedComponent& component)
+{
+    double number = 0.0;
+    if (!json[key].get_double().get(number))
+    {
+        component.fields.push_back({field, number});
+    }
+}
+
+static bool readLegacyComponents(EntityJson& entityJson, ParsedEntity& entity)
+{
+    ParsedComponent transform{"Transform", {}};
+    for (const char* key : {"position", "rotation", "scale"})
+    {
+        glm::vec3 vector{};
+        auto array = entityJson[key].get_array();
+        if (array.error() || !readVec3(array.value(), vector))
+        {
+            Log::Print("INVALID " + std::string(key) + ": " + entity.name, "SceneParser", LogType::LOG_ERROR);
+            return false;
+        }
+        transform.fields.push_back({key, vector});
+    }
+    entity.components.push_back(std::move(transform));
+
+    std::string_view model;
+    if (!entityJson["model"].get_string().get(model))
+    {
+        ParsedAssetRef ref{std::string(model), std::nullopt};
+
+        std::string_view modelId;
+        if (!entityJson["model_id"].get_string().get(modelId))
+        {
+            ref.id = Assets::assetIdFromString(modelId);
+            if (!ref.id)
+            {
+                Log::Print("INVALID model_id: " + entity.name, "SceneParser", LogType::LOG_ERROR);
+                return false;
+            }
+        }
+
+        ParsedComponent mesh{"Mesh", {}};
+        mesh.fields.push_back({"modelPath", std::move(ref)});
+        entity.components.push_back(std::move(mesh));
+    }
+
+    simdjson::ondemand::object physicsJson;
+    if (!entityJson["physics"].get_object().get(physicsJson))
+    {
+        std::string_view type;
+        if (physicsJson["type"].get_string().get(type))
+        {
+            Log::Print("PHYSICS IS MISSING type: " + entity.name, "SceneParser", LogType::LOG_ERROR);
+            return false;
+        }
+
+        // old files used lowercase names; anything else is passed on and rejected by the loader
+        std::string typeName(type);
+        if (typeName == "static")
+        {
+            typeName = "Static";
+        }
+        else if (typeName == "dynamic")
+        {
+            typeName = "Dynamic";
+        }
+
+        ParsedComponent physics{"Physics", {}};
+        physics.fields.push_back({"type", typeName});
+
+        glm::vec3 halfExtent{};
+        auto halfExtentJson = physicsJson["half_extent"].get_array();
+        if (!halfExtentJson.error() && readVec3(halfExtentJson.value(), halfExtent))
+        {
+            physics.fields.push_back({"halfExtent", halfExtent});
+        }
+
+        readLegacyNumber(physicsJson, "mass", "mass", physics);
+        entity.components.push_back(std::move(physics));
+    }
+
+    simdjson::ondemand::object weaponJson;
+    if (!entityJson["weapon"].get_object().get(weaponJson))
+    {
+        ParsedComponent weapon{"Weapon", {}};
+        readLegacyNumber(weaponJson, "firerate", "fireRate", weapon);
+        readLegacyNumber(weaponJson, "maxrange", "maxRange", weapon);
+        entity.components.push_back(std::move(weapon));
+    }
+
+    simdjson::ondemand::object audioJson;
+    if (!entityJson["audio"].get_object().get(audioJson))
+    {
+        std::string_view file;
+        if (audioJson["file"].get_string().get(file))
+        {
+            Log::Print("AUDIO IS MISSING file: " + entity.name, "SceneParser", LogType::LOG_ERROR);
+            return false;
+        }
+
+        ParsedAssetRef ref{std::string(file), std::nullopt};
+
+        std::string_view fileId;
+        if (!audioJson["file_id"].get_string().get(fileId))
+        {
+            ref.id = Assets::assetIdFromString(fileId);
+            if (!ref.id)
+            {
+                Log::Print("INVALID audio file_id: " + entity.name, "SceneParser", LogType::LOG_ERROR);
+                return false;
+            }
+        }
+
+        ParsedComponent audio{"AudioSource", {}};
+        audio.fields.push_back({"filePath", std::move(ref)});
+        readLegacyNumber(audioJson, "volume", "volume", audio);
+
+        bool loop = false;
+        if (!audioJson["loop"].get_bool().get(loop))
+        {
+            audio.fields.push_back({"loop", loop});
+        }
+
+        entity.components.push_back(std::move(audio));
+    }
+
+    simdjson::ondemand::object controllerJson;
+    if (!entityJson["character_controller"].get_object().get(controllerJson))
+    {
+        ParsedComponent controller{"CharacterController", {}};
+        readLegacyNumber(controllerJson, "gravity", "gravity", controller);
+        readLegacyNumber(controllerJson, "jump_velocity", "jumpVelocity", controller);
+        readLegacyNumber(controllerJson, "capsule_radius", "capsuleRadius", controller);
+        readLegacyNumber(controllerJson, "capsule_height", "capsuleHeight", controller);
+        readLegacyNumber(controllerJson, "max_walkable_slope", "maxWalkableSlope", controller);
+        readLegacyNumber(controllerJson, "max_push_strength", "maxPushStrength", controller);
+        entity.components.push_back(std::move(controller));
+    }
+
+    bool player = false;
+    if (!entityJson["player"].get_bool().get(player) && player)
+    {
+        entity.components.push_back({"Player", {}});
+    }
+
+    return true;
+}
+
 std::optional<ParsedScene> JsonParser::parseScene(const std::string &path)
 {
     simdjson::ondemand::parser parser;
@@ -58,7 +338,7 @@ std::optional<ParsedScene> JsonParser::parseScene(const std::string &path)
     }
 
     const uint64_t version = versionResult.value();
-    if (version != 2 && version != SCENE_FORMAT_VERSION)
+    if (version < 2 || version > 4)
     {
         Log::Print("UNSUPPORTED SCENE FORMAT VERSION: " + std::to_string(version), "SceneParser", LogType::LOG_ERROR);
         return std::nullopt;
@@ -130,144 +410,13 @@ std::optional<ParsedScene> JsonParser::parseScene(const std::string &path)
         }
         entity.name = name.value();
 
-        auto position = entityJson["position"].get_array();
-        if (position.error() || !readVec3(position.value(), entity.position))
+        const bool componentsRead = version >= 4 ? readComponents(entityJson, entity) : readLegacyComponents(entityJson, entity);
+        if (!componentsRead)
         {
-            Log::Print("INVALID POSITION: " + entity.name, "SceneParser", LogType::LOG_ERROR);
             return std::nullopt;
         }
 
-        auto rotation = entityJson["rotation"].get_array();
-        if (rotation.error() || !readVec3(rotation.value(), entity.rotation))
-        {
-            Log::Print("INVALID ROTATION: " + entity.name, "SceneParser", LogType::LOG_ERROR);
-            return std::nullopt;
-        }
-
-        auto scale = entityJson["scale"].get_array();
-        if (scale.error() || !readVec3(scale.value(), entity.scale))
-        {
-            Log::Print("INVALID SCALE: " + entity.name, "SceneParser", LogType::LOG_ERROR);
-            return std::nullopt;
-        }
-
-        auto modelResult = entityJson["model"].get_string();
-        if (!modelResult.error())
-        {
-            ParsedMesh mesh;
-            mesh.modelPath = std::string(modelResult.value());
-
-            auto modelIdResult = entityJson["model_id"].get_string();
-            if (!modelIdResult.error())
-            {
-                auto modelId = Assets::assetIdFromString(modelIdResult.value());
-                if (!modelId)
-                {
-                    Log::Print("INVALID model_id: " + entity.name, "SceneParser", LogType::LOG_ERROR);
-                    return std::nullopt;
-                }
-                mesh.modelId = *modelId;
-            }
-
-            entity.mesh = std::move(mesh);
-        }
-
-        auto physicsResult = entityJson["physics"].get_object();
-        if (!physicsResult.error())
-        {
-            auto physicsJson = physicsResult.value();
-            ParsedPhysics physics;
-            physics.type = std::string(physicsJson["type"].get_string().value());
-            auto halfExtent = physicsJson["half_extent"].get_array();
-            if (!halfExtent.error())
-            {
-                readVec3(halfExtent.value(), physics.halfExtent);
-            }
-
-            auto massVal = physicsJson["mass"].get_double();
-            if (!massVal.error())
-            {
-                physics.mass = static_cast<float>(massVal.value());
-            }
-
-            entity.physics = physics;
-        }
-
-        auto weaponResult = entityJson["weapon"].get_object();
-        if (!weaponResult.error())
-        {
-            auto wj = weaponResult.value();
-            ParsedWeapon w;
-            auto fr = wj["firerate"].get_double();
-            if (!fr.error())
-                w.firerate = static_cast<float>(fr.value());
-            auto mr = wj["maxrange"].get_double();
-            if (!mr.error())
-                w.maxRange = static_cast<float>(mr.value());
-            entity.weapon = w;
-        }
-
-        auto audioResult = entityJson["audio"].get_object();
-        if (!audioResult.error())
-        {
-            auto aj = audioResult.value();
-            ParsedAudio a;
-            a.file = std::string(aj["file"].get_string().value());
-
-            auto fileIdResult = aj["file_id"].get_string();
-            if (!fileIdResult.error())
-            {
-                auto fileId = Assets::assetIdFromString(fileIdResult.value());
-                if (!fileId)
-                {
-                    Log::Print("INVALID audio file_id: " + entity.name, "SceneParser", LogType::LOG_ERROR);
-                    return std::nullopt;
-                }
-                a.fileId = *fileId;
-            }
-
-            auto vol = aj["volume"].get_double();
-            if (!vol.error())
-                a.volume = static_cast<float>(vol.value());
-            auto lp = aj["loop"].get_bool();
-            if (!lp.error())
-                a.loop = lp.value();
-            entity.audio = a;
-        }
-
-        auto characterControllerResult = entityJson["character_controller"].get_object();
-        if (!characterControllerResult.error())
-        {
-            auto controllerJson = characterControllerResult.value();
-            ParsedCharacterController controller;
-
-            auto gravity = controllerJson["gravity"].get_double();
-            if (!gravity.error())
-                controller.gravity = static_cast<float>(gravity.value());
-            auto jumpVelocity = controllerJson["jump_velocity"].get_double();
-            if (!jumpVelocity.error())
-                controller.jumpVelocity = static_cast<float>(jumpVelocity.value());
-            auto capsuleRadius = controllerJson["capsule_radius"].get_double();
-            if (!capsuleRadius.error())
-                controller.capsuleRadius = static_cast<float>(capsuleRadius.value());
-            auto capsuleHeight = controllerJson["capsule_height"].get_double();
-            if (!capsuleHeight.error())
-                controller.capsuleHeight = static_cast<float>(capsuleHeight.value());
-            auto maxWalkableSlope = controllerJson["max_walkable_slope"].get_double();
-            if (!maxWalkableSlope.error())
-                controller.maxWalkableSlope = static_cast<float>(maxWalkableSlope.value());
-            auto maxPushStrength = controllerJson["max_push_strength"].get_double();
-            if (!maxPushStrength.error())
-                controller.maxPushStrength = static_cast<float>(maxPushStrength.value());
-
-            entity.characterController = controller;
-        }
-
-        auto playerVal = entityJson["player"].get_bool();
-        if (!playerVal.error())
-            entity.player = playerVal.value();
-
-        result.entities.push_back(entity);
+        result.entities.push_back(std::move(entity));
     }
 
     // directional light

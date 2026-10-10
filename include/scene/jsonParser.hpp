@@ -2,6 +2,7 @@
 
 #include <optional>
 #include <string>
+#include <variant>
 #include <vector>
 
 #include "assetId.hpp"
@@ -11,60 +12,33 @@ namespace Cthulhu::Scene
 {
 
 inline constexpr uint32_t SCENE_FORMAT_VERSION = 3;
-struct ParsedAudio
+
+struct ParsedAssetRef
 {
-    std::string file;
-    std::optional<Assets::AssetId> fileId;
-    float volume = 1.0f;
-    bool loop = false;
-};
-struct ParsedPhysics
-{
-    std::string type;
-    float mass = 1.0f;
-    glm::vec3 halfExtent = glm::vec3(0.5f);
+    std::string path;
+    std::optional<Assets::AssetId> id;
 };
 
-struct ParsedMesh
+using ParsedValue = std::variant<double, bool, std::string, glm::vec3, ParsedAssetRef>;
+
+struct ParsedField
 {
-    std::string modelPath;
-    std::optional<Assets::AssetId> modelId;
+    std::string name;
+    ParsedValue value;
 };
 
-struct ParsedWeapon
+struct ParsedComponent
 {
-    float firerate = 10.0f;
-    float maxRange = 100.0f;
-};
-
-struct ParsedCharacterController
-{
-    float gravity = -9.81f;
-    float jumpVelocity = 5.0f;
-    float capsuleRadius = 0.3f;
-    float capsuleHeight = 2.0f;
-    float maxWalkableSlope = 45.0f;
-    float maxPushStrength = 100.0f;
+    std::string name;
+    std::vector<ParsedField> fields;
 };
 
 struct ParsedEntity
 {
     EntityId id;
     std::optional<EntityId> parentId;
-
     std::string name;
-
-    glm::vec3 position = glm::vec3(0.0f);
-    glm::vec3 rotation = glm::vec3(0.0f);
-    glm::vec3 scale = glm::vec3(1.0f);
-
-    std::optional<ParsedPhysics> physics;
-    std::optional<ParsedWeapon> weapon;
-    std::optional<ParsedAudio> audio;
-    std::optional<ParsedMesh> mesh;
-    std::optional<ParsedCharacterController> characterController;
-
-    bool player = false;
+    std::vector<ParsedComponent> components;
 };
 
 struct ParsedScene
