@@ -4,7 +4,7 @@
 #include <vector>
 
 #include <glad.h>
-#include <glfw3.h>
+#include <GLFW/glfw3.h>
 
 #include "camera.hpp"
 #include "framebuffer.hpp"

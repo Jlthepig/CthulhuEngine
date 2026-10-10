@@ -5,7 +5,7 @@
 #include <glm.hpp>
 
 #include <glad.h>
-#include <glfw3.h>
+#include <GLFW/glfw3.h>
 
 using std::make_unique;
 using std::unique_ptr;

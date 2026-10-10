@@ -181,6 +181,12 @@ class Engine
         return project ? &*project : nullptr;
     }
 
+    
+    const std::filesystem::path &getEngineResourceRoot() const
+    {
+        return engineResourceRoot;
+    }
+
     float getDeltaTime() const
     {
         return deltaTime;
