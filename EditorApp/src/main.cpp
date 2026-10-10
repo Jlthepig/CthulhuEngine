@@ -8,7 +8,9 @@
 #include "window.hpp"
 #include "log_utils.hpp"
 
+#include "editorShell.hpp"
 #include "editorUi.hpp"
+#include "session.hpp"
 
 static bool isFullscreen = false;
 static const float zoomSpeed = 350.0f;
@@ -95,11 +97,11 @@ int main()
     }
     editorUi = &ui;
 
-    auto& ctx = ui.context();
-    const octogui::NodeHandle root = ctx.ensureRoot();
-    ctx.style(root).all.background = octogui::Color::fromRGBA8(0, 0, 0, 0);
-    const octogui::NodeHandle title = ctx.createLabel(root, "CthulhuEditor");
-    (void) title;
+    Cthulhu::Editor::EditorShell shell;
+    shell.build(ui.context());
+    ui.setSceneNode(shell.sceneArea());
+
+    Cthulhu::Scribe::Session session(engine);
 
     glfwSetInputMode(engine.getWindow()->getWindow(), GLFW_CURSOR, GLFW_CURSOR_NORMAL);
     glfwSetMouseButtonCallback(engine.getWindow()->getWindow(), nullptr);
@@ -110,9 +112,16 @@ int main()
     while (!engine.shouldClose()) 
     {
         engine.update();
-        engine.render();
         ui.beginFrame(engine.getDeltaTime());
+        shell.update(ui.context(), engine, session);
+
+        const Cthulhu::Editor::PixelRect viewport = ui.pixelRect(shell.sceneArea());
+        engine.setViewportRect(viewport.x, viewport.y, viewport.width, viewport.height);
+        engine.render();
+
         ui.endFrame();
+
+        (void)session.takeEvents();
 
         engine.present();
     }

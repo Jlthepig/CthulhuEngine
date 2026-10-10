@@ -227,8 +227,7 @@ void Renderer::bindMaterial(const Material &material, const std::vector<Texture>
     }
 }
 
-void Renderer::render(unsigned int width, unsigned int height, float deltaTime,
-                      const std::vector<Renderable> &renderables)
+void Renderer::render(unsigned int width, unsigned int height, float deltaTime,const std::vector<Renderable> &renderables, int destX, int destY)
 {
     if (width == 0 || height == 0)
     {
@@ -446,7 +445,7 @@ void Renderer::render(unsigned int width, unsigned int height, float deltaTime,
     glClearColor(0.0f, 0.0f, 0.0f, 1.0f);
     glClear(GL_COLOR_BUFFER_BIT);
 
-    sceneFramebuffer.blitToScreen(width, height);
+    sceneFramebuffer.blitToScreen(destX, destY, width, height);
 }
 
 void Renderer::shutdown()

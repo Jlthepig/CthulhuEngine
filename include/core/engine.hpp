@@ -67,6 +67,7 @@ class Engine
     void update(); 
     void render(); // 3d 
     void present(); // swap bufferes and poll window events
+    void setViewportRect(int x, int y, int width, int height);
 
     bool loadScene(std::string_view resourcePath);
     bool createEmptyScene(const std::string &name = "Untitled");
@@ -216,6 +217,10 @@ class Engine
     uint64_t editGeneration{};
 
     std::vector<Rendering::Renderable> frameRenderables;
+    int viewportX{};
+    int viewportY{};
+    int viewportWidth{};
+    int viewportHeight{};
 
     UpdateCallback updateCallback = nullptr;
     void *updateContext = nullptr;

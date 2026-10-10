@@ -84,7 +84,7 @@ class Renderer
     void addPointLight(const PointLight &light);
     void setDirectionalLight(const DirectionalLight &light);
     void setPointLights(const std::vector<PointLight> &lights);
-    void render(unsigned int width, unsigned int height, float deltaTime, const std::vector<Renderable> &renderables);
+     void render(unsigned int width, unsigned int height, float deltaTime, const std::vector<Renderable> &renderables, int destX = 0, int destY = 0);
     void addDebugLine(const glm::vec3 &start, const glm::vec3 &end, const glm::vec3 &color, float duration = 0.0f);
     void shutdown();
 

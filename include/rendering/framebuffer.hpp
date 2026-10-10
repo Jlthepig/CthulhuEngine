@@ -12,7 +12,7 @@ class Framebuffer
     void unbind();
     void destroy();
 
-    void blitToScreen(unsigned int screenWidth, unsigned int screenHeight);
+    void blitToScreen(int x, int y, unsigned int screenWidth, unsigned int screenHeight);
     GLuint getColorTexture() const;
     unsigned int getWidth() const;
     unsigned int getHeight() const;

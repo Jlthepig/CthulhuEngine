@@ -89,11 +89,13 @@ void Framebuffer::resize(unsigned int width, unsigned int height)
     }
 }
 
-void Framebuffer::blitToScreen(unsigned int screenWidth, unsigned int screenHeight)
+void Framebuffer::blitToScreen(int x, int y, unsigned int screenWidth, unsigned int screenHeight)
 {
     glBindFramebuffer(GL_READ_FRAMEBUFFER, fbo);
     glBindFramebuffer(GL_DRAW_FRAMEBUFFER, 0);
-    glBlitFramebuffer(0, 0, width, height, 0, 0, screenWidth, screenHeight, GL_COLOR_BUFFER_BIT, GL_NEAREST);
+    glBlitFramebuffer(0, 0, static_cast<GLint>(width), static_cast<GLint>(height), x, y,
+                      x + static_cast<GLint>(screenWidth), y + static_cast<GLint>(screenHeight), GL_COLOR_BUFFER_BIT,
+                      GL_NEAREST);
 }
 
 void Framebuffer::destroy()

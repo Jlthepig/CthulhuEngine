@@ -9,6 +9,13 @@ struct GLFWwindow;
 
 namespace Cthulhu::Editor
 {
+    struct PixelRect
+    {
+        int x = 0;
+        int y = 0;
+        int width = 0;
+        int height = 0;
+    };
     class EditorUi
     {
         public:
@@ -30,10 +37,18 @@ namespace Cthulhu::Editor
 
             [[nodiscard]] bool wantsKeyboard() const noexcept;
 
+            void setSceneNode(octogui::NodeHandle node) noexcept
+            {
+                sceneNode = node;
+            }
+
+            [[nodiscard]] PixelRect pixelRect(octogui::NodeHandle node) const;
+
         private:
             GLFWwindow* window = nullptr;
             octogui::Context ctx;
             octogui::OpenGLBackend renderer;
+            octogui::NodeHandle sceneNode{};
             bool mouseOverUi = false;
             bool initialized = false;
 

@@ -1,4 +1,5 @@
 #include <cstdlib>
+#include <algorithm>
 
 #define STB_IMAGE_IMPLEMENTATION
 #include <glad.h>
@@ -695,7 +696,7 @@ void Engine::render()
     frameRenderables.clear();
     if (fbw <= 0 || fbh <= 0)
     {
-        return; // minimised
+        return;
     }
 
     if (activeScene)
@@ -718,7 +719,27 @@ void Engine::render()
         });
     }
 
-    renderer.render(static_cast<unsigned int>(fbw), static_cast<unsigned int>(fbh), deltaTime, frameRenderables);
+    int x = 0;
+    int y = 0;
+    int w = fbw;
+    int h = fbh;
+    if (viewportWidth > 0 && viewportHeight > 0)
+    {
+        x = std::clamp(viewportX, 0, fbw - 1);
+        y = std::clamp(viewportY, 0, fbh - 1);
+        w = std::min(viewportWidth, fbw - x);
+        h = std::min(viewportHeight, fbh - y);
+    }
+
+    renderer.render(static_cast<unsigned int>(w), static_cast<unsigned int>(h), deltaTime, frameRenderables, x, fbh - (y + h));
+}
+
+void Engine::setViewportRect(int x, int y, int width, int height)
+{
+    viewportX = x;
+    viewportY = y;
+    viewportWidth = width;
+    viewportHeight = height;
 }
 
 void Engine::present()
