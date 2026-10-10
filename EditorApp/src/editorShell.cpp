@@ -25,6 +25,7 @@ namespace Cthulhu::Editor
             fillWithChild(ctx, pane);
 
             const octogui::NodeHandle panel = ctx.createPanel(pane);
+            //ctx.style(panel).shadow = octogui::ShadowStyle{};
             auto layout = ctx.layoutStyle(panel);
             layout.mode = octogui::LayoutMode::Vertical;
             layout.horizontalAlignment = octogui::Alignment::Stretch;
@@ -39,6 +40,7 @@ namespace Cthulhu::Editor
         void seeThrough(octogui::Context &ctx, octogui::NodeHandle node)
         {
             ctx.style(node).all.background = octogui::Color::transparent();
+            ctx.style(node).shadow = octogui::ShadowStyle{};
         }
 
         void fixedBar(octogui::Context &ctx, octogui::NodeHandle bar, octogui::f32 height)
@@ -56,7 +58,7 @@ namespace Cthulhu::Editor
     void EditorShell::build(octogui::Context &ctx)
     {
         const octogui::NodeHandle root = ctx.ensureRoot();
-        ctx.style(root).all.background = octogui::Color::transparent();
+        seeThrough(ctx, root);
         auto rootLayout = ctx.layoutStyle(root);
         rootLayout.mode = octogui::LayoutMode::Vertical;
         rootLayout.horizontalAlignment = octogui::Alignment::Stretch;
