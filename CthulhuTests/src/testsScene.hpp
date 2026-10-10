@@ -32,8 +32,8 @@ inline void validateSave(Engine& engine, Results& r)
 	}
 	check(r, !text.empty(), "12 saved file readable");
 	check(r, !runtimeLeaked, "12 saved file contains no runtime state");
-	check(r, text.find("\"character_controller\"") != std::string::npos &&
-			 text.find("\"weapon\"") != std::string::npos, "12 saved file contains authoring components");
+	check(r, text.find("\"CharacterController\"") != std::string::npos &&
+			 text.find("\"Weapon\"") != std::string::npos, "12 saved file contains authoring components");
 }
 
 inline void validateLoadAndSwitch(Engine& engine, Results& r)

@@ -6,6 +6,7 @@
 #include "testsAssets.hpp"
 #include "testsPlayMode.hpp"
 #include "testsRuntimeApi.hpp"
+#include "testsSceneFormat.hpp"
 #include "testsScene.hpp"
 #include "testsScribe.hpp"
 #include "testsScribeAssets.hpp"
@@ -75,6 +76,7 @@ inline int run(Engine& engine)
 	validateSessionDuringPlay(engine, r);
 	validateUserSystems(engine, r);
 	validateRuntimeApi(engine, r);
+	validateSceneFormat(engine, r);
 	checkRefInvariant(engine, r, "after play/stop");
 	validateUnload(engine, r);
 	validateShutdown(engine, r);

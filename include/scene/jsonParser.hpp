@@ -11,7 +11,7 @@
 namespace Cthulhu::Scene
 {
 
-inline constexpr uint32_t SCENE_FORMAT_VERSION = 3;
+inline constexpr uint32_t SCENE_FORMAT_VERSION = 4;
 
 struct ParsedAssetRef
 {

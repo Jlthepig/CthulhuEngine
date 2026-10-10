@@ -101,7 +101,7 @@ std::optional<flecs::entity> Scene::findEntity(EntityId id) const
         return std::nullopt;
     }
 
-    if (!it->second.is_alive())
+    if (!it->second || !it->second.is_alive())
     {
         return std::nullopt;
     }
@@ -242,7 +242,7 @@ std::optional<EntityId> Scene::getParent(EntityId childId) const
 
     auto parent = child->parent();
 
-    if (!parent.is_alive())
+    if (!parent || !parent.is_alive())
     {
         return std::nullopt;
     }

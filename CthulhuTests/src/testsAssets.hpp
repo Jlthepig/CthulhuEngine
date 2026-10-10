@@ -16,10 +16,10 @@ inline void validateModelBounds(Engine& engine, Results& r)
     check(r, sane, "M1 loaded model carries computed bounds");
 
     constexpr std::string_view path = "res://.cthulhu/validation_bounds.scene";
-    const bool saved = engine.saveActiveSceneAs(path);
+	const bool saved = engine.saveActiveSceneAs(path);
     auto resolved = engine.getProject()->resolveResourcePath(path);
     const std::string text = resolved ? Utils::FileReader::readFile(resolved->string()) : "";
-    check(r, saved && text.find("\"model\"") != std::string::npos && text.find("\"bounds\"") == std::string::npos,
+	check(r, saved && text.find("\"Mesh\"") != std::string::npos && text.find("\"bounds\"") == std::string::npos,
           "M2 scenes no longer store hand-typed bounds");
 }
 
@@ -127,8 +127,8 @@ inline void validateAssetReferences(Engine& engine, Results& r)
     const bool saved = engine.saveActiveSceneAs(savedPath);
     auto resolvedSaved = engine.getProject()->resolveResourcePath(savedPath);
     const std::string text = resolvedSaved ? Utils::FileReader::readFile(resolvedSaved->string()) : "";
-    check(r, saved && text.find("\"model_id\": \"" + floorId + "\"") != std::string::npos &&
-             text.find("\"file_id\": \"" + clipId + "\"") != std::string::npos &&
+	check(r, saved && text.find("\"id\": \"" + floorId + "\"") != std::string::npos &&
+			 text.find("\"id\": \"" + clipId + "\"") != std::string::npos &&
              text.find("OldFloorName") == std::string::npos,
           "K2 save writes asset IDs and refreshed path hints");
 

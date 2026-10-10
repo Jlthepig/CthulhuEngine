@@ -133,9 +133,8 @@ struct JsonWriter
         firstStack.back() = false;
     }
 
-    void vec3(const std::string &k, const glm::vec3 &v)
+    void vec3Value(const glm::vec3 &v)
     {
-        key(k);
         beginArray();
         value(v.x);
         oss << ", ";
@@ -144,7 +143,69 @@ struct JsonWriter
         value(v.z);
         endArray();
     }
+
+    void vec3(const std::string &k, const glm::vec3 &v)
+    {
+        key(k);
+        vec3Value(v);
+    }
 };
+
+bool writeField(JsonWriter &w, const FieldDescriptor &field, const FieldValue &value,
+                const Assets::AssetRegistry &registry)
+{
+    w.key(field.name);
+
+    switch (field.type)
+    {
+    case FieldType::Float:
+        w.value(std::get<float>(value));
+        return true;
+    case FieldType::Int:
+        w.value(std::get<int>(value));
+        return true;
+    case FieldType::Bool:
+        w.value(std::get<bool>(value));
+        return true;
+    case FieldType::Vec3:
+    case FieldType::Color:
+        w.vec3Value(std::get<glm::vec3>(value));
+        return true;
+    case FieldType::String:
+        w.value(std::get<std::string>(value));
+        return true;
+    case FieldType::Enum:
+    {
+        const int index = std::get<int>(value);
+        if (index < 0 || index >= static_cast<int>(field.enumNames.size()))
+        {
+            Log::Print("CANNOT SAVE ENUM VALUE OUT OF RANGE: " + field.name, "SceneWriter", LogType::LOG_ERROR);
+            w.value(std::string{});
+            return false;
+        }
+        w.value(field.enumNames[static_cast<size_t>(index)]);
+        return true;
+    }
+    case FieldType::AssetRef:
+    {
+        const auto &path = std::get<std::string>(value);
+        w.beginObject();
+        w.key("path");
+        w.value(path);
+        if (const auto *record = registry.findByPath(path))
+        {
+            w.key("id");
+            w.value(Assets::assetIdToString(record->id));
+        }
+        w.endObject();
+        return true;
+    }
+    case FieldType::EntityRef:
+        w.value(entityIdToString(std::get<EntityId>(value)));
+        return true;
+    }
+    return false;
+}
 } // namespace
 
 bool SceneWriter::writeScene(const Scene &scene, const std::string &path, const Assets::AssetRegistry &registry)
@@ -162,10 +223,10 @@ bool SceneWriter::writeScene(const Scene &scene, const std::string &path, const 
     w.beginArray();
 
     bool valid = true;
+    const ComponentRegistry &components = *scene.getComponentRegistry();
 
     std::unordered_set<EntityId, EntityIdHash> writtenIds;
-    scene.getWorld().each([&](flecs::entity e, const EntityIdentityComponent &identity, const NameComponent &name,
-                              const TransformComponent &transform) {
+    scene.getWorld().each([&](flecs::entity e, const EntityIdentityComponent &identity, const NameComponent &name) {
         if (!identity.id.isValid())
         {
             Log::Print("CANNOT SAVE ENTITY WITH INVALID ID", "SceneWriter", LogType::LOG_ERROR);
@@ -202,100 +263,27 @@ bool SceneWriter::writeScene(const Scene &scene, const std::string &path, const 
             w.value(entityIdToString(*parentId));
         }
 
-        w.vec3("position", transform.position);
-        w.vec3("rotation", transform.rotation);
-        w.vec3("scale", transform.scale);
-
-        if (e.has<MeshComponent>())
+        w.key("components");
+        w.beginObject();
+        for (const auto &descriptor : components.getAll())
         {
-            const auto &m = e.get<MeshComponent>();
-            w.key("model");
-            w.value(m.modelPath);
-            if (const auto *record = registry.findByPath(m.modelPath))
+            if (!descriptor.has(e))
             {
-                w.key("model_id");
-                w.value(Assets::assetIdToString(record->id));
+                continue;
             }
-        }
 
-        if (e.has<PhysicsComponent>())
-        {
-            const auto &p = e.get<PhysicsComponent>();
-
-            w.key("physics");
+            w.key(descriptor.name);
             w.beginObject();
-            w.key("type");
-            switch (p.type)
+            for (const auto &field : descriptor.fields)
             {
-            case PhysicsBodyType::Static:
-                w.value(std::string("static"));
-                break;
-            case PhysicsBodyType::Dynamic:
-                w.value(std::string("dynamic"));
-                break;
+                if (!writeField(w, field, field.get(e), registry))
+                {
+                    valid = false;
+                }
             }
-            w.vec3("half_extent", p.halfExtent);
-            w.key("mass");
-            w.value(p.mass);
             w.endObject();
         }
-
-        if (e.has<WeaponComponent>()) // Gap B
-        {
-            const auto &wp = e.get<WeaponComponent>();
-            w.key("weapon");
-            w.beginObject();
-            w.key("firerate");
-            w.value(wp.fireRate);
-            w.key("maxrange");
-            w.value(wp.maxRange);
-            w.endObject();
-        }
-
-        if (e.has<CharacterControllerComponent>())
-        {
-            const auto &controller = e.get<CharacterControllerComponent>();
-            w.key("character_controller");
-            w.beginObject();
-            w.key("gravity");
-            w.value(controller.gravity);
-            w.key("jump_velocity");
-            w.value(controller.jumpVelocity);
-            w.key("capsule_radius");
-            w.value(controller.capsuleRadius);
-            w.key("capsule_height");
-            w.value(controller.capsuleHeight);
-            w.key("max_walkable_slope");
-            w.value(controller.maxWalkableSlope);
-            w.key("max_push_strength");
-            w.value(controller.maxPushStrength);
-            w.endObject();
-        }
-
-        if (e.has<AudioSourceComponent>()) // Gap B
-        {
-            const auto &au = e.get<AudioSourceComponent>();
-            w.key("audio");
-            w.beginObject();
-            w.key("file");
-            w.value(au.filePath);
-            if (const auto *record = registry.findByPath(au.filePath))
-            {
-                w.key("file_id");
-                w.value(Assets::assetIdToString(record->id));
-            }
-            w.key("volume");
-            w.value(au.volume);
-            w.key("loop");
-            w.value(au.loop);
-            w.endObject();
-        }
-
-        if (e.has<TagPlayer>()) // Gap B
-        {
-            w.key("player");
-            w.value(true);
-        }
+        w.endObject();
 
         w.endObject();
     });

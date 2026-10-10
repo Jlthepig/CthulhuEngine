@@ -118,15 +118,8 @@ static bool readValue(simdjson::simdjson_result<simdjson::ondemand::value> json,
     }
 }
 
-static bool readComponents(EntityJson& entityJson, ParsedEntity& entity)
+static bool readComponents(simdjson::ondemand::object& components, ParsedEntity& entity)
 {
-    simdjson::ondemand::object components;
-    if (entityJson["components"].get_object().get(components))
-    {
-        Log::Print("ENTITY HAS NO components: " + entity.name, "SceneParser", LogType::LOG_ERROR);
-        return false;
-    }
-
     for (auto componentJson : components)
     {
         std::string_view componentName;
@@ -162,6 +155,83 @@ static bool readComponents(EntityJson& entityJson, ParsedEntity& entity)
         }
 
         entity.components.push_back(std::move(component));
+    }
+
+    return true;
+}
+
+static bool readEntity(EntityJson& entityJson, ParsedEntity& entity)
+{
+    simdjson::ondemand::object object;
+    if (entityJson.get_object().get(object))
+    {
+        Log::Print("ENTITY IS NOT AN OBJECT", "SceneParser", LogType::LOG_ERROR);
+        return false;
+    }
+
+    bool hasId = false;
+    bool hasName = false;
+    bool hasComponents = false;
+
+    for (auto field : object)
+    {
+        std::string_view key;
+        if (field.unescaped_key().get(key))
+        {
+            Log::Print("INVALID ENTITY KEY", "SceneParser", LogType::LOG_ERROR);
+            return false;
+        }
+
+        if (key == "id")
+        {
+            std::string_view text;
+            auto parsed = field.value().get_string().get(text) ? std::nullopt : entityIdFromString(text);
+            if (!parsed)
+            {
+                Log::Print("ENTITY HAS INVALID ID", "SceneParser", LogType::LOG_ERROR);
+                return false;
+            }
+            entity.id = *parsed;
+            hasId = true;
+        }
+        else if (key == "parent")
+        {
+            std::string_view text;
+            auto parsed = field.value().get_string().get(text) ? std::nullopt : entityIdFromString(text);
+            if (!parsed)
+            {
+                Log::Print("ENTITY HAS INVALID PARENT ID", "SceneParser", LogType::LOG_ERROR);
+                return false;
+            }
+            entity.parentId = *parsed;
+        }
+        else if (key == "name")
+        {
+            std::string_view text;
+            if (field.value().get_string().get(text))
+            {
+                Log::Print("INVALID ENTITY NAME", "SceneParser", LogType::LOG_ERROR);
+                return false;
+            }
+            entity.name = std::string(text);
+            hasName = true;
+        }
+        else if (key == "components")
+        {
+            simdjson::ondemand::object components;
+            if (field.value().get_object().get(components) || !readComponents(components, entity))
+            {
+                Log::Print("INVALID components ON: " + entity.name, "SceneParser", LogType::LOG_ERROR);
+                return false;
+            }
+            hasComponents = true;
+        }
+    }
+
+    if (!hasId || !hasName || !hasComponents)
+    {
+        Log::Print("ENTITY IS MISSING id, name OR components", "SceneParser", LogType::LOG_ERROR);
+        return false;
     }
 
     return true;
@@ -338,7 +408,7 @@ std::optional<ParsedScene> JsonParser::parseScene(const std::string &path)
     }
 
     const uint64_t version = versionResult.value();
-    if (version < 2 || version > 4)
+    if (version < 2 || version > SCENE_FORMAT_VERSION)
     {
         Log::Print("UNSUPPORTED SCENE FORMAT VERSION: " + std::to_string(version), "SceneParser", LogType::LOG_ERROR);
         return std::nullopt;
@@ -361,21 +431,51 @@ std::optional<ParsedScene> JsonParser::parseScene(const std::string &path)
     {
         ParsedEntity entity;
 
-        auto idResult = entityJson["id"].get_string();
-        if (idResult.error())
+        if (version >= 4)
         {
-            Log::Print("ENTITY IS MISSING ID", "JsonParser", LogType::LOG_ERROR);
-            return std::nullopt;
+            if (!readEntity(entityJson, entity))
+            {
+                return std::nullopt;
+            }
+        }
+        else
+        {
+            auto idResult = entityJson["id"].get_string();
+            auto parsedId = idResult.error() ? std::nullopt : entityIdFromString(idResult.value());
+            if (!parsedId)
+            {
+                Log::Print("ENTITY IS MISSING ID OR HAS AN INVALID ONE", "JsonParser", LogType::LOG_ERROR);
+                return std::nullopt;
+            }
+            entity.id = *parsedId;
+
+            auto parentResult = entityJson["parent"].get_string();
+            if (!parentResult.error())
+            {
+                auto parsedParent = entityIdFromString(parentResult.value());
+                if (!parsedParent)
+                {
+                    Log::Print("ENTITY HAS INVALID PARENT ID", "JsonParser", LogType::LOG_ERROR);
+                    return std::nullopt;
+                }
+                entity.parentId = *parsedParent;
+            }
+
+            auto name = entityJson["name"].get_string();
+            if (name.error())
+            {
+                Log::Print("INVALID ENTITY NAME", "SceneParser", LogType::LOG_ERROR);
+                return std::nullopt;
+            }
+            entity.name = name.value();
+
+            if (!readLegacyComponents(entityJson, entity))
+            {
+                return std::nullopt;
+            }
         }
 
-        auto parsedId = entityIdFromString(idResult.value());
-        if (!parsedId)
-        {
-            Log::Print("ENTITY HAS INVALID ID", "JsonParser", LogType::LOG_ERROR);
-            return std::nullopt;
-        }
-        entity.id = *parsedId;
-
+        // checks shared by every format
         if (!parsedEntityIds.insert(entity.id).second)
         {
             Log::Print("SCENE CONTAINS DUPLICATE ENTITY ID: " + entityIdToString(entity.id), "JsonParser",
@@ -383,36 +483,9 @@ std::optional<ParsedScene> JsonParser::parseScene(const std::string &path)
             return std::nullopt;
         }
 
-        auto parentResult = entityJson["parent"].get_string();
-        if (!parentResult.error())
+        if (entity.parentId && *entity.parentId == entity.id)
         {
-            auto parsedParent = entityIdFromString(parentResult.value());
-            if (!parsedParent)
-            {
-                Log::Print("ENTITY HAS INVALID PARENT ID", "JsonParser", LogType::LOG_ERROR);
-                return std::nullopt;
-            }
-
-            if (*parsedParent == entity.id)
-            {
-                Log::Print("ENTITY CANNOT BE ITS OWN PARENT", "JsonParser", LogType::LOG_ERROR);
-                return std::nullopt;
-            }
-
-            entity.parentId = *parsedParent;
-        }
-
-        auto name = entityJson["name"].get_string();
-        if (name.error())
-        {
-            Log::Print("INVALID ENTITY NAME", "SceneParser", LogType::LOG_ERROR);
-            return std::nullopt;
-        }
-        entity.name = name.value();
-
-        const bool componentsRead = version >= 4 ? readComponents(entityJson, entity) : readLegacyComponents(entityJson, entity);
-        if (!componentsRead)
-        {
+            Log::Print("ENTITY CANNOT BE ITS OWN PARENT", "JsonParser", LogType::LOG_ERROR);
             return std::nullopt;
         }
 

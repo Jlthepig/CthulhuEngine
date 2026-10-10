@@ -65,7 +65,7 @@ void RegisterCoreSystems(flecs::world &world, Cthulhu::Engine *engineContext)
         .each([engineContext](flecs::entity entity, MeshComponent &mesh) {
             auto &assetManager = engineContext->getAssetManager();
 
-            const Assets::ModelHandle handle = assetManager.acquireModel(mesh.modelPath);
+            const Assets::ModelHandle handle = mesh.modelPath.empty() ? Assets::ModelHandle{} : assetManager.acquireModel(mesh.modelPath);
             if (!handle.isValid())
             {
                 entity.remove<MeshRuntimeComponent>();
@@ -245,7 +245,7 @@ void RegisterCoreSystems(flecs::world &world, Cthulhu::Engine *engineContext)
         .each([engineContext](flecs::entity entity, AudioSourceComponent &source) {
             auto &assets = engineContext->getAssetManager();
 
-            const Assets::AudioClipHandle clip = assets.acquireAudioClip(source.filePath);
+            const Assets::AudioClipHandle clip = source.filePath.empty() ? Assets::AudioClipHandle{} : assets.acquireAudioClip(source.filePath);
 
             if (!clip.isValid())
             {
