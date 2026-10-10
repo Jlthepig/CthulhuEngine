@@ -62,6 +62,12 @@ class Engine
     void run();
     void shutdown();
 
+    // we split one frame to allow OctoGui to draw the ui between render() and run()
+    bool shouldClose() const;
+    void update(); 
+    void render(); // 3d 
+    void present(); // swap bufferes and poll window events
+
     bool loadScene(std::string_view resourcePath);
     bool createEmptyScene(const std::string &name = "Untitled");
     void unloadScene();

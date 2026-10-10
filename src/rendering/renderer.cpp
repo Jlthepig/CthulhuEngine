@@ -235,6 +235,11 @@ void Renderer::render(unsigned int width, unsigned int height, float deltaTime,
         return;
     }
     sceneFramebuffer.resize(width, height);
+    glEnable(GL_DEPTH_TEST);
+    glDepthMask(GL_TRUE);
+    glEnable(GL_CULL_FACE);
+    glDisable(GL_BLEND);
+    glDisable(GL_SCISSOR_TEST);
 
     if (camera != nullptr)
     {

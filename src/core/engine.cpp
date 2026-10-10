@@ -623,75 +623,113 @@ void Engine::run()
     }
 
     state = EngineState::Running;
+    lastFrame = glfwGetTime();
 
-    lastFrame = (float)glfwGetTime();
-    while (!glfwWindowShouldClose(glfwWindow))
+    while (!shouldClose())
     {
-        double currentFrame = (float)glfwGetTime();
-        deltaTime = (float)(currentFrame - lastFrame);
-        lastFrame = currentFrame;
-
-        Core::Input::update();
-        Core::Audio::update();
-
-        if (isSimulating())
-        {
-            physicsWorld.step(deltaTime);
-        }
-
-        // ecs systems are always progressing
-        // the game systems are automatically handled by applySimStateToSystems()
-        if (activeScene)
-        {
-            activeScene->getWorld().progress(deltaTime);
-        }
-
-        if (simState == SimulationState::Stepping)
-        {
-            simState = SimulationState::Paused;
-            applySimStateToSystems();
-        }
-
-        if (updateCallback)
-        {
-            updateCallback(updateContext, deltaTime);
-        }
-
-        int fbw, fbh;
-        glfwGetFramebufferSize(glfwWindow, &fbw, &fbh);
-
-        frameRenderables.clear();
-        if (fbw > 0 && fbh > 0)
-        {
-            if (activeScene)
-            {
-                activeScene->getWorld().each([&](flecs::entity e, const Scene::TransformComponent &transform,
-                                                 const Scene::MeshComponent &,
-                                                 const Scene::MeshRuntimeComponent &meshRuntime) {
-                    if (!e.has<Scene::TagActive>())
-                    {
-                        return;
-                    }
-
-                    Rendering::Model *model = assetManager.getModel(meshRuntime.model);
-                    if (!model)
-                    {
-                        return;
-                    }
-
-                    frameRenderables.push_back({model, transform.cachedModelMatrix, transform.cachedNormalMatrix,
-                                                model->boundsMin, model->boundsMax});
-                });
-            }
-
-            renderer.render(fbw, fbh, deltaTime, frameRenderables);
-        }
-
-        glfwSwapBuffers(glfwWindow);
-        glfwPollEvents();
+        update();
+        render();
+        present();
     }
 
     state = EngineState::Initialized;
+}
+
+bool Engine::shouldClose() const
+{
+    return !glfwWindow || glfwWindowShouldClose(glfwWindow);
+}
+
+void Engine::update()
+{
+    if (state == EngineState::Uninitialized || !glfwWindow)
+    {
+        return;
+    }
+
+    const double currentFrame = glfwGetTime();
+    if (lastFrame <= 0.0)
+    {
+        lastFrame = currentFrame; // first frame
+    }
+    deltaTime = static_cast<float>(currentFrame - lastFrame);
+    lastFrame = currentFrame;
+
+    Core::Input::update();
+    Core::Audio::update();
+
+    if (isSimulating())
+    {
+        physicsWorld.step(deltaTime);
+    }
+
+    // ecs systems always progress gameplay systems must follow applySimStateToSystems()
+    if (activeScene)
+    {
+        activeScene->getWorld().progress(deltaTime);
+    }
+
+    if (simState == SimulationState::Stepping)
+    {
+        simState = SimulationState::Paused;
+        applySimStateToSystems();
+    }
+
+    if (updateCallback)
+    {
+        updateCallback(updateContext, deltaTime);
+    }
+}
+
+void Engine::render()
+{
+    if (state == EngineState::Uninitialized || !glfwWindow)
+    {
+        return;
+    }
+
+    int fbw = 0;
+    int fbh = 0;
+    glfwGetFramebufferSize(glfwWindow, &fbw, &fbh);
+
+    frameRenderables.clear();
+    if (fbw <= 0 || fbh <= 0)
+    {
+        return; // minimised
+    }
+
+    if (activeScene)
+    {
+        activeScene->getWorld().each([&](flecs::entity e, const Scene::TransformComponent &transform,
+                                         const Scene::MeshComponent &, const Scene::MeshRuntimeComponent &meshRuntime) {
+            if (!e.has<Scene::TagActive>())
+            {
+                return;
+            }
+
+            Rendering::Model *model = assetManager.getModel(meshRuntime.model);
+            if (!model)
+            {
+                return;
+            }
+
+            frameRenderables.push_back(
+                {model, transform.cachedModelMatrix, transform.cachedNormalMatrix, model->boundsMin, model->boundsMax});
+        });
+    }
+
+    renderer.render(static_cast<unsigned int>(fbw), static_cast<unsigned int>(fbh), deltaTime, frameRenderables);
+}
+
+void Engine::present()
+{
+    if (!glfwWindow)
+    {
+        return;
+    }
+
+    glfwSwapBuffers(glfwWindow);
+    glfwPollEvents();
 }
 
 void Engine::setUpdateCallback(UpdateCallback callback, void *context)
