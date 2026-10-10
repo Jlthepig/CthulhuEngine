@@ -24,6 +24,8 @@ This is the first proper release of OctoGUI. Here's what's in it.
   together so the GPU isn't swamped with tiny jobs.
 - An OpenGL 3.3 renderer and GLFW input support out of the box.
 - You can use your own OpenGL loader instead of GLAD.
+- Debug and release builds, each with one build script. A debug HarfBuzz
+  is included so debug builds link cleanly.
 
 ### Fixed
 - OctoGUI keeps its copy of stb_image to itself now, so it won't clash with

@@ -14,6 +14,8 @@ It's still early days, so expect a few rough edges and the odd API change.
 - `backends/GLFW/` - gets mouse and keyboard input from GLFW
 - `third_party/` - the stuff OctoGUI needs for text and images (FreeType,
   HarfBuzz, stb_image), each with its license
+- `project.kmake`, `release-windows.bat`, `debug-windows.bat` - builds the
+  library with KalaMake
 - `assets/` - a default font (Roboto) and the default icon sheet
 
 GLAD and GLFW aren't included. Your project already has those, so OctoGUI just
@@ -31,23 +33,50 @@ The text libraries come prebuilt for Windows only.
 
 ## Getting it into your project
 
-1. **Build the library.** Compile everything in `src/` as a static library.
-   It needs these include folders: `include`, `src`, `third_party/stb`,
-   `third_party/freetypeharfbuzz/include` and
-   `third_party/freetypeharfbuzz/include/harfbuzz`.
-2. **Link the text libraries.** They're already built and sitting in
-   `third_party/freetypeharfbuzz/lib/`. Link all six `.lib` files in there.
-3. **Add the backends to your app.** Compile the two backend `.cpp` files as
-   part of your own app, not the library, because they use your GLAD and GLFW.
-   Add `include`, `backends/OpenGL` and `backends/GLFW` to your include folders.
-4. **Using a different OpenGL loader?** OctoGUI looks for `glad/gl.h` by
-   default. If you use something else, define `OCTOGUI_GL_LOADER_HEADER` as
-   your loader's header (e.g. `"my/loader.h"`) when building the OpenGL
-   backend. Either way, load OpenGL before you start OctoGUI.
-5. **Set up input last.** If your app sets its own GLFW callbacks for keys,
-   typing or scrolling, set those up first and call `glfw::initInput` after.
-   OctoGUI passes everything on to your callbacks, so nothing gets lost. Do it
-   the other way round and your callbacks will replace OctoGUI's.
+### 1. Build OctoGUI
+
+Run `release-windows.bat` or `debug-windows.bat` in the OctoGUI folder. That
+gives you `build/release-windows/OctoGui.lib` or `build/debug-windows/OctoGui.lib`.
+
+### 2. Link it into your app
+
+Link `OctoGui.lib` from the matching build folder, plus these from
+`third_party/freetypeharfbuzz/lib/`:
+
+- `freetype.lib`, `brotlicommon.lib`, `brotlidec.lib`, `libpng16_static.lib`, `zs.lib`
+- `harfbuzz.lib` for release, or `debug/harfbuzz.lib` for debug
+
+Also add the link flag `NODEFAULTLIB:LIBCMT`. A few of the prebuilt libraries
+were made with a different C runtime setting, and this makes them all use your
+app's one.
+
+### 3. Add the backends to your app
+
+Compile the two backend `.cpp` files as part of your own app, not the library,
+because they use your GLAD and GLFW. Add `include`, `backends/OpenGL` and
+`backends/GLFW` to your include folders, plus the folder that contains
+`GLFW/glfw3.h`.
+
+### 4. Using a different OpenGL loader?
+
+OctoGUI looks for `glad/gl.h` by default. If you use something else, set
+`OCTOGUI_GL_LOADER_HEADER` to your loader's header. The easy way is a tiny
+file in your app:
+
+```cpp
+#define OCTOGUI_GL_LOADER_HEADER <glad.h>
+#include "OctoGui_OpenGL.cpp"
+```
+
+(Setting it from the command line works too, but Windows' `cmd` trips over the
+`<` and `>`.) Either way, load OpenGL before you start OctoGUI.
+
+### 5. Set up input last
+
+If your app sets its own GLFW callbacks for keys, typing or scrolling, set
+those up first and call `glfw::initInput` after. OctoGUI passes everything on
+to your callbacks, so nothing gets lost. Do it the other way round and your
+callbacks will replace OctoGUI's.
 
 ## Heads up: OpenGL settings
 

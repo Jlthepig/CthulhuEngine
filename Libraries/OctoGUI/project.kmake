@@ -1,0 +1,35 @@
+#version 1.0
+#global
+compilerlauncher: ccache
+compiler: clang-cl
+standard: c++20
+binarytype: static
+binaryname: OctoGui
+sources: "src"
+headers: "src", "include", "third_party/freetypeharfbuzz/include", "third_party/freetypeharfbuzz/include/freetype", "third_party/freetypeharfbuzz/include/harfbuzz", "third_party/stb"
+
+customflags: export-compile-commands, export-vscode-sln, warnings-as-errors
+
+warninglevel: strict
+
+#profile release-windows
+    buildtype: release
+    buildpath: "build\\release-windows"
+    links: "third_party/freetypeharfbuzz/lib"
+
+#profile debug-windows
+    buildtype: debug
+    buildpath: "build\\debug-windows"
+
+#profile release-linux
+    compiler: clang++
+    targettype: linux-gnu
+    buildtype: release
+    buildpath: "build\\release-linux"
+
+#profile debug-linux
+    compiler: clang++
+    targettype: linux-gnu
+    buildtype: debug
+    buildpath: "build\\debug-linux"
+    
