@@ -7,7 +7,7 @@
 #include <trigonometric.hpp>
 
 #include <glad.h>
-#include <glfw3.h>
+#include <GLFW/glfw3.h>
 
 #include "camera.hpp"
 #include "input.hpp"

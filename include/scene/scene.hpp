@@ -1,5 +1,6 @@
 #pragma once
 
+#include <cstddef>
 #include <cstdint>
 #include <optional>
 #include <string>
@@ -28,6 +29,8 @@ struct EntitySnapshot
     EntityId id;
     std::optional<EntityId> parentId;
     std::string name;
+    bool hasCustomSiblingOrder = false;
+    std::size_t siblingOrder{};
     std::vector<ComponentSnapshot> components;
 };
 
@@ -116,8 +119,13 @@ class Scene
     bool setParent(EntityId childId, EntityId parentId);
     bool clearParent(EntityId childId);
 
-    [[nodiscard]] std::optional<EntityId> getParent(EntityId childId) const;
+    [[nodiscard]] std::optional<EntityId> getParent(EntityId childId) const;  
     [[nodiscard]] std::vector<EntityId> getChildren(EntityId parentId) const;
+    [[nodiscard]] std::vector<EntityId> getRootEntities() const;
+    [[nodiscard]] std::optional<std::size_t> getSiblingOrder(EntityId childId) const;
+    [[nodiscard]] bool hasCustomSiblingOrder(std::optional<EntityId> parentId) const;
+    bool setSiblingOrder(EntityId childId, std::size_t order);
+
 
     [[nodiscard]] std::optional<EntityId> duplicateEntity(EntityId sourceId);
 
@@ -181,6 +189,7 @@ class Scene
     uint32_t nextId{};
 
     std::unordered_map<EntityId, flecs::entity, EntityIdHash> entityLookup;
+    std::unordered_map<EntityId, std::vector<EntityId>, EntityIdHash> customSiblingOrders;
     flecs::world world;
 
     Rendering::DirectionalLight directionalLight;
@@ -195,5 +204,11 @@ class Scene
 
     [[nodiscard]]
     EntityId generateUniqueEntityId() const;
+
+    void sortSiblings(std::vector<EntityId>& siblings, EntityId parentKey) const;
+    void appendToCustomSiblingGroup(EntityId parentKey, EntityId childId);
+    void removeFromCustomSiblingGroup(EntityId parentKey, EntityId childId);
+    void removeEntityFromSiblingOrders(EntityId id);
+
 };
 } // namespace Cthulhu::Scene

@@ -1,6 +1,6 @@
 #include <cstring>
 
-#include <glfw3.h>
+#include <GLFW/glfw3.h>
 
 #include "input.hpp"
 #include "log_utils.hpp"

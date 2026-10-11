@@ -1,7 +1,7 @@
 #include <memory>
 #include <utility>
 
-#include <glfw3.h>
+#include <GLFW/glfw3.h>
 
 #include "camera.hpp"
 #include "log_utils.hpp"

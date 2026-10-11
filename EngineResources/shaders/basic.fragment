@@ -116,8 +116,11 @@ void main() {
 
     // 1. Material Properties
     vec3 albedo = texture(uTexture, TexCoord).rgb * uBaseColorFactor.rgb;
-    float roughness = texture(uMetallicRoughnessTexture, TexCoord).g * uRoughnessFactor;
-    float metallic = texture(uMetallicRoughnessTexture, TexCoord).b * uMetallicFactor;
+
+    vec4 MetallicRoughness = texture(uMetallicRoughnessTexture, TexCoord);
+
+    float roughness = MetallicRoughness.g * uRoughnessFactor;
+    float metallic =  MetallicRoughness.b * uMetallicFactor;
     roughness = max(roughness, 0.04);
 
     // 2. F0
@@ -152,10 +155,13 @@ void main() {
 
     // 4. Point Lights
     for (int i = 0; i < pointLightCount; i++) {
-        vec3 L = normalize(pointLights[i].position - FragPos);
-        vec3 H = normalize(V + L);
+        vec3 lightOffset = pointLights[i].position - FragPos;
+
+        float dist = length(lightOffset);
+        vec3 L = lightOffset / max(dist, 0.0001);
         
-        float dist = length(pointLights[i].position - FragPos);
+        vec3 H = normalize(V + L);
+
         float attenuation = 1.0 / (pointLights[i].constant + pointLights[i].linear * dist + pointLights[i].quadratic * (dist * dist));
         
         float pshadow = 0.0;

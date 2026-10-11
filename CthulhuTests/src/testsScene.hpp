@@ -1,9 +1,51 @@
 #pragma once
 
+#include <algorithm>
+
 #include "testCommon.hpp"
 
 namespace Cthulhu::Validation
 {
+inline void validateHierarchyOrdering(CS::Scene& scene, Results& r)
+{
+    const CS::EntityId rootAlphaId = idOf(scene.createEntity("V_OrderRoot_A"));
+    const CS::EntityId rootZuluId = idOf(scene.createEntity("V_OrderRoot_Z"));
+    const auto roots = scene.getRootEntities();
+    const auto rootAlpha = std::find(roots.begin(), roots.end(), rootAlphaId);
+    const auto rootZulu = std::find(roots.begin(), roots.end(), rootZuluId);
+    check(r, rootAlpha != roots.end() && rootZulu != roots.end() && rootAlpha < rootZulu,
+          "H0 root entities default to alphabetical order");
+
+    const auto parent = scene.createEntity("V_OrderParent");
+    const CS::EntityId parentId = idOf(parent);
+    const CS::EntityId alphaId = idOf(scene.createEntity("V_Order_A"));
+    const CS::EntityId zuluId = idOf(scene.createEntity("V_Order_Z"));
+    scene.setParent(alphaId, parentId);
+    scene.setParent(zuluId, parentId);
+
+    auto children = scene.getChildren(parentId);
+    check(r, children.size() == 2 && children[0] == alphaId && children[1] == zuluId,
+          "H1 unordered siblings default to alphabetical order");
+
+    const bool reordered = scene.setSiblingOrder(zuluId, 0);
+    const bool renamed = scene.renameEntity(zuluId, "V_Order_Zzz");
+    children = scene.getChildren(parentId);
+    check(r, reordered && renamed && children.size() == 2 && children[0] == zuluId,
+          "H2 custom sibling order survives a rename");
+
+    const auto snapshot = scene.captureSubtree(parentId);
+    const bool removed = scene.destroyEntity(parentId);
+    const bool restored = snapshot && removed && scene.restoreSubtree(*snapshot);
+    children = restored ? scene.getChildren(parentId) : std::vector<CS::EntityId>{};
+    check(r, restored && children.size() == 2 && children[0] == zuluId && children[1] == alphaId,
+          "H3 subtree restore preserves custom sibling order");
+
+    scene.destroyEntity(parentId);
+    scene.destroyEntity(rootAlphaId);
+    scene.destroyEntity(rootZuluId);
+    scene.markClean();
+}
+
 inline void validateSave(Engine& engine, Results& r)
 {
 	auto& scene = *engine.getActiveScene();
@@ -34,6 +76,7 @@ inline void validateSave(Engine& engine, Results& r)
 	check(r, !runtimeLeaked, "12 saved file contains no runtime state");
 	check(r, text.find("\"CharacterController\"") != std::string::npos &&
 			 text.find("\"Weapon\"") != std::string::npos, "12 saved file contains authoring components");
+	validateHierarchyOrdering(scene, r);
 }
 
 inline void validateLoadAndSwitch(Engine& engine, Results& r)

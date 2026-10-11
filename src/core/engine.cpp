@@ -3,7 +3,7 @@
 
 #define STB_IMAGE_IMPLEMENTATION
 #include <glad.h>
-#include <glfw3.h>
+#include <GLFW/glfw3.h>
 #include <stb_image.h>
 
 #include <Jolt/Jolt.h>
