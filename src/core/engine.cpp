@@ -230,8 +230,8 @@ void Engine::shutdown()
 
     if (glfwInitialized)
     {
-        glfwTerminate();
         Core::Window::destroyAll();
+        glfwTerminate();
         glfwInitialized = false;
     }
 

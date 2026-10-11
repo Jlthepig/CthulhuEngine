@@ -44,9 +44,9 @@ void Input::update()
     memcpy(previousKeys, currentKeys, sizeof(currentKeys));
     memcpy(previousMouseButtons, currentMouseButtons, sizeof(currentMouseButtons));
 
-    for (int i = 0; i <= GLFW_KEY_LAST; i++)
+    for (int key = GLFW_KEY_SPACE; key <= GLFW_KEY_LAST; ++key)
     {
-        currentKeys[i] = glfwGetKey(windowHandle, i) == GLFW_PRESS;
+        currentKeys[key] = glfwGetKey(windowHandle, key) == GLFW_PRESS;
     }
     for (int i = 0; i <= GLFW_MOUSE_BUTTON_LAST; i++)
     {
@@ -56,16 +56,19 @@ void Input::update()
 
 bool Input::isKeyDown(int key)
 {
+    if (key < GLFW_KEY_SPACE || key > GLFW_KEY_LAST) return false;
     return currentKeys[key];
 }
 
 bool Input::isKeyPressed(int key)
 {
+    if (key < GLFW_KEY_SPACE || key > GLFW_KEY_LAST) return false;
     return currentKeys[key] && !previousKeys[key];
 }
 
 bool Input::isKeyReleased(int key)
 {
+    if (key < GLFW_KEY_SPACE || key > GLFW_KEY_LAST) return false;
     return previousKeys[key] && !currentKeys[key];
 }
 
