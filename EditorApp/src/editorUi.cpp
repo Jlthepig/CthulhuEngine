@@ -36,6 +36,8 @@ bool EditorUi::init(GLFWwindow *glfwWindow, const std::filesystem::path &resourc
         Log::Print("EDITOR ICONS NOT LOADED: " + icons, "Editor", LogType::LOG_WARNING);
     }
 
+    (void) ctx.loadIcon("Cthulhu", (resourceRoot / "editor" / "icons" / "cthulhu.png").string(), octogui::IconColorMode::Original);
+
     octogui::glfw::initInput(window);
 
     initialized = true;

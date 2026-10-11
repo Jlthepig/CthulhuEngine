@@ -4,6 +4,8 @@
 
 #include "OctoGui/Context.h"
 
+using namespace octogui;
+
 namespace Cthulhu
 {
 class Engine;
@@ -17,36 +19,53 @@ class Session;
 namespace Cthulhu::Editor
 {
 // the editor's top bar, resizable workspace panes, status bar
+
+struct IconButton
+{
+    NodeHandle button{};
+    NodeHandle icon{};
+};
+
 class EditorShell
 {
   public:
-    void build(octogui::Context &ctx);
+    void build(Context &ctx);
 
-    void update(octogui::Context &ctx, Engine &engine, Scribe::Session &session);
+    void update(Context &ctx, Engine &engine, Scribe::Session &session);
 
-    [[nodiscard]] octogui::NodeHandle hierarchyPanel() const noexcept
+    [[nodiscard]] NodeHandle hierarchyPanel() const noexcept
     {
         return hierarchy;
     }
-    [[nodiscard]] octogui::NodeHandle sceneArea() const noexcept
+    [[nodiscard]] NodeHandle sceneArea() const noexcept
     {
         return sceneNode;
     }
-    [[nodiscard]] octogui::NodeHandle inspectorPanel() const noexcept
+    [[nodiscard]] NodeHandle inspectorPanel() const noexcept
     {
         return inspector;
     }
+    [[nodiscard]] NodeHandle sceneTree() const noexcept
+    {
+        return hierarchyTree;
+    }
 
   private:
-    octogui::NodeHandle saveButton{};
-    octogui::NodeHandle playButton{};
-    octogui::NodeHandle statusLabel{};
+    NodeHandle sceneLabel{};
+    NodeHandle saveButton{};
+    IconButton playButton{};
+    IconButton pauseButton{};
+    IconButton stepButton{};
 
-    octogui::NodeHandle hierarchy{};
-    octogui::NodeHandle sceneNode{};
-    octogui::NodeHandle inspector{};
 
-    std::string lastStatus;
+    NodeHandle hierarchy{};
+    NodeHandle hierarchyHeader{};
+    NodeHandle hierarchyTree{};
+    NodeHandle sceneNode{};
+    NodeHandle inspector{};
+
+    std::string lastSceneText;
     bool lastPlaying = false;
+    bool lastPaused = false;
 };
 } // namespace Cthulhu::Editor

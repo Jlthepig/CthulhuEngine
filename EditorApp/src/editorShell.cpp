@@ -2,8 +2,9 @@
 
 #include "engine.hpp"
 #include "log_utils.hpp"
-#include "scene.hpp"
 #include "session.hpp"
+
+using namespace octogui;
 
 using KalaHeaders::KalaLog::Log;
 using KalaHeaders::KalaLog::LogType;
@@ -12,89 +13,183 @@ namespace Cthulhu::Editor
 {
     namespace
     {
-        void fillWithChild(octogui::Context & ctx, octogui::NodeHandle pane)
+        void fillWithChild(Context & ctx, NodeHandle pane)
         {
             auto layout = ctx.layoutStyle(pane);
-            layout.mode = octogui::LayoutMode::Stack;
-            layout.horizontalAlignment = octogui::Alignment::Stretch;
-            layout.verticalAlignment = octogui::Alignment::Stretch;
+            layout.mode = LayoutMode::Stack;
+            layout.horizontalAlignment = Alignment::Stretch;
+            layout.verticalAlignment = Alignment::Stretch;
         }
 
-        octogui::NodeHandle titledPanel(octogui::Context & ctx, octogui::NodeHandle pane, std::string_view title)
+        NodeHandle panelHeader(Context &ctx, NodeHandle panel, std::string_view icon,std::string_view title)
+        {
+            const NodeHandle header = ctx.createContainer(panel);
+
+            auto layout = ctx.layoutStyle(header);
+            layout.mode = LayoutMode::Horizontal;
+            layout.gap = 6.0f;
+            layout.verticalAlignment = Alignment::Center;
+            layout.minSize = Vec2{0.0f, 20.0f};
+            layout.preferredSize = Vec2{0.0f, 20.0f};
+            layout.maxSize = Vec2{InfiniteLayoutSize, 20.0f};
+
+            const NodeHandle headerIcon = ctx.createIcon(header, icon);
+            ctx.setIconSize(headerIcon, 16.0f);
+            ctx.setIconColor(headerIcon, ctx.theme().textMuted);
+
+            const NodeHandle heading = ctx.createLabel(header, title);
+            ctx.style(heading).all.text = ctx.theme().textMuted;
+
+            return header;
+        }
+
+        NodeHandle titledPanel(Context &ctx, NodeHandle pane, std::string_view icon,std::string_view title, NodeHandle *outHeader = nullptr)
         {
             fillWithChild(ctx, pane);
 
-            const octogui::NodeHandle panel = ctx.createPanel(pane);
-            //ctx.style(panel).shadow = octogui::ShadowStyle{};
-            auto layout = ctx.layoutStyle(panel);
-            layout.mode = octogui::LayoutMode::Vertical;
-            layout.horizontalAlignment = octogui::Alignment::Stretch;
-            layout.gap = 6.0f;
-            layout.padding = octogui::Padding{8.0f};
+            const NodeHandle panel = ctx.createPanel(pane);
 
-            const octogui::NodeHandle heading = ctx.createLabel(panel, title);
-            ctx.style(heading).all.text = ctx.theme().textMuted;
+            auto layout = ctx.layoutStyle(panel);
+            layout.mode = LayoutMode::Vertical;
+            layout.horizontalAlignment = Alignment::Stretch;
+            layout.verticalAlignment = Alignment::Stretch;
+            layout.gap = 6.0f;
+            layout.padding = Padding{8.0f};
+
+            const NodeHandle header = panelHeader(ctx, panel, icon, title);
+            if (outHeader)
+            {
+                *outHeader = header;
+            }
+
             return panel;
         }
 
-        void seeThrough(octogui::Context &ctx, octogui::NodeHandle node)
+        void seeThrough(Context &ctx, NodeHandle node)
         {
-            ctx.style(node).all.background = octogui::Color::transparent();
-            ctx.style(node).shadow = octogui::ShadowStyle{};
+            ctx.style(node).all.background = Color::transparent();
+            ctx.style(node).shadow = ShadowStyle{};
         }
 
-        void fixedBar(octogui::Context &ctx, octogui::NodeHandle bar, octogui::f32 height)
+        void fixedSize(octogui::Context &ctx, octogui::NodeHandle node, octogui::f32 width, octogui::f32 height)
+        {
+            auto layout = ctx.layoutStyle(node);
+            layout.minSize = octogui::Vec2{width, height};
+            layout.preferredSize = octogui::Vec2{width, height};
+        }
+
+        void verticalSeparator(octogui::Context &ctx, octogui::NodeHandle parent, octogui::f32 height)
+        {
+            const octogui::NodeHandle separator = ctx.createSeparator(parent);
+            ctx.setSeparatorOrientation(separator, octogui::SeparatorOrientation::Vertical);
+            fixedSize(ctx, separator, 1.0f, height);
+        }
+
+        IconButton iconButton(octogui::Context &ctx, octogui::NodeHandle parent, std::string_view icon)
+        {
+            IconButton result;
+            result.button = ctx.createButton(parent, "");
+            fixedSize(ctx, result.button, 32.0f, 26.0f);
+
+            auto layout = ctx.layoutStyle(result.button);
+            layout.mode = octogui::LayoutMode::Horizontal;
+            layout.padding = octogui::Padding{};
+            layout.horizontalAlignment = octogui::Alignment::Center;
+            layout.verticalAlignment = octogui::Alignment::Center;
+
+            result.icon = ctx.createIcon(result.button, icon);
+            ctx.setIconSize(result.icon, 18.0f);
+            return result;
+        }
+
+        void styleToggle(octogui::Context &ctx, const IconButton &toggle, bool on)
+        {
+            const octogui::Theme &theme = ctx.theme();
+            auto style = ctx.style(toggle.button);
+            style.normal.background = on ? theme.accent : theme.surface;
+            style.normal.border = on ? theme.accentActive : theme.border;
+            ctx.setIconColor(toggle.icon, on ? theme.accentText : theme.text);
+        }
+
+        void fixedBar(Context &ctx, NodeHandle bar, f32 height)
         {
             auto layout = ctx.layoutStyle(bar);
-            layout.mode = octogui::LayoutMode::Horizontal;
-            layout.verticalAlignment = octogui::Alignment::Center;
+            layout.mode = LayoutMode::Horizontal;
+            layout.verticalAlignment = Alignment::Center;
             layout.gap = 6.0f;
-            layout.padding = octogui::Padding{8.0f, 2.0f};
-            layout.minSize = octogui::Vec2{0.0f, height};
-            layout.preferredSize = octogui::Vec2{0.0f, height};
+            layout.padding = Padding{8.0f, 2.0f};
+            layout.minSize = Vec2{0.0f, height};
+            layout.preferredSize = Vec2{0.0f, height};
         }
     } // namespace
 
-    void EditorShell::build(octogui::Context &ctx)
+    void EditorShell::build(Context &ctx)
     {
-        const octogui::NodeHandle root = ctx.ensureRoot();
+        const NodeHandle root = ctx.ensureRoot();
         seeThrough(ctx, root);
         auto rootLayout = ctx.layoutStyle(root);
-        rootLayout.mode = octogui::LayoutMode::Vertical;
-        rootLayout.horizontalAlignment = octogui::Alignment::Stretch;
+        rootLayout.mode = LayoutMode::Vertical;
+        rootLayout.horizontalAlignment = Alignment::Stretch;
 
         const octogui::NodeHandle topBar = ctx.createPanel(root);
-        fixedBar(ctx, topBar, 36.0f);
+        fixedBar(ctx, topBar, 50.0f);
+        auto topLayout = ctx.layoutStyle(topBar);
+        topLayout.gap = 8.0f;
+        topLayout.padding = octogui::Padding{12.0f, 2.0f};
+        topLayout.horizontalAlignment = Alignment::Start;
+
+        const octogui::NodeHandle logo = ctx.createIcon(topBar, "Cthulhu");
+        ctx.setIconSize(logo, 46.0f);
+
+        sceneLabel = ctx.createLabel(topBar, "");
+        ctx.style(sceneLabel).all.text = ctx.theme().textMuted;
+        fixedSize(ctx, sceneLabel, 150.0f, 28.0f);
+        verticalSeparator(ctx, topBar, 24.0f);
+
         saveButton = ctx.createButton(topBar, "Save");
-        playButton = ctx.createButton(topBar, "Play");
+        fixedSize(ctx, saveButton, 68.0f, 26.0f);
+        verticalSeparator(ctx, topBar, 24.0f);
+
+        playButton = iconButton(ctx, topBar, "play");
+        pauseButton = iconButton(ctx, topBar, "pause");
+        stepButton = iconButton(ctx, topBar, "chevron-right");
+        styleToggle(ctx, playButton, false);
+        styleToggle(ctx, pauseButton, false);
+        ctx.setIconColor(stepButton.icon, ctx.theme().text);
+        ctx.setEnabled(pauseButton.button, false);
+        ctx.setEnabled(stepButton.button, false);
+        [[maybe_unused]] const NodeHandle trailingSpacer = ctx.createContainer(topBar);
 
         // hierachy << scene << inspector
-         const octogui::NodeHandle workspace =
-        ctx.createSplitContainer(root, octogui::SplitOrientation::Horizontal, 0.18f);
-        ctx.setSplitMinimumSizes(workspace, 180.0f, 600.0f);
+         const NodeHandle workspace =
+        ctx.createSplitContainer(root, SplitOrientation::Horizontal, 0.14f);
+        ctx.setSplitMinimumSizes(workspace, 140.0f, 600.0f);
         seeThrough(ctx, workspace);
         seeThrough(ctx, ctx.splitSecondPane(workspace));
-        hierarchy = titledPanel(ctx, ctx.splitFirstPane(workspace), "Hierarchy");
+        hierarchy = titledPanel(ctx, ctx.splitFirstPane(workspace), "sidebar-left", "HIERARCHY", &hierarchyHeader);
 
-        const octogui::NodeHandle sceneInspector =
-        ctx.createSplitContainer(ctx.splitSecondPane(workspace), octogui::SplitOrientation::Horizontal, 0.72f);
-        ctx.setSplitMinimumSizes(sceneInspector, 320.0f, 240.0f);
+        hierarchyTree = ctx.createTreeView(hierarchy);
+        auto treeLayout = ctx.layoutStyle(hierarchyTree);
+        treeLayout.minSize = Vec2{0.0f, 120.0f};
+        treeLayout.preferredSize = Vec2{0.0f, 0.0f};
+
+        const NodeHandle sceneInspector =
+        ctx.createSplitContainer(ctx.splitSecondPane(workspace), SplitOrientation::Horizontal, 0.78f);
+        ctx.setSplitMinimumSizes(sceneInspector, 260.0f, 200.0f);
         seeThrough(ctx, sceneInspector);
 
         sceneNode = ctx.splitFirstPane(sceneInspector);
         seeThrough(ctx, sceneNode);
 
-        sceneNode = ctx.splitFirstPane(sceneInspector);
-        ctx.style(sceneNode).all.background = octogui::Color::transparent(); // a hole for the 3D scene until 3.3
+        ctx.style(sceneNode).all.background = Color::transparent();
 
-        inspector = titledPanel(ctx, ctx.splitSecondPane(sceneInspector), "Inspector");
+        inspector = titledPanel(ctx, ctx.splitSecondPane(sceneInspector), "sliders", "INSPECTOR");
 
-        const octogui::NodeHandle statusBar = ctx.createPanel(root);
+        const NodeHandle statusBar = ctx.createPanel(root);
         fixedBar(ctx, statusBar, 24.0f);
-        statusLabel = ctx.createLabel(statusBar, "");
     }
 
-    void EditorShell::update(octogui::Context &ctx, Engine &engine, Scribe::Session &session)
+    void EditorShell::update(Context &ctx, Engine &engine, Scribe::Session &session)
     {
         if (ctx.isClicked(saveButton))
         {
@@ -105,31 +200,54 @@ namespace Cthulhu::Editor
             }
         }
 
-        if (ctx.isClicked(playButton))
+        if (ctx.isClicked(playButton.button))
         {
             const bool ok = engine.isPlaying() ? engine.stop() : engine.play();
             (void)ok;
         }
 
+        if (ctx.isClicked(pauseButton.button) && engine.isPlaying())
+        {
+            const bool paused = engine.getSimulationState() == SimulationState::Paused;
+            engine.setSimulationState(paused ? SimulationState::Running : SimulationState::Paused);
+        }
+
+        if (ctx.isClicked(stepButton.button) && engine.isPlaying() &&
+            engine.getSimulationState() != SimulationState::Running)
+        {
+            engine.stepSimulation();
+        }
+
         const bool playing = engine.isPlaying();
+        const bool paused = playing && engine.getSimulationState() != SimulationState::Running;
+
         if (playing != lastPlaying)
         {
-            ctx.setText(playButton, playing ? "Stop" : "Play");
+            ctx.setIcon(playButton.icon, playing ? "stop" : "play");
+            styleToggle(ctx, playButton, playing);
             ctx.setEnabled(saveButton, !playing);
+            ctx.setEnabled(pauseButton.button, playing);
             lastPlaying = playing;
         }
 
-        std::string status = "No scene";
-        if (const auto *activeScene = engine.getActiveScene())
+        if (paused != lastPaused)
         {
-            status = activeScene->getName() + (activeScene->isDirty() ? " *" : "") +
-                    (playing ? "   |   Playing" : "   |   Editing");
+            styleToggle(ctx, pauseButton, paused);
+            ctx.setEnabled(stepButton.button, paused);
+            lastPaused = paused;
         }
 
-        if (status != lastStatus)
+        std::string sceneText = "No scene";
+        if (const auto *activeScene = engine.getActiveScene())
         {
-            ctx.setText(statusLabel, status);
-            lastStatus = std::move(status);
+            sceneText = activeScene->getName() + (activeScene->isDirty() ? " *" : "");
         }
+
+        if (sceneText != lastSceneText)
+        {
+            ctx.setText(sceneLabel, sceneText);
+            lastSceneText = sceneText;
+        }
+
     }
 }
