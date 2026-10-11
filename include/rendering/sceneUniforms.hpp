@@ -8,15 +8,14 @@
 #define a16 alignas(16)
 namespace Cthulhu::Rendering
 {
-struct PointLightUBO
+struct alignas(16) PointLightGPU
 {
-    a16 glm::vec3 position;
-    a16 glm::vec3 color;
-    a4 float intensity;
-    a4 float constant;
-    a4 float linear;
-    a4 float quadratic;
+    glm::vec4 position;
+    glm::vec4 colorIntensity;
+    glm::vec4 attenuation;
 };
+
+static_assert(sizeof(PointLightGPU) == 48,  "PointLightGPU must match the std430 shader layout");
 
 struct SceneUniforms
 {
@@ -39,6 +38,5 @@ struct SceneUniforms
     a4 int32_t pad1;
     a4 int32_t pad2;
 
-    PointLightUBO pointLights[8];
 };
 } // namespace Cthulhu::Rendering

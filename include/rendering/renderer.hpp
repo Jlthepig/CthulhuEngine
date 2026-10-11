@@ -1,5 +1,6 @@
 #pragma once
 
+#include <cstddef>
 #include <filesystem>
 #include <vector>
 
@@ -14,6 +15,7 @@
 #include "light.hpp"
 #include "material.hpp"
 #include "pointShadowMap.hpp"
+#include "sceneUniforms.hpp"
 #include "shader.hpp"
 #include "shadowMap.hpp"
 #include "skybox.hpp"
@@ -89,7 +91,7 @@ class Renderer
     void shutdown();
 
   private:
-    RenderConfig config; // Store config here
+    RenderConfig config;
     Cthulhu::Rendering::Shader basicShader;
     Cthulhu::Rendering::Shader gridShader;
     Cthulhu::Rendering::Shader lineShader;
@@ -101,21 +103,25 @@ class Renderer
     Scene::Camera *camera = nullptr;
     GLFWwindow *window = nullptr;
     DirectionalLight sunLight;
-    static constexpr int MAX_POINT_SHADOW_CASTERS = 4;
-    PointLightShadowMap pointShadowMaps[MAX_POINT_SHADOW_CASTERS];
+    PointLightShadowMap pointShadowMap;
     std::vector<PointLight> pointLights;
+    std::vector<PointLightGPU> pointLightStorage;
+    std::size_t pointLightBufferCapacity = 0;
+    std::size_t maxPointLightCount = 0;
+    bool pointLightLimitWarningLogged = false;
+    bool pointShadowLimitWarningLogged = false;
     std::vector<DebugVertex> debugLines;
     std::vector<PersistentLine> persistentLines;
     ShadowMap shadowMap;
     Cthulhu::Scene::Scene *scene = nullptr;
     Scene::Frustum frustum;
     Scene::AABB TransformAABB(const Scene::AABB &localBounds, const glm::mat4 &modelMatrix);
-    GLuint whitePointShadow = 0;
     GLuint defaultDataTexture = 0;
     GLuint defaultNormalTexture = 0;
     GLuint brdfLUTTexture = 0;
     unsigned int lineVAO = 0, lineVBO = 0;
     unsigned int sceneUBO = 0;
+    unsigned int pointLightsSSBO = 0;
 
     void bindMaterial(const Material &material, const std::vector<Texture> &modelTextures);
     void bindDefaultMaterial();

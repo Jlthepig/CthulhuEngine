@@ -9,15 +9,6 @@ out vec3 FragPos;
 out mat3 TBN;
 out vec4 FragPosLightSpace;
 
-struct PointLight {
-    vec3 position;
-    vec3 color;
-    float intensity;
-    float constant;
-    float linear;
-    float quadratic;
-};
-
 layout(std140, binding = 0) uniform SceneData {
     mat4 view;
     mat4 projection;
@@ -36,7 +27,6 @@ layout(std140, binding = 0) uniform SceneData {
     int pad1;
     int pad2;
     
-    PointLight pointLights[8];
 };
 
 uniform mat4 model;
@@ -52,7 +42,7 @@ void main()
     vec3 N = normalize(mat3(uNormalMatrix) * aNormal);
     vec3 T = mat3(uNormalMatrix) * aTangent.xyz;
 
-    // SAFETY: If model has no tangents, T will be 0. Generate a fallback!
+    // SAFETY: If model has no tangents T will be 0. Generate fallabck
     if (length(T) < 0.01) {
         vec3 up = abs(N.y) < 0.999 ? vec3(0.0, 1.0, 0.0) : vec3(1.0, 0.0, 0.0);
         T = normalize(cross(up, N));

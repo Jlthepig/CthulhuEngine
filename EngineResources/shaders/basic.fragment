@@ -8,12 +8,9 @@ in vec4 FragPosLightSpace;
 
 // SCENE UBO 
 struct PointLight {
-    vec3 position;
-    vec3 color;
-    float intensity;
-    float constant;
-    float linear;
-    float quadratic;
+    vec4 position;
+    vec4 colorIntensity;
+    vec4 attenuation; // constant, linear, quadratic, unused
 };
 
 layout(std140, binding = 0) uniform SceneData {
@@ -34,7 +31,10 @@ layout(std140, binding = 0) uniform SceneData {
     int pad1;
     int pad2;
     
-    PointLight pointLights[8];
+};
+
+layout(std430, binding = 1) readonly buffer PointLightBuffer {
+    PointLight pointLights[];
 };
 
 // MATERIAL UNIFORMS
@@ -51,8 +51,7 @@ uniform vec4 uBaseColorFactor;
 uniform float uMetallicFactor;
 uniform float uRoughnessFactor;
 
-#define MAX_POINT_SHADOW_CASTERS 4
-uniform samplerCube uPointShadowMaps[MAX_POINT_SHADOW_CASTERS];
+uniform samplerCubeArray uPointShadowMaps;
 
 const float PI = 3.14159265359;
 
@@ -155,25 +154,25 @@ void main() {
 
     // 4. Point Lights
     for (int i = 0; i < pointLightCount; i++) {
-        vec3 lightOffset = pointLights[i].position - FragPos;
+        vec3 lightOffset = pointLights[i].position.xyz - FragPos;
 
         float dist = length(lightOffset);
         vec3 L = lightOffset / max(dist, 0.0001);
         
         vec3 H = normalize(V + L);
 
-        float attenuation = 1.0 / (pointLights[i].constant + pointLights[i].linear * dist + pointLights[i].quadratic * (dist * dist));
+        float attenuation = 1.0 / (pointLights[i].attenuation.x + pointLights[i].attenuation.y * dist + pointLights[i].attenuation.z * (dist * dist));
         
         float pshadow = 0.0;
         if (i < pointShadowCount) {
-            vec3 fragToLight = FragPos - pointLights[i].position;
+            vec3 fragToLight = FragPos - pointLights[i].position.xyz;
             float currentDepth = length(fragToLight);
-            float closestDepth = texture(uPointShadowMaps[i], normalize(fragToLight)).r * pointShadowFarPlane;
+            float closestDepth = texture(uPointShadowMaps, vec4(normalize(fragToLight), float(i))).r * pointShadowFarPlane;
             float bias = currentDepth * 0.01;
             pshadow = currentDepth - bias > closestDepth ? 1.0 : 0.0;
         }
 
-        vec3 radiance = pointLights[i].color * pointLights[i].intensity * attenuation * (1.0 - pshadow);
+        vec3 radiance = pointLights[i].colorIntensity.rgb * pointLights[i].colorIntensity.w * attenuation * (1.0 - pshadow);
 
         float NDF = DistributionGGX(N, H, roughness);
         float G = GeometrySmith(N, V, L, roughness);

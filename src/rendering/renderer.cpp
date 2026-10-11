@@ -1,5 +1,7 @@
+#include <algorithm>
 #include <ext/matrix_clip_space.hpp>
 #include <ext/matrix_transform.hpp>
+#include <limits>
 
 #include "components.hpp"
 #include "log_utils.hpp"
@@ -45,29 +47,6 @@ void Renderer::init(GLFWwindow *window, Scene::Camera *camera, const RenderConfi
     skybox.generatePrefilterMap();
     grid.setupGrid(config.gridSize);
 
-    // temp setup for whitepointshadow
-    glGenTextures(1, &whitePointShadow);
-    glBindTexture(GL_TEXTURE_CUBE_MAP, whitePointShadow);
-
-    float whiteDepth = 1.0f; // far plane = "no shadow"
-    for (int face = 0; face < 6; ++face)
-    {
-        glTexImage2D(GL_TEXTURE_CUBE_MAP_POSITIVE_X + face, 0, GL_DEPTH_COMPONENT24, 1, 1, 0, GL_DEPTH_COMPONENT,
-                     GL_FLOAT, &whiteDepth);
-    }
-
-    glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
-    glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
-    glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
-    glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
-    glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_WRAP_R, GL_CLAMP_TO_EDGE);
-    glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_COMPARE_MODE, GL_COMPARE_REF_TO_TEXTURE);
-    glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_COMPARE_FUNC, GL_LEQUAL);
-
-    glBindTexture(GL_TEXTURE_CUBE_MAP, 0);
-    KalaHeaders::KalaLog::Log::Print("White point shadow fallback created", "Renderer",
-                                     KalaHeaders::KalaLog::LogType::LOG_SUCCESS);
-
     glGenTextures(1, &defaultDataTexture);
     glBindTexture(GL_TEXTURE_2D, defaultDataTexture);
     unsigned char whitePixel[4] = {255, 255, 255, 255};
@@ -87,10 +66,7 @@ void Renderer::init(GLFWwindow *window, Scene::Camera *camera, const RenderConfi
     basicShader.use();
     basicShader.setInt("uTexture", 0);   // diffuse
     basicShader.setInt("uShadowMap", 1); // directional shadow
-    for (int i = 0; i < MAX_POINT_SHADOW_CASTERS; i++)
-    {
-        basicShader.setInt("uPointShadowMaps[" + std::to_string(i) + "]", 2 + i);
-    }
+    basicShader.setInt("uPointShadowMaps", 2);
     basicShader.setInt("uMetallicRoughnessTexture", 6);
     basicShader.setInt("uNormalMap", 7);
     basicShader.setInt("uBRDFLUT", 8); // Setup slot for BRDF LUT now
@@ -98,10 +74,7 @@ void Renderer::init(GLFWwindow *window, Scene::Camera *camera, const RenderConfi
     basicShader.setInt("uPrefilterMap", 10);
 
     shadowMap.init(config.shadowMapResolution, config.shadowMapResolution, config.engineResourceRoot);
-    for (int i = 0; i < MAX_POINT_SHADOW_CASTERS; i++)
-    {
-        pointShadowMaps[i].init(config.shadowMapResolution, config.shadowMapResolution, config.engineResourceRoot);
-    }
+    pointShadowMap.init(config.shadowMapResolution, config.shadowMapResolution, config.engineResourceRoot);
     shadowMap.setLightDir(sunLight.direction);
 
     // BRDF LUT Generation
@@ -168,6 +141,22 @@ void Renderer::init(GLFWwindow *window, Scene::Camera *camera, const RenderConfi
     glBufferData(GL_UNIFORM_BUFFER, sizeof(SceneUniforms), nullptr, GL_DYNAMIC_DRAW);
     glBindBufferBase(GL_UNIFORM_BUFFER, 0, sceneUBO);
     glBindBuffer(GL_UNIFORM_BUFFER, 0);
+
+    GLint64 maxStorageBlockSize = 0;
+    glGetInteger64v(GL_MAX_SHADER_STORAGE_BLOCK_SIZE, &maxStorageBlockSize);
+    if (maxStorageBlockSize > 0)
+    {
+        maxPointLightCount = static_cast<std::size_t>(maxStorageBlockSize) / sizeof(PointLightGPU);
+    }
+    glGenBuffers(1, &pointLightsSSBO);
+    glBindBuffer(GL_SHADER_STORAGE_BUFFER, pointLightsSSBO);
+    if (maxPointLightCount > 0)
+    {
+        pointLightBufferCapacity = 1;
+        glBufferData(GL_SHADER_STORAGE_BUFFER, sizeof(PointLightGPU), nullptr, GL_DYNAMIC_DRAW);
+    }
+    glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 1, pointLightsSSBO);
+    glBindBuffer(GL_SHADER_STORAGE_BUFFER, 0);
     Log::Print("Renderer Initialized Successfully", "ENGINE", LogType::LOG_SUCCESS);
 }
 
@@ -249,6 +238,48 @@ void Renderer::render(unsigned int width, unsigned int height, float deltaTime,c
 
     frustum.extractFromMatrix(projection * view);
 
+    const std::size_t activePointLightCount = std::min(
+        pointLights.size(), std::min(maxPointLightCount, static_cast<std::size_t>(std::numeric_limits<int>::max())));
+    if (pointLights.size() > activePointLightCount && !pointLightLimitWarningLogged)
+    {
+        Log::Print("POINT LIGHT COUNT EXCEEDS GPU STORAGE CAPACITY; EXTRA LIGHTS ARE IGNORED", "Renderer",
+                   LogType::LOG_WARNING);
+        pointLightLimitWarningLogged = true;
+    }
+
+    pointLightStorage.resize(activePointLightCount);
+    for (std::size_t i = 0; i < activePointLightCount; ++i)
+    {
+        const PointLight &light = pointLights[i];
+        pointLightStorage[i].position = glm::vec4(light.position, 0.0f);
+        pointLightStorage[i].colorIntensity = glm::vec4(light.color, light.intensity);
+        pointLightStorage[i].attenuation = glm::vec4(light.constant, light.linear, light.quadratic, 0.0f);
+    }
+
+    glBindBuffer(GL_SHADER_STORAGE_BUFFER, pointLightsSSBO);
+    if (activePointLightCount > pointLightBufferCapacity)
+    {
+        const std::size_t doubledCapacity = pointLightBufferCapacity == 0 ? 1 : pointLightBufferCapacity * 2;
+        pointLightBufferCapacity = std::min(maxPointLightCount, std::max(activePointLightCount, doubledCapacity));
+        const GLsizeiptr bufferSize = static_cast<GLsizeiptr>(pointLightBufferCapacity * sizeof(PointLightGPU));
+        glBufferData(GL_SHADER_STORAGE_BUFFER, bufferSize, nullptr, GL_DYNAMIC_DRAW);
+    }
+    if (activePointLightCount > 0)
+    {
+        const GLsizeiptr dataSize = static_cast<GLsizeiptr>(activePointLightCount * sizeof(PointLightGPU));
+        glBufferSubData(GL_SHADER_STORAGE_BUFFER, 0, dataSize, pointLightStorage.data());
+    }
+    glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 1, pointLightsSSBO);
+    glBindBuffer(GL_SHADER_STORAGE_BUFFER, 0);
+
+    const std::size_t shadowCasters = pointShadowMap.ensureCapacity(activePointLightCount);
+    if (shadowCasters < activePointLightCount && !pointShadowLimitWarningLogged)
+    {
+        Log::Print("POINT SHADOW ARRAY CAPACITY EXCEEDED; REMAINING POINT LIGHTS WILL BE UNSHADOWED", "Renderer",
+                   LogType::LOG_WARNING);
+        pointShadowLimitWarningLogged = true;
+    }
+
     // 1. shadow pass
     shadowMap.beginPass();
     for (const auto &renderable : renderables)
@@ -257,9 +288,7 @@ void Renderer::render(unsigned int width, unsigned int height, float deltaTime,c
         renderable.model->draw();
     }
     shadowMap.endPass();
-    int shadowCasters = std::min((int)pointLights.size(), MAX_POINT_SHADOW_CASTERS);
-
-    for (int i = 0; i < shadowCasters; i++)
+    for (std::size_t i = 0; i < shadowCasters; i++)
     {
         glm::vec3 lightPos = pointLights[i].position;
 
@@ -271,18 +300,18 @@ void Renderer::render(unsigned int width, unsigned int height, float deltaTime,c
             glm::lookAt(lightPos, lightPos + glm::vec3(0.0f, 0.0f, 1.0f), glm::vec3(0.0f, -1.0f, 0.0f)),
             glm::lookAt(lightPos, lightPos + glm::vec3(0.0f, 0.0f, -1.0f), glm::vec3(0.0f, -1.0f, 0.0f))};
 
-        pointShadowMaps[i].beginPass(lightPos, config.nearPlane, config.farPlane);
+        pointShadowMap.beginPass(i, lightPos, config.nearPlane, config.farPlane);
 
         for (int face = 0; face < 6; face++)
         {
-            pointShadowMaps[i].bindFace(face, captureViews[face]);
+            pointShadowMap.bindFace(face, captureViews[face]);
             for (const auto &renderable : renderables)
             {
-                pointShadowMaps[i].getDepthShader().setMat4("model", renderable.modelMatrix);
+                pointShadowMap.getDepthShader().setMat4("model", renderable.modelMatrix);
                 renderable.model->draw();
             }
         }
-        pointShadowMaps[i].endPass();
+        pointShadowMap.endPass();
     }
 
     // bind scene framebuffer for main pass
@@ -294,7 +323,7 @@ void Renderer::render(unsigned int width, unsigned int height, float deltaTime,c
 
     basicShader.use();
 
-    SceneUniforms uboData;
+    SceneUniforms uboData{};
     uboData.view = view;
     uboData.projection = projection;
     uboData.viewPos = camera->getPosition();
@@ -307,19 +336,9 @@ void Renderer::render(unsigned int width, unsigned int height, float deltaTime,c
     uboData.fogDensity = config.fogDensity;
     uboData.fogHeightFalloff = config.fogHeightFalloff;
 
-    uboData.pointLightCount = (int)pointLights.size();
-    uboData.pointShadowCount = shadowCasters;
+    uboData.pointLightCount = static_cast<int>(activePointLightCount);
+    uboData.pointShadowCount = static_cast<int>(shadowCasters);
     uboData.pointShadowfarPlane = config.farPlane;
-
-    for (int i = 0; i < uboData.pointLightCount; i++)
-    {
-        uboData.pointLights[i].position = pointLights[i].position;
-        uboData.pointLights[i].color = pointLights[i].color;
-        uboData.pointLights[i].intensity = pointLights[i].intensity;
-        uboData.pointLights[i].constant = pointLights[i].constant;
-        uboData.pointLights[i].linear = pointLights[i].linear;
-        uboData.pointLights[i].quadratic = pointLights[i].quadratic;
-    }
     // upload to gpu in one call
     glBindBuffer(GL_UNIFORM_BUFFER, sceneUBO);
     glBufferSubData(GL_UNIFORM_BUFFER, 0, sizeof(SceneUniforms), &uboData);
@@ -327,23 +346,11 @@ void Renderer::render(unsigned int width, unsigned int height, float deltaTime,c
 
     basicShader.setMat4("lightSpaceMatrix", shadowMap.getLightSpaceMatrix());
 
-    // bind all textures in order: 0=diffuse(per mesh), 1=shadow, 2+=cubemaps
+    // Bind textures: 0=diffuse, 1=directional shadow, 2=point-shadow cube array.
     glActiveTexture(GL_TEXTURE1);
     glBindTexture(GL_TEXTURE_2D, shadowMap.getDepthMap());
-
-    for (int i = 0; i < MAX_POINT_SHADOW_CASTERS; i++)
-    {
-        glActiveTexture(GL_TEXTURE2 + i);
-        if (i < shadowCasters)
-        {
-            glBindTexture(GL_TEXTURE_CUBE_MAP, pointShadowMaps[i].getDepthCubeMap());
-        }
-        else
-        {
-            glBindTexture(GL_TEXTURE_CUBE_MAP,
-                          whitePointShadow); // 1x1 depth=1.0 = no shadow
-        }
-    }
+    glActiveTexture(GL_TEXTURE2);
+    glBindTexture(GL_TEXTURE_CUBE_MAP_ARRAY, pointShadowMap.getDepthCubeMapArray());
 
     // reset to slot 0 before entity loop
     glActiveTexture(GL_TEXTURE0);
@@ -454,6 +461,12 @@ void Renderer::shutdown()
     gridShader.destroy();
     basicShader.destroy();
     skybox.destroy();
+    pointShadowMap.destroy();
+    if (pointLightsSSBO != 0)
+    {
+        glDeleteBuffers(1, &pointLightsSSBO);
+        pointLightsSSBO = 0;
+    }
 
     Log::Print("Renderer shutdown successfully", "ENGINE", LogType::LOG_SUCCESS);
 }

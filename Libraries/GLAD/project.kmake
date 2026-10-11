@@ -4,7 +4,7 @@ compiler: clang-cl
 standard: c++20
 binarytype: static
 binaryname: glad
-sources: "glad.c"
+sources: "."
 
 customflags: export-compile-commands, export-vscode-sln
 headers: "."
