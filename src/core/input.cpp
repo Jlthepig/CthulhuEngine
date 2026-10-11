@@ -97,8 +97,8 @@ void Input::mouse_callback([[maybe_unused]] GLFWwindow *window, double xposIn, d
 
     float xoffset = xpos - lastX;
     float yoffset = lastY - ypos;
-    mouseDeltaX = xoffset;
-    mouseDeltaY = yoffset;
+    mouseDeltaX += xoffset;
+    mouseDeltaY += yoffset;
     lastX = xpos;
     lastY = ypos;
 }
@@ -146,6 +146,22 @@ float Input::getMouseDeltaY()
     float delta = mouseDeltaY;
     mouseDeltaY = 0.0f;
     return delta;
+}
+
+void Input::resetMouseTracking()
+{
+    if (windowHandle)
+    {
+        double x = 0.0;
+        double y = 0.0;
+        glfwGetCursorPos(windowHandle, &x, &y);
+        lastX = static_cast<float>(x);
+        lastY = static_cast<float>(y);
+    }
+
+    mouseDeltaX = 0.0f;
+    mouseDeltaY = 0.0f;
+    firstMouse = false;
 }
 
 } // namespace Cthulhu::Core

@@ -1,5 +1,3 @@
-#include <cstdio>
-#include <string>
 #include <GLFW/glfw3.h>
 
 #include "engine.hpp"
@@ -17,6 +15,7 @@ static const float zoomSpeed = 350.0f;
 
 static Cthulhu::Scene::Camera* camera = nullptr;
 static Cthulhu::Editor::EditorUi* editorUi = nullptr;
+static bool isCameraLooking = false;
 
 void onUpdate(
     [[maybe_unused]] void* context,
@@ -76,28 +75,33 @@ void onUpdate(
     if (sceneHasKeyboard &&
         Cthulhu::Core::Input::isKeyPressed(GLFW_KEY_F5)) {
 
-        const bool ok = engine->isPlaying()
-            ? engine->stop()
-            : engine->play();
+        const bool ok = engine->isPlaying() ? engine->stop() : engine->play();
 
         (void)ok;
     }
 
-    const float scrollDeltaY =
-        Cthulhu::Core::Input::getScrollDeltaY();
+    const float scrollDeltaY = Cthulhu::Core::Input::getScrollDeltaY();
 
-    if (camera &&
-        sceneHasMouse &&
-        Cthulhu::Core::Input::isMouseButtonDown(
-            GLFW_MOUSE_BUTTON_2
-        )) {
+    const bool rightMouseDown =Cthulhu::Core::Input::isMouseButtonDown(GLFW_MOUSE_BUTTON_2);
 
+    const bool shouldLook =camera && rightMouseDown && (isCameraLooking || sceneHasMouse);
+
+    const int cursorModeWanted =shouldLook ? GLFW_CURSOR_DISABLED : GLFW_CURSOR_NORMAL;
+
+    GLFWwindow* window = engine->getWindow()->getWindow();
+
+    if (shouldLook != isCameraLooking ||
+        glfwGetInputMode(window, GLFW_CURSOR) != cursorModeWanted) {
         glfwSetInputMode(
-            engine->getWindow()->getWindow(),
+            window,
             GLFW_CURSOR,
-            GLFW_CURSOR_DISABLED
+            cursorModeWanted
         );
+        Cthulhu::Core::Input::resetMouseTracking();
+        isCameraLooking = shouldLook;
+    }
 
+    if (isCameraLooking) {
         camera->processMouse(
             Cthulhu::Core::Input::getMouseDeltaX(),
             Cthulhu::Core::Input::getMouseDeltaY()
@@ -110,12 +114,6 @@ void onUpdate(
                 scrollDeltaY * zoomSpeed * deltaTime
             );
         }
-    } else {
-        glfwSetInputMode(
-            engine->getWindow()->getWindow(),
-            GLFW_CURSOR,
-            GLFW_CURSOR_NORMAL
-        );
     }
 
     if (scrollDeltaY != 0.0f &&

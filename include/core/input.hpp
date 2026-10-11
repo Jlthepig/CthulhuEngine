@@ -30,6 +30,7 @@ class Input
     static float getMouseDeltaX();
     static float getMouseDeltaY();
     static float getScrollDeltaY();
+    static void resetMouseTracking();
 
   private:
     static GLFWwindow *windowHandle;
