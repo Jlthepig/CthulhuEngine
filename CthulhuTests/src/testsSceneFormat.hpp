@@ -1,6 +1,9 @@
 #pragma once
 
+#include <algorithm>
 #include <fstream>
+#include <optional>
+#include <vector>
 
 #include "testCommon.hpp"
 #include "testsDescriptors.hpp"
@@ -8,9 +11,9 @@
 
 namespace Cthulhu::Validation
 {
-inline constexpr std::string_view FORMAT_PATH = "res://.cthulhu/validation_v4.scene";
+inline constexpr std::string_view FORMAT_PATH = "res://.cthulhu/validation_scene_format.scene";
 
-inline bool writeSceneText(Engine& engine, const std::string& entities)
+inline bool writeFormat4SceneText(Engine& engine, const std::string& entities)
 {
     auto resolved = engine.getProject()->resolveResourcePath(FORMAT_PATH);
     if (!resolved)
@@ -41,17 +44,47 @@ inline void validateSceneFormat(Engine& engine, Results& r)
     crate.set(CS::PhysicsComponent{CS::PhysicsBodyType::Dynamic, glm::vec3(0.25f), 3.0f});
     scene->setParent(idOf(crate), idOf(camera));
 
+    const auto orderParent = scene->createEntity("V_OrderParent");
+    const auto orderAlpha = scene->createEntity("V_Order_A");
+    const auto orderZulu = scene->createEntity("V_Order_Z");
+    const CS::EntityId orderParentId = idOf(orderParent);
+    const CS::EntityId orderAlphaId = idOf(orderAlpha);
+    const CS::EntityId orderZuluId = idOf(orderZulu);
+    scene->setParent(orderAlphaId, orderParentId);
+    scene->setParent(orderZuluId, orderParentId);
+    const bool customOrderSet = scene->setSiblingOrder(orderZuluId, 0);
+
     const ScenePrint before = fingerprint(*scene);
     const bool saved = engine.saveActiveSceneAs(FORMAT_PATH);
     auto resolved = engine.getProject()->resolveResourcePath(FORMAT_PATH);
     const std::string text = resolved ? Utils::FileReader::readFile(resolved->string()) : "";
-    check(r, saved && text.find("\"format_version\": 4") != std::string::npos, "F1 scenes are saved as format 4");
+    check(r, customOrderSet && saved && text.find("\"format_version\": 5") != std::string::npos &&
+                 text.find("\"sibling_order\": 0") != std::string::npos,
+          "F1 format 5 saves custom sibling order");
     check(r, text.find("\"type\": \"Dynamic\"") != std::string::npos, "F2 enums are saved by name");
 
-    check(r, engine.loadScene(FORMAT_PATH), "F3 a format 4 scene loads");
+    check(r, engine.loadScene(FORMAT_PATH), "F3 a format 5 scene loads");
     expectSame(r, fingerprint(*engine.getActiveScene()), before, "F3 Camera and game components survive save + load");
+    const auto restoredOrder = engine.getActiveScene()->getChildren(orderParentId);
+    check(r, restoredOrder.size() == 2 && restoredOrder[0] == orderZuluId && restoredOrder[1] == orderAlphaId,
+          "F3 custom sibling order survives save + load");
 
-    const bool lenientWritten = writeSceneText(engine, R"(
+    const bool oldOrderWritten = writeFormat4SceneText(engine, R"(
+        { "id": "0123456789abcdef0123456789abcdef", "name": "V_Old_Z", "components": {} },
+        { "id": "1123456789abcdef0123456789abcdef", "name": "V_Old_A", "components": {} }
+    )");
+    const bool oldOrderLoaded = oldOrderWritten && engine.loadScene(FORMAT_PATH);
+    const auto *oldScene = engine.getActiveScene();
+    const auto oldRoots = oldScene ? oldScene->getRootEntities() : std::vector<CS::EntityId>{};
+    const auto oldAlphaId = oldScene ? oldScene->findEntityByName("V_Old_A") : std::nullopt;
+    const auto oldZuluId = oldScene ? oldScene->findEntityByName("V_Old_Z") : std::nullopt;
+    const auto oldAlphaPosition = oldAlphaId ? std::find(oldRoots.begin(), oldRoots.end(), *oldAlphaId) : oldRoots.end();
+    const auto oldZuluPosition = oldZuluId ? std::find(oldRoots.begin(), oldRoots.end(), *oldZuluId) : oldRoots.end();
+    check(r, oldOrderLoaded && oldAlphaPosition != oldRoots.end() && oldZuluPosition != oldRoots.end() &&
+                 oldAlphaPosition < oldZuluPosition,
+          "F3 format 4 scenes without sibling order remain alphabetical");
+
+    const bool lenientWritten = writeFormat4SceneText(engine, R"(
         { "id": "0123456789abcdef0123456789abcdef", "name": "V_Lenient", "components": {
             "Transform": { "position": [1, 2, 3] },
             "Weapon": { "fireRate": 4, "noSuchField": 1 },
@@ -65,12 +98,12 @@ inline void validateSceneFormat(Engine& engine, Results& r)
                  transform->position == glm::vec3(1.0f, 2.0f, 3.0f) && transform->scale == glm::vec3(1.0f),
           "F4 missing fields keep defaults; unknown fields and components are skipped");
 
-    check(r, writeSceneText(engine, R"(
+    check(r, writeFormat4SceneText(engine, R"(
         { "id": "0123456789abcdef0123456789abcdef", "name": "V_Bad", "components": {
             "Weapon": { "fireRate": "fast" } } })") && !engine.loadScene(FORMAT_PATH),
           "F5 a wrong value type is rejected");
 
-    check(r, writeSceneText(engine, R"(
+    check(r, writeFormat4SceneText(engine, R"(
         { "id": "0123456789abcdef0123456789abcdef", "name": "V_Bad", "components": {
             "Physics": { "type": "Wobbly" } } })") && !engine.loadScene(FORMAT_PATH),
           "F5 an unknown enum name is rejected");

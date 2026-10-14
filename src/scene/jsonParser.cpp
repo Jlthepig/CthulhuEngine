@@ -1,5 +1,7 @@
 #include <string>
 #include <unordered_set>
+#include <cstdint>
+#include <limits>
 
 #include <simdjson.h>
 
@@ -204,6 +206,17 @@ static bool readEntity(EntityJson& entityJson, ParsedEntity& entity)
                 return false;
             }
             entity.parentId = *parsed;
+        }
+        else if (key == "sibling_order")
+        {
+            std::int64_t order{};
+            if (field.value().get_int64().get(order) || order < 0 ||
+                static_cast<std::uint64_t>(order) > std::numeric_limits<std::size_t>::max())
+            {
+                Log::Print("ENTITY HAS INVALID SIBLING ORDER", "SceneParser", LogType::LOG_ERROR);
+                return false;
+            }
+            entity.siblingOrder = static_cast<std::size_t>(order);
         }
         else if (key == "name")
         {

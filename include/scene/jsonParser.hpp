@@ -11,7 +11,7 @@
 namespace Cthulhu::Scene
 {
 
-inline constexpr uint32_t SCENE_FORMAT_VERSION = 4;
+inline constexpr uint32_t SCENE_FORMAT_VERSION = 5;
 
 struct ParsedAssetRef
 {
@@ -39,6 +39,7 @@ struct ParsedEntity
     std::optional<EntityId> parentId;
     std::string name;
     std::vector<ParsedComponent> components;
+    std::optional<std::size_t> siblingOrder;
 };
 
 struct ParsedScene

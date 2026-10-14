@@ -110,6 +110,10 @@ struct JsonWriter
     {
         oss << std::setprecision(std::numeric_limits<float>::max_digits10) << v;
     }
+    void value(std::size_t v)
+    {
+        oss << v;
+    }
     void value(int v)
     {
         oss << v;
@@ -261,6 +265,19 @@ bool SceneWriter::writeScene(const Scene &scene, const std::string &path, const 
 
             w.key("parent");
             w.value(entityIdToString(*parentId));
+        }
+
+        if (scene.hasCustomSiblingOrder(parentId))
+        {
+            const auto siblingOrder = scene.getSiblingOrder(identity.id);
+            if (!siblingOrder)
+            {
+                Log::Print("CANNOT SAVE ENTITY WITH INVALID SIBLING ORDER", "SceneWriter", LogType::LOG_ERROR);
+                valid = false;
+                return;
+            }
+            w.key("sibling_order");
+            w.value(*siblingOrder);
         }
 
         w.key("components");

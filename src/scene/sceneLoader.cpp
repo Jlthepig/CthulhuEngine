@@ -160,6 +160,59 @@ bool applyComponents(flecs::entity entity, const ParsedEntity &parsed, const Com
 
     return true;
 }
+
+bool restoreSiblingOrders(const std::vector<ParsedEntity> &entities, Scene &scene)
+{
+    std::unordered_map<EntityId, std::vector<const ParsedEntity *>, EntityIdHash> groups;
+    for (const auto &entity : entities)
+    {
+        if (entity.siblingOrder)
+        {
+            groups[entity.parentId.value_or(EntityId{})].push_back(&entity);
+        }
+    }
+
+    for (const auto &[parentId, orderedEntities] : groups)
+    {
+        const std::vector<EntityId> siblings =
+            parentId.isValid() ? scene.getChildren(parentId) : scene.getRootEntities();
+
+        if (orderedEntities.size() != siblings.size())
+        {
+            Log::Print("CUSTOM SIBLING ORDER DOES NOT COVER THE WHOLE SIBLING GROUP",
+                       "SceneLoader", LogType::LOG_ERROR);
+            return false;
+        }
+
+        std::vector<EntityId> desiredOrder(siblings.size());
+        std::vector<bool> assigned(siblings.size(), false);
+        for (const ParsedEntity *entity : orderedEntities)
+        {
+            const std::size_t order = *entity->siblingOrder;
+            if (order >= desiredOrder.size() || assigned[order])
+            {
+                Log::Print("CUSTOM SIBLING ORDER HAS A DUPLICATE OR OUT-OF-RANGE INDEX",
+                           "SceneLoader", LogType::LOG_ERROR);
+                return false;
+            }
+            desiredOrder[order] = entity->id;
+            assigned[order] = true;
+        }
+
+        for (std::size_t order = 0; order < desiredOrder.size(); ++order)
+        {
+            if (!assigned[order] || !scene.setSiblingOrder(desiredOrder[order], order))
+            {
+                Log::Print("FAILED TO RESTORE CUSTOM SIBLING ORDER",
+                           "SceneLoader", LogType::LOG_ERROR);
+                return false;
+            }
+        }
+    }
+
+    return true;
+}
+
 } // namespace
 
 bool SceneLoader::load(const std::string &path, Scene &scene, [[maybe_unused]] const Cthulhu::Project::Project &project,
@@ -213,6 +266,11 @@ bool SceneLoader::load(const std::string &path, Scene &scene, [[maybe_unused]] c
             Log::Print("FAILED TO RESTORE ENTITY HIERARCHY", "SceneLoader", LogType::LOG_ERROR);
             return false;
         }
+    }
+
+    if (!restoreSiblingOrders(parsed->entities, scene))
+    {
+        return false;
     }
 
     scene.setDirectionalLight(parsed->directionalLight);
