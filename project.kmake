@@ -1,36 +1,38 @@
-#version 1.0
+#version 2.0
 #global
-compilerlauncher: ccache
-compiler: clang-cl
-standard: c++20 
-binarytype: static
-binaryname: Cthulhu
+compilerlauncher: "ccache"
+compiler: "clang-cl"
+standard: "c++20" 
+binarytype: "static"
+binaryname: "Cthulhu"
 sources: "src"
-headers: "include", "Libraries\\GLFW\\include", "Libraries\\GLM", "Libraries\\glad", "Libraries\\Stb_image", "Libraries\\simdjson", "Libraries\\JoltPhysics-5.5.0", "Libraries\\flecs", "Libraries\\FASTTGLTF", "Libraries\\miniaudio", "include\\core", "include\\rendering", "include\\scene", "include\\utils", "include\\physics", "include\\project", "include\\assets", "include\\scribe"
+headers: "include", "Libraries\\GLFW\\include", "Libraries\\GLM", "Libraries\\glad", "Libraries\\Stb_image", "Libraries\\simdjson", "Libraries\\JoltPhysics-5.5.0", 
+"Libraries\\flecs", "Libraries\\FASTTGLTF", "Libraries\\miniaudio", "include\\core", "include\\rendering", "include\\scene", "include\\utils", "include\\physics", 
+"include\\project", "include\\assets", "include\\scribe"
 
-customflags: export-compile-commands, export-vscode-sln, warnings-as-errors
+customflags: "export-compile-commands", "export-vscode-sln", "warnings-as-errors"
 
-links: opengl32
-compileflags: Z7
+links: "opengl32"
+compileflags: "Z7"
 
-warninglevel: strict
+warninglevel: "strict"
 
 #profile release-windows
-    buildtype: release
+    buildtype: "release"
     buildpath: "build\\release-windows"
     
-    compileflags: Z7, O2, Gw, Gy
+    compileflags: "Z7", "O2", "Gw", "Gy"
     
-    linkflags: IGNORE:4006, OPT:REF, OPT:ICF
+    linkflags: "IGNORE:4006", "OPT:REF", "OPT:ICF"
     
-    defines: _GLFW_WIN32, GLFW_INCLUDE_NONE
+    defines: "_GLFW_WIN32", "GLFW_INCLUDE_NONE"
 
 
 
 #profile debug-windows
-    buildtype: debug
+    buildtype: "debug"
     buildpath: "build\\debug-windows"
-    compileflags: Z7, Od
-    linkflags: IGNORE:4006
+    compileflags: "Z7", "Od"
+    linkflags: "IGNORE:4006"
     
-    defines: _GLFW_WIN32, GLFW_INCLUDE_NONE, JPH_ENABLE_ASSERTS
+    defines: "_GLFW_WIN32", "GLFW_INCLUDE_NONE", "JPH_ENABLE_ASSERTS"

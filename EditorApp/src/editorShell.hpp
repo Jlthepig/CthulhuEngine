@@ -1,11 +1,20 @@
 #pragma once
 
+#include <cstdint>
+#include <optional>
 #include <string>
+#include <utility>
+#include <vector>
 
 #include "OctoGui/Context.h"
+#include "entityId.hpp"
 
 using namespace octogui;
 
+namespace Cthulhu::Scene
+{
+class Scene;
+}
 namespace Cthulhu
 {
 class Engine;
@@ -67,5 +76,15 @@ class EditorShell
     std::string lastSceneText;
     bool lastPlaying = false;
     bool lastPaused = false;
+
+
+    std::vector<std::pair<std::uint64_t, Scene::EntityId>> hierarchyEntityTokens;
+    std::optional<Scene::EntityId> selectedEntity;
+    std::uint64_t nextHierarchyToken = 1;
+    std::uint64_t hierarchySceneGeneration{};
+    bool hierarchyInitialized = false;
+
+    void rebuildHierarchy(Context &ctx, Scene::Scene &scene,std::optional<Scene::EntityId> restoreSelection);
+    void updateSelection(Context &ctx);
 };
 } // namespace Cthulhu::Editor

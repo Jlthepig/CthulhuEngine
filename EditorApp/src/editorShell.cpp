@@ -1,8 +1,11 @@
 #include "editorShell.hpp"
 
 #include "engine.hpp"
-#include "log_utils.hpp"
+#include "components.hpp"
 #include "session.hpp"
+#include "scene.hpp"
+#include "log_utils.hpp"
+
 
 using namespace octogui;
 
@@ -189,8 +192,98 @@ namespace Cthulhu::Editor
         fixedBar(ctx, statusBar, 24.0f);
     }
 
+    void EditorShell::rebuildHierarchy(Context &ctx, Scene::Scene &scene, std::optional<Scene::EntityId> restoreSelection)
+    {
+        ctx.clearTreeView(hierarchyTree);
+        hierarchyEntityTokens.clear();
+        nextHierarchyToken = 1;
+
+        octogui::TreeViewItemId restoredItem{};
+        const auto addChildren = [&](auto &&self, std::optional<Scene::EntityId> parentId,
+                                    octogui::TreeViewItemId parentItem) -> void {
+            const std::vector<Scene::EntityId> children =
+                parentId ? scene.getChildren(*parentId) : scene.getRootEntities();
+
+            for (const Scene::EntityId id : children)
+            {
+                const auto entity = scene.findEntity(id);
+                if (!entity)
+                {
+                    continue;
+                }
+
+                const auto *name = entity->try_get<Scene::NameComponent>();
+                const std::string label = name ? name->name : "Entity";
+                const std::uint64_t token = nextHierarchyToken++;
+                const octogui::TreeViewItemId item =
+                    ctx.addTreeViewItem(hierarchyTree, parentItem, label, token);
+
+                hierarchyEntityTokens.emplace_back(token, id);
+                if (restoreSelection && id == *restoreSelection)
+                {
+                    restoredItem = item;
+                }
+
+                self(self, id, item);
+            }
+        };
+
+        addChildren(addChildren, std::nullopt, {});
+        selectedEntity.reset();
+        if (static_cast<bool>(restoredItem))
+        {
+            ctx.setTreeViewSelectedItem(hierarchyTree, restoredItem);
+            selectedEntity = restoreSelection;
+        }
+    }
+
+    void EditorShell::updateSelection(Context &ctx)
+    {
+        const octogui::TreeViewItemId item = ctx.treeViewSelectedItem(hierarchyTree);
+        if (!static_cast<bool>(item))
+        {
+            selectedEntity.reset();
+            return;
+        }
+
+        const std::uint64_t token = ctx.treeViewItemUserValue(hierarchyTree, item);
+        for (const auto &[candidateToken, id] : hierarchyEntityTokens)
+        {
+            if (candidateToken == token)
+            {
+                selectedEntity = id;
+                return;
+            }
+        }
+
+        selectedEntity.reset();
+    }
+
     void EditorShell::update(Context &ctx, Engine &engine, Scribe::Session &session)
     {
+        Scene::Scene *activeScene = engine.getActiveScene();
+        if (!activeScene)
+        {
+            if (hierarchyInitialized)
+            {
+                ctx.clearTreeView(hierarchyTree);
+                hierarchyEntityTokens.clear();
+                selectedEntity.reset();
+                hierarchyInitialized = false;
+            }
+        }
+        else
+        {
+            const std::uint64_t sceneGeneration = engine.getSceneGeneration();
+            if (!hierarchyInitialized || sceneGeneration != hierarchySceneGeneration)
+            {
+                rebuildHierarchy(ctx, *activeScene, selectedEntity);
+                hierarchySceneGeneration = sceneGeneration;
+                hierarchyInitialized = true;
+            }
+            updateSelection(ctx);
+        }
+
         if (ctx.isClicked(saveButton))
         {
             const auto result = session.save();
