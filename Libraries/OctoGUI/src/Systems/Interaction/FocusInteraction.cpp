@@ -4,6 +4,8 @@
 
 #include "Systems/Interaction/InteractionInternal.h"
 
+#include <string>
+
 namespace octogui {
 
 void InteractionSystem::updateFocusedEditing(Tree& tree, const InputState& input, WidgetSystem& widgets, EventSystem& events, Font* font) {
@@ -23,6 +25,9 @@ void InteractionSystem::updateFocusedEditing(Tree& tree, const InputState& input
 
   const NodeType focusedType =
       tree.type(interaction.focused);
+    const NodeHandle focused =
+      interaction.focused;
+    const std::string before{tree.text(focused)};
 
   for (const InputEvent& event : input.events) {
     if (focusedType == NodeType::NumericInput) {
@@ -43,6 +48,11 @@ void InteractionSystem::updateFocusedEditing(Tree& tree, const InputState& input
         interaction.focused,
         event,
         input.clipboard);
+  }
+
+  if (focusedType == NodeType::TextInput &&
+      tree.text(focused) != before) {
+    events.push(UIEventType::ValueChanged, focused);
   }
 }
 

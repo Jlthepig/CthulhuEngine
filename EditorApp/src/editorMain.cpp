@@ -1,5 +1,8 @@
 #include <GLFW/glfw3.h>
 
+#include <iostream>
+#include <string_view>
+
 #include "engine.hpp"
 #include "input.hpp"
 #include "window.hpp"
@@ -11,7 +14,7 @@
 static bool isFullscreen = false;
 static bool isVSyncEnabled = true;
 
-static const float zoomSpeed = 350.0f;
+static const float scrollSensitivity = 5.0f;
 
 static Cthulhu::Scene::Camera* camera = nullptr;
 static Cthulhu::Editor::EditorUi* editorUi = nullptr;
@@ -111,7 +114,7 @@ void onUpdate(
 
         if (scrollDeltaY != 0.0f) {
             camera->addSpeed(
-                scrollDeltaY * zoomSpeed * deltaTime
+                scrollDeltaY * scrollSensitivity
             );
         }
     }
@@ -127,18 +130,20 @@ void onUpdate(
             camera->getPosition() +
             camera->getFront() *
                 scrollDeltaY *
-                zoomSpeed *
-                deltaTime
+                scrollSensitivity
         );
     }
 }
 
-int main() {
+int main(int argc, char* argv[]) {
+    if (argc < 2) {
+        std::cerr << "Usage: " << argv[0] << " <project-path> [scene-path]\n";
+        return 1;
+    }
+
     Cthulhu::Engine engine;
 
-    if (!engine.init(
-        "C:\\Users\\jarri\\Desktop\\CthulhuSandbox\\project.cthulhu"
-    )) {
+    if (!engine.init(argv[1])) {
         KalaHeaders::KalaLog::Log::Print(
             "FAILED TO INITIALIZE PROJECT",
             "Editor",
@@ -155,7 +160,24 @@ int main() {
     glfwSwapInterval(1);
     isVSyncEnabled = true;
 
-    if (!engine.loadScene("res://assets/scenes/test.scene")) {
+    std::string_view scenePath = argc > 2 ? argv[2] : "";
+    const Cthulhu::Project::Project* project = engine.getProject();
+    if (scenePath.empty() && project && project->getMainScene()) {
+        scenePath = *project->getMainScene();
+    }
+
+    if (scenePath.empty()) {
+        KalaHeaders::KalaLog::Log::Print(
+            "NO SCENE PATH PROVIDED AND PROJECT HAS NO CONFIGURED MAIN SCENE",
+            "Editor",
+            KalaHeaders::KalaLog::LogType::LOG_ERROR
+        );
+
+        engine.shutdown();
+        return 1;
+    }
+
+    if (!engine.loadScene(scenePath)) {
         KalaHeaders::KalaLog::Log::Print(
             "FAILED TO LOAD EDITOR SCENE",
             "Editor",
@@ -222,8 +244,6 @@ int main() {
         engine.render();
 
         ui.endFrame();
-
-        (void)session.takeEvents();
 
         engine.present();
     }

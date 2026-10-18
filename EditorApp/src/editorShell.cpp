@@ -263,6 +263,18 @@ namespace Cthulhu::Editor
 
     void EditorShell::update(Context &ctx, Engine &engine, Scribe::Session &session)
     {
+        bool hierarchyDirty = false;
+        for (const Scribe::ChangeEvent &event : session.takeEvents())
+        {
+            if (event.type == Scribe::ChangeType::EntityCreated ||
+                event.type == Scribe::ChangeType::EntityDestroyed ||
+                event.type == Scribe::ChangeType::EntityRenamed ||
+                event.type == Scribe::ChangeType::EntityReparented)
+            {
+                hierarchyDirty = true;
+            }
+        }
+
         Scene::Scene *activeScene = engine.getActiveScene();
         if (!activeScene)
         {
@@ -278,7 +290,7 @@ namespace Cthulhu::Editor
         {
             const std::uint64_t sceneGeneration = engine.getSceneGeneration();
             if (!hierarchyInitialized || sceneGeneration != hierarchySceneGeneration ||
-                activeScene->getEntityCount() != hierarchyEntityTokens.size())
+                activeScene->getEntityCount() != hierarchyEntityTokens.size() || hierarchyDirty)
             {
                 rebuildHierarchy(ctx, *activeScene, selectedEntity);
                 hierarchySceneGeneration = sceneGeneration;

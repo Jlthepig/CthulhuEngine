@@ -659,15 +659,19 @@ void Engine::update()
     Core::Input::update();
     Core::Audio::update();
 
+    const float simulationDt = simState == SimulationState::Stepping
+                                   ? physicsWorld.fixedDeltaTime()
+                                   : deltaTime;
+
     if (isSimulating())
     {
-        physicsWorld.step(deltaTime);
+        physicsWorld.step(simulationDt);
     }
 
     // ecs systems always progress gameplay systems must follow applySimStateToSystems()
     if (activeScene)
     {
-        activeScene->getWorld().progress(deltaTime);
+        activeScene->getWorld().progress(simulationDt);
     }
 
     if (simState == SimulationState::Stepping)

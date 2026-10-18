@@ -177,9 +177,15 @@ namespace Cthulhu::Editor
         layout.gap = 4.0f;
     }
 
-    void InspectorPanel::update(Context &ctx, Engine &engine, Scribe::Session &session,
-                                Scene::Scene *scene, std::optional<Scene::EntityId> entityId)
+    void InspectorPanel::update(Context &ctx, Engine &engine, Scribe::Session &session, Scene::Scene *scene, std::optional<Scene::EntityId> entityId)
     {
+
+        if (initialized)
+        {
+            syncTransform(ctx, engine, session);
+            processEvents(ctx, engine, session);
+        }
+
         selectedEntity = entityId;
         std::vector<std::string> attached;
         if (scene && selectedEntity)
@@ -522,7 +528,12 @@ namespace Cthulhu::Editor
 
             std::optional<Scene::FieldValue> nextValue;
             bool discreteEdit = false;
-            if (event.type == octogui::UIEventType::ValueChanged)
+            if (event.type == octogui::UIEventType::ValueChanged &&
+                (binding->type == Scene::FieldType::Float ||
+                 binding->type == Scene::FieldType::Int ||
+                 binding->type == Scene::FieldType::Vec3 ||
+                 binding->type == Scene::FieldType::Color ||
+                 binding->type == Scene::FieldType::String))
             {
                 if (binding->type == Scene::FieldType::Float)
                 {
@@ -555,10 +566,11 @@ namespace Cthulhu::Editor
                 nextValue = Scene::FieldValue{ctx.isChecked(binding->control)};
                 discreteEdit = true;
             }
-            else if (event.type == octogui::UIEventType::SelectionChanged &&
-                     (binding->type == Scene::FieldType::Enum ||
-                      binding->type == Scene::FieldType::AssetRef ||
-                      binding->type == Scene::FieldType::EntityRef))
+            else if ((event.type == octogui::UIEventType::ValueChanged ||
+                    event.type == octogui::UIEventType::SelectionChanged) &&
+                    (binding->type == Scene::FieldType::Enum ||
+                    binding->type == Scene::FieldType::AssetRef ||
+                    binding->type == Scene::FieldType::EntityRef))
             {
                 const int index = ctx.comboBoxSelectedIndex(binding->control);
                 if (index >= 0 && static_cast<std::size_t>(index) < binding->options.size())

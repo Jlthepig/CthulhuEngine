@@ -75,6 +75,10 @@ class PhysicsWorld
     {
         return config;
     }
+    float fixedDeltaTime() const
+    {
+        return config.fixedDeltaTime;
+    }
 
   private:
     PhysicsConfig config;

@@ -117,7 +117,7 @@ void Input::mouse_button_callback(GLFWwindow *window, int button, int action, [[
 void Input::scroll_callback([[maybe_unused]] GLFWwindow *window, [[maybe_unused]] double xoffset,
                             [[maybe_unused]] double yoffset)
 {
-    scrollDeltaY = static_cast<float>(yoffset);
+    scrollDeltaY += static_cast<float>(yoffset);
 }
 
 float Input::getScrollDeltaY()
