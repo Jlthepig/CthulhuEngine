@@ -1,6 +1,5 @@
 #pragma once
 
-#include <cstddef>
 #include <cstdint>
 #include <optional>
 #include <string>
@@ -8,10 +7,10 @@
 #include <vector>
 
 #include "OctoGui/Context.h"
-#include "componentRegistry.hpp"
+#include "entityId.hpp"
+#include "inspectorPanel.hpp"
 
 using namespace octogui;
-
 namespace Cthulhu
 {
 class Engine;
@@ -29,7 +28,6 @@ class Scene;
 
 namespace Cthulhu::Editor
 {
-
 struct IconButton
 {
     NodeHandle button{};
@@ -73,7 +71,7 @@ class EditorShell
     NodeHandle hierarchyTree{};
     NodeHandle sceneNode{};
     NodeHandle inspector{};
-    NodeHandle inspectorContent{};
+    InspectorPanel inspectorUI;
 
     std::string lastSceneText;
     bool lastPlaying = false;
@@ -85,29 +83,7 @@ class EditorShell
     std::uint64_t hierarchySceneGeneration = 0;
     bool hierarchyInitialized = false;
 
-    struct InspectorBinding
-    {
-        NodeHandle control{};
-        std::string component;
-        std::string field;
-        Scene::FieldType type = Scene::FieldType::Float;
-        Scene::FieldHint hint = Scene::FieldHint::None;
-        std::size_t axis = 0;
-        double shownValue = 0.0;
-        std::vector<Scene::FieldValue> options;
-    };
-
-    std::vector<NodeHandle> inspectorChildren;
-    std::vector<InspectorBinding> inspectorBindings;
-    std::vector<std::string> inspectorComponentNames;
-    std::optional<Scene::EntityId> inspectorEntity;
-    bool inspectorInitialized = false;
-
     void rebuildHierarchy(Context &ctx, Scene::Scene &scene, std::optional<Scene::EntityId> restoreSelection);
     void updateSelection(Context &ctx);
-    void rebuildInspector(Context &ctx, Engine &engine, Scene::Scene *scene);
-    void processInspectorEvents(Context &ctx, Engine &engine, Scribe::Session &session);
-    void syncTransformInputs(Context &ctx, Engine &engine, Scribe::Session &session);
-    void refreshInspectorValues(Context &ctx, Engine &engine);
 };
 } // namespace Cthulhu::Editor
