@@ -1,5 +1,7 @@
 #pragma once
 
+#include <cmath>
+
 #include "testCommon.hpp"
 
 namespace Cthulhu::Validation
@@ -22,9 +24,28 @@ inline void validatePhysics(Engine& engine, CS::Scene& scene, Results& r)
 	check(r, bodies(engine) == base, "03 remove PhysicsComponent -> Jolt body destroyed");
 	flecs::entity parent = scene.createEntity("V_PhysicsParent");
 	flecs::entity child = scene.createEntity("V_PhysicsChild");
+	CS::TransformComponent parentTransform;
+	parentTransform.position = glm::vec3(10.0f, 0.0f, 0.0f);
+	parentTransform.rotation.z = glm::half_pi<float>();
+	parent.set(parentTransform);
+	CS::TransformComponent childTransform;
+	childTransform.position = glm::vec3(2.0f, 0.0f, 0.0f);
+	child.set(childTransform);
 	parent.set(CS::PhysicsComponent{});
 	child.set(CS::PhysicsComponent{});
-	scene.setParent(idOf(child), idOf(parent));
+	const bool parented = scene.setParent(idOf(child), idOf(parent));
+	const auto* childRuntime = child.try_get<CS::PhysicsRuntimeComponent>();
+	const auto bodyTransform = childRuntime ? engine.getPhysicsWorld().getBodyTransform(childRuntime->bodyId)
+																  : Cthulhu::Physics::BodyTransform{};
+	check(r, parented && std::abs(bodyTransform.position.x - 10.0f) < 0.001f &&
+				 std::abs(bodyTransform.position.y - 2.0f) < 0.001f,
+		  "04 parented physics body uses composed world position");
+	check(r, std::abs(bodyTransform.rotation.z) > 0.6f, "04 physics box uses composed world rotation");
+	scene.getWorld().progress(0.0f);
+	const auto& syncedTransform = child.get<CS::TransformComponent>();
+	check(r, std::abs(syncedTransform.position.x - 2.0f) < 0.001f &&
+				 std::abs(syncedTransform.position.y) < 0.001f,
+		  "04 physics sync converts world position to local space");
 	scene.destroyEntity(idOf(parent));
 	check(r, bodies(engine) == base, "04 delete physics subtree -> no leaked bodies");
 	scene.destroyEntity(idOf(e));

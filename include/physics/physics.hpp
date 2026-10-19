@@ -3,6 +3,7 @@
 #include <cstdint>
 
 #include <glm.hpp>
+#include <gtc/quaternion.hpp>
 namespace JPH
 {
 class PhysicsSystem;
@@ -18,7 +19,7 @@ namespace Cthulhu::Physics
 struct BodyTransform
 {
     glm::vec3 position = glm::vec3(0.0f);
-    glm::vec3 rotation = glm::vec3(0.0f); // euler radians
+    glm::quat rotation = glm::quat(1.0f, 0.0f, 0.0f, 0.0f);
 };
 
 struct RaycastHitInfo
@@ -55,8 +56,8 @@ class PhysicsWorld
     float getInterpolationAlpha();
     void shutdown();
 
-    uint32_t addStaticBox(glm::vec3 position, glm::vec3 halfExtent);
-    uint32_t addDynamicBox(glm::vec3 position, glm::vec3 halfextent, float mass);
+    uint32_t addStaticBox(glm::vec3 position, glm::quat rotation, glm::vec3 halfExtent);
+    uint32_t addDynamicBox(glm::vec3 position, glm::quat rotation, glm::vec3 halfextent, float mass);
     void removeBody(uint32_t bodyId);
     uint32_t getBodyCount() const;
     BodyTransform getBodyTransform(uint32_t bodyId);

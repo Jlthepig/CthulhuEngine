@@ -240,11 +240,6 @@ bool SceneLoader::load(const std::string &path, Scene &scene, [[maybe_unused]] c
             return false;
         }
 
-        if (!applyComponents(*entity, parsedEntity, *scene.getComponentRegistry(), registry))
-        {
-            Log::Print("FAILED TO LOAD COMPONENTS OF: " + parsedEntity.name, "SceneLoader", LogType::LOG_ERROR);
-            return false;
-        }
     }
 
     for (const auto &parsedEntity : parsed->entities)
@@ -264,6 +259,16 @@ bool SceneLoader::load(const std::string &path, Scene &scene, [[maybe_unused]] c
         if (!scene.setParent(parsedEntity.id, *parsedEntity.parentId))
         {
             Log::Print("FAILED TO RESTORE ENTITY HIERARCHY", "SceneLoader", LogType::LOG_ERROR);
+            return false;
+        }
+    }
+
+    for (const auto &parsedEntity : parsed->entities)
+    {
+        auto entity = scene.findEntity(parsedEntity.id);
+        if (!entity || !applyComponents(*entity, parsedEntity, *scene.getComponentRegistry(), registry))
+        {
+            Log::Print("FAILED TO LOAD COMPONENTS OF: " + parsedEntity.name, "SceneLoader", LogType::LOG_ERROR);
             return false;
         }
     }

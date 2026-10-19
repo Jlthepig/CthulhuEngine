@@ -8,6 +8,7 @@
 #include "engine.hpp"
 #include "physics.hpp"
 #include "systemRegistry.hpp"
+#include "transformUtils.hpp"
 
 namespace Cthulhu::Scene
 {
@@ -22,19 +23,21 @@ static bool createPhysicsRuntime(flecs::entity entity, Cthulhu::Engine *engine)
     }
 
     const auto &physics = entity.get<PhysicsComponent>();
-    const auto &transform = entity.get<TransformComponent>();
+    const WorldTransform transform = getWorldTransform(entity);
 
     uint32_t bodyId = 0;
 
     switch (physics.type)
     {
     case PhysicsBodyType::Static: {
-        bodyId = engine->getPhysicsWorld().addStaticBox(transform.position, physics.halfExtent);
+        bodyId = engine->getPhysicsWorld().addStaticBox(glm::vec3(transform.matrix[3]), transform.rotation,
+                                physics.halfExtent);
         break;
     }
 
     case PhysicsBodyType::Dynamic: {
-        bodyId = engine->getPhysicsWorld().addDynamicBox(transform.position, physics.halfExtent, physics.mass);
+        bodyId = engine->getPhysicsWorld().addDynamicBox(glm::vec3(transform.matrix[3]), transform.rotation,
+                                 physics.halfExtent, physics.mass);
         break;
     }
     }
@@ -96,8 +99,9 @@ void RegisterCoreSystems(flecs::world &world, Cthulhu::Engine *engineContext)
         .each(
             [engineContext](flecs::entity entity, PhysicsComponent &) { createPhysicsRuntime(entity, engineContext); });
 
-    world.system<TransformComponent, const PhysicsRuntimeComponent>("PhysicsSyncSystem")
-        .each([engineContext](TransformComponent &transform, const PhysicsRuntimeComponent &runtime) {
+    world.system<flecs::entity, TransformComponent, const PhysicsRuntimeComponent>("PhysicsSyncSystem")
+        .each([engineContext](flecs::entity entity, TransformComponent &transform,
+                              const PhysicsRuntimeComponent &runtime) {
             if (runtime.bodyId == 0)
             {
                 return;
@@ -105,8 +109,8 @@ void RegisterCoreSystems(flecs::world &world, Cthulhu::Engine *engineContext)
 
             const auto bodyTransform = engineContext->getPhysicsWorld().getBodyTransform(runtime.bodyId);
 
-            transform.position = bodyTransform.position;
-            transform.rotation = bodyTransform.rotation;
+            transform.position = worldPositionToLocal(entity, bodyTransform.position);
+            transform.rotation = glm::eulerAngles(worldRotationToLocal(entity, bodyTransform.rotation));
             transform.matrixDirty = true;
         })
         .add<GameplaySystem>();
@@ -132,11 +136,12 @@ void RegisterCoreSystems(flecs::world &world, Cthulhu::Engine *engineContext)
             Physics::CharacterController::createRuntime(entity, engineContext->getPhysicsWorld());
         });
 
-    world.system<CharacterControllerRuntimeComponent, TransformComponent>("CharacterInterpolationSystem")
-        .each([engineContext](CharacterControllerRuntimeComponent &runtime, TransformComponent &transform) {
+    world.system<flecs::entity, CharacterControllerRuntimeComponent, TransformComponent>("CharacterInterpolationSystem")
+        .each([engineContext](flecs::entity entity, CharacterControllerRuntimeComponent &runtime,
+                              TransformComponent &transform) {
             const float alpha = engineContext->getPhysicsWorld().getInterpolationAlpha();
 
-            transform.position = glm::mix(runtime.prevPos, runtime.currentPos, alpha);
+            transform.position = worldPositionToLocal(entity, glm::mix(runtime.prevPos, runtime.currentPos, alpha));
             transform.matrixDirty = true;
         })
         .add<GameplaySystem>();

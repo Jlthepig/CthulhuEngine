@@ -13,6 +13,23 @@ using KalaHeaders::KalaLog::LogType;
 namespace Cthulhu::Scene
 {
 
+namespace
+{
+void refreshSpatialRuntime(flecs::entity entity)
+{
+    if (const auto *physics = entity.try_get<PhysicsComponent>())
+    {
+        const PhysicsComponent refreshed = *physics;
+        entity.set(refreshed);
+    }
+    if (const auto *character = entity.try_get<CharacterControllerComponent>())
+    {
+        const CharacterControllerComponent refreshed = *character;
+        entity.set(refreshed);
+    }
+}
+} // namespace
+
 Scene::Scene(const ComponentRegistry& registry) : componentRegistry(&registry)
 {
     world.observer<const EntityIdentityComponent>("EntityLookupAdd")
@@ -222,6 +239,7 @@ bool Scene::setParent(EntityId childId, EntityId parentId)
 
     child->child_of(*parent);
     appendToCustomSiblingGroup(parentId, childId);
+    refreshSpatialRuntime(*child);
     markDirty();
     return true;
 }
@@ -245,6 +263,7 @@ bool Scene::clearParent(EntityId childId)
     removeFromCustomSiblingGroup(*oldParentId, childId);
     child->remove(flecs::ChildOf, parent);
     appendToCustomSiblingGroup({}, childId);
+    refreshSpatialRuntime(*child);
     markDirty();
     return true;
 }

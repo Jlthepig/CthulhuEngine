@@ -9,6 +9,7 @@
 #include "components.hpp"
 #include "log_utils.hpp"
 #include "physics.hpp"
+#include "transformUtils.hpp"
 
 using KalaHeaders::KalaLog::Log;
 using KalaHeaders::KalaLog::LogType;
@@ -34,7 +35,8 @@ bool CharacterController::createRuntime(flecs::entity entity, PhysicsWorld &phys
     }
 
     const auto &config = entity.get<Scene::CharacterControllerComponent>();
-    const auto &transform = entity.get<Scene::TransformComponent>();
+    const Scene::WorldTransform transform = Scene::getWorldTransform(entity);
+    const glm::vec3 worldPosition(transform.matrix[3]);
 
     JPH::CapsuleShapeSettings capsuleSettings(config.capsuleHeight * 0.5f, config.capsuleRadius);
 
@@ -62,8 +64,8 @@ bool CharacterController::createRuntime(flecs::entity entity, PhysicsWorld &phys
     settings.mCharacterPadding = 0.02f;
 
     auto *character = new JPH::CharacterVirtual(
-        &settings, JPH::RVec3(transform.position.x, transform.position.y, transform.position.z), JPH::Quat::sIdentity(),
-        physicsSystem);
+        &settings, JPH::RVec3(worldPosition.x, worldPosition.y, worldPosition.z),
+        JPH::Quat(transform.rotation.w, transform.rotation.x, transform.rotation.y, transform.rotation.z), physicsSystem);
 
     ++liveCharacterCount;
 
@@ -77,8 +79,8 @@ bool CharacterController::createRuntime(flecs::entity entity, PhysicsWorld &phys
 
     Scene::CharacterControllerRuntimeComponent runtime;
     runtime.character = character;
-    runtime.prevPos = transform.position;
-    runtime.currentPos = transform.position;
+    runtime.prevPos = worldPosition;
+    runtime.currentPos = worldPosition;
 
     entity.set(runtime);
     return true;

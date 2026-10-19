@@ -137,7 +137,7 @@ void PhysicsWorld::step(float deltaTime)
     }
 }
 
-uint32_t PhysicsWorld::addStaticBox(glm::vec3 position, glm::vec3 halfExtent)
+uint32_t PhysicsWorld::addStaticBox(glm::vec3 position, glm::quat rotation, glm::vec3 halfExtent)
 {
     if (!physicsSystem)
     { /* error */
@@ -151,8 +151,9 @@ uint32_t PhysicsWorld::addStaticBox(glm::vec3 position, glm::vec3 halfExtent)
         return 0;
     }
 
+    JPH::Quat joltRotation(rotation.w, rotation.x, rotation.y, rotation.z);
     JPH::BodyCreationSettings bodySettings(shapeResult.Get(), JPH::RVec3(position.x, position.y, position.z),
-                                           JPH::Quat::sIdentity(), JPH::EMotionType::Static, ObjectLayers::NON_MOVING);
+                                           joltRotation, JPH::EMotionType::Static, ObjectLayers::NON_MOVING);
 
     JPH::BodyID bodyId = bodyInterface.CreateAndAddBody(bodySettings, JPH::EActivation::DontActivate);
     if (bodyId.IsInvalid())
@@ -162,7 +163,7 @@ uint32_t PhysicsWorld::addStaticBox(glm::vec3 position, glm::vec3 halfExtent)
     return bodyId.GetIndexAndSequenceNumber();
 }
 
-uint32_t PhysicsWorld::addDynamicBox(glm::vec3 position, glm::vec3 halfExtent, float mass)
+uint32_t PhysicsWorld::addDynamicBox(glm::vec3 position, glm::quat rotation, glm::vec3 halfExtent, float mass)
 {
     if (!physicsSystem)
     { /* error */
@@ -176,8 +177,9 @@ uint32_t PhysicsWorld::addDynamicBox(glm::vec3 position, glm::vec3 halfExtent, f
         return 0;
     }
 
+    JPH::Quat joltRotation(rotation.w, rotation.x, rotation.y, rotation.z);
     JPH::BodyCreationSettings bodySettings(shapeResult.Get(), JPH::RVec3(position.x, position.y, position.z),
-                                           JPH::Quat::sIdentity(), JPH::EMotionType::Dynamic, ObjectLayers::MOVING);
+                                           joltRotation, JPH::EMotionType::Dynamic, ObjectLayers::MOVING);
 
     bodySettings.mOverrideMassProperties = JPH::EOverrideMassProperties::CalculateInertia;
     bodySettings.mMassPropertiesOverride.mMass = mass;
@@ -240,8 +242,7 @@ BodyTransform PhysicsWorld::getBodyTransform(uint32_t bodyIdValue)
 
     result.position =
         glm::vec3(static_cast<float>(pos.GetX()), static_cast<float>(pos.GetY()), static_cast<float>(pos.GetZ()));
-    glm::quat glmRot(rot.GetW(), rot.GetX(), rot.GetY(), rot.GetZ());
-    result.rotation = glm::eulerAngles(glmRot);
+    result.rotation = glm::quat(rot.GetW(), rot.GetX(), rot.GetY(), rot.GetZ());
 
     return result;
 }
