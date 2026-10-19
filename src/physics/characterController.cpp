@@ -65,7 +65,7 @@ bool CharacterController::createRuntime(flecs::entity entity, PhysicsWorld &phys
 
     auto *character = new JPH::CharacterVirtual(
         &settings, JPH::RVec3(worldPosition.x, worldPosition.y, worldPosition.z),
-        JPH::Quat(transform.rotation.w, transform.rotation.x, transform.rotation.y, transform.rotation.z), physicsSystem);
+        JPH::Quat(transform.rotation.x, transform.rotation.y, transform.rotation.z, transform.rotation.w), physicsSystem);
 
     ++liveCharacterCount;
 

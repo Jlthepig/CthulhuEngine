@@ -25,7 +25,7 @@ static bool createPhysicsRuntime(flecs::entity entity, Cthulhu::Engine *engine)
     const auto &physics = entity.get<PhysicsComponent>();
     const WorldTransform transform = getWorldTransform(entity);
 
-    uint32_t bodyId = 0;
+    std::optional<uint32_t> bodyId;
 
     switch (physics.type)
     {
@@ -42,16 +42,16 @@ static bool createPhysicsRuntime(flecs::entity entity, Cthulhu::Engine *engine)
     }
     }
 
-    if (bodyId == 0)
+    if (!bodyId)
     {
         return false;
     }
 
     if (const auto *oldRuntime = entity.try_get<PhysicsRuntimeComponent>())
     {
-        if (oldRuntime->bodyId != 0)
+        if (oldRuntime->bodyId)
         {
-            engine->getPhysicsWorld().removeBody(oldRuntime->bodyId);
+            engine->getPhysicsWorld().removeBody(*oldRuntime->bodyId);
         }
     }
 
@@ -102,12 +102,12 @@ void RegisterCoreSystems(flecs::world &world, Cthulhu::Engine *engineContext)
     world.system<flecs::entity, TransformComponent, const PhysicsRuntimeComponent>("PhysicsSyncSystem")
         .each([engineContext](flecs::entity entity, TransformComponent &transform,
                               const PhysicsRuntimeComponent &runtime) {
-            if (runtime.bodyId == 0)
+            if (!runtime.bodyId)
             {
                 return;
             }
 
-            const auto bodyTransform = engineContext->getPhysicsWorld().getBodyTransform(runtime.bodyId);
+            const auto bodyTransform = engineContext->getPhysicsWorld().getBodyTransform(*runtime.bodyId);
 
             transform.position = worldPositionToLocal(entity, bodyTransform.position);
             transform.rotation = glm::eulerAngles(worldRotationToLocal(entity, bodyTransform.rotation));
@@ -123,9 +123,9 @@ void RegisterCoreSystems(flecs::world &world, Cthulhu::Engine *engineContext)
     world.observer<PhysicsRuntimeComponent>("PhysicsCleanupObserver")
         .event(flecs::OnRemove)
         .each([engineContext](flecs::entity, PhysicsRuntimeComponent &runtime) {
-            if (runtime.bodyId != 0)
+            if (runtime.bodyId)
             {
-                engineContext->getPhysicsWorld().removeBody(runtime.bodyId);
+                engineContext->getPhysicsWorld().removeBody(*runtime.bodyId);
             }
         });
 

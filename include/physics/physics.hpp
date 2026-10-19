@@ -1,6 +1,7 @@
 #pragma once
 
 #include <cstdint>
+#include <optional>
 
 #include <glm.hpp>
 #include <gtc/quaternion.hpp>
@@ -49,15 +50,15 @@ struct PhysicsConfig
 class PhysicsWorld
 {
   public:
-    void init(const PhysicsConfig &config);
+    bool init(const PhysicsConfig &config);
     void step(float deltaTime);
     void (*onFixedUpdate)(void *context, float fixedDt) = nullptr;
     void *onFixedUpdateContext = nullptr;
     float getInterpolationAlpha();
     void shutdown();
 
-    uint32_t addStaticBox(glm::vec3 position, glm::quat rotation, glm::vec3 halfExtent);
-    uint32_t addDynamicBox(glm::vec3 position, glm::quat rotation, glm::vec3 halfextent, float mass);
+    std::optional<uint32_t> addStaticBox(glm::vec3 position, glm::quat rotation, glm::vec3 halfExtent);
+    std::optional<uint32_t> addDynamicBox(glm::vec3 position, glm::quat rotation, glm::vec3 halfextent, float mass);
     void removeBody(uint32_t bodyId);
     uint32_t getBodyCount() const;
     BodyTransform getBodyTransform(uint32_t bodyId);

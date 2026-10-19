@@ -1,4 +1,5 @@
 #include <cstdarg>
+#include <cmath>
 
 #include <Jolt/Jolt.h>
 #include <Jolt/Core/Core.h>
@@ -95,8 +96,15 @@ class ContactListenerImpl final : public JPH::ContactListener
 {
 };
 
-void PhysicsWorld::init(const PhysicsConfig &config)
+bool PhysicsWorld::init(const PhysicsConfig &config)
 {
+    if (!std::isfinite(config.fixedDeltaTime) || config.fixedDeltaTime <= 0.0f ||
+        !std::isfinite(config.maxDeltaTime) || config.maxDeltaTime < config.fixedDeltaTime)
+    {
+        Log::Print("INVALID PHYSICS TIMESTEP CONFIGURATION", "Physics", LogType::LOG_ERROR);
+        return false;
+    }
+
     this->config = config;
     JPH::Trace = joltTrace;
     JPH::RegisterDefaultAllocator();
@@ -118,6 +126,7 @@ void PhysicsWorld::init(const PhysicsConfig &config)
 
     physicsSystem->SetContactListener(contactListener);
     Log::Print("Initialized Jolt Physics System", "Physics", LogType::LOG_SUCCESS);
+    return true;
 }
 
 void PhysicsWorld::step(float deltaTime)
@@ -137,47 +146,48 @@ void PhysicsWorld::step(float deltaTime)
     }
 }
 
-uint32_t PhysicsWorld::addStaticBox(glm::vec3 position, glm::quat rotation, glm::vec3 halfExtent)
+std::optional<uint32_t> PhysicsWorld::addStaticBox(glm::vec3 position, glm::quat rotation, glm::vec3 halfExtent)
 {
     if (!physicsSystem)
     { /* error */
-        return 0;
+        return std::nullopt;
     }
     JPH::BodyInterface &bodyInterface = physicsSystem->GetBodyInterface();
     JPH::BoxShapeSettings shapeSettings(JPH::Vec3(halfExtent.x, halfExtent.y, halfExtent.z));
     auto shapeResult = shapeSettings.Create();
     if (shapeResult.HasError())
     { /* error */
-        return 0;
+        return std::nullopt;
     }
 
-    JPH::Quat joltRotation(rotation.w, rotation.x, rotation.y, rotation.z);
+    JPH::Quat joltRotation(rotation.x, rotation.y, rotation.z, rotation.w);
     JPH::BodyCreationSettings bodySettings(shapeResult.Get(), JPH::RVec3(position.x, position.y, position.z),
                                            joltRotation, JPH::EMotionType::Static, ObjectLayers::NON_MOVING);
 
     JPH::BodyID bodyId = bodyInterface.CreateAndAddBody(bodySettings, JPH::EActivation::DontActivate);
     if (bodyId.IsInvalid())
     {
-        return 0;
+        return std::nullopt;
     }
     return bodyId.GetIndexAndSequenceNumber();
 }
 
-uint32_t PhysicsWorld::addDynamicBox(glm::vec3 position, glm::quat rotation, glm::vec3 halfExtent, float mass)
+std::optional<uint32_t> PhysicsWorld::addDynamicBox(glm::vec3 position, glm::quat rotation, glm::vec3 halfExtent,
+                                                    float mass)
 {
     if (!physicsSystem)
     { /* error */
-        return 0;
+        return std::nullopt;
     }
     JPH::BodyInterface &bodyInterface = physicsSystem->GetBodyInterface();
     JPH::BoxShapeSettings shapeSettings(JPH::Vec3(halfExtent.x, halfExtent.y, halfExtent.z));
     auto shapeResult = shapeSettings.Create();
     if (shapeResult.HasError())
     { /* error */
-        return 0;
+        return std::nullopt;
     }
 
-    JPH::Quat joltRotation(rotation.w, rotation.x, rotation.y, rotation.z);
+    JPH::Quat joltRotation(rotation.x, rotation.y, rotation.z, rotation.w);
     JPH::BodyCreationSettings bodySettings(shapeResult.Get(), JPH::RVec3(position.x, position.y, position.z),
                                            joltRotation, JPH::EMotionType::Dynamic, ObjectLayers::MOVING);
 
@@ -185,6 +195,10 @@ uint32_t PhysicsWorld::addDynamicBox(glm::vec3 position, glm::quat rotation, glm
     bodySettings.mMassPropertiesOverride.mMass = mass;
 
     JPH::BodyID bodyId = bodyInterface.CreateAndAddBody(bodySettings, JPH::EActivation::Activate);
+    if (bodyId.IsInvalid())
+    {
+        return std::nullopt;
+    }
     return bodyId.GetIndexAndSequenceNumber();
 }
 

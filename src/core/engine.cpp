@@ -146,7 +146,11 @@ bool Engine::init(const std::filesystem::path &projectFilePath)
 
     renderConfig.engineResourceRoot = engineResourceRoot;
 
-    physicsWorld.init(physicsConfig);
+    if (!physicsWorld.init(physicsConfig))
+    {
+        shutdown();
+        return false;
+    }
     physicsInitialized = true;
 
     activeScene = createSceneInstance();

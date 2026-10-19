@@ -1,6 +1,7 @@
 #pragma once
 
 #include <cmath>
+#include <limits>
 
 #include "testCommon.hpp"
 
@@ -8,16 +9,36 @@ namespace Cthulhu::Validation
 {
 inline void validatePhysics(Engine& engine, CS::Scene& scene, Results& r)
 {
+	const auto rejectsInvalidConfig = [](Cthulhu::Physics::PhysicsConfig config) {
+		Cthulhu::Physics::PhysicsWorld physics;
+		return !physics.init(config) && physics.getPhysicsSystem() == nullptr;
+	};
+	Cthulhu::Physics::PhysicsConfig invalidConfig;
+	invalidConfig.fixedDeltaTime = 0.0f;
+	const bool rejectsZeroDelta = rejectsInvalidConfig(invalidConfig);
+	invalidConfig.fixedDeltaTime = -1.0f;
+	const bool rejectsNegativeDelta = rejectsInvalidConfig(invalidConfig);
+	invalidConfig.fixedDeltaTime = std::numeric_limits<float>::quiet_NaN();
+	const bool rejectsNonFiniteDelta = rejectsInvalidConfig(invalidConfig);
+	invalidConfig.fixedDeltaTime = 1.0f / 60.0f;
+	invalidConfig.maxDeltaTime = std::numeric_limits<float>::infinity();
+	const bool rejectsNonFiniteMaxDelta = rejectsInvalidConfig(invalidConfig);
+	invalidConfig.maxDeltaTime = invalidConfig.fixedDeltaTime * 0.5f;
+	const bool rejectsShortMaxDelta = rejectsInvalidConfig(invalidConfig);
+	check(r, rejectsZeroDelta && rejectsNegativeDelta && rejectsNonFiniteDelta && rejectsNonFiniteMaxDelta &&
+				 rejectsShortMaxDelta,
+		  "00 invalid physics timing rejected before allocation");
+
 	const uint32_t base = bodies(engine);
 	flecs::entity e = scene.createEntity("V_Physics");
 	e.set(CS::PhysicsComponent{CS::PhysicsBodyType::Dynamic, glm::vec3(0.5f), 1.0f});
 	const auto* rt = e.try_get<CS::PhysicsRuntimeComponent>();
-	check(r, rt && rt->bodyId != 0, "01 add PhysicsComponent -> runtime body exists");
+	check(r, rt && rt->bodyId.has_value(), "01 add PhysicsComponent -> runtime body exists");
 	check(r, bodies(engine) == base + 1, "01 add PhysicsComponent -> exactly one Jolt body");
-	const uint32_t oldBody = rt ? rt->bodyId : 0;
+	const auto oldBody = rt ? rt->bodyId : std::nullopt;
 	e.set(CS::PhysicsComponent{CS::PhysicsBodyType::Static, glm::vec3(1.0f), 1.0f});
 	rt = e.try_get<CS::PhysicsRuntimeComponent>();
-	check(r, rt && rt->bodyId != 0 && rt->bodyId != oldBody, "02 modify PhysicsComponent -> body rebuilt");
+	check(r, rt && rt->bodyId.has_value() && rt->bodyId != oldBody, "02 modify PhysicsComponent -> body rebuilt");
 	check(r, bodies(engine) == base + 1, "02 modify PhysicsComponent -> old body destroyed");
 	e.remove<CS::PhysicsComponent>();
 	check(r, !e.has<CS::PhysicsRuntimeComponent>(), "03 remove PhysicsComponent -> runtime removed");
@@ -35,7 +56,8 @@ inline void validatePhysics(Engine& engine, CS::Scene& scene, Results& r)
 	child.set(CS::PhysicsComponent{});
 	const bool parented = scene.setParent(idOf(child), idOf(parent));
 	const auto* childRuntime = child.try_get<CS::PhysicsRuntimeComponent>();
-	const auto bodyTransform = childRuntime ? engine.getPhysicsWorld().getBodyTransform(childRuntime->bodyId)
+	const auto bodyTransform = childRuntime && childRuntime->bodyId
+												  ? engine.getPhysicsWorld().getBodyTransform(*childRuntime->bodyId)
 																  : Cthulhu::Physics::BodyTransform{};
 	check(r, parented && std::abs(bodyTransform.position.x - 10.0f) < 0.001f &&
 				 std::abs(bodyTransform.position.y - 2.0f) < 0.001f,

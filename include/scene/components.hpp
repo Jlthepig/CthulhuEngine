@@ -1,5 +1,6 @@
 #pragma once
 #include <cstdint>
+#include <optional>
 #include <string>
 
 #include <glm.hpp>
@@ -85,7 +86,7 @@ struct PhysicsComponent
 
 struct PhysicsRuntimeComponent
 {
-    uint32_t bodyId{0};
+    std::optional<uint32_t> bodyId;
 };
 
 struct CharacterControllerComponent

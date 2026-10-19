@@ -75,12 +75,13 @@ inline void validateComponentDescriptors(Engine& engine, CS::Scene& scene, Resul
 	const uint32_t base = bodies(engine);
 	physics->add(w);
 	const auto* rt = w.try_get<CS::PhysicsRuntimeComponent>();
-	check(r, rt && rt->bodyId != 0 && bodies(engine) == base + 1, "D8 descriptor add builds runtime");
+	check(r, rt && rt->bodyId.has_value() && bodies(engine) == base + 1, "D8 descriptor add builds runtime");
 
-	const uint32_t oldBody = rt ? rt->bodyId : 0;
+	const auto oldBody = rt ? rt->bodyId : std::nullopt;
 	registry.setField(w, "Physics", "type", static_cast<int>(CS::PhysicsBodyType::Dynamic));
 	rt = w.try_get<CS::PhysicsRuntimeComponent>();
-	check(r, rt && rt->bodyId != oldBody && bodies(engine) == base + 1, "D8 setField fires OnSet (body rebuilt)");
+	check(r, rt && rt->bodyId.has_value() && rt->bodyId != oldBody && bodies(engine) == base + 1,
+		  "D8 setField fires OnSet (body rebuilt)");
 	check(r, !registry.setField(w, "Physics", "type", 7), "D8 enum index out of range rejected");
 
 	physics->remove(w);
