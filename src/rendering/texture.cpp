@@ -18,7 +18,7 @@ void Texture::load(const std::string &path)
 
     const char *rawPath = path.c_str();
     stbi_set_flip_vertically_on_load(true);
-    unsigned char *data = stbi_load(rawPath, &width, &height, &nrChannels, 0);
+    unsigned char *data = stbi_load(rawPath, &width, &height, &nrChannels, STBI_rgb_alpha);
 
     if (!data)
     {
@@ -35,15 +35,7 @@ void Texture::load(const std::string &path)
                     GL_LINEAR_MIPMAP_LINEAR); // Use mipmaps if generated
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
 
-    GLenum format = GL_RGB;
-    if (nrChannels == 4)
-        format = GL_RGBA;
-
-    GLenum internalFormat = GL_SRGB8;
-    if (nrChannels == 4)
-        internalFormat = GL_SRGB8_ALPHA8;
-
-    glTexImage2D(GL_TEXTURE_2D, 0, internalFormat, width, height, 0, format, GL_UNSIGNED_BYTE, data);
+    glTexImage2D(GL_TEXTURE_2D, 0, GL_SRGB8_ALPHA8, width, height, 0, GL_RGBA, GL_UNSIGNED_BYTE, data);
     glGenerateMipmap(GL_TEXTURE_2D);
 
     stbi_image_free(data);
@@ -60,7 +52,7 @@ void Texture::loadFromMemory(const unsigned char *data, int length, bool isSRGB)
     }
 
     stbi_set_flip_vertically_on_load(false);
-    unsigned char *pixels = stbi_load_from_memory(data, length, &width, &height, &nrChannels, 0);
+    unsigned char *pixels = stbi_load_from_memory(data, length, &width, &height, &nrChannels, STBI_rgb_alpha);
     if (!pixels)
     {
         Log::Print("FAILED TO LOAD IMAGE FROM MEMORY", "Texture", LogType::LOG_ERROR);
@@ -75,24 +67,8 @@ void Texture::loadFromMemory(const unsigned char *data, int length, bool isSRGB)
                     GL_LINEAR_MIPMAP_LINEAR); // Use mipmaps if generated
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
 
-    GLenum format = GL_RGB;
-    if (nrChannels == 4)
-        format = GL_RGBA;
-
-    GLenum internalFormat = GL_RGB8;
-    if (isSRGB)
-    {
-        internalFormat = GL_SRGB8;
-        if (nrChannels == 4)
-            internalFormat = GL_SRGB8_ALPHA8;
-    }
-    else
-    {
-        if (nrChannels == 4)
-            internalFormat = GL_RGBA8;
-    }
-
-    glTexImage2D(GL_TEXTURE_2D, 0, internalFormat, width, height, 0, format, GL_UNSIGNED_BYTE, pixels);
+    const GLenum internalFormat = isSRGB ? GL_SRGB8_ALPHA8 : GL_RGBA8;
+    glTexImage2D(GL_TEXTURE_2D, 0, internalFormat, width, height, 0, GL_RGBA, GL_UNSIGNED_BYTE, pixels);
     glGenerateMipmap(GL_TEXTURE_2D);
 
     stbi_image_free(pixels);

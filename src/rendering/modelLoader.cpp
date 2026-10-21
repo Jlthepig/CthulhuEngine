@@ -1,5 +1,6 @@
 #include <cfloat>
 #include <cstddef>
+#include <numeric>
 #include <type_traits>
 #include <unordered_map>
 #include <utility>
@@ -7,6 +8,7 @@
 #include <vector>
 
 #include <glm.hpp>
+#include <gtc/matrix_inverse.hpp>
 
 #include "fastgltf/tools.hpp"
 #include <fastgltf/core.hpp>
@@ -251,10 +253,17 @@ std::optional<Model> ModelLoader::loadGltf(const std::string &path)
     glm::vec3 modelMin(FLT_MAX);
     glm::vec3 modelMax(-FLT_MAX);
 
-    for (auto &mesh : gltf.meshes)
-    {
+    auto appendMesh = [&](std::size_t meshIndex, const glm::mat4 &worldTransform) {
+        auto &mesh = gltf.meshes[meshIndex];
+        const glm::mat3 linearTransform(worldTransform);
+        const float determinant = glm::determinant(linearTransform);
+        const bool mirrored = determinant < 0.0f;
+        const glm::mat3 normalTransform = std::abs(determinant) > FLT_EPSILON
+                                              ? glm::transpose(glm::inverse(linearTransform))
+                                              : glm::mat3(1.0f);
+
         for (auto &primitive : mesh.primitives)
-        {
+    {
             std::vector<float> vertexData;
             std::vector<unsigned int> indexdata;
             std::vector<Mesh::vertexAttribute> attributes;
@@ -267,20 +276,15 @@ std::optional<Model> ModelLoader::loadGltf(const std::string &path)
             auto &posAccessor = gltf.accessors[positionIt->accessorIndex];
             vertexData.resize(posAccessor.count * 3);
 
-            glm::vec3 meshMin(FLT_MAX);
-            glm::vec3 meshMax(-FLT_MAX);
-
             fastgltf::iterateAccessorWithIndex<glm::vec3>(gltf, posAccessor, [&](glm::vec3 pos, size_t index) {
-                meshMin = glm::min(meshMin, pos);
-                meshMax = glm::max(meshMax, pos);
+                const glm::vec3 worldPosition = glm::vec3(worldTransform * glm::vec4(pos, 1.0f));
+                modelMin = glm::min(modelMin, worldPosition);
+                modelMax = glm::max(modelMax, worldPosition);
 
-                vertexData[index * 3 + 0] = pos.x;
-                vertexData[index * 3 + 1] = pos.y;
-                vertexData[index * 3 + 2] = pos.z;
+                vertexData[index * 3 + 0] = worldPosition.x;
+                vertexData[index * 3 + 1] = worldPosition.y;
+                vertexData[index * 3 + 2] = worldPosition.z;
             });
-
-            modelMin = glm::min(modelMin, meshMin);
-            modelMax = glm::max(modelMax, meshMax);
 
             attributes.push_back({0, 3, currentOffset});
             currentOffset += 3 * sizeof(float);
@@ -309,9 +313,10 @@ std::optional<Model> ModelLoader::loadGltf(const std::string &path)
                 // read the normals into the expanded layout
 
                 fastgltf::iterateAccessorWithIndex<glm::vec3>(gltf, normAccessor, [&](glm::vec3 norm, size_t index) {
-                    expanded[index * newFloats + currentFloats] = norm.x;
-                    expanded[index * newFloats + currentFloats + 1] = norm.y;
-                    expanded[index * newFloats + currentFloats + 2] = norm.z;
+                    const glm::vec3 worldNormal = glm::normalize(normalTransform * norm);
+                    expanded[index * newFloats + currentFloats] = worldNormal.x;
+                    expanded[index * newFloats + currentFloats + 1] = worldNormal.y;
+                    expanded[index * newFloats + currentFloats + 2] = worldNormal.z;
                 });
 
                 vertexData = std::move(expanded);
@@ -337,10 +342,11 @@ std::optional<Model> ModelLoader::loadGltf(const std::string &path)
                 }
 
                 fastgltf::iterateAccessorWithIndex<glm::vec4>(gltf, tanAccessor, [&](glm::vec4 tan, size_t index) {
-                    expanded[index * newFloats + currentFloats] = tan.x;
-                    expanded[index * newFloats + currentFloats + 1] = tan.y;
-                    expanded[index * newFloats + currentFloats + 2] = tan.z;
-                    expanded[index * newFloats + currentFloats + 3] = tan.w;
+                    const glm::vec3 worldTangent = glm::normalize(linearTransform * glm::vec3(tan));
+                    expanded[index * newFloats + currentFloats] = worldTangent.x;
+                    expanded[index * newFloats + currentFloats + 1] = worldTangent.y;
+                    expanded[index * newFloats + currentFloats + 2] = worldTangent.z;
+                    expanded[index * newFloats + currentFloats + 3] = mirrored ? -tan.w : tan.w;
                 });
 
                 vertexData = std::move(expanded);
@@ -394,6 +400,20 @@ std::optional<Model> ModelLoader::loadGltf(const std::string &path)
                 fastgltf::iterateAccessorWithIndex<unsigned int>(
                     gltf, indexAccessor, [&](unsigned int idx, size_t index) { indexdata[index] = idx; });
             }
+            else
+            {
+                indexdata.resize(posAccessor.count);
+                std::iota(indexdata.begin(), indexdata.end(), 0u);
+            }
+
+            if (mirrored && primitive.type == fastgltf::PrimitiveType::Triangles)
+            {
+                for (std::size_t index = 0; index + 2 < indexdata.size(); index += 3)
+                {
+                    std::swap(indexdata[index + 1], indexdata[index + 2]);
+                }
+            }
+
             unsigned int stride = currentOffset;
             Mesh newMesh;
             newMesh.setup(vertexData, indexdata, attributes, stride);
@@ -410,7 +430,41 @@ std::optional<Model> ModelLoader::loadGltf(const std::string &path)
 
             model.meshes.push_back(std::move(newMesh));
         }
+    };
+
+    if (gltf.scenes.empty())
+    {
+        Log::Print("GLTF CONTAINS NO SCENES: " + path, "ModelLoader", LogType::LOG_ERROR);
+        model.destroy();
+        return std::nullopt;
     }
+
+    const std::size_t sceneIndex = gltf.defaultScene.has_value() ? gltf.defaultScene.value() : 0;
+    if (sceneIndex >= gltf.scenes.size())
+    {
+        Log::Print("GLTF DEFAULT SCENE INDEX IS INVALID: " + path, "ModelLoader", LogType::LOG_ERROR);
+        model.destroy();
+        return std::nullopt;
+    }
+
+    fastgltf::iterateSceneNodes(gltf, sceneIndex, fastgltf::math::fmat4x4(),
+                                [&](fastgltf::Node &node, const fastgltf::math::fmat4x4 &nodeTransform) {
+        if (!node.meshIndex.has_value())
+        {
+            return;
+        }
+
+        glm::mat4 worldTransform(1.0f);
+        for (glm::length_t column = 0; column < 4; ++column)
+        {
+            for (glm::length_t row = 0; row < 4; ++row)
+            {
+                worldTransform[column][row] = nodeTransform[static_cast<std::size_t>(column)]
+                                                           [static_cast<std::size_t>(row)];
+            }
+        }
+        appendMesh(node.meshIndex.value(), worldTransform);
+    });
 
     if (modelMin.x <= modelMax.x)
     {
