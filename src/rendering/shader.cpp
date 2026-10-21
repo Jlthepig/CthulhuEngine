@@ -55,6 +55,7 @@ bool Shader::load(const std::string &vertexPath, const std::string &fragmentPath
         printf("%s\n", infoLog);
 
         glDeleteShader(vertexShader);
+        glDeleteShader(fragmentShader);
         return false;
     }
     else

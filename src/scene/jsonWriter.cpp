@@ -1,4 +1,5 @@
 #include <fstream>
+#include <filesystem>
 #include <iomanip>
 #include <limits>
 #include <sstream>
@@ -345,18 +346,36 @@ bool SceneWriter::writeScene(const Scene &scene, const std::string &path, const 
 
     w.endObject();
 
-    std::ofstream out(path);
+    std::filesystem::path tempPath{path};
+    tempPath += ".tmp";
+
+    std::ofstream out(tempPath, std::ios::trunc);
     if (!out.is_open())
     {
         Log::Print("FAILED TO OPEN SCENE FILE FOR WRITING: " + path, "SceneWriter", LogType::LOG_ERROR);
+        std::error_code cleanupError;
+        std::filesystem::remove(tempPath, cleanupError);
         return false;
     }
     out << w.oss.str();
 
     out.flush();
-    if (!out.good())
+    out.close();
+    if (!out)
     {
         Log::Print("FAILED WHILE WRITING SCENE FILE: " + path, "SceneWriter", LogType::LOG_ERROR);
+        std::error_code cleanupError;
+        std::filesystem::remove(tempPath, cleanupError);
+        return false;
+    }
+
+    std::error_code error;
+    std::filesystem::rename(tempPath, std::filesystem::path{path}, error);
+    if (error)
+    {
+        Log::Print("FAILED TO REPLACE SCENE FILE: " + path, "SceneWriter", LogType::LOG_ERROR);
+        std::error_code cleanupError;
+        std::filesystem::remove(tempPath, cleanupError);
         return false;
     }
 

@@ -326,11 +326,23 @@ void Skybox::destroy()
         return;
     glDeleteTextures(1, &hdrTexture);
     glDeleteTextures(1, &cubemapTexture);
+    glDeleteTextures(1, &irradianceMap);
+    glDeleteTextures(1, &prefilterMap);
     glDeleteFramebuffers(1, &captureFBO);
     glDeleteRenderbuffers(1, &captureRBO);
+    glDeleteVertexArrays(1, &cubeVAO);
+    glDeleteBuffers(1, &cubeVBO);
     cubeMesh.destroy();
     equirectShader.destroy();
     skyboxShader.destroy();
+    hdrTexture = 0;
+    cubemapTexture = 0;
+    irradianceMap = 0;
+    prefilterMap = 0;
+    captureFBO = 0;
+    captureRBO = 0;
+    cubeVAO = 0;
+    cubeVBO = 0;
     isLoaded = false;
 }
 

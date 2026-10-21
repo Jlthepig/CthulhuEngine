@@ -647,25 +647,27 @@ FontGlyph &Font::ensureGlyph(u32 glyphIndex) {
       u32 atlasX = 0;
       u32 atlasY = 0;
 
-      if (allocateAtlasRect(width, height, atlasX, atlasY)) {
+        if (allocateAtlasRect(width, height, atlasX, atlasY)) {
         copyBitmapToAtlas(atlasX, atlasY, width, height, slot->bitmap.pitch,
                           slot->bitmap.buffer);
-      }
 
-      glyph.hasBitmap = true;
-      glyph.size = Vec2{static_cast<f32>(width), static_cast<f32>(height)};
+        glyph.hasBitmap = true;
+        glyph.size = Vec2{static_cast<f32>(width), static_cast<f32>(height)};
 
-      glyph.bearing = Vec2{static_cast<f32>(slot->bitmap_left),
-                           static_cast<f32>(slot->bitmap_top)};
+        glyph.bearing = Vec2{static_cast<f32>(slot->bitmap_left),
+                   static_cast<f32>(slot->bitmap_top)};
 
-      glyph.uv = Rect{
-          static_cast<f32>(atlasX + atlasPadding) / static_cast<f32>(atlasSize),
-          static_cast<f32>(atlasY + atlasPadding) / static_cast<f32>(atlasSize),
+        glyph.uv = Rect{
+          static_cast<f32>(atlasX + atlasPadding) /
+            static_cast<f32>(atlasSize),
+          static_cast<f32>(atlasY + atlasPadding) /
+            static_cast<f32>(atlasSize),
           static_cast<f32>(width) / static_cast<f32>(atlasSize),
           static_cast<f32>(height) / static_cast<f32>(atlasSize)};
 
-      markAtlasDirty(atlasX + atlasPadding, atlasY + atlasPadding, width,
-                     height);
+        markAtlasDirty(atlasX + atlasPadding, atlasY + atlasPadding, width,
+                 height);
+        }
     }
   }
 

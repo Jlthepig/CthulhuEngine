@@ -58,7 +58,12 @@ bool AssetRegistry::load(const std::filesystem::path &registryFile)
     };
 
     std::error_code error;
-    if (!std::filesystem::exists(file, error))
+    const bool fileExists = std::filesystem::exists(file, error);
+    if (error)
+    {
+        return fail("FAILED TO CHECK ASSET REGISTRY");
+    }
+    if (!fileExists)
     {
         usable = true; // new project should start empty
         return true;
@@ -209,6 +214,13 @@ AssetRegistry::ScanResult AssetRegistry::scan(const Project::Project &project)
         return result;
     }
 
+    const std::vector<AssetRecord> originalRecords = records;
+    const auto rollback = [&]() {
+        records = originalRecords;
+        rebuildIndices();
+        result = {};
+    };
+
     const auto &root = project.getRootPath();
     std::vector<bool> seen(records.size(), false);
 
@@ -226,14 +238,18 @@ AssetRegistry::ScanResult AssetRegistry::scan(const Project::Project &project)
     {
         if (error)
         {
-            Log::Print("PROJECT SCAN STOPPED EARLY: " + error.message(), "AssetRegistry", LogType::LOG_WARNING);
             break;
         }
 
         const auto &entry = *it;
         const std::string name = entry.path().filename().string();
 
-        if (entry.is_directory(error))
+        const bool isDirectory = entry.is_directory(error);
+        if (error)
+        {
+            break;
+        }
+        if (isDirectory)
         {
             // skip nonsense folders like .vs etc.
             if (!name.empty() && name.front() == '.')
@@ -243,7 +259,12 @@ AssetRegistry::ScanResult AssetRegistry::scan(const Project::Project &project)
             continue;
         }
 
-        if (!entry.is_regular_file(error))
+        const bool isRegularFile = entry.is_regular_file(error);
+        if (error)
+        {
+            break;
+        }
+        if (!isRegularFile)
         {
             continue;
         }
@@ -271,6 +292,13 @@ AssetRegistry::ScanResult AssetRegistry::scan(const Project::Project &project)
         ++result.added;
     }
 
+    if (error)
+    {
+        Log::Print("PROJECT SCAN STOPPED EARLY: " + error.message(), "AssetRegistry", LogType::LOG_WARNING);
+        rollback();
+        return result;
+    }
+
     for (std::size_t i = 0; i < records.size(); ++i)
     {
         records[i].missing = !seen[i];
@@ -282,6 +310,11 @@ AssetRegistry::ScanResult AssetRegistry::scan(const Project::Project &project)
 
     result.total = records.size();
     result.ok = result.added == 0 || save();
+    if (!result.ok)
+    {
+        rollback();
+        return result;
+    }
 
     Log::Print("Asset registry: " + std::to_string(result.total) + " assets (" + std::to_string(result.added) +
                    " new, " + std::to_string(result.missing) + " missing)",
@@ -314,8 +347,15 @@ bool AssetRegistry::setAudioImportSettings(AssetId id, const AudioImportSettings
         return true;
     }
 
+    const auto previous = record.audio;
     record.audio = settings;
-    return save();
+    if (!save())
+    {
+        record.audio = previous;
+        return false;
+    }
+
+    return true;
 }
 
 std::optional<AssetId> AssetRegistry::registerFile(std::string_view resourcePath)
@@ -414,9 +454,18 @@ bool AssetRegistry::forget(AssetId id)
         return false;
     }
 
-    records.erase(records.begin() + static_cast<std::ptrdiff_t>(it->second));
+    const std::size_t index = it->second;
+    const AssetRecord removed = records[index];
+    records.erase(records.begin() + static_cast<std::ptrdiff_t>(index));
     rebuildIndices();
-    return save();
+    if (!save())
+    {
+        records.insert(records.begin() + static_cast<std::ptrdiff_t>(index), removed);
+        rebuildIndices();
+        return false;
+    }
+
+    return true;
 }
 
 const AssetRecord *AssetRegistry::findById(AssetId id) const

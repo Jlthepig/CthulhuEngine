@@ -1,6 +1,7 @@
 #include <string>
 #include <unordered_set>
 #include <cstdint>
+#include <cmath>
 #include <limits>
 
 #include <simdjson.h>
@@ -31,7 +32,14 @@ static bool readVec3(simdjson::ondemand::array array, glm::vec3 &result)
             return false;
         }
 
-        result[index++] = static_cast<float>(number.value());
+        const double numericValue = number.value();
+        if (!std::isfinite(numericValue) || numericValue < std::numeric_limits<float>::lowest() ||
+            numericValue > std::numeric_limits<float>::max())
+        {
+            return false;
+        }
+
+        result[index++] = static_cast<float>(numericValue);
     }
 
     return index == 3;

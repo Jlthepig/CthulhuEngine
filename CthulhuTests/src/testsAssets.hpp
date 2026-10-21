@@ -1,5 +1,7 @@
 #pragma once
 
+#include <chrono>
+
 #include "testCommon.hpp"
 
 namespace Cthulhu::Validation
@@ -209,6 +211,45 @@ inline void validateAssetRegistry(Engine& engine, Results& r)
     const auto* gone = registry.findById(copyId);
     check(r, gone && gone->missing, "J4 deleted file is flagged missing but keeps its ID");
     check(r, registry.forget(copyId) && !registry.findById(copyId), "J4 forgetting a missing asset removes it");
+
+	const auto suffix = std::to_string(std::chrono::steady_clock::now().time_since_epoch().count());
+	const auto linkDirectory = root / ("validation_symlink_" + suffix);
+	const auto outsideDirectory = root.parent_path() / ("validation_symlink_target_" + suffix);
+	const auto outsideFile = outsideDirectory / "outside.txt";
+	const auto linkFile = linkDirectory / "outside.txt";
+
+	std::error_code symlinkError;
+	std::filesystem::create_directories(linkDirectory, symlinkError);
+	if (!symlinkError)
+	{
+		std::filesystem::create_directories(outsideDirectory, symlinkError);
+	}
+	if (!symlinkError)
+	{
+		std::ofstream outside(outsideFile, std::ios::trunc);
+		if (!outside)
+		{
+			symlinkError = std::make_error_code(std::errc::io_error);
+		}
+	}
+	if (!symlinkError)
+	{
+		std::filesystem::create_symlink(outsideFile, linkFile, symlinkError);
+	}
+
+	if (!symlinkError)
+	{
+		const std::string symlinkResourcePath = "res://" + linkDirectory.filename().generic_string() + "/outside.txt";
+		check(r, !project->resolveResourcePath(symlinkResourcePath),
+			  "J7 in-project symlink to an outside file is rejected");
+	}
+	else
+	{
+		Log::Print("SKIP J7: unable to create symlink: " + symlinkError.message(), "Validation", LogType::LOG_WARNING);
+	}
+	std::error_code cleanupError;
+	std::filesystem::remove_all(linkDirectory, cleanupError);
+	std::filesystem::remove_all(outsideDirectory, cleanupError);
 
     const auto badFile = root / ".cthulhu" / "validation_badregistry.json";
     {

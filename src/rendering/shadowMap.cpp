@@ -87,5 +87,7 @@ void ShadowMap::destroy()
     glDeleteFramebuffers(1, &depthMapFBO);
     glDeleteTextures(1, &depthMap);
     depthShader.destroy();
+    depthMapFBO = 0;
+    depthMap = 0;
 }
 } // namespace Cthulhu::Rendering

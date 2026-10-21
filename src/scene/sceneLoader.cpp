@@ -1,5 +1,6 @@
 #include <algorithm>
 #include <cmath>
+#include <limits>
 
 #include "sceneLoader.hpp"
 #include "assetRegistry.hpp"
@@ -44,13 +45,17 @@ std::optional<FieldValue> toFieldValue(const FieldDescriptor &field, const Parse
     switch (field.type)
     {
     case FieldType::Float:
-        if (number)
+        if (number && std::isfinite(*number) &&
+            *number >= std::numeric_limits<float>::lowest() &&
+            *number <= std::numeric_limits<float>::max())
         {
             return FieldValue{static_cast<float>(*number)};
         }
         return std::nullopt;
     case FieldType::Int:
-        if (number && std::floor(*number) == *number)
+        if (number && std::isfinite(*number) && std::floor(*number) == *number &&
+            *number >= std::numeric_limits<int>::lowest() &&
+            *number <= std::numeric_limits<int>::max())
         {
             return FieldValue{static_cast<int>(*number)};
         }

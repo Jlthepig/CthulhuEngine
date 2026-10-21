@@ -459,9 +459,44 @@ void Renderer::shutdown()
 {
     grid.destroy();
     gridShader.destroy();
+    lineShader.destroy();
     basicShader.destroy();
     skybox.destroy();
+    sceneFramebuffer.destroy();
+    shadowMap.destroy();
     pointShadowMap.destroy();
+
+    if (lineVAO != 0)
+    {
+        glDeleteVertexArrays(1, &lineVAO);
+        lineVAO = 0;
+    }
+    if (lineVBO != 0)
+    {
+        glDeleteBuffers(1, &lineVBO);
+        lineVBO = 0;
+    }
+    if (sceneUBO != 0)
+    {
+        glDeleteBuffers(1, &sceneUBO);
+        sceneUBO = 0;
+    }
+    if (defaultDataTexture != 0)
+    {
+        glDeleteTextures(1, &defaultDataTexture);
+        defaultDataTexture = 0;
+    }
+    if (defaultNormalTexture != 0)
+    {
+        glDeleteTextures(1, &defaultNormalTexture);
+        defaultNormalTexture = 0;
+    }
+    if (brdfLUTTexture != 0)
+    {
+        glDeleteTextures(1, &brdfLUTTexture);
+        brdfLUTTexture = 0;
+    }
+
     if (pointLightsSSBO != 0)
     {
         glDeleteBuffers(1, &pointLightsSSBO);

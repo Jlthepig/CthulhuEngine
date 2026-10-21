@@ -30,11 +30,6 @@ std::optional<std::filesystem::path> Project::resolveResourcePath(std::string_vi
 
     std::string_view relativePart = resourcePath.substr(prefix.size());
 
-    if (relativePart.empty())
-    {
-        return rootPath;
-    }
-
     std::filesystem::path relativePath{std::string(relativePart)};
 
     if (relativePath.is_absolute() || relativePath.has_root_name() || relativePath.has_root_directory())
@@ -43,9 +38,22 @@ std::optional<std::filesystem::path> Project::resolveResourcePath(std::string_vi
         return std::nullopt;
     }
 
-    std::filesystem::path resolved = (rootPath / relativePath).lexically_normal();
+    std::error_code error;
+    const std::filesystem::path canonicalRoot = std::filesystem::weakly_canonical(rootPath, error);
+    if (error)
+    {
+        Log::Print("FAILED TO RESOLVE PROJECT ROOT: " + rootPath.string(), "Project", LogType::LOG_ERROR);
+        return std::nullopt;
+    }
 
-    if (!isInsideProjectRoot(rootPath, resolved))
+    const std::filesystem::path resolved = std::filesystem::weakly_canonical(rootPath / relativePath, error);
+    if (error)
+    {
+        Log::Print("FAILED TO RESOLVE RESOURCE PATH: " + std::string(resourcePath), "Project", LogType::LOG_ERROR);
+        return std::nullopt;
+    }
+
+    if (!isInsideProjectRoot(canonicalRoot, resolved))
     {
         Log::Print("RESOURCE PATH ESCAPES PROJECT ROOT: " + std::string(resourcePath), "Project", LogType::LOG_ERROR);
         return std::nullopt;

@@ -14,12 +14,12 @@ NodeHandle InteractionSystem::hitTest(const Tree &tree, NodeHandle node,
   }
 
   const Rect rect = tree.rect(node).translate(offset);
+  const bool insideRect = rect.contains(point);
+  const LayoutStyle *style = tree.layoutStyle(node);
 
-  if (!rect.contains(point)) {
+  if (!insideRect && (!style || style->clip || style->scrollY)) {
     return NodeHandle{};
   }
-
-  const LayoutStyle *style = tree.layoutStyle(node);
 
   Vec2 childOffset = offset;
   bool testChildren = true;
@@ -47,7 +47,7 @@ NodeHandle InteractionSystem::hitTest(const Tree &tree, NodeHandle node,
       }
     }
   }
-  return node;
+  return insideRect ? node : NodeHandle{};
 }
 
 NodeHandle InteractionSystem::hitTestScrollbar(const Tree &tree,
@@ -58,12 +58,12 @@ NodeHandle InteractionSystem::hitTestScrollbar(const Tree &tree,
   }
 
   const Rect rect = tree.rect(node).translate(offset);
+  const bool insideRect = rect.contains(point);
+  const LayoutStyle *style = tree.layoutStyle(node);
 
-  if (!rect.contains(point)) {
+  if (!insideRect && (!style || style->clip || style->scrollY)) {
     return NodeHandle{};
   }
-
-  const LayoutStyle *style = tree.layoutStyle(node);
 
   Vec2 childOffset = offset;
   bool testChildren = true;
@@ -96,7 +96,7 @@ NodeHandle InteractionSystem::hitTestScrollbar(const Tree &tree,
     const detail::VerticalScrollbarGeometry geometry =
         interaction_detail::scrollbarGeometry(tree, node, rect);
 
-    if (geometry.visible && geometry.track.contains(point)) {
+    if (insideRect && geometry.visible && geometry.track.contains(point)) {
       return node;
     }
   }
@@ -112,12 +112,13 @@ NodeHandle InteractionSystem::hitTestSplitter(const Tree &tree,
   }
 
   const Rect rect = tree.rect(node).translate(offset);
+  const bool insideRect = rect.contains(point);
+  const LayoutStyle *style = tree.layoutStyle(node);
 
-  if (!rect.contains(point)) {
+  if (!insideRect && (!style || style->clip || style->scrollY)) {
     return {};
   }
 
-  const LayoutStyle *style = tree.layoutStyle(node);
   Vec2 childOffset = offset;
   bool testChildren = true;
 
@@ -149,7 +150,8 @@ NodeHandle InteractionSystem::hitTestSplitter(const Tree &tree,
     const detail::SplitGeometry geometry =
         detail::splitGeometry(tree, node, rect);
 
-    if (!geometry.hit.isEmpty() && geometry.hit.contains(point)) {
+    if (insideRect && !geometry.hit.isEmpty() &&
+      geometry.hit.contains(point)) {
       return node;
     }
   }

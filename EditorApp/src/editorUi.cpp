@@ -26,6 +26,8 @@ bool EditorUi::init(GLFWwindow *glfwWindow, const std::filesystem::path &resourc
     if (!ctx.loadDefaultFont(font, 18))
     {
         Log::Print("FAILED TO LOAD EDITOR FONT: " + font, "Editor", LogType::LOG_ERROR);
+        ctx.font().shutdown();
+        ctx.setTextureBackend(nullptr);
         renderer.shutdown();
         return false;
     }
@@ -52,6 +54,8 @@ void EditorUi::shutdown()
     }
 
     octogui::glfw::shutdownInput(window);
+    ctx.font().shutdown();
+    ctx.setTextureBackend(nullptr);
     renderer.shutdown();
     initialized = false;
 }
