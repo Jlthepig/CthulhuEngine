@@ -343,9 +343,9 @@ void layoutHorizontal(Tree &tree, NodeHandle node, Rect contentRect,
   f32 x = contentRect.x;
 
   if (flexibleCount == 0 && totalFixed < contentRect.w) {
-    if (style.verticalAlignment == Alignment::Center) {
+    if (style.horizontalAlignment == Alignment::Center) {
       x += (contentRect.w - totalFixed) * 0.5f;
-    } else if (style.verticalAlignment == Alignment::End) {
+    } else if (style.horizontalAlignment == Alignment::End) {
       x += contentRect.w - totalFixed;
     }
   }
@@ -368,7 +368,7 @@ void layoutHorizontal(Tree &tree, NodeHandle node, Rect contentRect,
 
       f32 crossSize;
 
-      if (style.horizontalAlignment == Alignment::Stretch) {
+      if (style.verticalAlignment == Alignment::Stretch) {
         crossSize = contentRect.h;
       } else {
         f32 desiredCross = childStyle.preferredSize.y;

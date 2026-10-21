@@ -13,6 +13,7 @@ bool InteractionSystem::updateComboBoxPopupHover(
     Vec2 mousePosition) {
   if (!tree.isValid(root) ||
       !tree.isValid(interaction.focused) ||
+      !tree.isVisibleBranch(interaction.focused) ||
       tree.type(interaction.focused) !=
           NodeType::ComboBox) {
     return false;

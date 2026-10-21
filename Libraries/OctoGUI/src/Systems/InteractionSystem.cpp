@@ -16,14 +16,14 @@ void InteractionSystem::resetTransientState() noexcept {
 
 void InteractionSystem::validateTrackedNodes(Tree& tree, WidgetSystem& widgets, EventSystem& events) {
   if (!tree.isValid(interaction.active) ||
-      !tree.isVisible(interaction.active) ||
+      !tree.isVisibleBranch(interaction.active) ||
       !isEnabledBranch(tree, interaction.active) ||
       !hasFlag(tree.flags(interaction.active), NodeFlags::Interactive)) {
     interaction.active = NodeHandle{};
   }
 
   if (!tree.isValid(interaction.focused) ||
-      !tree.isVisible(interaction.focused) ||
+      !tree.isVisibleBranch(interaction.focused) ||
       !isEnabledBranch(tree, interaction.focused)) {
     clearFocus(tree, widgets, events);
   }

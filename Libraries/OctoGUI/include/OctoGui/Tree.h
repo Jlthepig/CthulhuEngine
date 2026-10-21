@@ -266,6 +266,23 @@ public:
     return isValid(handle) && hasFlag(nodeFlags[handle.index], NodeFlags::Visible);
   }
 
+  [[nodiscard]]
+  bool isVisibleBranch(NodeHandle handle) const noexcept {
+    if (!isValid(handle)) {
+      return false;
+    }
+
+    for (NodeHandle current = handle;
+         isValid(current);
+         current = parent(current)) {
+      if (!isVisible(current)) {
+        return false;
+      }
+    }
+
+    return true;
+  }
+
   void setVisible(NodeHandle handle, bool visible) {
     if (!isValid(handle)) {
       return;

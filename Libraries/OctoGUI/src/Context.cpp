@@ -835,6 +835,17 @@ void Context::destroyNode(NodeHandle handle) {
             handle);
   }
 
+    const NodeHandle focused =
+      impl->interaction.state().focused;
+
+    if (impl->tree.isDescendant(handle, focused) ||
+      impl->tree.isDescendant(ownedContent, focused)) {
+    impl->interaction.clearFocus(
+      impl->tree,
+      impl->widgets,
+      impl->events);
+    }
+
   if (impl->tree.isValid(ownedContent)) {
     impl->interaction.onNodeDestroyed(
         impl->tree,

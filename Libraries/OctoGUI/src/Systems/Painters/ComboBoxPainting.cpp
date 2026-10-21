@@ -148,7 +148,7 @@ void PaintSystem::pruneComboBoxOverlays(
     const ComboBoxOverlay& overlay =
         comboBoxOverlays[read];
 
-    if (!tree.isValid(overlay.handle)) {
+    if (!tree.isVisibleBranch(overlay.handle)) {
       continue;
     }
 
