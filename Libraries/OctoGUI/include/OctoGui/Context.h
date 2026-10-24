@@ -255,6 +255,8 @@ public:
   void setTreeViewItemExpanded(NodeHandle treeView, TreeViewItemId item,
                                bool expanded);
 
+  void setTreeViewMaxIndentWidth(NodeHandle treeView, f32 maxIndentWidth);
+
   [[nodiscard]]
   NodeHandle root() const noexcept;
 

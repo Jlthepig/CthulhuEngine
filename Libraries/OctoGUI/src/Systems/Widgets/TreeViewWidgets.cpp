@@ -589,6 +589,24 @@ void WidgetSystem::setTreeViewItemExpanded(
     tree.markPaintDirty(handle);
 }
 
+void WidgetSystem::setTreeViewMaxIndentWidth(
+        Tree& tree, NodeHandle handle, f32 maxIndentWidth) {
+    TreeViewState* state = tree.treeViewState(handle);
+    if (!state) {
+        return;
+    }
+
+    if (maxIndentWidth < 0.0f) {
+        maxIndentWidth = 0.0f;
+    }
+    if (state->maxIndentWidth == maxIndentWidth) {
+        return;
+    }
+
+    state->maxIndentWidth = maxIndentWidth;
+    tree.markPaintDirty(handle);
+}
+
 void WidgetSystem::updateTreeViewHover(
     Tree& tree,
     NodeHandle handle,

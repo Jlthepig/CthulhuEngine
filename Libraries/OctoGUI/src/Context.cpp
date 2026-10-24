@@ -586,6 +586,10 @@ void Context::setTreeViewItemExpanded(NodeHandle treeView, TreeViewItemId item,
   impl->widgets.setTreeViewItemExpanded(impl->tree, treeView, item, expanded);
 }
 
+void Context::setTreeViewMaxIndentWidth(NodeHandle treeView, f32 maxIndentWidth) {
+  impl->widgets.setTreeViewMaxIndentWidth(impl->tree, treeView, maxIndentWidth);
+}
+
 void Context::toggleCollapsibleSection(
     NodeHandle handle) {
   impl->widgets.toggleCollapsibleSection(

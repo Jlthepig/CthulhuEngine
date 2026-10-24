@@ -354,7 +354,8 @@ inline Rect treeViewChevronRect(
     const Rect& content,
     const TreeViewVisibleItem& visible,
     usize rowIndex,
-    f32 scrollY) noexcept {
+  f32 scrollY,
+  f32 maxIndentWidth) noexcept {
   const Rect row =
       treeViewRowRect(
           content,
@@ -363,9 +364,7 @@ inline Rect treeViewChevronRect(
 
   return Rect{
       row.x +
-          static_cast<f32>(
-              visible.depth) *
-              TreeViewIndentWidth,
+        treeViewIndentOffset(visible.depth, maxIndentWidth),
       row.y,
       TreeViewChevronAreaWidth,
       row.h};
@@ -419,7 +418,8 @@ inline bool treeViewPointIsChevron(
           content,
           visible,
           rowIndex,
-          state.scrollY);
+          state.scrollY,
+          state.maxIndentWidth);
 
   return chevron.contains(
       position);

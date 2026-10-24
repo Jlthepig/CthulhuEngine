@@ -63,13 +63,15 @@ class EditorShell
     NodeHandle saveButton{};
     IconButton playButton{};
     IconButton pauseButton{};
-    IconButton stepButton{};
+    IconButton stopButton{};
 
 
     NodeHandle hierarchy{};
     NodeHandle hierarchyHeader{};
     NodeHandle hierarchyTree{};
     NodeHandle sceneNode{};
+    IconButton createEntityButton{};
+
     NodeHandle inspector{};
     InspectorPanel inspectorUI;
 

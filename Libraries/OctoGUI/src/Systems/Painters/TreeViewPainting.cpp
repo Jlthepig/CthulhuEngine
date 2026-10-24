@@ -151,7 +151,7 @@ void PaintSystem::paintTreeView(
     }
 
     const f32 indentX =
-        row.x + static_cast<f32>(visible.depth) * detail::TreeViewIndentWidth;
+      row.x + detail::treeViewIndentOffset(visible.depth, state->maxIndentWidth);
 
     const f32 chevronCenterX = indentX + detail::TreeViewChevronAreaWidth * 0.5f;
     const f32 chevronCenterY = row.y + row.h * 0.5f;

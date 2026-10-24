@@ -129,6 +129,8 @@ struct TreeViewState {
 
   u32 itemCount = 0;
 
+  f32 maxIndentWidth = InfiniteLayoutSize;
+
   f32 scrollY = 0.0f;
 
   f32 scrollbarDragOffsetY = 0.0f;

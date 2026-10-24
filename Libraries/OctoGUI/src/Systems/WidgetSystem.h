@@ -200,6 +200,8 @@ public:
 
   void setTreeViewItemExpanded(Tree& tree, NodeHandle handle, TreeViewItemId item, bool expanded);
 
+  void setTreeViewMaxIndentWidth(Tree& tree, NodeHandle handle, f32 maxIndentWidth);
+
   [[nodiscard]]
   std::string_view textInputPlaceholder(const Tree &tree,
                                         NodeHandle handle) const noexcept;
