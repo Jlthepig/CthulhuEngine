@@ -125,6 +125,7 @@ class Scene
     [[nodiscard]] std::optional<std::size_t> getSiblingOrder(EntityId childId) const;
     [[nodiscard]] bool hasCustomSiblingOrder(std::optional<EntityId> parentId) const;
     bool setSiblingOrder(EntityId childId, std::size_t order);
+    bool clearCustomSiblingOrder(std::optional<EntityId> parentId);
 
 
     [[nodiscard]] std::optional<EntityId> duplicateEntity(EntityId sourceId);

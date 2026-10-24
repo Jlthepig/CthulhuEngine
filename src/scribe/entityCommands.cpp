@@ -236,8 +236,9 @@ class RenameEntityCommand final : public Command
 class ReparentEntityCommand final : public Command
 {
   public:
-    ReparentEntityCommand(Scene::EntityId child, std::optional<Scene::EntityId> parent)
-        : child(child), newParent(parent)
+        ReparentEntityCommand(
+                Scene::EntityId child, std::optional<Scene::EntityId> parent, std::optional<std::size_t> siblingIndex) : child(child), newParent(parent), 
+                newSiblingIndex(siblingIndex)
     {
     }
 
@@ -254,18 +255,86 @@ class ReparentEntityCommand final : public Command
         {
             return Result::failed("ENTITY DOES NOT EXIST");
         }
+        if (newParent && !scene.isEntityAlive(*newParent))
+        {
+            return Result::failed("PARENT DOES NOT EXIST");
+        }
 
-        oldParent = scene.getParent(child);
-        if (oldParent == newParent)
+        const auto previousParent = scene.getParent(child);
+        const auto previousSiblingIndex = scene.getSiblingOrder(child);
+        if (!previousSiblingIndex)
+        {
+            return Result::failed("ENTITY HAS NO SIBLING POSITION");
+        }
+
+        if (previousParent == newParent &&
+            (!newSiblingIndex || *newSiblingIndex == *previousSiblingIndex))
         {
             return Result::noChange();
         }
 
-        const bool changed = newParent ? scene.setParent(child, *newParent) : scene.clearParent(child);
-        if (!changed)
+        if (newSiblingIndex)
         {
-            return Result::failed("INVALID REPARENT (MISSING PARENT OR HIERARCHY CYCLE)");
+            const std::size_t destinationCount =
+                newParent ? scene.getChildren(*newParent).size()
+                          : scene.getRootEntities().size();
+            const std::size_t finalCount =
+                destinationCount + (previousParent == newParent ? 0u : 1u);
+
+            if (*newSiblingIndex >= finalCount)
+            {
+                return Result::failed("SIBLING INDEX OUT OF RANGE");
+            }
         }
+
+        const bool previousParentWasCustom =
+            scene.hasCustomSiblingOrder(previousParent);
+        const bool destinationParentWasCustom =
+            scene.hasCustomSiblingOrder(newParent);
+
+        const auto restorePreviousPosition = [&]()
+        {
+            if (previousParent)
+            {
+                (void)scene.setParent(child, *previousParent);
+            }
+            else
+            {
+                (void)scene.clearParent(child);
+            }
+
+            (void)scene.setSiblingOrder(child, *previousSiblingIndex);
+
+            if (!previousParentWasCustom)
+            {
+                (void)scene.clearCustomSiblingOrder(previousParent);
+            }
+            if (previousParent != newParent && !destinationParentWasCustom)
+            {
+                (void)scene.clearCustomSiblingOrder(newParent);
+            }
+        };
+
+        const bool parentChanged =
+            newParent ? scene.setParent(child, *newParent)
+                      : scene.clearParent(child);
+
+        if (!parentChanged)
+        {
+            return Result::failed("INVALID REPARENT");
+        }
+
+        if (newSiblingIndex &&
+            !scene.setSiblingOrder(child, *newSiblingIndex))
+        {
+            restorePreviousPosition();
+            return Result::failed("INVALID SIBLING POSITION");
+        }
+
+        oldParent = previousParent;
+        oldSiblingIndex = previousSiblingIndex;
+        oldParentWasCustom = previousParentWasCustom;
+        destinationWasCustom = destinationParentWasCustom;
 
         context.emit(ChangeType::EntityReparented, child);
         return Result::applied();
@@ -273,21 +342,50 @@ class ReparentEntityCommand final : public Command
 
     void revert(Context &context) override
     {
-        if (oldParent)
+        auto &scene = context.scene;
+
+        if (!oldSiblingIndex)
         {
-            context.scene.setParent(child, *oldParent);
+            return;
         }
-        else
+
+        const bool parentRestored =
+            oldParent ? scene.setParent(child, *oldParent)
+                      : scene.clearParent(child);
+
+        if (!parentRestored ||
+            !scene.setSiblingOrder(child, *oldSiblingIndex))
         {
-            context.scene.clearParent(child);
+            Log::Print(
+                "UNDO REPARENT FAILED TO RESTORE SIBLING POSITION",
+                "Scribe",
+                LogType::LOG_ERROR);
+            return;
         }
+
+        if (!oldParentWasCustom)
+        {
+            (void)scene.clearCustomSiblingOrder(oldParent);
+        }
+        if (oldParent != newParent &&
+            newSiblingIndex &&
+            !destinationWasCustom)
+        {
+            (void)scene.clearCustomSiblingOrder(newParent);
+        }
+
         context.emit(ChangeType::EntityReparented, child);
     }
 
   private:
     Scene::EntityId child;
     std::optional<Scene::EntityId> newParent;
+    std::optional<std::size_t> newSiblingIndex;
+
     std::optional<Scene::EntityId> oldParent;
+    std::optional<std::size_t> oldSiblingIndex;
+    bool oldParentWasCustom = false;
+    bool destinationWasCustom = false;
 };
 } // namespace
 
@@ -311,9 +409,9 @@ std::unique_ptr<Command> renameEntity(Scene::EntityId id, std::string name)
     return std::make_unique<RenameEntityCommand>(id, std::move(name));
 }
 
-std::unique_ptr<Command> reparentEntity(Scene::EntityId child, std::optional<Scene::EntityId> parent)
+std::unique_ptr<Command> reparentEntity(Scene::EntityId child, std::optional<Scene::EntityId> parent, std::optional<std::size_t> siblingIndex)
 {
-    return std::make_unique<ReparentEntityCommand>(child, parent);
+    return std::make_unique<ReparentEntityCommand>(child, parent, siblingIndex);
 }
 
 } // namespace Cthulhu::Scribe::Commands

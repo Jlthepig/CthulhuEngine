@@ -472,6 +472,19 @@ bool Scene::setSiblingOrder(EntityId childId, std::size_t order)
     return true;
 }
 
+bool Scene::clearCustomSiblingOrder(std::optional<EntityId> parentId)
+{
+    const auto order = customSiblingOrders.find(parentId.value_or(EntityId{}));
+    if (order == customSiblingOrders.end())
+    {
+        return false;
+    }
+
+    customSiblingOrders.erase(order);
+    markDirty();
+    return true;
+}
+
 std::optional<EntityId> Scene::duplicateEntityRecursive(flecs::entity source, std::optional<EntityId> parentId)
 {
     if (!source.is_alive())

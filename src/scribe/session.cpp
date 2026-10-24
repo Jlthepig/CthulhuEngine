@@ -315,9 +315,9 @@ Result Session::renameEntity(Scene::EntityId id, std::string_view newName)
     return execute(Commands::renameEntity(id, std::string(newName)));
 }
 
-Result Session::reparentEntity(Scene::EntityId child, std::optional<Scene::EntityId> newParent)
+Result Session::reparentEntity(Scene::EntityId child, std::optional<Scene::EntityId> newParent, std::optional<std::size_t> siblingIndex)
 {
-    return execute(Commands::reparentEntity(child, newParent));
+    return execute(Commands::reparentEntity(child, newParent, siblingIndex));
 }
 
 Result Session::addComponent(Scene::EntityId id, std::string_view component)
