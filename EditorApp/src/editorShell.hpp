@@ -80,10 +80,12 @@ class EditorShell
     bool lastPaused = false;
 
     std::vector<std::pair<std::uint64_t, Scene::EntityId>> hierarchyEntityTokens;
+    std::vector<std::pair<Scene::EntityId, octogui::TreeViewItemId>> hierarchyEntityItems;
     std::optional<Scene::EntityId> selectedEntity;
     std::uint64_t nextHierarchyToken = 1;
     std::uint64_t hierarchySceneGeneration = 0;
     bool hierarchyInitialized = false;
+    bool resetHierarchyExpansion = false;
 
     void rebuildHierarchy(Context &ctx, Scene::Scene &scene, std::optional<Scene::EntityId> restoreSelection);
     void updateSelection(Context &ctx);

@@ -1,5 +1,6 @@
 #include <cstddef>
 #include <string>
+#include <algorithm>
 
 #include "editorShell.hpp"
 
@@ -238,11 +239,21 @@ namespace Cthulhu::Editor
         fixedBar(ctx, statusBar, 24.0f);
     }
 
-    void EditorShell::rebuildHierarchy(Context &ctx, Scene::Scene &scene,
-                                      std::optional<Scene::EntityId> restoreSelection)
+    void EditorShell::rebuildHierarchy(Context &ctx, Scene::Scene &scene, std::optional<Scene::EntityId> restoreSelection)
     {
+        std::vector<std::pair<Scene::EntityId, bool>> expansionStates;
+        if (!resetHierarchyExpansion)
+        {
+            expansionStates.reserve(hierarchyEntityItems.size());
+            for (const auto &[id,item] : hierarchyEntityItems)
+            {
+                expansionStates.emplace_back(id, ctx.isTreeViewItemExpanded(hierarchyTree, item));
+            }
+        }
+
         ctx.clearTreeView(hierarchyTree);
         hierarchyEntityTokens.clear();
+        hierarchyEntityItems.clear();
         nextHierarchyToken = 1;
 
         octogui::TreeViewItemId restoredItem{};
@@ -265,6 +276,18 @@ namespace Cthulhu::Editor
                 const TreeViewItemId item = ctx.addTreeViewItem(hierarchyTree, parentItem, label, token);
 
                 hierarchyEntityTokens.emplace_back(token, id);
+                hierarchyEntityItems.emplace_back(id,item);
+
+                const auto previousExpansion = std::find_if(expansionStates.begin(), expansionStates.end(), [id](const auto &entry) {return entry.first == id; });
+
+                if (resetHierarchyExpansion)
+                {
+                    ctx.setTreeViewItemExpanded(hierarchyTree, item, false);
+                }
+                else if (previousExpansion != expansionStates.end())
+                {
+                    ctx.setTreeViewItemExpanded(hierarchyTree, item, previousExpansion->second);
+                }
                 
                 const bool isRestoreTarget = restoreSelection && id == *restoreSelection;
                 if (isRestoreTarget)
@@ -279,6 +302,8 @@ namespace Cthulhu::Editor
                 }
 
                 containsRestoreSelection = containsRestoreSelection || isRestoreTarget || hasRestoredDescendant;
+
+                resetHierarchyExpansion = false;
             }
 
             return containsRestoreSelection;
@@ -330,6 +355,7 @@ namespace Cthulhu::Editor
             {
                 selectedEntity.reset();
                 hierarchyDirty = true;
+                resetHierarchyExpansion = true;
             }
             else if (event.type == Scribe::ChangeType::EntityDestroyed)
             {
@@ -352,6 +378,7 @@ namespace Cthulhu::Editor
             {
                 ctx.clearTreeView(hierarchyTree);
                 hierarchyEntityTokens.clear();
+                                hierarchyEntityItems.clear();
                 selectedEntity.reset();
                 hierarchyInitialized = false;
             }
