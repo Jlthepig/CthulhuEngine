@@ -20,8 +20,7 @@ I'm currently 16 years old.
 
 ## It's the first year of making Cthulhu, so let's see if I can work on this for 60 more years!
 
-<img width="1910" height="1079" alt="image" src="https://github.com/user-attachments/assets/8dbe415a-0aa0-4895-86a3-70fc1a3661d5" />
-
+<img width="1919" height="1079" alt="image" src="https://github.com/user-attachments/assets/ad065af2-d3f6-4ffc-b5d7-a66c1feb7bb9" />
 
 
 ---
