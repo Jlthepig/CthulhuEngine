@@ -498,6 +498,7 @@ namespace Cthulhu::Editor
         bool f2Pressed = false;
         bool enterPressed = false;
         bool escapePressed = false;
+        bool deletePressed = false;
 
         for (const InputEvent &event : ctx.input().events)
         {
@@ -509,6 +510,7 @@ namespace Cthulhu::Editor
             f2Pressed = f2Pressed || event.key == Key::F2;
             enterPressed = enterPressed || event.key == Key::Enter || event.key == Key::KeypadEnter;
             escapePressed = escapePressed || event.key == Key::Escape;
+            deletePressed = deletePressed || event.key == Key::Delete;
         }
 
         bool renameRequested = f2Pressed && ctx.isFocused(hierarchyTree);
@@ -675,6 +677,32 @@ namespace Cthulhu::Editor
             else if (!ctx.isFocused(hierarchyRenameInput))
             {
                 finishHierarchyRename(true);
+            }
+        }
+
+        const NodeHandle focused = ctx.focused();
+        const bool textFieldFocused =
+            ctx.isValid(focused) &&
+            (ctx.tree().type(focused) == NodeType::TextInput ||
+             ctx.tree().type(focused) == NodeType::NumericInput);
+
+        if (deletePressed &&
+            !engine.isPlaying() && activeScene && ctx.isFocused(hierarchyTree) && !textFieldFocused && !ctx.isValid(hierarchyRenameInput) && selectedEntity)
+        {
+            const Scene::EntityId entityId = *selectedEntity;
+
+            session.endMerge();
+            const auto result = session.deleteEntity(entityId);
+            session.endMerge();
+
+            if (result.ok())
+            {
+                selectedEntity.reset();
+                ctx.setTreeViewSelectedItem(hierarchyTree, TreeViewItemId{});
+            }
+            else
+            {
+                Log::Print("DELETE ENTITY FAILED: " + result.error,"Editor",LogType::LOG_ERROR);
             }
         }
 
