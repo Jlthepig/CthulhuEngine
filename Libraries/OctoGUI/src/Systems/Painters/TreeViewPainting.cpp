@@ -130,28 +130,26 @@ void PaintSystem::paintTreeView(
         content.w,
         rowHeight};
 
+    const bool isDragged = state->dragging && state->dragged == visible.item;
     const bool selected = state->selected == visible.item;
-    const bool hovered = state->hovered == visible.item;
+    const bool hovered = !state->dragging && state->hovered == visible.item;
 
-    if (selected) {
-      drawList.addRoundedRectFilled(
-          row, selectedBackground, detail::TreeViewRowCornerRadius);
+    Color rowTextColor = textColor;
+    if (isDragged) rowTextColor = textColor.withAlpha(0.45f);
 
-      drawList.addRoundedRectFilled(
-          Rect{
-              row.x,
-              row.y + 2.0f,
-              detail::TreeViewSelectionAccentWidth,
-              row.h - 4.0f},
-          accentColor,
-          detail::TreeViewSelectionAccentWidth * 0.5f);
-    } else if (hovered) {
-      drawList.addRoundedRectFilled(
-          row, hoveredBackground, detail::TreeViewRowCornerRadius);
+    if (isDragged) {
+      drawList.addRoundedRectFilled(row, accentColor.withAlpha(0.06f), detail::TreeViewRowCornerRadius);
+    }
+    else if (selected) {
+      drawList.addRoundedRectFilled(row, selectedBackground, detail::TreeViewRowCornerRadius);
+      drawList.addRoundedRectFilled(Rect{row.x, row.y + 2.0f, detail::TreeViewSelectionAccentWidth, row.h - 4.0f}, 
+        accentColor, detail::TreeViewSelectionAccentWidth * 0.5f);
+    }
+    else if (hovered) {
+      drawList.addRoundedRectFilled(row, hoveredBackground, detail::TreeViewRowCornerRadius);
     }
 
-    const f32 indentX =
-      row.x + detail::treeViewIndentOffset(visible.depth, state->maxIndentWidth);
+    const f32 indentX = row.x + detail::treeViewIndentOffset(visible.depth, state->maxIndentWidth);
 
     const f32 chevronCenterX = indentX + detail::TreeViewChevronAreaWidth * 0.5f;
     const f32 chevronCenterY = row.y + row.h * 0.5f;
@@ -168,20 +166,20 @@ void PaintSystem::paintTreeView(
         const Vec2 right{chevronCenterX + half, chevronCenterY - half * 0.35f};
 
         drawList.addLine(
-            left, middle, textColor, detail::TreeViewChevronThickness);
+          left, middle, rowTextColor, detail::TreeViewChevronThickness);
 
         drawList.addLine(
-            middle, right, textColor, detail::TreeViewChevronThickness);
+          middle, right, rowTextColor, detail::TreeViewChevronThickness);
       } else {
         const Vec2 top{chevronCenterX - half * 0.35f, chevronCenterY - half};
         const Vec2 middle{chevronCenterX + half * 0.35f, chevronCenterY};
         const Vec2 bottom{chevronCenterX - half * 0.35f, chevronCenterY + half};
 
         drawList.addLine(
-            top, middle, textColor, detail::TreeViewChevronThickness);
+          top, middle, rowTextColor, detail::TreeViewChevronThickness);
 
         drawList.addLine(
-            middle, bottom, textColor, detail::TreeViewChevronThickness);
+          middle, bottom, rowTextColor, detail::TreeViewChevronThickness);
       }
     }
 
@@ -206,7 +204,86 @@ void PaintSystem::paintTreeView(
     const Rect textClip{textX, row.y, textWidth, row.h};
 
     font->drawTextClipped(
-        drawList, item->label, Vec2{textX, textY}, textColor, textClip);
+        drawList, item->label, Vec2{textX, textY}, rowTextColor, textClip);
+  }
+
+  // Drag/drop indicator 
+  if (state->dragging && state->dragged) {
+    const bool invalidTarget =
+        state->dropTarget &&
+        (state->dragged == state->dropTarget ||
+         detail::treeViewIsDescendant(
+             *state, state->dragged, state->dropTarget));
+    const Color dropColor =
+        invalidTarget ? Color{0.92f, 0.30f, 0.30f, 1.0f} : accentColor;
+
+    if (state->dropTarget) {
+      usize targetIdx = static_cast<usize>(-1);
+
+      for (usize i = 0; i < state->visibleItems.size(); ++i) {
+        if (state->visibleItems[i].item == state->dropTarget) {
+          targetIdx = i;
+          break;
+        }
+      }
+
+      if (targetIdx != static_cast<usize>(-1)) {
+        const Rect targetRow =
+            detail::treeViewRowRect(content, targetIdx, state->scrollY);
+        const u32 depth = state->visibleItems[targetIdx].depth;
+        const f32 targetIndent =
+            detail::treeViewIndentOffset(depth, state->maxIndentWidth);
+
+        if (state->dropPosition == TreeViewDropPosition::Inside) {
+          drawList.addRoundedRectFilled(
+              targetRow,
+              dropColor.withAlpha(0.22f),
+              detail::TreeViewRowCornerRadius);
+          drawList.addRoundedRectOutline(
+              targetRow,
+              dropColor.withAlpha(0.90f),
+              detail::TreeViewRowCornerRadius,
+              1.0f);
+        } else if (state->dropPosition == TreeViewDropPosition::Before) {
+          const f32 y = targetRow.y;
+          const Rect line{
+              targetRow.x + targetIndent,
+              y - 1.0f,
+              targetRow.w - targetIndent,
+              2.0f};
+          drawList.addRectFilled(line, dropColor);
+          drawList.addRectFilled(
+              Rect{line.x - 3.0f, y - 3.0f, 6.0f, 6.0f}, dropColor);
+        } else {
+          const f32 y = targetRow.y + targetRow.h;
+          const Rect line{
+              targetRow.x + targetIndent,
+              y - 1.0f,
+              targetRow.w - targetIndent,
+              2.0f};
+          drawList.addRectFilled(line, dropColor);
+          drawList.addRectFilled(
+              Rect{line.x - 3.0f, y - 3.0f, 6.0f, 6.0f}, dropColor);
+        }
+      }
+    } else {
+      const f32 y =
+          content.y +
+          static_cast<f32>(state->visibleItems.size()) * rowHeight -
+          state->scrollY;
+      const f32 clampedY =
+          y < content.y
+              ? content.y
+              : (y > content.maxY() - 2.0f ? content.maxY() - 2.0f : y);
+      const Rect line{
+          content.x + 4.0f,
+          clampedY - 1.0f,
+          content.w - 8.0f,
+          2.0f};
+      drawList.addRectFilled(line, dropColor);
+      drawList.addRectFilled(
+          Rect{line.x - 3.0f, clampedY - 3.0f, 6.0f, 6.0f}, dropColor);
+    }
   }
 
   drawList.popClip();

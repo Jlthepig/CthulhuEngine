@@ -1,13 +1,11 @@
 #pragma once
 
-#include <cstdint>
 #include <optional>
 #include <string>
-#include <utility>
-#include <vector>
 
 #include "OctoGui/Context.h"
 #include "entityId.hpp"
+#include "hierarchyPanel.hpp"
 #include "inspectorPanel.hpp"
 
 using namespace octogui;
@@ -43,7 +41,7 @@ class EditorShell
 
     [[nodiscard]] NodeHandle hierarchyPanel() const noexcept
     {
-        return hierarchy;
+        return hierarchyPanel_.panel();
     }
     [[nodiscard]] NodeHandle sceneArea() const noexcept
     {
@@ -55,7 +53,11 @@ class EditorShell
     }
     [[nodiscard]] NodeHandle sceneTree() const noexcept
     {
-        return hierarchyTree;
+        return hierarchyPanel_.treeView();
+    }
+    [[nodiscard]] std::optional<Scene::EntityId> selectedEntity() const noexcept
+    {
+        return hierarchyPanel_.selectedEntity();
     }
 
   private:
@@ -66,11 +68,8 @@ class EditorShell
     IconButton stopButton{};
 
 
-    NodeHandle hierarchy{};
-    NodeHandle hierarchyHeader{};
-    NodeHandle hierarchyTree{};
+    HierarchyPanel hierarchyPanel_;
     NodeHandle sceneNode{};
-    IconButton createEntityButton{};
 
     NodeHandle inspector{};
     InspectorPanel inspectorUI;
@@ -79,24 +78,5 @@ class EditorShell
     bool lastPlaying = false;
     bool lastPaused = false;
 
-    std::vector<std::pair<std::uint64_t, Scene::EntityId>> hierarchyEntityTokens;
-    std::vector<std::pair<Scene::EntityId, TreeViewItemId>> hierarchyEntityItems;
-    std::optional<Scene::EntityId> selectedEntity;
-    std::uint64_t nextHierarchyToken = 1;
-    std::uint64_t hierarchySceneGeneration = 0;
-    bool hierarchyInitialized = false;
-    bool resetHierarchyExpansion = false;
-
-    NodeHandle hierarchyRenameInput{};
-    std::optional<Scene::EntityId> hierarchyRenameEntity;
-    TreeViewItemId hierarchyRenameItem{};
-    LayoutMode hierarchyTreeLayoutModeBeforeRename = LayoutMode::Vertical;
-    bool hierarchyTreeClipBeforeRename = false;
-
-    std::optional<Scene::EntityId> lastHierarchyClickEntity;
-    f32 hierarchyClickAge = 1.0f;
-
-    void rebuildHierarchy(Context &ctx, Scene::Scene &scene, std::optional<Scene::EntityId> restoreSelection);
-    void updateSelection(Context &ctx);
 };
 } // namespace Cthulhu::Editor
