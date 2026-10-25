@@ -185,6 +185,11 @@ public:
 
   void updateTreeViewPress(Tree& tree, NodeHandle handle, Vec2 mousePosition);
 
+  void updateTreeViewDrag(Tree& tree, NodeHandle handle, Vec2 mousePosition);
+
+  [[nodiscard]]
+  bool hasPendingTreeViewDrop(const Tree& tree, NodeHandle handle) const noexcept;
+
   [[nodiscard]]
   std::string_view treeViewItemText(const Tree& tree, NodeHandle handle, TreeViewItemId item) const noexcept;
 

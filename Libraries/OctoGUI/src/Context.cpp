@@ -590,6 +590,25 @@ void Context::setTreeViewMaxIndentWidth(NodeHandle treeView, f32 maxIndentWidth)
   impl->widgets.setTreeViewMaxIndentWidth(impl->tree, treeView, maxIndentWidth);
 }
 
+f32 Context::treeViewMaxIndentWidth(NodeHandle treeView) const noexcept {
+  if (const TreeViewState *state = impl->tree.treeViewState(treeView)) {
+    return state->maxIndentWidth;
+  }
+  return 0.0f;
+}
+
+bool Context::pollTreeViewDrop(NodeHandle treeView, TreeViewDrop &out) noexcept {
+  UIEvent event;
+  if (!impl->events.pollFiltered(event, UIEventType::TreeViewDrop, treeView)) {
+    return false;
+  }
+  out = {event.draggedItem, event.dropTarget, event.dropPosition};
+  if (TreeViewState *state = impl->tree.treeViewState(treeView)) {
+    state->pendingDrop = false;
+  }
+  return true;
+}
+
 void Context::toggleCollapsibleSection(
     NodeHandle handle) {
   impl->widgets.toggleCollapsibleSection(

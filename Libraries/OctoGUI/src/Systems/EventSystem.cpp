@@ -52,6 +52,39 @@ void EventSystem::pushSelectionChanged(NodeHandle target, TreeViewItemId oldSele
   queue.push_back(event);
 }
 
+void EventSystem::pushTreeViewDrop(NodeHandle target, TreeViewItemId dragged, TreeViewItemId dropTarget, TreeViewDropPosition position) {
+  UIEvent event;
+  event.type = UIEventType::TreeViewDrop;
+  event.target = target;
+  event.draggedItem = dragged;
+  event.dropTarget = dropTarget;
+  event.dropPosition = position;
+  queue.push_back(event);
+}
+
+bool EventSystem::pollFiltered(UIEvent &event, UIEventType type, NodeHandle target) noexcept {
+  for (usize index = readIndex; index < queue.size(); ++index) {
+    if (queue[index].type != type) {
+      continue;
+    }
+    if (target && queue[index].target != target) {
+      continue;
+    }
+
+    event = queue[index];
+    queue.erase(queue.begin() + index);
+    if (readIndex > queue.size()) {
+      readIndex = queue.size();
+    }
+    if (readIndex == queue.size()) {
+      queue.clear();
+      readIndex = 0;
+    }
+    return true;
+  }
+  return false;
+}
+
 bool EventSystem::poll(UIEvent &event) noexcept {
   if (readIndex >= queue.size()) {
     return false;

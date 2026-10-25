@@ -255,7 +255,18 @@ public:
   void setTreeViewItemExpanded(NodeHandle treeView, TreeViewItemId item,
                                bool expanded);
 
+  struct TreeViewDrop {
+    TreeViewItemId dragged;
+    TreeViewItemId target;
+    TreeViewDropPosition pos;
+  };
+
   void setTreeViewMaxIndentWidth(NodeHandle treeView, f32 maxIndentWidth);
+  [[nodiscard]]
+  f32 treeViewMaxIndentWidth(NodeHandle treeView) const noexcept;
+
+  [[nodiscard]]
+  bool pollTreeViewDrop(NodeHandle treeView, TreeViewDrop &out) noexcept;
 
   [[nodiscard]]
   NodeHandle root() const noexcept;

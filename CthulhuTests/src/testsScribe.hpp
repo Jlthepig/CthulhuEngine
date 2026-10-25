@@ -66,49 +66,98 @@ inline void validateScribeEntities(Engine& engine, Results& r)
     check(r, session.reparentEntity(child.id, std::nullopt).ok() && !scene->getParent(child.id), "O5 detach entity");
     session.undo();
     check(r, scene->getParent(child.id) == parent.id, "O5 undo detach restores the parent");
+      {
+            const auto orderParent = session.createEntity("O_IndexedParent");
+            const auto orderChild = session.createEntity("O_IndexedChild", orderParent.id);
+            const auto siblingA = session.createEntity("O_IndexedSibling_A", orderParent.id);
+            const auto siblingB = session.createEntity("O_IndexedSibling_B", orderParent.id);
+            const auto destination = session.createEntity("O_IndexedDestination");
+            const auto destinationA = session.createEntity("O_IndexedDestination_A", destination.id);
+            const auto destinationB = session.createEntity("O_IndexedDestination_B", destination.id);
+            const bool fixturesReady =
+                  orderParent.ok() && orderChild.ok() && siblingA.ok() && siblingB.ok() &&
+                  destination.ok() && destinationA.ok() && destinationB.ok();
+
+            const auto sourceBeforeReorder = scene->getChildren(orderParent.id);
+            const bool sourceWasCustomBeforeReorder =
+                  scene->hasCustomSiblingOrder(orderParent.id);
+            const auto oldPosition = scene->getSiblingOrder(orderChild.id);
+            const auto reorderResult = session.reparentEntity(orderChild.id, orderParent.id, 2);
+            const bool reorderApplied =
+                  reorderResult.status == Scribe::Result::Status::Applied;
+            const auto reorderedChildren = scene->getChildren(orderParent.id);
+            const auto reorderedPosition = scene->getSiblingOrder(orderChild.id);
+
+            check(r, fixturesReady && sourceBeforeReorder.size() == 3 &&
+                               !sourceWasCustomBeforeReorder && oldPosition && *oldPosition != 2 &&
+                               reorderApplied && reorderedPosition && *reorderedPosition == 2 &&
+                               reorderedChildren.size() == 3 && reorderedChildren[2] == orderChild.id &&
+                               scene->hasCustomSiblingOrder(orderParent.id),
+                    "O5 indexed same-parent reorder reaches the requested position");
+
+            const bool reorderUndone = reorderApplied && session.undo();
+            check(r, reorderUndone &&
+                               scene->getChildren(orderParent.id) == sourceBeforeReorder &&
+                               scene->hasCustomSiblingOrder(orderParent.id) == sourceWasCustomBeforeReorder,
+                    "O5 undo restores sibling order and custom/default mode");
+
+            const auto sourceBeforeCross = scene->getChildren(orderParent.id);
+            const auto destinationBeforeCross = scene->getChildren(destination.id);
+            const bool sourceWasCustomBeforeCross =
+                  scene->hasCustomSiblingOrder(orderParent.id);
+            const bool destinationWasCustomBeforeCross =
+                  scene->hasCustomSiblingOrder(destination.id);
+
+            const auto crossResult = session.reparentEntity(orderChild.id, destination.id, 1);
+            const bool crossApplied =
+                  crossResult.status == Scribe::Result::Status::Applied;
+            const auto destinationAfterCross = scene->getChildren(destination.id);
+            const auto crossPosition = scene->getSiblingOrder(orderChild.id);
+
+            check(r, crossApplied && crossPosition && *crossPosition == 1 &&
+                               scene->getParent(orderChild.id) == destination.id &&
+                               destinationAfterCross.size() == 3 &&
+                               destinationAfterCross[1] == orderChild.id &&
+                               !destinationWasCustomBeforeCross &&
+                               scene->hasCustomSiblingOrder(destination.id),
+                    "O5 indexed cross-parent reparent reaches the requested position");
+
+            const bool crossUndone = crossApplied && session.undo();
+            check(r, crossUndone && scene->getParent(orderChild.id) == orderParent.id &&
+                               scene->getChildren(orderParent.id) == sourceBeforeCross &&
+                               scene->getChildren(destination.id) == destinationBeforeCross &&
+                               scene->hasCustomSiblingOrder(orderParent.id) == sourceWasCustomBeforeCross &&
+                               scene->hasCustomSiblingOrder(destination.id) == destinationWasCustomBeforeCross,
+                    "O5 undo restores both sibling groups and their ordering modes");
+
+            const auto rootsBeforeMove = scene->getRootEntities();
+            const auto sourceBeforeRootMove = scene->getChildren(orderParent.id);
+            const bool rootsWereCustom = scene->hasCustomSiblingOrder(std::nullopt);
+            const bool sourceWasCustomBeforeRootMove =
+                  scene->hasCustomSiblingOrder(orderParent.id);
+
+            const auto rootResult = session.reparentEntity(orderChild.id, std::nullopt, 0);
+            const bool rootMoveApplied =
+                  rootResult.status == Scribe::Result::Status::Applied;
+            const auto rootsAfterMove = scene->getRootEntities();
+            const auto rootPosition = scene->getSiblingOrder(orderChild.id);
+            const bool placedAtRootIndexZero =
+                  rootMoveApplied && !scene->getParent(orderChild.id) &&
+                  rootPosition && *rootPosition == 0 && !rootsAfterMove.empty() &&
+                  rootsAfterMove[0] == orderChild.id &&
+                  scene->hasCustomSiblingOrder(std::nullopt);
+
+            const bool rootMoveUndone = rootMoveApplied && session.undo();
+            check(r, placedAtRootIndexZero && rootMoveUndone &&
+                               scene->getParent(orderChild.id) == orderParent.id &&
+                               scene->getChildren(orderParent.id) == sourceBeforeRootMove &&
+                               scene->getRootEntities() == rootsBeforeMove &&
+                               scene->hasCustomSiblingOrder(std::nullopt) == rootsWereCustom &&
+                               scene->hasCustomSiblingOrder(orderParent.id) == sourceWasCustomBeforeRootMove,
+                    "O5 indexed move to root and undo restore both sibling groups");
+      }
     check(r, !session.reparentEntity(parent.id, child.id).ok() && scene->getParent(child.id) == parent.id,
           "O5 reparent that would create a cycle is rejected");
-
-    const auto siblingA = session.createEntity("O_Sibling_A", parent.id);
-    const auto siblingB = session.createEntity("O_Sibling_B", parent.id);
-    const auto originalChildren = scene->getChildren(parent.id);
-    const auto originalChildIndex = scene->getSiblingOrder(child.id);
-    const auto originalRootCustomOrder = scene->hasCustomSiblingOrder(std::nullopt);
-
-    const auto reorder = session.reparentEntity(child.id, parent.id, 2);
-    const auto reorderedChildren = scene->getChildren(parent.id);
-    check(r, siblingA.ok() && siblingB.ok() && reorder.ok() &&
-             reorderedChildren.size() == 3 && reorderedChildren[0] == siblingA.id &&
-             reorderedChildren[1] == siblingB.id && reorderedChildren[2] == child.id &&
-             scene->hasCustomSiblingOrder(parent.id),
-          "O5 indexed same-parent reparent changes sibling order");
-
-    session.undo();
-    check(r, scene->getChildren(parent.id) == originalChildren &&
-             !scene->hasCustomSiblingOrder(parent.id),
-          "O5 undo indexed reorder restores alphabetical order");
-
-    const std::size_t rootEndIndex = scene->getRootEntities().size();
-    const auto moveToRoot = session.reparentEntity(child.id, std::nullopt, rootEndIndex);
-    const auto rootsAfterMove = scene->getRootEntities();
-    check(r, moveToRoot.ok() && !scene->getParent(child.id) &&
-             rootsAfterMove.back() == child.id &&
-             scene->hasCustomSiblingOrder(std::nullopt),
-          "O5 indexed reparent moves entity to end of root list");
-
-    session.undo();
-    check(r, scene->getParent(child.id) == parent.id &&
-             scene->getSiblingOrder(child.id) == originalChildIndex &&
-             scene->getChildren(parent.id) == originalChildren &&
-             !scene->hasCustomSiblingOrder(parent.id) &&
-             scene->hasCustomSiblingOrder(std::nullopt) == originalRootCustomOrder,
-          "O5 undo indexed root move restores parent, order and default modes");
-
-    const auto deleteSiblingA = session.deleteEntity(siblingA.id);
-    const auto deleteSiblingB = session.deleteEntity(siblingB.id);
-    check(r, deleteSiblingA.ok() && deleteSiblingB.ok() &&
-             scene->getChildren(parent.id) == std::vector<CS::EntityId>{child.id},
-          "O5 remove indexed reparent test siblings");
 
     const auto dup = session.duplicateEntity(parent.id);
     const auto dupChildren = dup.ok() ? scene->getChildren(dup.id) : std::vector<CS::EntityId>{};

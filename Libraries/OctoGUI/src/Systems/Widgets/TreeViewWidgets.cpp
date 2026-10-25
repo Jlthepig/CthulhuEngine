@@ -944,6 +944,10 @@ void WidgetSystem::beginTreeViewPress(
           *state,
           content,
           mousePosition);
+    state->dragging = false;
+    state->dragged = item;
+    state->dragStart = mousePosition;
+    state->dropTarget = {};
 }
 
 void WidgetSystem::cancelTreeViewPress(
@@ -958,8 +962,83 @@ void WidgetSystem::cancelTreeViewPress(
 
   state->pressed = {};
   state->pressedChevron = false;
+    state->dragging = false;
+    state->dragged = {};
+    state->dropTarget = {};
+    state->dragStart = {};
     state->scrollbarDragging = false;
     state->scrollbarDragOffsetY = 0.0f;
+}
+
+void WidgetSystem::updateTreeViewDrag(
+        Tree& tree,
+        NodeHandle handle,
+        Vec2 mousePosition) {
+    TreeViewState* state =
+            tree.treeViewState(handle);
+
+    if (!state || !state->pressed || state->pressedChevron) {
+        return;
+    }
+
+    if (!state->dragging) {
+        const f32 dx = mousePosition.x - state->dragStart.x;
+        const f32 dy = mousePosition.y - state->dragStart.y;
+        const f32 threshold = detail::TreeViewDragThreshold;
+
+        if (dx * dx + dy * dy < threshold * threshold) {
+            return;
+        }
+
+        state->dragging = true;
+        state->dragged = state->pressed;
+    }
+
+    const Rect content = detail::visualContentRect(tree, handle);
+    const auto scrollbar = detail::treeViewScrollbarGeometry(*state, tree, handle);
+
+    if (scrollbar.visible && scrollbar.track.contains(mousePosition)) {
+        state->dropTarget = {};
+        tree.markPaintDirty(handle);
+        return;
+    }
+
+    const TreeViewItemId hit =
+            detail::treeViewItemAt(*state, content, mousePosition);
+
+    if (hit) {
+        state->dropTarget = hit;
+
+        usize rowIndex = 0;
+
+        for (usize index = 0; index < state->visibleItems.size(); ++index) {
+            if (state->visibleItems[index].item == hit) {
+                rowIndex = index;
+                break;
+            }
+        }
+
+        const Rect row =
+                detail::treeViewRowRect(content, rowIndex, state->scrollY);
+        state->dropPosition =
+                detail::treeViewDropPositionForRow(row, mousePosition);
+
+        if (state->dragged == hit ||
+                detail::treeViewIsDescendant(*state, state->dragged, hit)) {
+            // The consumer validates whether the target would create a cycle.
+        }
+    } else {
+        state->dropTarget = {};
+    }
+
+    tree.markPaintDirty(handle);
+}
+
+bool WidgetSystem::hasPendingTreeViewDrop(
+        const Tree& tree,
+        NodeHandle handle) const noexcept {
+    const TreeViewState* state = tree.treeViewState(handle);
+    return state && state->pendingDrop;
 }
 
 void WidgetSystem::endTreeViewPress(
@@ -973,6 +1052,26 @@ void WidgetSystem::endTreeViewPress(
   if (!state) {
     return;
   }
+
+    if (state->dragging) {
+        const TreeViewItemId dragged = state->dragged;
+        const TreeViewItemId target = state->dropTarget;
+        const TreeViewDropPosition position = state->dropPosition;
+
+        state->dragging = false;
+        state->dragged = {};
+        state->dropTarget = {};
+        state->pressed = {};
+        state->pressedChevron = false;
+        state->pendingDrop = true;
+        state->pendingDragged = dragged;
+        state->pendingDropTarget = target;
+        state->pendingDropPos = position;
+
+        events.pushTreeViewDrop(handle, dragged, target, position);
+        tree.markPaintDirty(handle);
+        return;
+    }
 
     if (state->scrollbarDragging) {
         state->scrollbarDragging = false;

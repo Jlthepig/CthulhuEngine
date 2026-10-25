@@ -127,9 +127,21 @@ struct TreeViewState {
 
   bool pressedChevron = false;
 
-  u32 itemCount = 0;
+  bool dragging = false;
+  TreeViewItemId dragged{};
+  Vec2 dragStart{};
 
-  f32 maxIndentWidth = InfiniteLayoutSize;
+  TreeViewItemId dropTarget{};
+  TreeViewDropPosition dropPosition = TreeViewDropPosition::Inside;
+
+  bool pendingDrop = false;
+  TreeViewItemId pendingDragged{};
+  TreeViewItemId pendingDropTarget{};
+  TreeViewDropPosition pendingDropPos = TreeViewDropPosition::Inside;
+
+  f32 maxIndentWidth = 0.0f;
+
+  u32 itemCount = 0;
 
   f32 scrollY = 0.0f;
 

@@ -65,6 +65,7 @@ inline constexpr f32 ProgressBarFillInset = 2.0f;
 
 inline constexpr f32 TreeViewRowHeight = 26.0f;
 inline constexpr f32 TreeViewIndentWidth = 16.0f;
+inline constexpr f32 TreeViewDragThreshold = 5.0f;
 
 inline f32 treeViewIndentOffset(u32 depth, f32 maxIndentWidth) noexcept {
   const f32 indent = static_cast<f32>(depth) * TreeViewIndentWidth;

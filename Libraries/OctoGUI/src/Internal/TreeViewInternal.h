@@ -425,4 +425,49 @@ inline bool treeViewPointIsChevron(
       position);
 }
 
+inline bool treeViewIsDescendant(
+    const TreeViewState& state,
+    TreeViewItemId ancestor,
+    TreeViewItemId descendant) noexcept {
+  if (!ancestor || !descendant) {
+    return false;
+  }
+
+  for (TreeViewItemId current = descendant;;) {
+    const TreeViewItemSlot* item =
+        treeViewItem(state, current);
+
+    if (!item) {
+      return false;
+    }
+
+    if (item->parent == ancestor) {
+      return true;
+    }
+
+    current = item->parent;
+
+    if (!current) {
+      return false;
+    }
+  }
+}
+
+inline TreeViewDropPosition treeViewDropPositionForRow(
+    const Rect& row,
+    Vec2 position) noexcept {
+  const f32 top = row.y + row.h * 0.25f;
+  const f32 bottom = row.y + row.h * 0.75f;
+
+  if (position.y < top) {
+    return TreeViewDropPosition::Before;
+  }
+
+  if (position.y > bottom) {
+    return TreeViewDropPosition::After;
+  }
+
+  return TreeViewDropPosition::Inside;
+}
+
 } // namespace octogui::detail

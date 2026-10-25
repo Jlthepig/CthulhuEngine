@@ -426,11 +426,116 @@ namespace Cthulhu::Editor
         };
 
         hierarchyClickAge = std::min(1.0f,hierarchyClickAge + ctx.input().deltaTime);
+        Scene::Scene *activeScene = engine.getActiveScene();
 
-        if (!engine.getActiveScene() && !engine.createEmptyScene("Untitled"))
+        if (!engine.isPlaying() && !ctx.isValid(hierarchyRenameInput) && ctx.isFocused(hierarchyTree))
         {
-            Log::Print("FAILED TO CREATE FALLBACK SCENE", "Editor", LogType::LOG_ERROR);
-            return;
+            Context::TreeViewDrop drop{};
+            while (ctx.pollTreeViewDrop(hierarchyTree, drop))
+            {
+                auto findEntityForItem = [&](TreeViewItemId item) -> std::optional<Scene::EntityId>
+                {
+                    if (!item)
+                    {
+                        return std::nullopt;
+                    }
+
+                    const std::uint64_t token = ctx.treeViewItemUserValue(hierarchyTree, item);
+                    for (const auto &[candidateToken, entityId] : hierarchyEntityTokens)
+                    {
+                        if (candidateToken == token)
+                        {
+                            return entityId;
+                        }
+                    }
+                    return std::nullopt;
+                };
+
+                const auto draggedEntity = findEntityForItem(drop.dragged);
+                if (!draggedEntity || (drop.target && drop.dragged == drop.target))
+                {
+                    continue;
+                }
+
+                std::optional<Scene::EntityId> newParent;
+                std::optional<std::size_t> siblingIndex;
+
+                if (!drop.target)
+                {
+                    newParent = std::nullopt;
+                }
+                else
+                {
+                    const auto targetEntity = findEntityForItem(drop.target);
+                    if (!targetEntity || !activeScene)
+                    {
+                        continue;
+                    }
+
+                    bool isDescendant = false;
+                    for (auto current = targetEntity; current; current = activeScene->getParent(*current))
+                    {
+                        if (*current == *draggedEntity)
+                        {
+                            isDescendant = true;
+                            break;
+                        }
+                    }
+                    if (isDescendant)
+                    {
+                        continue;
+                    }
+
+                    if (drop.pos == TreeViewDropPosition::Inside)
+                    {
+                        newParent = *targetEntity;
+                    }
+                    else
+                    {
+                        newParent = activeScene->getParent(*targetEntity);
+                        const std::vector<Scene::EntityId> siblings = newParent
+                            ? activeScene->getChildren(*newParent)
+                            : activeScene->getRootEntities();
+                        const auto targetIt = std::find(siblings.begin(), siblings.end(), *targetEntity);
+                        if (targetIt == siblings.end())
+                        {
+                            continue;
+                        }
+
+                        std::size_t index = static_cast<std::size_t>(targetIt - siblings.begin());
+                        if (drop.pos == TreeViewDropPosition::After)
+                        {
+                            ++index;
+                        }
+                        siblingIndex = index;
+                    }
+                }
+
+                session.endMerge();
+                const auto result = session.reparentEntity(*draggedEntity, newParent, siblingIndex);
+                session.endMerge();
+                if (!result.ok())
+                {
+                    if (result.status != Scribe::Result::Status::NoChange)
+                    {
+                        Log::Print("REPARENT FAILED: " + result.error, "Editor", LogType::LOG_ERROR);
+                    }
+                    continue;
+                }
+
+                selectedEntity = *draggedEntity;
+                break;
+            }
+        }
+
+        if (!activeScene)
+        {
+            if (!engine.createEmptyScene("Untitled"))
+            {
+                Log::Print("FAILED TO CREATE FALLBACK SCENE", "Editor", LogType::LOG_ERROR);
+                return;
+            }
+            activeScene = engine.getActiveScene();
         }
 
         bool hierarchyDirty = false;
@@ -463,7 +568,6 @@ namespace Cthulhu::Editor
             hierarchyClickAge = 1.0f;
         }
 
-        Scene::Scene *activeScene = engine.getActiveScene();
         if (!activeScene)
         {
             if (hierarchyInitialized)

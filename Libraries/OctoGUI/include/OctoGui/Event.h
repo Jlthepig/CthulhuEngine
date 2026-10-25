@@ -20,7 +20,8 @@ enum class UIEventType {
 
   ValueChanged,
   CheckedChanged,
-  SelectionChanged
+  SelectionChanged,
+  TreeViewDrop
 };
 
 struct UIEvent {
@@ -37,6 +38,10 @@ struct UIEvent {
 
   TreeViewItemId oldSelection{};
   TreeViewItemId newSelection{};
+
+  TreeViewItemId draggedItem{};
+  TreeViewItemId dropTarget{};
+  TreeViewDropPosition dropPosition = TreeViewDropPosition::Inside;
 };
 
 } // namespace octogui

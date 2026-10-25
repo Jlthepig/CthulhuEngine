@@ -306,6 +306,10 @@ void InteractionSystem::updateActivePointerDrag(Tree& tree, const InputState& in
       tree,
       interaction.active,
       input.mouse.position);
+    widgets.updateTreeViewDrag(
+      tree,
+      interaction.active,
+      input.mouse.position);
     }
 
   if (activeType == NodeType::Slider) {

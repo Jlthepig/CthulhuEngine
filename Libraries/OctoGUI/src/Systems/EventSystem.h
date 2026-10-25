@@ -12,6 +12,9 @@ public:
   void pushValueChanged(NodeHandle target, f64 oldValue, f64 newValue);
   void pushCheckedChanged(NodeHandle target, bool oldChecked, bool newChecked);
   void pushSelectionChanged(NodeHandle target, TreeViewItemId oldSelection, TreeViewItemId newSelection);
+  void pushTreeViewDrop(NodeHandle target, TreeViewItemId dragged, TreeViewItemId dropTarget, TreeViewDropPosition position);
+
+  bool pollFiltered(UIEvent &event, UIEventType type, NodeHandle target = {}) noexcept;
 
   [[nodiscard]]
   bool poll(UIEvent &event) noexcept;

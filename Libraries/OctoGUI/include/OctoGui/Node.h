@@ -82,6 +82,12 @@ struct TreeViewItemId {
   }
 };
 
+enum class TreeViewDropPosition : u8 {
+  Before,
+  After,
+  Inside
+};
+
 constexpr NodeFlags operator|(NodeFlags lhs, NodeFlags rhs) noexcept {
   return static_cast<NodeFlags>(static_cast<u32>(lhs) | static_cast<u32>(rhs));
 }
