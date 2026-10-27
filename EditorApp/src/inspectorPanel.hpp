@@ -52,6 +52,14 @@ class InspectorPanel
     std::vector<std::string> componentNames;
     std::optional<Scene::EntityId> selectedEntity;
     std::optional<Scene::EntityId> builtEntity;
+    octogui::NodeHandle addComponentCombo{};
+    octogui::NodeHandle addComponentButton{};
+    struct RemoveBinding
+    {
+      octogui::NodeHandle button{};
+      std::string component;
+    };
+    std::vector<RemoveBinding> removeBindings;
     bool initialized = false;
 
     void resetContent(octogui::Context &ctx);

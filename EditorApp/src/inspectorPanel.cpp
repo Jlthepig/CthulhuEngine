@@ -79,9 +79,9 @@ namespace Cthulhu::Editor
 
             const NodeHandle name = ctx.createLabel(row, label);
             auto nameLayout = ctx.layoutStyle(name);
-            nameLayout.minSize = Vec2{72.0f, 26.0f};
-            nameLayout.preferredSize = Vec2{72.0f, 26.0f};
-            nameLayout.maxSize = Vec2{72.0f, 26.0f};
+            nameLayout.minSize = Vec2{86.0f, 26.0f};
+            nameLayout.preferredSize = Vec2{86.0f, 26.0f};
+            nameLayout.maxSize = Vec2{86.0f, 26.0f};
             nameLayout.verticalAlignment = Alignment::Center;
             return row;
         }
@@ -126,9 +126,9 @@ namespace Cthulhu::Editor
         void fitInspectorControl(Context &ctx, NodeHandle control)
         {
             auto layout = ctx.layoutStyle(control);
-            layout.minSize = Vec2{0.0f, 26.0f};
-            layout.preferredSize = Vec2{0.0f, 26.0f};
-            layout.maxSize = Vec2{InfiniteLayoutSize, 26.0f};
+            layout.minSize = Vec2{140.0f, 30.0f};
+            layout.preferredSize = Vec2{180.0f, 30.0f};
+            layout.maxSize = Vec2{InfiniteLayoutSize, 30.0f};
             layout.horizontalAlignment = Alignment::Stretch;
             layout.verticalAlignment = Alignment::Center;
         }
@@ -225,6 +225,7 @@ namespace Cthulhu::Editor
     {
         resetContent(ctx);
         bindings.clear();
+        removeBindings.clear();
         componentNames.clear();
         builtEntity = selectedEntity;
 
@@ -282,8 +283,37 @@ namespace Cthulhu::Editor
             auto sectionLayout = ctx.layoutStyle(content);
             sectionLayout.mode = LayoutMode::Vertical;
             sectionLayout.horizontalAlignment = Alignment::Stretch;
-            sectionLayout.gap = isTransform ? 6.0f : 3.0f;
-            sectionLayout.padding = isTransform ? Padding{} : Padding{4.0f, 3.0f};
+            sectionLayout.gap = 6.0f;
+            sectionLayout.padding = isTransform
+                                        ? Padding{0.0f, 0.0f, 6.0f, 0.0f}
+                                        : Padding{4.0f, 3.0f, 6.0f, 3.0f};
+
+            if (!component.core)
+            {
+                const NodeHandle removeRow = ctx.createContainer(content);
+                auto removeRowLayout = ctx.layoutStyle(removeRow);
+                removeRowLayout.mode = LayoutMode::Horizontal;
+                removeRowLayout.horizontalAlignment = Alignment::End;
+                removeRowLayout.verticalAlignment = Alignment::Center;
+                removeRowLayout.gap = 6.0f;
+                removeRowLayout.minSize = Vec2{0.0f, 18.0f};
+                removeRowLayout.preferredSize = Vec2{0.0f, 18.0f};
+
+                const NodeHandle removeButton = ctx.createButton(removeRow, "");
+                auto buttonLayout = ctx.layoutStyle(removeButton);
+                buttonLayout.mode = LayoutMode::Horizontal;
+                buttonLayout.horizontalAlignment = Alignment::Center;
+                buttonLayout.verticalAlignment = Alignment::Center;
+                buttonLayout.padding = Padding{};
+                buttonLayout.minSize = Vec2{24.0f, 24.0f};
+                buttonLayout.preferredSize = Vec2{24.0f, 24.0f};
+                buttonLayout.maxSize = Vec2{24.0f, 24.0f};
+                const NodeHandle trashIcon = ctx.createIcon(removeButton, "trash");
+                ctx.setIconSize(trashIcon, 14.0f);
+                ctx.setIconColor(trashIcon, ctx.theme().textMuted);
+                ctx.setEnabled(removeButton, !engine.isPlaying());
+                removeBindings.push_back({removeButton, component.name});
+            }
 
             for (const Scene::FieldDescriptor &field : component.fields)
             {
@@ -319,28 +349,16 @@ namespace Cthulhu::Editor
                                                        : inspectorRow(ctx, content, label);
                     const auto addNumeric = [&](NodeHandle parent, double value, std::size_t axis) {
                         NodeHandle numericParent = parent;
-                        if (isVector && !isTransform)
-                        {
-                            numericParent = ctx.createContainer(parent);
-                            auto axisLayout = ctx.layoutStyle(numericParent);
-                            axisLayout.mode = LayoutMode::Horizontal;
-                            axisLayout.horizontalAlignment = Alignment::Stretch;
-                            axisLayout.verticalAlignment = Alignment::Center;
-                            axisLayout.gap = 2.0f;
-                        }
                         if (isVector)
                         {
                             constexpr std::string_view axisNames[] = {"X", "Y", "Z"};
                             const NodeHandle axisLabel = ctx.createLabel(numericParent, axisNames[axis]);
                             auto labelLayout = ctx.layoutStyle(axisLabel);
-                            const float rowHeight = isTransform ? 30.0f : 22.0f;
+                            const float rowHeight = isTransform ? 30.0f : 28.0f;
                             labelLayout.minSize = Vec2{12.0f, rowHeight};
                             labelLayout.preferredSize = Vec2{12.0f, rowHeight};
                             labelLayout.maxSize = Vec2{12.0f, rowHeight};
-                            if (isTransform)
-                            {
-                                ctx.style(axisLabel).all.text = transformAxisColor(axis);
-                            }
+                            ctx.style(axisLabel).all.text = transformAxisColor(axis);
                         }
 
                         const NumericInputType inputType = field.type == Scene::FieldType::Int
@@ -367,7 +385,7 @@ namespace Cthulhu::Editor
                                                        ? 1.0
                                                        : toInspectorUnits(step, field.hint);
                         ctx.setNumericStep(control, displayStep);
-                        if (isTransform)
+                        if (isTransform || isVector)
                         {
                             auto controlLayout = ctx.layoutStyle(control);
                             controlLayout.minSize = Vec2{44.0f, 30.0f};
@@ -472,6 +490,66 @@ namespace Cthulhu::Editor
             }
         }
 
+        if (scene && selectedEntity)
+        {
+            std::vector<std::string> available;
+            for (const auto &descriptor : registry.getAll())
+            {
+                if (descriptor.core)
+                {
+                    continue;
+                }
+                if (descriptor.has(*entity))
+                {
+                    continue;
+                }
+                available.push_back(descriptor.name);
+            }
+
+            const NodeHandle separator = ctx.createSeparator(generatedContent);
+            ctx.setSeparatorOrientation(separator, SeparatorOrientation::Horizontal);
+
+            const NodeHandle addRow = ctx.createContainer(generatedContent);
+            auto rowLayout = ctx.layoutStyle(addRow);
+            rowLayout.mode = LayoutMode::Horizontal;
+            rowLayout.horizontalAlignment = Alignment::Stretch;
+            rowLayout.verticalAlignment = Alignment::Center;
+            rowLayout.gap = 6.0f;
+            rowLayout.minSize = Vec2{0.0f, 28.0f};
+            rowLayout.preferredSize = Vec2{0.0f, 28.0f};
+
+            if (available.empty())
+            {
+                addComponentCombo = ctx.createComboBox(addRow, std::vector<std::string>{"<No components to add>"}, 0);
+                fitInspectorControl(ctx, addComponentCombo);
+                ctx.setEnabled(addComponentCombo, false);
+                addComponentButton = ctx.createButton(addRow, "Add");
+                auto buttonLayout = ctx.layoutStyle(addComponentButton);
+                buttonLayout.minSize = Vec2{48.0f, 26.0f};
+                buttonLayout.preferredSize = Vec2{48.0f, 26.0f};
+                buttonLayout.maxSize = Vec2{48.0f, 26.0f};
+                ctx.setEnabled(addComponentButton, false);
+            }
+            else
+            {
+                addComponentCombo = ctx.createComboBox(addRow, available, 0);
+                fitInspectorControl(ctx, addComponentCombo);
+                addComponentButton = ctx.createButton(addRow, "Add");
+                auto buttonLayout = ctx.layoutStyle(addComponentButton);
+                buttonLayout.minSize = Vec2{48.0f, 26.0f};
+                buttonLayout.preferredSize = Vec2{48.0f, 26.0f};
+                buttonLayout.maxSize = Vec2{48.0f, 26.0f};
+                ctx.setEnabled(addComponentCombo, !engine.isPlaying());
+                ctx.setEnabled(addComponentButton, !engine.isPlaying());
+            }
+            ctx.setEnabled(addRow, !engine.isPlaying());
+        }
+        else
+        {
+            addComponentCombo = {};
+            addComponentButton = {};
+        }
+
         initialized = true;
     }
 
@@ -480,6 +558,69 @@ namespace Cthulhu::Editor
         octogui::UIEvent event;
         while (ctx.pollEvent(event))
         {
+            const auto removeBinding = std::find_if(
+                removeBindings.begin(), removeBindings.end(),
+                [&](const RemoveBinding &candidate) { return candidate.button == event.target; });
+            if (removeBinding != removeBindings.end() && event.type == octogui::UIEventType::Clicked)
+            {
+                if (!engine.isPlaying() && selectedEntity)
+                {
+                    const auto result = session.removeComponent(*selectedEntity, removeBinding->component);
+                    if (!result.ok())
+                    {
+                        Log::Print("REMOVE COMPONENT FAILED: " + result.error, "Editor", LogType::LOG_ERROR);
+                    }
+                    else
+                    {
+                        session.endMerge();
+                    }
+                }
+                continue;
+            }
+
+            if (event.target == addComponentButton && event.type == octogui::UIEventType::Clicked)
+            {
+                if (!engine.isPlaying() && selectedEntity && ctx.isValid(addComponentCombo))
+                {
+                    const int index = ctx.comboBoxSelectedIndex(addComponentCombo);
+                    std::vector<std::string> available;
+                    Scene::Scene *scene = engine.getActiveScene();
+                    if (scene)
+                    {
+                        if (auto entity = scene->findEntity(*selectedEntity))
+                        {
+                            for (const auto &descriptor : engine.getComponentRegistry().getAll())
+                            {
+                                if (!descriptor.core && !descriptor.has(*entity))
+                                {
+                                    available.push_back(descriptor.name);
+                                }
+                            }
+                        }
+                    }
+                    if (index >= 0 && static_cast<std::size_t>(index) < available.size())
+                    {
+                        const auto result = session.addComponent(*selectedEntity, available[static_cast<std::size_t>(index)]);
+                        if (!result.ok())
+                        {
+                            Log::Print("ADD COMPONENT FAILED: " + result.error, "Editor", LogType::LOG_ERROR);
+                        }
+                        else
+                        {
+                            session.endMerge();
+                        }
+                    }
+                }
+                continue;
+            }
+            if (event.target == addComponentCombo)
+            {
+                if (event.type == octogui::UIEventType::SelectionChanged)
+                {
+                    continue;
+                }
+            }
+
             const auto binding = std::find_if(
                 bindings.begin(), bindings.end(),
                 [&](const Binding &candidate) { return candidate.control == event.target; });
