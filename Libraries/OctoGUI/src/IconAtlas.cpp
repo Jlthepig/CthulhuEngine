@@ -41,7 +41,7 @@ inline constexpr u32 DefaultIconAtlasWidth =
 inline constexpr u32 DefaultIconAtlasHeight =
     DefaultIconAtlasRows * DefaultIconSize;
 
-inline constexpr std::array<std::string_view, 43> DefaultIconNames{
+inline constexpr std::array<std::string_view, 44> DefaultIconNames{
     "folder",
     "folder-open",
     "file",
@@ -89,7 +89,8 @@ inline constexpr std::array<std::string_view, 43> DefaultIconNames{
 
     "move",
     "rotation",
-    "scale"
+    "scale",
+    "cursor"
 };
 
 }
