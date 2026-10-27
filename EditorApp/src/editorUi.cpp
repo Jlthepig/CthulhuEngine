@@ -32,7 +32,7 @@ bool EditorUi::init(GLFWwindow *glfwWindow, const std::filesystem::path &resourc
         return false;
     }
 
-    const auto icons = (resourceRoot / "editor" / "icons" / "octogui_icons.png").string();
+    const auto icons = (resourceRoot / "editor" / "icons" / "octogui_icons_v2.png").string();
     if (!ctx.loadDefaultIconAtlas(icons))
     {
         Log::Print("EDITOR ICONS NOT LOADED: " + icons, "Editor", LogType::LOG_WARNING);

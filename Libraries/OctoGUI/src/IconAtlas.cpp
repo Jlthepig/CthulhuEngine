@@ -32,7 +32,7 @@ namespace octogui {
 namespace {
 
 inline constexpr u32 DefaultIconAtlasColumns = 8;
-inline constexpr u32 DefaultIconAtlasRows = 5;
+inline constexpr u32 DefaultIconAtlasRows = 6;
 inline constexpr u32 DefaultIconSize = 24;
 
 inline constexpr u32 DefaultIconAtlasWidth =
@@ -41,7 +41,7 @@ inline constexpr u32 DefaultIconAtlasWidth =
 inline constexpr u32 DefaultIconAtlasHeight =
     DefaultIconAtlasRows * DefaultIconSize;
 
-inline constexpr std::array<std::string_view, 40> DefaultIconNames{
+inline constexpr std::array<std::string_view, 43> DefaultIconNames{
     "folder",
     "folder-open",
     "file",
@@ -85,7 +85,11 @@ inline constexpr std::array<std::string_view, 40> DefaultIconNames{
     "sidebar-left",
     "sidebar-right",
     "sliders",
-    "tool"
+    "tool",
+
+    "move",
+    "rotation",
+    "scale"
 };
 
 }
