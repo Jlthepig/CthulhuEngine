@@ -7,6 +7,7 @@
 #include "entityId.hpp"
 #include "hierarchyPanel.hpp"
 #include "inspectorPanel.hpp"
+#include "viewportPanel.hpp"
 
 using namespace octogui;
 namespace Cthulhu
@@ -41,8 +42,11 @@ class EditorShell
 
     [[nodiscard]] NodeHandle hierarchyPanel() const noexcept
     {
-        return hierarchyPanel_.panel();
+        return hierarchyPanelUI.panel();
     }
+        
+    [[nodiscard]] const ViewportPanel& viewport() const noexcept { return viewportPanelUI; }
+
     [[nodiscard]] NodeHandle sceneArea() const noexcept
     {
         return sceneNode;
@@ -53,11 +57,11 @@ class EditorShell
     }
     [[nodiscard]] NodeHandle sceneTree() const noexcept
     {
-        return hierarchyPanel_.treeView();
+        return hierarchyPanelUI.treeView();
     }
     [[nodiscard]] std::optional<Scene::EntityId> selectedEntity() const noexcept
     {
-        return hierarchyPanel_.selectedEntity();
+        return hierarchyPanelUI.selectedEntity();
     }
 
   private:
@@ -68,7 +72,8 @@ class EditorShell
     IconButton stopButton{};
 
 
-    HierarchyPanel hierarchyPanel_;
+    HierarchyPanel hierarchyPanelUI;
+    ViewportPanel viewportPanelUI;
     NodeHandle sceneNode{};
 
     NodeHandle inspector{};

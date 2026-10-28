@@ -190,7 +190,7 @@ namespace Cthulhu::Editor
         ctx.setSplitMinimumSizes(workspace, 180.0f, 600.0f);
         seeThrough(ctx, workspace);
         seeThrough(ctx, ctx.splitSecondPane(workspace));
-        hierarchyPanel_.build(ctx, ctx.splitFirstPane(workspace));
+        hierarchyPanelUI.build(ctx, ctx.splitFirstPane(workspace));
 
         const NodeHandle sceneInspector =
             ctx.createSplitContainer(ctx.splitSecondPane(workspace), SplitOrientation::Horizontal, 0.78f);
@@ -200,6 +200,14 @@ namespace Cthulhu::Editor
         sceneNode = ctx.splitFirstPane(sceneInspector);
         seeThrough(ctx, sceneNode);
         ctx.style(sceneNode).all.background = Color::transparent();
+        {
+            auto layout = ctx.layoutStyle(sceneNode);
+            layout.mode = LayoutMode::Stack;
+            layout.horizontalAlignment = Alignment::Stretch;
+            layout.verticalAlignment = Alignment::Stretch;
+            layout.padding = Padding{};
+        }
+        viewportPanelUI.build(ctx, sceneNode);
 
         inspector = titledPanel(ctx, ctx.splitSecondPane(sceneInspector), "sliders", "INSPECTOR");
         inspectorUI.build(ctx, inspector);
@@ -210,7 +218,8 @@ namespace Cthulhu::Editor
 
     void EditorShell::update(Context &ctx, Engine &engine, Scribe::Session &session)
     {
-        hierarchyPanel_.update(ctx, engine, session);
+        hierarchyPanelUI.update(ctx, engine, session);
+        viewportPanelUI.update(ctx);
 
         if (ctx.isClicked(saveButton))
         {
@@ -262,7 +271,7 @@ namespace Cthulhu::Editor
             lastPlaying = playing;
         }
 
-        inspectorUI.update(ctx, engine, session, engine.getActiveScene(), hierarchyPanel_.selectedEntity());
+        inspectorUI.update(ctx, engine, session, engine.getActiveScene(), hierarchyPanelUI.selectedEntity());
 
         std::string sceneText = "No scene";
         if (const auto *activeScene = engine.getActiveScene())

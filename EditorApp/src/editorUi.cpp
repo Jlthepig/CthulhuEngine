@@ -12,7 +12,6 @@ bool EditorUi::init(GLFWwindow *glfwWindow, const std::filesystem::path &resourc
 {
     window = glfwWindow;
 
-    // OpenGL is already loaded by the engine OctoGUI draws with the same loader
     if (!renderer.init())
     {
         Log::Print("FAILED TO INITIALIZE OCTOGUI RENDERER", "Editor", LogType::LOG_ERROR);
