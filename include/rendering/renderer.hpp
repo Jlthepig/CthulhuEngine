@@ -2,12 +2,14 @@
 
 #include <cstddef>
 #include <filesystem>
+#include <optional>
 #include <vector>
 
 #include <glad.h>
 #include <GLFW/glfw3.h>
 
 #include "camera.hpp"
+#include "entityId.hpp"
 #include "framebuffer.hpp"
 #include "frustum.hpp"
 
@@ -45,6 +47,7 @@ struct Renderable
     glm::mat4 normalMatrix = glm::mat4(1.0f);
     glm::vec3 boundsMin = glm::vec3(-1.0f);
     glm::vec3 boundsMax = glm::vec3(1.0f);
+    Scene::EntityId entityId{};
 };
 
 struct DebugVertex
@@ -86,6 +89,10 @@ class Renderer
     void addPointLight(const PointLight &light);
     void setDirectionalLight(const DirectionalLight &light);
     void setPointLights(const std::vector<PointLight> &lights);
+    void setOutlineTarget(std::optional<Scene::EntityId> entity)
+    {
+        outlineTarget = entity;
+    }
     void render(unsigned int width, unsigned int height, float deltaTime, const std::vector<Renderable> &renderables, int destX = 0, int destY = 0);
     void addDebugLine(const glm::vec3 &start, const glm::vec3 &end, const glm::vec3 &color, float duration = 0.0f);
     void shutdown();
@@ -100,6 +107,8 @@ class Renderer
     Cthulhu::Rendering::Shader basicShader;
     Cthulhu::Rendering::Shader gridShader;
     Cthulhu::Rendering::Shader lineShader;
+    std::optional<Scene::EntityId> outlineTarget;
+    Shader outlineShader;
     Cthulhu::Rendering::GridLines grid;
     Cthulhu::Rendering::Skybox skybox;
     Cthulhu::Rendering::Framebuffer sceneFramebuffer;

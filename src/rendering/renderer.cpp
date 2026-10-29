@@ -123,6 +123,7 @@ void Renderer::init(GLFWwindow *window, Scene::Camera *camera, const RenderConfi
     brdfShader.destroy();
 
     lineShader.load(enginePath("shaders/debugLine.vertex"), enginePath("shaders/debugLine.fragment"));
+    outlineShader.load(enginePath("shaders/outline.vertex"), enginePath("shaders/outline.fragment"));
     glGenVertexArrays(1, &lineVAO);
     glGenBuffers(1, &lineVBO);
     glBindVertexArray(lineVAO);
@@ -446,6 +447,69 @@ void Renderer::render(unsigned int width, unsigned int height, float deltaTime,c
         debugLines.clear();
     }
 
+    if (outlineTarget && outlineShader.getId() != 0)
+    {
+        glEnable(GL_STENCIL_TEST);
+        glStencilMask(0xFF);
+        glClearStencil(0);
+        glClear(GL_STENCIL_BUFFER_BIT);
+
+        glEnable(GL_DEPTH_TEST);
+        glDepthFunc(GL_LEQUAL);
+        glDepthMask(GL_FALSE);
+        glDisable(GL_BLEND);
+
+        outlineShader.use();
+        outlineShader.setVec3("outlineColor", glm::vec3(1.0f, 0.45f, 0.0f));
+
+        const auto drawSelected = [&]()
+        {
+            for (const auto &renderable : renderables)
+            {
+                if (renderable.entityId != *outlineTarget)
+                    continue;
+
+                outlineShader.setMat4("mvp", projection * view * renderable.modelMatrix);
+
+                for (auto &mesh : renderable.model->meshes)
+                    mesh.draw();
+            }
+        };
+        
+        glStencilFunc(GL_ALWAYS, 1, 0xFF);
+        glStencilOp(GL_KEEP, GL_KEEP, GL_REPLACE);
+        glColorMask(GL_FALSE, GL_FALSE, GL_FALSE, GL_FALSE);
+
+        glDisable(GL_DEPTH_TEST);
+        outlineShader.setVec3("clipOffset", glm::vec3(0.0f));
+        drawSelected();
+        glEnable(GL_DEPTH_TEST);
+
+        glColorMask(GL_TRUE, GL_TRUE, GL_TRUE, GL_TRUE);
+        glStencilMask(0x00);
+        glStencilFunc(GL_NOTEQUAL, 1, 0xFF);
+        glStencilOp(GL_KEEP, GL_KEEP, GL_KEEP);
+
+        constexpr glm::vec2 offsets[] = {
+            {-1.0f, -1.0f}, {0.0f, -1.0f}, {1.0f, -1.0f},
+            {-1.0f,  0.0f},                 {1.0f,  0.0f},
+            {-1.0f,  1.0f}, {0.0f,  1.0f}, {1.0f,  1.0f}};
+
+        constexpr float thicknessPixels = 2.0f;
+        const glm::vec2 pixelOffset{2.0f * thicknessPixels / static_cast<float>(width), 2.0f * thicknessPixels / static_cast<float>(height)};
+
+        for (const auto &offset : offsets)
+        {
+            outlineShader.setVec3("clipOffset", glm::vec3(offset * pixelOffset, 0.0f));
+            drawSelected();
+        }
+
+        glStencilMask(0xFF);
+        glDisable(GL_STENCIL_TEST);
+        glDepthMask(GL_TRUE);
+        glDepthFunc(GL_LESS);
+    }
+
     sceneFramebuffer.unbind();
 
     glViewport(0, 0, width, height);
@@ -460,6 +524,7 @@ void Renderer::shutdown()
     grid.destroy();
     gridShader.destroy();
     lineShader.destroy();
+    outlineShader.destroy();
     basicShader.destroy();
     skybox.destroy();
     sceneFramebuffer.destroy();

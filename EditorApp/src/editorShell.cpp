@@ -274,6 +274,7 @@ namespace Cthulhu::Editor
         }
 
         viewportPanelUI.updatePicking(ctx, engine, hierarchyPanelUI, sceneNode);
+        engine.getRenderer().setOutlineTarget(engine.isPlaying() ? std::optional<Scene::EntityId>{} : hierarchyPanelUI.selectedEntity());
         inspectorUI.update(ctx, engine, session, engine.getActiveScene(), hierarchyPanelUI.selectedEntity());
 
         std::string sceneText = "No scene";

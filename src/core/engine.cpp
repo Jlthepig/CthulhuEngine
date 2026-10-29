@@ -30,7 +30,6 @@
 using KalaHeaders::KalaLog::Log;
 using KalaHeaders::KalaLog::LogType;
 
-// Static callback to bridge C-style function pointer to Engine class
 static void physicsFixedUpdateCallback(void *context, float fixedDt)
 {
     static_cast<Cthulhu::Engine *>(context)->processFixedUpdate(fixedDt);
@@ -132,7 +131,7 @@ bool Engine::init(const std::filesystem::path &projectFilePath)
 
     if (!gladLoadGLLoader((GLADloadproc)glfwGetProcAddress))
     {
-        Log::Print("FAILED TO INITIALISE GLAD.", "ENGINE", LogType::LOG_ERROR);
+        Log::Print("FAILED TO INITIALISE GLAD", "ENGINE", LogType::LOG_ERROR);
         shutdown();
         return false;
     }
@@ -148,6 +147,7 @@ bool Engine::init(const std::filesystem::path &projectFilePath)
 
     if (!physicsWorld.init(physicsConfig))
     {
+        Log::Print("FAILED TO INITIALISE PHYSICS", "ENGINE", LogType::LOG_ERROR);
         shutdown();
         return false;
     }
@@ -722,8 +722,14 @@ void Engine::render()
                 return;
             }
 
-            frameRenderables.push_back(
-                {model, transform.cachedModelMatrix, transform.cachedNormalMatrix, model->boundsMin, model->boundsMax});
+            const auto *identity = e.try_get<Scene::EntityIdentityComponent>();
+
+            frameRenderables.push_back({model,
+                                        transform.cachedModelMatrix,
+                                        transform.cachedNormalMatrix,
+                                        model->boundsMin,
+                                        model->boundsMax,
+                                        identity ? identity->id : Scene::EntityId{}});
         });
     }
 

@@ -12,25 +12,14 @@
 #include "pickingMath.hpp"
 #include "scene.hpp"
 #include "window.hpp"
-#include "log_utils.hpp"
 
 namespace Cthulhu::Editor
 {
 void ViewportPanel::updatePicking(octogui::Context &ctx, Engine &engine, HierarchyPanel &hierarchy, octogui::NodeHandle sceneNode)
 {
-    const auto trace = [](const char *message)
-    {
-        KalaHeaders::KalaLog::Log::Print(
-            message, "Picking",
-            KalaHeaders::KalaLog::LogType::LOG_INFO);
-    };
-
     using octogui::MouseButton;
 
     const auto &mouse = ctx.input().mouse;
-
-    if (mouse.pressed(MouseButton::Left))
-        trace("[DEBUG-pick] Left press received");
 
     if (engine.isPlaying() || !mouse.pressed(MouseButton::Left) || mouse.isDown(MouseButton::Right))
     {
@@ -41,8 +30,6 @@ void ViewportPanel::updatePicking(octogui::Context &ctx, Engine &engine, Hierarc
     if (ctx.isValid(hovered) && hovered != sceneNode && hovered != overlayNode) return;
 
     if (ctx.tree().rect(header).contains((mouse.position))) return ;
-
-    trace("[DEBUG-pick] Viewport click accepted");
 
     auto *scene = engine.getActiveScene();
     auto *camera = engine.getCamera();
@@ -102,8 +89,6 @@ void ViewportPanel::updatePicking(octogui::Context &ctx, Engine &engine, Hierarc
 
     std::optional<Scene::EntityId> selected;
 
-    trace("[DEBUG-pick] Ray ready");
-
     scene->getWorld().each(
         [&](flecs::entity entity, const Scene::TransformComponent &transform, const Scene::MeshComponent &, const Scene::MeshRuntimeComponent &runtime)
         {
@@ -155,9 +140,6 @@ void ViewportPanel::updatePicking(octogui::Context &ctx, Engine &engine, Hierarc
             }
         });
 
-    trace(selected
-        ? "[DEBUG-pick] Triangle hit"
-        : "[DEBUG-pick] No triangle hit");
     hierarchy.selectEntity(ctx, selected);
 }
 }
