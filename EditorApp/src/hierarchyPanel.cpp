@@ -297,6 +297,25 @@ namespace Cthulhu::Editor
         selectedEntity_.reset();
     }
 
+    void HierarchyPanel::selectEntity(Context &ctx, std::optional<Scene::EntityId> entity)
+    {
+        if (entity)
+        {
+            for (const auto &[id, item] : hierarchyEntityItems)
+            {
+                if (id == *entity)
+                {
+                    ctx.setTreeViewSelectedItem(hierarchyTree, item);
+                    selectedEntity_ = entity;
+                    return;
+                }
+            }
+        }
+
+        ctx.setTreeViewSelectedItem(hierarchyTree, {});
+        selectedEntity_.reset();
+    }
+
     void HierarchyPanel::update(Context &ctx, Engine &engine, Scribe::Session &session)
     {
         auto closeHierarchyRename = [&]()

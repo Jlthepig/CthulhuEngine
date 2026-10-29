@@ -9,6 +9,28 @@ void Mesh::setup(const std::vector<float> &vertices, const std::vector<unsigned 
     vertexData = vertices;
     indexData = indices;
 
+    positionStrideFloats = 0;
+    positionOffsetFloats = 0;
+
+    for (const auto &attr : attributes)
+    {
+        if (attr.location != 0 || attr.componentCount != 3) continue;
+
+        const size_t strideBytes = stride == 0 ? 3 * sizeof(float) : stride;
+
+        if (strideBytes % sizeof(float) != 0 || attr.offset % sizeof(float) != 0 || strideBytes < 3 * sizeof(float) || attr.offset > strideBytes - 3 * sizeof(float))
+        {
+            break;
+        }
+
+        const size_t strideFloats = strideBytes / sizeof(float);
+        if (vertexData.size() % strideFloats != 0) break;
+
+        positionStrideFloats = strideFloats;
+        positionOffsetFloats = attr.offset / sizeof(float);
+        break;
+    }
+
     glGenVertexArrays(1, &VAO);
     glGenBuffers(1, &VBO);
     glGenBuffers(1, &EBO);
@@ -40,6 +62,25 @@ size_t Mesh::getVertexDataSize() const
 {
     return vertexData.size();
 }
+
+std::span<const unsigned int> Mesh::getIndices() const noexcept
+{
+    return {indexData.data(), indexData.size()};
+}
+
+bool Mesh::getPosition(size_t index, glm::vec3 &position) const noexcept
+{
+    if (positionStrideFloats == 0 || index >= vertexData.size() / positionStrideFloats)
+    {
+        return false;
+    }
+
+    const size_t offset = index * positionStrideFloats + positionOffsetFloats;
+
+    position = glm::vec3{vertexData[offset], vertexData[offset + 1], vertexData[offset + 2]};
+    return true;
+}
+
 void Mesh::draw()
 {
     glBindVertexArray(VAO);

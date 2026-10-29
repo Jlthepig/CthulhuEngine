@@ -22,6 +22,8 @@ public:
   [[nodiscard]] octogui::NodeHandle treeView() const noexcept { return hierarchyTree; }
   [[nodiscard]] std::optional<Scene::EntityId> selectedEntity() const noexcept { return selectedEntity_; }
 
+  void selectEntity(octogui::Context &ctx, std::optional<Scene::EntityId> entity);
+
 private:
   octogui::NodeHandle hierarchy{};
   octogui::NodeHandle hierarchyHeader{};

@@ -2,8 +2,10 @@
 
 #include <cstddef>
 #include <vector>
+#include <span>
 
 #include <glad.h>
+#include <glm.hpp>
 namespace Cthulhu::Rendering
 {
 
@@ -23,6 +25,10 @@ class Mesh
                const std::vector<vertexAttribute> &attributes, unsigned int stride);
     size_t getIndexCount() const;
     size_t getVertexDataSize() const;
+
+    [[nodiscard]] std::span<const unsigned int> getIndices() const noexcept;
+    [[nodiscard]] bool getPosition(size_t index, glm::vec3 &position) const noexcept;
+
     void draw();
     void destroy();
 
@@ -33,6 +39,9 @@ class Mesh
 
     std::vector<float> vertexData;
     std::vector<unsigned int> indexData;
+
+    size_t positionStrideFloats = 0;
+    size_t positionOffsetFloats = 0;
 };
 
 } // namespace Cthulhu::Rendering
