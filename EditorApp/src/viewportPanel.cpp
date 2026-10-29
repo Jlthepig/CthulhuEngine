@@ -189,25 +189,17 @@ void ViewportPanel::update(Context &ctx)
 
     snapActive = Cthulhu::Core::Input::isKeyDown(GLFW_KEY_LEFT_CONTROL) || Cthulhu::Core::Input::isKeyDown(GLFW_KEY_RIGHT_CONTROL);
 
-    UIEvent event;
-    while (ctx.pollEvent(event))
-    {
-        if (event.type == UIEventType::Clicked)
-        {
-            if (event.target == selectButton) setMode(ctx, GizmoMode::Select);
-            else if (event.target == moveButton) setMode(ctx, GizmoMode::Move);
-            else if (event.target == rotateButton) setMode(ctx, GizmoMode::Rotate);
-            else if (event.target == scaleButton) setMode(ctx, GizmoMode::Scale);
-            else if (event.target == worldButton) setSpace(ctx, GizmoSpace::World);
-            else if (event.target == localButton) setSpace(ctx, GizmoSpace::Local);
-        }
-        else if (event.type == UIEventType::ValueChanged)
-        {
-            if (event.target == snapMoveInput) snapMoveValue = static_cast<float>(ctx.numericValue(snapMoveInput));
-            else if (event.target == snapRotateInput) snapRotateValue = static_cast<float>(ctx.numericValue(snapRotateInput));
-            else if (event.target == snapScaleInput) snapScaleValue = static_cast<float>(ctx.numericValue(snapScaleInput));
-        }
-    }
+    if (ctx.isClicked(selectButton)) setMode(ctx, GizmoMode::Select);
+    else if (ctx.isClicked(moveButton)) setMode(ctx, GizmoMode::Move);
+    else if (ctx.isClicked(rotateButton)) setMode(ctx, GizmoMode::Rotate);
+    else if (ctx.isClicked(scaleButton)) setMode(ctx, GizmoMode::Scale);
+
+    if (ctx.isClicked(worldButton)) setSpace(ctx, GizmoSpace::World);
+    else if (ctx.isClicked(localButton)) setSpace(ctx, GizmoSpace::Local);
+
+    snapMoveValue = static_cast<float>(ctx.numericValue(snapMoveInput));
+    snapRotateValue = static_cast<float>(ctx.numericValue(snapRotateInput));
+    snapScaleValue = static_cast<float>(ctx.numericValue(snapScaleInput));
 }
 
 void ViewportPanel::setMode(Context &ctx, GizmoMode mode)

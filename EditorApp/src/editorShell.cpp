@@ -170,8 +170,10 @@ namespace Cthulhu::Editor
         fixedSize(ctx, sceneLabel, 150.0f, 28.0f);
         verticalSeparator(ctx, topBar, 24.0f);
 
-        saveButton = ctx.createButton(topBar, "Save");
-        fixedSize(ctx, saveButton, 68.0f, 26.0f);
+        saveButton = iconButton(ctx, topBar, "save");
+        ctx.layoutStyle(saveButton.button).gap = 6.0f;
+        const NodeHandle saveLabel = ctx.createLabel(saveButton.button, "Save Scene");
+        fixedSize(ctx, saveButton.button, 120.0f, 26.0f);
         verticalSeparator(ctx, topBar, 24.0f);
 
         [[maybe_unused]] const NodeHandle controlsSpacer = ctx.createContainer(topBar);
@@ -221,7 +223,7 @@ namespace Cthulhu::Editor
         hierarchyPanelUI.update(ctx, engine, session);
         viewportPanelUI.update(ctx);
 
-        if (ctx.isClicked(saveButton))
+        if (ctx.isClicked(saveButton.button))
         {
             const auto result = session.save();
             if (!result.ok())
@@ -259,7 +261,7 @@ namespace Cthulhu::Editor
 
         if (playing != lastPlaying)
         {
-            ctx.setEnabled(saveButton, !playing);
+            ctx.setEnabled(saveButton.button, !playing);
             ctx.setEnabled(playButton.button, !playing);
             ctx.setEnabled(pauseButton.button, playing);
             ctx.setEnabled(stopButton.button, playing);

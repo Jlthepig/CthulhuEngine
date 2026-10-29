@@ -66,7 +66,7 @@ class EditorShell
 
   private:
     NodeHandle sceneLabel{};
-    NodeHandle saveButton{};
+    IconButton saveButton{};
     IconButton playButton{};
     IconButton pauseButton{};
     IconButton stopButton{};

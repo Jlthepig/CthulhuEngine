@@ -74,10 +74,10 @@ namespace Cthulhu::Editor
             rowLayout.horizontalAlignment = Alignment::Stretch;
             rowLayout.verticalAlignment = Alignment::Center;
             rowLayout.gap = 4.0f;
-            rowLayout.minSize = Vec2{0.0f, 28.0f};
-            rowLayout.preferredSize = Vec2{0.0f, 28.0f};
+            rowLayout.minSize = Vec2{0.0f, 30.0f};
+            rowLayout.preferredSize = Vec2{0.0f, 30.0f};
 
-            const NodeHandle name = ctx.createLabel(row, label);
+            const NodeHandle name = ctx.createLabel(row, label == "modelPath" || label == "filePath" ? std::string_view{"Path"} : label );
             auto nameLayout = ctx.layoutStyle(name);
             nameLayout.minSize = Vec2{86.0f, 26.0f};
             nameLayout.preferredSize = Vec2{86.0f, 26.0f};
@@ -126,8 +126,8 @@ namespace Cthulhu::Editor
         void fitInspectorControl(Context &ctx, NodeHandle control)
         {
             auto layout = ctx.layoutStyle(control);
-            layout.minSize = Vec2{140.0f, 30.0f};
-            layout.preferredSize = Vec2{180.0f, 30.0f};
+            layout.minSize = Vec2{80.0f, 30.0f};
+            layout.preferredSize = Vec2{0.0f, 30.0f};
             layout.maxSize = Vec2{InfiniteLayoutSize, 30.0f};
             layout.horizontalAlignment = Alignment::Stretch;
             layout.verticalAlignment = Alignment::Center;

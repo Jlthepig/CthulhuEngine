@@ -382,7 +382,7 @@ std::string formatNumericValue(f64 value, NumericInputType type) {
         buffer + sizeof(buffer),
         value,
         std::chars_format::general,
-        12);
+        6);
   }
 
   if (result.ec != std::errc{}) {
@@ -1179,7 +1179,9 @@ void WidgetSystem::commitNumericInput(Tree& tree, EventSystem& events, NodeHandl
 
   f64 parsedValue = 0.0;
 
-  if (parseNumericText(tree.text(handle), parsedValue)) {
+  const std::string displayValue = formatNumericValue(state->value, state->type);
+
+  if (tree.text(handle) != displayValue && parseNumericText(tree.text(handle), parsedValue)) {
     state->value =
         normalizeNumericValue(*state, parsedValue);
   }
