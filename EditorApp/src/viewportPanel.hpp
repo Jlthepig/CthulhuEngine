@@ -2,6 +2,7 @@
 
 #include "OctoGui/Context.h"
 
+namespace Cthulhu { class Engine; }
 namespace Cthulhu::Editor
 {
 enum class GizmoMode
@@ -18,6 +19,7 @@ enum class GizmoSpace
     Local
 };
 
+class HierarchyPanel;
 class ViewportPanel
 {
   public:
@@ -32,6 +34,8 @@ class ViewportPanel
     [[nodiscard]] bool snapEnabled() const noexcept { return snapActive; }
 
     [[nodiscard]] octogui::NodeHandle overlay() const noexcept { return overlayNode; }
+
+    void updatePicking(octogui::Context &ctx, Engine &engine, HierarchyPanel &hierarchy, octogui::NodeHandle sceneNode);
 
   private:
     octogui::NodeHandle overlayNode{};

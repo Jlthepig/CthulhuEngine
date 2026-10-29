@@ -273,6 +273,7 @@ namespace Cthulhu::Editor
             lastPlaying = playing;
         }
 
+        viewportPanelUI.updatePicking(ctx, engine, hierarchyPanelUI, sceneNode);
         inspectorUI.update(ctx, engine, session, engine.getActiveScene(), hierarchyPanelUI.selectedEntity());
 
         std::string sceneText = "No scene";
