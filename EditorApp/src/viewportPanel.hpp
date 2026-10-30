@@ -3,24 +3,13 @@
 #include <cstdint>
 #include <optional>
 
+#include "gizmoSystem.hpp"
+
 #include "OctoGui/Context.h"
 
 namespace Cthulhu { class Engine; }
 namespace Cthulhu::Editor
 {
-enum class GizmoMode
-{
-    Select = 0,
-    Move,
-    Rotate,
-    Scale
-};
-
-enum class GizmoSpace
-{
-    World = 0,
-    Local
-};
 
 class HierarchyPanel;
 class ViewportPanel
@@ -39,8 +28,8 @@ class ViewportPanel
     [[nodiscard]] octogui::NodeHandle overlay() const noexcept { return overlayNode; }
 
     void updatePicking(octogui::Context &ctx, Engine &engine, HierarchyPanel &hierarchy, octogui::NodeHandle sceneNode);
-    void updateMarquee(octogui::Context& ctx, octogui::NodeHandle sceneNode,
-                       bool enabled, std::uint64_t sceneGeneration);
+    void updateMarquee(octogui::Context& ctx, octogui::NodeHandle sceneNode, bool enabled, std::uint64_t sceneGeneration);
+    void updateGizmo(octogui::Context &ctx, Engine &engine, const HierarchyPanel &hierarchy, octogui::NodeHandle sceneNode);
 
   private:
     octogui::NodeHandle overlayNode{};
@@ -62,6 +51,8 @@ class ViewportPanel
     octogui::NodeHandle snapMoveInput{};
     octogui::NodeHandle snapRotateInput{};
     octogui::NodeHandle snapScaleInput{};
+
+    GizmoSystem gizmoSystem;
 
     GizmoMode currentMode = GizmoMode::Select;
     GizmoSpace currentSpace = GizmoSpace::World;

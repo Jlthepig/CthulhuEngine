@@ -2,8 +2,10 @@
 
 #include <GLFW/glfw3.h>
 
+#include "engine.hpp"
 #include "input.hpp"
 #include "viewportPanel.hpp"
+#include "hierarchyPanel.hpp"
 
 using namespace octogui;
 
@@ -299,6 +301,19 @@ void ViewportPanel::updateMarquee(Context &ctx, NodeHandle sceneNode,
     draw.addRectFilled(box, Color::fromRGBA8(155, 185, 210, 45));
     draw.addRectOutline(box, Color::fromRGBA8(175, 200, 220), 1.0f);
     draw.popClip();
+}
+
+void ViewportPanel::updateGizmo(Context &ctx, Engine &engine, const HierarchyPanel &hierarchy, NodeHandle sceneNode)
+{
+    gizmoSystem.update(engine, hierarchy.selection(), currentMode, currentSpace, ctx.tree().rect(sceneNode).h);
+
+    const auto &frame = gizmoSystem.frame;
+    if (!frame.visible) return;
+
+    for (int axis = 0; axis < 3; ++axis)
+    {
+        engine.getRenderer().addDebugLine(frame.pivot, frame.pivot + frame.basis[axis] * frame.axisLengthWorld, gizmoSystem.style.axisColors[axis]);
+    }
 }
 
 void ViewportPanel::setMode(Context &ctx, GizmoMode mode)

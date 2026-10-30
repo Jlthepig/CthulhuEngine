@@ -238,8 +238,7 @@ void Renderer::render(unsigned int width, unsigned int height, float deltaTime,c
 
     if (camera != nullptr)
     {
-        projection =
-            glm::perspective(camera->getFov(), (float)width / (float)height, config.nearPlane, config.farPlane);
+        projection = glm::perspective(glm::radians(camera->getFov()), (float)width / (float)height, config.nearPlane, config.farPlane);
         view = camera->getViewMatrix();
     }
 

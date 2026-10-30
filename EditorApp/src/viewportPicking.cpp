@@ -87,7 +87,7 @@ void ViewportPanel::updatePicking(octogui::Context &ctx, Engine &engine, Hierarc
     if (width <= 0 || height <= 0) return;
 
     const auto &config = engine.getRenderer().getConfig();
-    const glm::mat4 projection = glm::perspective( camera->getFov(), static_cast<float>(width) / static_cast<float>(height), 
+    const glm::mat4 projection = glm::perspective(glm::radians(camera->getFov()), static_cast<float>(width) / static_cast<float>(height), 
     config.nearPlane, config.farPlane);
 
     const glm::mat4 viewProjection = projection * camera->getViewMatrix();

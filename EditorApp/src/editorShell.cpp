@@ -280,6 +280,7 @@ namespace Cthulhu::Editor
         else
             engine.getRenderer().setOutlineTargets(hierarchyPanelUI.selection());
         inspectorUI.update(ctx, engine, session, engine.getActiveScene(), hierarchyPanelUI.selectedEntity());
+        viewportPanelUI.updateGizmo(ctx, engine, hierarchyPanelUI, sceneNode);
 
         std::string sceneText = "No scene";
         if (const auto *activeScene = engine.getActiveScene())
