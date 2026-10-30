@@ -1,5 +1,8 @@
 #pragma once
 
+#include <cstdint>
+#include <optional>
+
 #include "OctoGui/Context.h"
 
 namespace Cthulhu { class Engine; }
@@ -36,6 +39,8 @@ class ViewportPanel
     [[nodiscard]] octogui::NodeHandle overlay() const noexcept { return overlayNode; }
 
     void updatePicking(octogui::Context &ctx, Engine &engine, HierarchyPanel &hierarchy, octogui::NodeHandle sceneNode);
+    void updateMarquee(octogui::Context& ctx, octogui::NodeHandle sceneNode,
+                       bool enabled, std::uint64_t sceneGeneration);
 
   private:
     octogui::NodeHandle overlayNode{};
@@ -64,6 +69,15 @@ class ViewportPanel
     float snapRotateValue = 15.0f;
     float snapScaleValue = 0.1f;
     bool snapActive = false;
+
+    bool marqueePending = false;
+    bool marqueeActive = false;
+    octogui::Vec2 marqueeStart{};
+    std::optional<octogui::Rect> completedMarquee;
+    std::optional<octogui::Vec2> completedClick;
+    bool selectionCtrl = false;
+    bool selectionAdditive = false;
+    std::uint64_t marqueeGeneration = 0;
 
     void setMode(octogui::Context &ctx, GizmoMode mode);
     void setSpace(octogui::Context &ctx, GizmoSpace space);

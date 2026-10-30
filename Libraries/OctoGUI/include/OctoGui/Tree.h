@@ -105,6 +105,7 @@ struct TreeViewItemSlot {
 
   bool alive = false;
   bool expanded = true;
+  bool highlighted = false;
 };
 
 struct TreeViewVisibleItem {

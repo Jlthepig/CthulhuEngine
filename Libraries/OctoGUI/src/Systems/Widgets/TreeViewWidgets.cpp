@@ -55,6 +55,7 @@ TreeViewItemId allocateTreeViewItem(TreeViewState& state) {
 
     item.alive = true;
     item.expanded = true;
+    item.highlighted = false;
 
     return TreeViewItemId{
         index,
@@ -509,6 +510,17 @@ void WidgetSystem::setTreeViewSelectedItem(Tree& tree, EventSystem& events, Node
   tree.markPaintDirty(handle);
 
   events.pushSelectionChanged(handle, oldSelection, item);
+}
+
+void WidgetSystem::setTreeViewItemHighlighted(
+    Tree& tree, NodeHandle handle, TreeViewItemId item, bool highlighted) {
+  TreeViewState* state = tree.treeViewState(handle);
+  TreeViewItemSlot* slot = state ? treeViewItem(*state, item) : nullptr;
+  if (!slot || slot->highlighted == highlighted) {
+    return;
+  }
+  slot->highlighted = highlighted;
+  tree.markPaintDirty(handle);
 }
 
 std::string_view WidgetSystem::treeViewItemText(

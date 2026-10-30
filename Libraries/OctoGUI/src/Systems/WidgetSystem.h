@@ -163,6 +163,8 @@ public:
 
   void setTreeViewSelectedItem(Tree& tree, EventSystem& events,
                                NodeHandle handle, TreeViewItemId item);
+  void setTreeViewItemHighlighted(Tree& tree, NodeHandle handle,
+                                  TreeViewItemId item, bool highlighted);
 
   void updateTreeViewHover(Tree& tree, NodeHandle handle,
                            Vec2 mousePosition);

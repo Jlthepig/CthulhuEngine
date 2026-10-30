@@ -215,7 +215,6 @@ namespace Cthulhu::Editor
         hierarchyEntityItems.clear();
         nextHierarchyToken = 1;
 
-        TreeViewItemId restoredItem{};
         const auto addChildren = [&](auto &&self, std::optional<Scene::EntityId> parentId, TreeViewItemId parentItem) -> bool {
             bool containsRestoreSelection = false;
             const std::vector<Scene::EntityId> children = parentId ? scene.getChildren(*parentId) : scene.getRootEntities();
@@ -248,10 +247,6 @@ namespace Cthulhu::Editor
                 }
 
                 const bool isRestoreTarget = restoreSelection && id == *restoreSelection;
-                if (isRestoreTarget)
-                {
-                    restoredItem = item;
-                }
 
                 const bool hasRestoredDescendant = self(self, id, item);
                 if (hasRestoredDescendant)
@@ -267,53 +262,78 @@ namespace Cthulhu::Editor
 
         addChildren(addChildren, std::nullopt, {});
         resetHierarchyExpansion = false;
-        selectedEntity_.reset();
-        if (static_cast<bool>(restoredItem))
-        {
-            ctx.setTreeViewSelectedItem(hierarchyTree, restoredItem);
-            selectedEntity_ = restoreSelection;
-        }
+        selectEntities(ctx, selectedEntities);
     }
 
     void HierarchyPanel::updateSelection(Context &ctx)
     {
         const TreeViewItemId item = ctx.treeViewSelectedItem(hierarchyTree);
-        if (!static_cast<bool>(item))
+        if (!item)
         {
-            selectedEntity_.reset();
+            selectedEntities.clear();
             return;
         }
 
         const std::uint64_t token = ctx.treeViewItemUserValue(hierarchyTree, item);
         for (const auto &[candidateToken, id] : hierarchyEntityTokens)
         {
-            if (candidateToken == token)
+            if (candidateToken != token) continue;
+
+            const auto primary = selectedEntity();
+
+            if (!primary || *primary != id || ctx.isClicked(hierarchyTree))
             {
-                selectedEntity_ = id;
-                return;
+                selectEntity(ctx, id);
             }
+            return;
+    
         }
 
-        selectedEntity_.reset();
+        selectedEntities.clear();
     }
 
     void HierarchyPanel::selectEntity(Context &ctx, std::optional<Scene::EntityId> entity)
     {
-        if (entity)
+        std::vector<Scene::EntityId> entities;
+        if (entity)entities.push_back(*entity);
+
+        selectEntities(ctx, std::move(entities));
+    }
+
+    void HierarchyPanel::selectEntities(Context &ctx, std::vector<Scene::EntityId> entities)
+    {
+        selectedEntities.clear();
+        TreeViewItemId primaryItem{};
+
+        for (const Scene::EntityId id : entities)
         {
-            for (const auto &[id, item] : hierarchyEntityItems)
+            if (std::find(selectedEntities.begin(),selectedEntities.end(), id) != selectedEntities.end())
             {
-                if (id == *entity)
-                {
-                    ctx.setTreeViewSelectedItem(hierarchyTree, item);
-                    selectedEntity_ = entity;
-                    return;
-                }
+                continue;
             }
+
+            const auto item = std::find_if(hierarchyEntityItems.begin(), hierarchyEntityItems.end(), [id](const auto &entry) { return entry.first == id; });
+
+            if (item == hierarchyEntityItems.end()) continue;
+
+            if (selectedEntities.empty()) primaryItem = item->second;
+
+            selectedEntities.push_back(id);
         }
 
-        ctx.setTreeViewSelectedItem(hierarchyTree, {});
-        selectedEntity_.reset();
+        ctx.setTreeViewSelectedItem(hierarchyTree, primaryItem);
+        refreshSelectionHighlights(ctx);
+    }
+
+    void HierarchyPanel::refreshSelectionHighlights(Context &ctx)
+    {
+        for (const auto &[id, item] : hierarchyEntityItems)
+        {
+            const bool selected =
+                std::find(selectedEntities.begin(), selectedEntities.end(), id) !=
+                selectedEntities.end();
+            ctx.setTreeViewItemHighlighted(hierarchyTree, item, selected);
+        }
     }
 
     void HierarchyPanel::update(Context &ctx, Engine &engine, Scribe::Session &session)
@@ -402,9 +422,7 @@ namespace Cthulhu::Editor
                     else
                     {
                         newParent = activeScene->getParent(*targetEntity);
-                        const std::vector<Scene::EntityId> siblings = newParent
-                            ? activeScene->getChildren(*newParent)
-                            : activeScene->getRootEntities();
+                        const std::vector<Scene::EntityId> siblings = newParent ? activeScene->getChildren(*newParent) : activeScene->getRootEntities();
                         const auto targetIt = std::find(siblings.begin(), siblings.end(), *targetEntity);
                         if (targetIt == siblings.end())
                         {
@@ -432,7 +450,7 @@ namespace Cthulhu::Editor
                     continue;
                 }
 
-                selectedEntity_ = *draggedEntity;
+                selectedEntities.assign(1, *draggedEntity);
                 break;
             }
         }
@@ -452,16 +470,13 @@ namespace Cthulhu::Editor
         {
             if (event.type == Scribe::ChangeType::SceneReplaced)
             {
-                selectedEntity_.reset();
+                selectedEntities.clear();
                 hierarchyDirty = true;
                 resetHierarchyExpansion = true;
             }
             else if (event.type == Scribe::ChangeType::EntityDestroyed)
             {
-                if (selectedEntity_ && event.entityId == *selectedEntity_)
-                {
-                    selectedEntity_.reset();
-                }
+                std::erase(selectedEntities, event.entityId);
                 hierarchyDirty = true;
             }
             else if (event.type == Scribe::ChangeType::EntityCreated || event.type == Scribe::ChangeType::EntityRenamed || event.type == Scribe::ChangeType::EntityReparented)
@@ -485,7 +500,7 @@ namespace Cthulhu::Editor
                 ctx.clearTreeView(hierarchyTree);
                 hierarchyEntityTokens.clear();
                 hierarchyEntityItems.clear();
-                selectedEntity_.reset();
+                selectedEntities.clear();
                 hierarchyInitialized = false;
             }
         }
@@ -501,7 +516,7 @@ namespace Cthulhu::Editor
                 lastHierarchyClickEntity.reset();
                 hierarchyClickAge = 0;
 
-                rebuildHierarchy(ctx, *activeScene, selectedEntity_);
+                rebuildHierarchy(ctx, *activeScene, selectedEntity());
                 hierarchySceneGeneration = sceneGeneration;
                 hierarchyInitialized = true;
             }
@@ -574,7 +589,7 @@ namespace Cthulhu::Editor
 
         auto beginHierarchyRename = [&]()
         {
-            if (!activeScene || !selectedEntity_)
+            if (!activeScene || !selectedEntity())
             {
                 return;
             }
@@ -607,7 +622,7 @@ namespace Cthulhu::Editor
                 return;
             }
 
-            hierarchyRenameEntity = selectedEntity_;
+            hierarchyRenameEntity = selectedEntity();
             hierarchyRenameItem = item;
 
             auto inputLayout = ctx.layoutStyle(hierarchyRenameInput);
@@ -661,7 +676,7 @@ namespace Cthulhu::Editor
             closeHierarchyRename();
         };
 
-        if (renameRequested && !engine.isPlaying() && activeScene && selectedEntity_ && !ctx.isValid(hierarchyRenameInput) && ctx.isFocused(hierarchyTree))
+        if (renameRequested && !engine.isPlaying() && activeScene && selectedEntity() && !ctx.isValid(hierarchyRenameInput) && ctx.isFocused(hierarchyTree))
         {
             beginHierarchyRename();
         }
@@ -700,9 +715,9 @@ namespace Cthulhu::Editor
              ctx.tree().type(focused) == NodeType::NumericInput);
 
         if (deletePressed &&
-            !engine.isPlaying() && activeScene && ctx.isFocused(hierarchyTree) && !textFieldFocused && !ctx.isValid(hierarchyRenameInput) && selectedEntity_)
+            !engine.isPlaying() && activeScene && ctx.isFocused(hierarchyTree) && !textFieldFocused && !ctx.isValid(hierarchyRenameInput) && selectedEntity())
         {
-            const Scene::EntityId entityId = *selectedEntity_;
+            const Scene::EntityId entityId = *selectedEntity();
 
             session.endMerge();
             const auto result = session.deleteEntity(entityId);
@@ -710,7 +725,7 @@ namespace Cthulhu::Editor
 
             if (result.ok())
             {
-                selectedEntity_.reset();
+                selectEntity(ctx, std::nullopt);
                 ctx.setTreeViewSelectedItem(hierarchyTree, TreeViewItemId{});
             }
             else
@@ -725,11 +740,11 @@ namespace Cthulhu::Editor
             if (scene)
             {
                 const std::string name = uniqueEntityName(*scene, "Entity");
-                const auto created = session.createEntity(name, selectedEntity_);
+                const auto created = session.createEntity(name, selectedEntity());
 
                 if (created.ok())
                 {
-                    selectedEntity_ = created.id;
+                    selectEntity(ctx, created.id);
                 }
                 else
                 {
@@ -739,6 +754,7 @@ namespace Cthulhu::Editor
         }
 
         const bool playing = engine.isPlaying();
+        refreshSelectionHighlights(ctx);
         ctx.setEnabled(createEntityButton, !playing);
         ctx.setIconColor(createEntityIcon, playing ? ctx.theme().textDisabled : ctx.theme().textMuted);
     }

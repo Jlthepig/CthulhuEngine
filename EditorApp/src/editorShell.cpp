@@ -172,7 +172,7 @@ namespace Cthulhu::Editor
 
         saveButton = iconButton(ctx, topBar, "save");
         ctx.layoutStyle(saveButton.button).gap = 6.0f;
-        const NodeHandle saveLabel = ctx.createLabel(saveButton.button, "Save Scene");
+        [[maybe_unused]] const NodeHandle saveLabel = ctx.createLabel(saveButton.button, "Save Scene");
         fixedSize(ctx, saveButton.button, 120.0f, 26.0f);
         verticalSeparator(ctx, topBar, 24.0f);
 
@@ -273,8 +273,12 @@ namespace Cthulhu::Editor
             lastPlaying = playing;
         }
 
+        viewportPanelUI.updateMarquee(ctx, sceneNode, !engine.isPlaying() && engine.hasActiveScene(), engine.getSceneGeneration());
         viewportPanelUI.updatePicking(ctx, engine, hierarchyPanelUI, sceneNode);
-        engine.getRenderer().setOutlineTarget(engine.isPlaying() ? std::optional<Scene::EntityId>{} : hierarchyPanelUI.selectedEntity());
+        if (engine.isPlaying())
+            engine.getRenderer().setOutlineTargets({});
+        else
+            engine.getRenderer().setOutlineTargets(hierarchyPanelUI.selection());
         inspectorUI.update(ctx, engine, session, engine.getActiveScene(), hierarchyPanelUI.selectedEntity());
 
         std::string sceneText = "No scene";

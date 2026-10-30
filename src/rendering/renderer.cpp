@@ -19,6 +19,12 @@ namespace Cthulhu::Rendering
 void Renderer::setScene(Cthulhu::Scene::Scene *scene)
 {
     this->scene = scene;
+    outlineTargets.clear();
+}
+
+void Renderer::setOutlineTargets(std::span<const Scene::EntityId> entities)
+{
+    outlineTargets.assign(entities.begin(), entities.end());
 }
 
 void Renderer::init(GLFWwindow *window, Scene::Camera *camera, const RenderConfig &config)
@@ -447,7 +453,7 @@ void Renderer::render(unsigned int width, unsigned int height, float deltaTime,c
         debugLines.clear();
     }
 
-    if (outlineTarget && outlineShader.getId() != 0)
+    if (!outlineTargets.empty() && outlineShader.getId() != 0)
     {
         glEnable(GL_STENCIL_TEST);
         glStencilMask(0xFF);
@@ -466,7 +472,8 @@ void Renderer::render(unsigned int width, unsigned int height, float deltaTime,c
         {
             for (const auto &renderable : renderables)
             {
-                if (renderable.entityId != *outlineTarget)
+                if (std::find(outlineTargets.begin(), outlineTargets.end(),
+                              renderable.entityId) == outlineTargets.end())
                     continue;
 
                 outlineShader.setMat4("mvp", projection * view * renderable.modelMatrix);

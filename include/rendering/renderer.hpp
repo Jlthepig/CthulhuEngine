@@ -2,7 +2,7 @@
 
 #include <cstddef>
 #include <filesystem>
-#include <optional>
+#include <span>
 #include <vector>
 
 #include <glad.h>
@@ -89,10 +89,7 @@ class Renderer
     void addPointLight(const PointLight &light);
     void setDirectionalLight(const DirectionalLight &light);
     void setPointLights(const std::vector<PointLight> &lights);
-    void setOutlineTarget(std::optional<Scene::EntityId> entity)
-    {
-        outlineTarget = entity;
-    }
+    void setOutlineTargets(std::span<const Scene::EntityId> entities);
     void render(unsigned int width, unsigned int height, float deltaTime, const std::vector<Renderable> &renderables, int destX = 0, int destY = 0);
     void addDebugLine(const glm::vec3 &start, const glm::vec3 &end, const glm::vec3 &color, float duration = 0.0f);
     void shutdown();
@@ -107,7 +104,7 @@ class Renderer
     Cthulhu::Rendering::Shader basicShader;
     Cthulhu::Rendering::Shader gridShader;
     Cthulhu::Rendering::Shader lineShader;
-    std::optional<Scene::EntityId> outlineTarget;
+    std::vector<Scene::EntityId> outlineTargets;
     Shader outlineShader;
     Cthulhu::Rendering::GridLines grid;
     Cthulhu::Rendering::Skybox skybox;

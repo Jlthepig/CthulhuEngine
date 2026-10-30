@@ -1,8 +1,9 @@
-#include "viewportPanel.hpp"
-
-#include "input.hpp"
+#include <algorithm>
 
 #include <GLFW/glfw3.h>
+
+#include "input.hpp"
+#include "viewportPanel.hpp"
 
 using namespace octogui;
 
@@ -162,7 +163,7 @@ void ViewportPanel::build(Context &ctx, NodeHandle viewportRoot)
         layout.maxSize = Vec2{1.0f, 18.0f};
     }
 
-    NodeHandle snappingHeader = ctx.createLabel(pill, " Snapping: ");
+    [[maybe_unused]] const NodeHandle snappingHeader = ctx.createLabel(pill, " Snapping: ");
 
     makeSnapIcon(ctx, pill, "move", Color::fromRGBA8(235, 96, 96));
     snapMoveInput = makeSnapInput(ctx, pill, snapMoveValue, 0.1);
@@ -200,6 +201,104 @@ void ViewportPanel::update(Context &ctx)
     snapMoveValue = static_cast<float>(ctx.numericValue(snapMoveInput));
     snapRotateValue = static_cast<float>(ctx.numericValue(snapRotateInput));
     snapScaleValue = static_cast<float>(ctx.numericValue(snapScaleInput));
+}
+
+void ViewportPanel::updateMarquee(Context &ctx, NodeHandle sceneNode,
+                                  bool enabled, std::uint64_t sceneGeneration)
+{
+    completedMarquee.reset();
+    completedClick.reset();
+    const auto &mouse = ctx.input().mouse;
+
+    if (!enabled || mouse.isDown(MouseButton::Right) ||
+        (marqueePending && marqueeGeneration != sceneGeneration) ||
+        Cthulhu::Core::Input::isKeyPressed(GLFW_KEY_ESCAPE))
+    {
+        marqueePending = false;
+        marqueeActive = false;
+        return;
+    }
+
+    const Rect scene = ctx.tree().rect(sceneNode);
+    const Rect toolbar = ctx.tree().rect(header);
+
+    const float left = scene.x;
+    const float right = scene.x + scene.w;
+    const float top = std::max(scene.y, toolbar.y + toolbar.h);
+    const float bottom = scene.y + scene.h;
+
+    if (right <= left || bottom <= top)
+    {
+        marqueePending = false;
+        marqueeActive = false;
+        return;
+    }
+
+    if (mouse.pressed(MouseButton::Left))
+    {
+        const NodeHandle hovered = ctx.hovered();
+        const bool blockedByUi = ctx.isValid(hovered) && hovered != sceneNode && hovered != overlayNode;
+
+        const Vec2 point = mouse.position;
+        const bool inside = point.x >= left && point.x < right && point.y >= top && point.y < bottom;
+
+        marqueePending = inside && !blockedByUi;
+        marqueeActive = false;
+
+        if (marqueePending)
+        {
+            marqueeStart = point;
+            marqueeGeneration = sceneGeneration;
+            selectionCtrl = ctx.input().modifiers.ctrl;
+            selectionAdditive = selectionCtrl || ctx.input().modifiers.shift;
+        }
+    }
+
+    if (!marqueePending) return;
+
+    const Vec2 point{std::clamp(mouse.position.x, left, right), std::clamp(mouse.position.y, top, bottom)};
+
+    const Vec2 delta = point - marqueeStart;
+    constexpr float dragThreshold = 4.0f;
+
+    if (delta.x * delta.x + delta.y * delta.y >= dragThreshold * dragThreshold)
+    {
+        marqueeActive = true;
+    }
+
+    const Rect box{
+        std::min(marqueeStart.x, point.x),
+        std::min(marqueeStart.y, point.y),
+        std::max(marqueeStart.x, point.x) -
+            std::min(marqueeStart.x, point.x),
+        std::max(marqueeStart.y, point.y) -
+            std::min(marqueeStart.y, point.y)};
+
+    if (mouse.released(MouseButton::Left))
+    {
+        if (marqueeActive)
+            completedMarquee = box;
+        else
+            completedClick = marqueeStart;
+        marqueePending = false;
+        marqueeActive = false;
+        return;
+    }
+
+    if (!mouse.isDown(MouseButton::Left))
+    {
+        marqueePending = false;
+        marqueeActive = false;
+        return;
+    }
+
+    if (!marqueeActive) return;
+
+    auto &draw = ctx.drawList();
+    draw.pushClip(Rect{left, top, right - left, bottom - top});
+    draw.addRectFilled(box, Color::fromRGBA8(155, 185, 210, 45));
+    draw.addRectOutline(box, Color::fromRGBA8(175, 200, 220), 1.0f);
+    draw.popClip();
 }
 
 void ViewportPanel::setMode(Context &ctx, GizmoMode mode)

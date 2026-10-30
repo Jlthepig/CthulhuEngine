@@ -233,6 +233,8 @@ public:
   TreeViewItemId treeViewSelectedItem(NodeHandle treeView) const noexcept;
 
   void setTreeViewSelectedItem(NodeHandle treeView, TreeViewItemId item);
+  void setTreeViewItemHighlighted(NodeHandle treeView, TreeViewItemId item,
+                                  bool highlighted);
 
   [[nodiscard]]
   std::string_view treeViewItemText(NodeHandle treeView,

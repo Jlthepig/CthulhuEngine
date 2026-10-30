@@ -2,6 +2,8 @@
 
 #include <cmath>
 #include <optional>
+#include <algorithm>
+#include <utility>
 
 #include <gtc/matrix_transform.hpp>
 
@@ -15,21 +17,42 @@
 
 namespace Cthulhu::Editor
 {
+namespace
+{
+bool boundsOverlapMarquee(const glm::mat4 &mvp,
+     const glm::vec3 &minimum, const glm::vec3 &maximum, const octogui::Rect &box, const octogui::Rect &viewport)
+{
+    const double left = 2.0 * (box.x - viewport.x) / viewport.w - 1.0;
+    const double right = 2.0 * (box.x + box.w - viewport.x) / viewport.w - 1.0;
+    const double top = 1.0 - 2.0 * (box.y - viewport.y) / viewport.h;
+    const double bottom = 1.0 - 2.0 * (box.y + box.h - viewport.y) / viewport.h;
+
+    const glm::dmat4 rows = glm::transpose(glm::dmat4(mvp));
+    const glm::dvec4 planes[] = {
+        rows[0] - left * rows[3], right * rows[3] - rows[0],
+        rows[1] - bottom * rows[3], top * rows[3] - rows[1],
+        rows[3] + rows[2], rows[3] - rows[2]};
+
+    for (const auto &plane : planes)
+    {
+        const glm::dvec3 support{
+            plane.x >= 0.0 ? maximum.x : minimum.x,
+            plane.y >= 0.0 ? maximum.y : minimum.y,
+            plane.z >= 0.0 ? maximum.z : minimum.z};
+        const double distance = glm::dot(glm::dvec3(plane), support) + plane.w;
+        if (!std::isfinite(distance) || distance < 0.0)
+            return false;
+    }
+    return true;
+}
+}
+
 void ViewportPanel::updatePicking(octogui::Context &ctx, Engine &engine, HierarchyPanel &hierarchy, octogui::NodeHandle sceneNode)
 {
-    using octogui::MouseButton;
-
-    const auto &mouse = ctx.input().mouse;
-
-    if (engine.isPlaying() || !mouse.pressed(MouseButton::Left) || mouse.isDown(MouseButton::Right))
+    if (engine.isPlaying() || (!completedClick && !completedMarquee))
     {
         return;
     }
-
-    const auto hovered = ctx.hovered();
-    if (ctx.isValid(hovered) && hovered != sceneNode && hovered != overlayNode) return;
-
-    if (ctx.tree().rect(header).contains((mouse.position))) return ;
 
     auto *scene = engine.getActiveScene();
     auto *camera = engine.getCamera();
@@ -48,8 +71,9 @@ void ViewportPanel::updatePicking(octogui::Context &ctx, Engine &engine, Hierarc
         return;
     }
 
-    const float x = (mouse.position.x - rect.x) / rect.w;
-    const float y = (mouse.position.y - rect.y) / rect.h;
+    const auto click = completedClick.value_or(marqueeStart);
+    const float x = (click.x - rect.x) / rect.w;
+    const float y = (click.y - rect.y) / rect.h;
 
     if (x < 0.0f || x >= 1.0f || y < 0.0f || y >= 1.0f) return;
 
@@ -66,7 +90,34 @@ void ViewportPanel::updatePicking(octogui::Context &ctx, Engine &engine, Hierarc
     const glm::mat4 projection = glm::perspective( camera->getFov(), static_cast<float>(width) / static_cast<float>(height), 
     config.nearPlane, config.farPlane);
 
-    const glm::mat4 inverseViewProjection = glm::inverse(projection * camera->getViewMatrix());
+    const glm::mat4 viewProjection = projection * camera->getViewMatrix();
+
+    if (completedMarquee)
+    {
+        std::vector<Scene::EntityId> entities;
+        if (selectionAdditive)
+            entities = hierarchy.selection();
+
+        scene->getWorld().each(
+            [&](flecs::entity entity, const Scene::TransformComponent &transform,
+                const Scene::MeshComponent &, const Scene::MeshRuntimeComponent &runtime)
+            {
+                if (!entity.has<Scene::TagActive>())
+                    return;
+                const auto *identity = entity.try_get<Scene::EntityIdentityComponent>();
+                const auto *model = engine.getAssetManager().getModel(runtime.model);
+                if (identity && model && boundsOverlapMarquee(
+                        viewProjection * transform.cachedModelMatrix,
+                        model->boundsMin, model->boundsMax, *completedMarquee, rect))
+                {
+                    entities.push_back(identity->id);
+                }
+            });
+        hierarchy.selectEntities(ctx, std::move(entities));
+        return;
+    }
+
+    const glm::mat4 inverseViewProjection = glm::inverse(viewProjection);
 
     const float ndcX = x * 2.0f - 1.0f;
     const float ndcY = 1.0f - y * 2.0f;
@@ -140,6 +191,21 @@ void ViewportPanel::updatePicking(octogui::Context &ctx, Engine &engine, Hierarc
             }
         });
 
-    hierarchy.selectEntity(ctx, selected);
+    if (!selectionAdditive)
+    {
+        hierarchy.selectEntity(ctx, selected);
+    }
+    else if (selected)
+    {
+        auto entities = hierarchy.selection();
+        const auto found = std::find(entities.begin(), entities.end(), *selected);
+
+        if (found == entities.end())
+            entities.push_back(*selected);
+        else if (selectionCtrl)
+            entities.erase(found);
+
+        hierarchy.selectEntities(ctx, std::move(entities));
+    }
 }
 }

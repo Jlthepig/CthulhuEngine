@@ -556,6 +556,11 @@ void Context::setTreeViewSelectedItem(NodeHandle treeView,
                                         item);
 }
 
+void Context::setTreeViewItemHighlighted(NodeHandle treeView,
+                                         TreeViewItemId item, bool highlighted) {
+  impl->widgets.setTreeViewItemHighlighted(impl->tree, treeView, item, highlighted);
+}
+
 std::string_view Context::treeViewItemText(NodeHandle treeView,
                                            TreeViewItemId item) const noexcept {
   return impl->widgets.treeViewItemText(impl->tree, treeView, item);

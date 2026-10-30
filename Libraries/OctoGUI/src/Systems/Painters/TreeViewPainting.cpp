@@ -131,7 +131,7 @@ void PaintSystem::paintTreeView(
         rowHeight};
 
     const bool isDragged = state->dragging && state->dragged == visible.item;
-    const bool selected = state->selected == visible.item;
+    const bool selected = state->selected == visible.item || item->highlighted;
     const bool hovered = !state->dragging && state->hovered == visible.item;
 
     Color rowTextColor = textColor;
