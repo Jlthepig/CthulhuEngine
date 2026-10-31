@@ -43,9 +43,10 @@ class AddComponentCommand final : public Command
 {
   public:
     AddComponentCommand(Scene::EntityId entityId, std::string componentName)
-        : id(entityId), component(std::move(componentName)), label("Add " + component)
-    {
-    }
+        : id(entityId),
+          component(std::move(componentName)),
+          label("Add " + component)
+    {}
 
     std::string_view name() const override
     {
@@ -93,9 +94,10 @@ class RemoveComponentCommand final : public Command
 {
   public:
     RemoveComponentCommand(Scene::EntityId entityId, std::string componentName)
-        : id(entityId), component(std::move(componentName)), label("Remove " + component)
-    {
-    }
+        : id(entityId),
+          component(std::move(componentName)),
+          label("Remove " + component)
+    {}
 
     std::string_view name() const override
     {
@@ -145,10 +147,12 @@ class SetFieldCommand final : public Command
 {
   public:
     SetFieldCommand(Scene::EntityId entityId, std::string componentName, std::string fieldName, Scene::FieldValue value)
-        : id(entityId), component(std::move(componentName)), field(std::move(fieldName)), requested(std::move(value)),
+        : id(entityId),
+          component(std::move(componentName)),
+          field(std::move(fieldName)),
+          requested(std::move(value)),
           label("Set " + component + "." + field)
-    {
-    }
+    {}
 
     std::string_view name() const override
     {
@@ -231,9 +235,9 @@ class ReplaceReferencesCommand final : public Command
 {
   public:
     ReplaceReferencesCommand(std::string fromPath, std::string toPath)
-        : from(std::move(fromPath)), to(std::move(toPath))
-    {
-    }
+        : from(std::move(fromPath)),
+          to(std::move(toPath))
+    {}
 
     std::string_view name() const override
     {

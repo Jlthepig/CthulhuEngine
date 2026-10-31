@@ -29,17 +29,20 @@ static bool createPhysicsRuntime(flecs::entity entity, Cthulhu::Engine *engine)
 
     switch (physics.type)
     {
-    case PhysicsBodyType::Static: {
-        bodyId = engine->getPhysicsWorld().addStaticBox(glm::vec3(transform.matrix[3]), transform.rotation,
-                                physics.halfExtent);
-        break;
-    }
+        case PhysicsBodyType::Static: {
+            bodyId = engine->getPhysicsWorld().addStaticBox(glm::vec3(transform.matrix[3]),
+                                                            transform.rotation,
+                                                            physics.halfExtent);
+            break;
+        }
 
-    case PhysicsBodyType::Dynamic: {
-        bodyId = engine->getPhysicsWorld().addDynamicBox(glm::vec3(transform.matrix[3]), transform.rotation,
-                                 physics.halfExtent, physics.mass);
-        break;
-    }
+        case PhysicsBodyType::Dynamic: {
+            bodyId = engine->getPhysicsWorld().addDynamicBox(glm::vec3(transform.matrix[3]),
+                                                             transform.rotation,
+                                                             physics.halfExtent,
+                                                             physics.mass);
+            break;
+        }
     }
 
     if (!bodyId)
@@ -68,7 +71,8 @@ void RegisterCoreSystems(flecs::world &world, Cthulhu::Engine *engineContext)
         .each([engineContext](flecs::entity entity, MeshComponent &mesh) {
             auto &assetManager = engineContext->getAssetManager();
 
-            const Assets::ModelHandle handle = mesh.modelPath.empty() ? Assets::ModelHandle{} : assetManager.acquireModel(mesh.modelPath);
+            const Assets::ModelHandle handle = mesh.modelPath.empty() ? Assets::ModelHandle{}
+                                                                      : assetManager.acquireModel(mesh.modelPath);
             if (!handle.isValid())
             {
                 entity.remove<MeshRuntimeComponent>();
@@ -100,7 +104,8 @@ void RegisterCoreSystems(flecs::world &world, Cthulhu::Engine *engineContext)
             [engineContext](flecs::entity entity, PhysicsComponent &) { createPhysicsRuntime(entity, engineContext); });
 
     world.system<flecs::entity, TransformComponent, const PhysicsRuntimeComponent>("PhysicsSyncSystem")
-        .each([engineContext](flecs::entity entity, TransformComponent &transform,
+        .each([engineContext](flecs::entity entity,
+                              TransformComponent &transform,
                               const PhysicsRuntimeComponent &runtime) {
             if (!runtime.bodyId)
             {
@@ -114,7 +119,6 @@ void RegisterCoreSystems(flecs::world &world, Cthulhu::Engine *engineContext)
             transform.matrixDirty = true;
         })
         .add<GameplaySystem>();
-        
 
     world.observer<PhysicsComponent>("PhysicsRuntimeRemoveObserver")
         .event(flecs::OnRemove)
@@ -137,7 +141,8 @@ void RegisterCoreSystems(flecs::world &world, Cthulhu::Engine *engineContext)
         });
 
     world.system<flecs::entity, CharacterControllerRuntimeComponent, TransformComponent>("CharacterInterpolationSystem")
-        .each([engineContext](flecs::entity entity, CharacterControllerRuntimeComponent &runtime,
+        .each([engineContext](flecs::entity entity,
+                              CharacterControllerRuntimeComponent &runtime,
                               TransformComponent &transform) {
             const float alpha = engineContext->getPhysicsWorld().getInterpolationAlpha();
 
@@ -200,8 +205,10 @@ void RegisterCoreSystems(flecs::world &world, Cthulhu::Engine *engineContext)
     world
         .system<const WeaponComponent, WeaponRuntimeComponent, const TransformComponent, const CameraComponent>(
             "WeaponSystem")
-        .each([engineContext](const WeaponComponent &weapon, WeaponRuntimeComponent &runtime,
-                              const TransformComponent &transform, const CameraComponent &camera) {
+        .each([engineContext](const WeaponComponent &weapon,
+                              WeaponRuntimeComponent &runtime,
+                              const TransformComponent &transform,
+                              const CameraComponent &camera) {
             runtime.timeSinceLastShot += engineContext->getDeltaTime();
 
             if (!runtime.wantsToFire)
@@ -250,7 +257,8 @@ void RegisterCoreSystems(flecs::world &world, Cthulhu::Engine *engineContext)
         .each([engineContext](flecs::entity entity, AudioSourceComponent &source) {
             auto &assets = engineContext->getAssetManager();
 
-            const Assets::AudioClipHandle clip = source.filePath.empty() ? Assets::AudioClipHandle{} : assets.acquireAudioClip(source.filePath);
+            const Assets::AudioClipHandle clip = source.filePath.empty() ? Assets::AudioClipHandle{}
+                                                                         : assets.acquireAudioClip(source.filePath);
 
             if (!clip.isValid())
             {

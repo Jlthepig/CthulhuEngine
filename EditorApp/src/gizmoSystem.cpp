@@ -25,8 +25,7 @@ struct ArrowVertex
 
 const std::vector<ArrowVertex> &moveArrowMesh()
 {
-    static const std::vector<ArrowVertex> mesh = []
-    {
+    static const std::vector<ArrowVertex> mesh = [] {
         constexpr int segments = 16;
         constexpr float start = 0.12f;
         constexpr float shoulder = 0.76f;
@@ -39,8 +38,7 @@ const std::vector<ArrowVertex> &moveArrowMesh()
 
         const glm::vec3 light = glm::normalize(glm::vec3{-0.4f, 0.6f, 1.0f});
 
-        const auto triangle = [&](const glm::vec3 &a,  const glm::vec3 &b, const glm::vec3 &c)
-        {
+        const auto triangle = [&](const glm::vec3 &a, const glm::vec3 &b, const glm::vec3 &c) {
             const glm::vec3 normal = glm::normalize(glm::cross(b - a, c - a));
 
             const float brightness = 0.65f + 0.35f * glm::max(glm::dot(normal, light), 0.0f);
@@ -79,25 +77,27 @@ const std::vector<ArrowVertex> &moveArrowMesh()
     return mesh;
 }
 
-}
+} // namespace
 
-void GizmoSystem::update(Engine &engine, std::span<const Scene::EntityId> selection, GizmoMode mode, GizmoSpace space, float viewportHeight)
+void GizmoSystem::update(Engine &engine,
+                         std::span<const Scene::EntityId> selection,
+                         GizmoMode mode,
+                         GizmoSpace space,
+                         float viewportHeight)
 {
     vertices.clear();
     frame = {};
 
-    if (engine.isPlaying() || mode == GizmoMode::Select ||
-        selection.empty() ||
-        !std::isfinite(viewportHeight) || viewportHeight <= 0.0f ||
-        !std::isfinite(style.axisLengthPixels) ||
-        style.axisLengthPixels <= 0.0f)
+    if (engine.isPlaying() || mode == GizmoMode::Select || selection.empty() || !std::isfinite(viewportHeight) ||
+        viewportHeight <= 0.0f || !std::isfinite(style.axisLengthPixels) || style.axisLengthPixels <= 0.0f)
     {
         return;
     }
 
     auto *scene = engine.getActiveScene();
     auto *camera = engine.getCamera();
-    if (!scene || !camera) return;
+    if (!scene || !camera)
+        return;
 
     glm::dvec3 positionSum(0.0);
     std::size_t count = 0;
@@ -105,20 +105,24 @@ void GizmoSystem::update(Engine &engine, std::span<const Scene::EntityId> select
     for (const Scene::EntityId id : selection)
     {
         const auto entity = scene->findEntity(id);
-        if (!entity || !entity->has<Scene::TransformComponent>()) continue;
+        if (!entity || !entity->has<Scene::TransformComponent>())
+            continue;
 
         const auto world = Scene::getWorldTransform(*entity);
         const glm::vec3 position(world.matrix[3]);
 
-        if (!finiteVector(position)) return;
+        if (!finiteVector(position))
+            return;
 
-        if (count == 0 && space == GizmoSpace::Local) frame.basis = glm::mat3_cast(world.rotation);
+        if (count == 0 && space == GizmoSpace::Local)
+            frame.basis = glm::mat3_cast(world.rotation);
 
         positionSum += glm::dvec3(position);
         ++count;
     }
 
-    if (count == 0) return;
+    if (count == 0)
+        return;
 
     frame.pivot = glm::vec3(positionSum / static_cast<double>(count));
 
@@ -131,22 +135,21 @@ void GizmoSystem::update(Engine &engine, std::span<const Scene::EntityId> select
         return;
     }
 
-    const glm::mat4 projection = glm::perspective(glm::radians(camera->getFov()), 1.0f, config.nearPlane, config.farPlane);
+    const glm::mat4 projection =
+        glm::perspective(glm::radians(camera->getFov()), 1.0f, config.nearPlane, config.farPlane);
 
     const float projectionY = std::abs(projection[1][1]);
-    if (!std::isfinite(projectionY) || projectionY <= 0.0f) return;
+    if (!std::isfinite(projectionY) || projectionY <= 0.0f)
+        return;
 
     frame.axisLengthWorld = (2.0f * depth / projectionY) * (style.axisLengthPixels / viewportHeight);
 
-    frame.visible =
-        finiteVector(frame.pivot) &&
-        finiteVector(frame.basis[0]) &&
-        finiteVector(frame.basis[1]) &&
-        finiteVector(frame.basis[2]) &&
-        std::isfinite(frame.axisLengthWorld) &&
-        frame.axisLengthWorld > 0.0f;
+    frame.visible = finiteVector(frame.pivot) && finiteVector(frame.basis[0]) && finiteVector(frame.basis[1]) &&
+                    finiteVector(frame.basis[2]) && std::isfinite(frame.axisLengthWorld) &&
+                    frame.axisLengthWorld > 0.0f;
 
-    if (!frame.visible || mode != GizmoMode::Move) return;
+    if (!frame.visible || mode != GizmoMode::Move)
+        return;
 
     const auto &arrow = moveArrowMesh();
     vertices.reserve(arrow.size() * 3);
@@ -161,8 +164,9 @@ void GizmoSystem::update(Engine &engine, std::span<const Scene::EntityId> select
         {
             const glm::vec3 offset = side * vertex.position.x + up * vertex.position.y + forward * vertex.position.z;
 
-            vertices.push_back({frame.pivot + offset * frame.axisLengthWorld, glm::vec4(style.axisColors[axis] * vertex.brightness, 1.0f)});
+            vertices.push_back({frame.pivot + offset * frame.axisLengthWorld,
+                                glm::vec4(style.axisColors[axis] * vertex.brightness, 1.0f)});
         }
     }
 }
-}
+} // namespace Cthulhu::Editor

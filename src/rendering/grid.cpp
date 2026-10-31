@@ -3,6 +3,7 @@
 #include <glad.h>
 
 #include "grid.hpp"
+
 namespace Cthulhu::Rendering
 {
 void GridLines::setupGrid(int size)

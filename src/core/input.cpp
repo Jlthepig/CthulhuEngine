@@ -7,6 +7,7 @@
 
 using KalaHeaders::KalaLog::Log;
 using KalaHeaders::KalaLog::LogType;
+
 namespace Cthulhu::Core
 {
 
@@ -56,19 +57,22 @@ void Input::update()
 
 bool Input::isKeyDown(int key)
 {
-    if (key < GLFW_KEY_SPACE || key > GLFW_KEY_LAST) return false;
+    if (key < GLFW_KEY_SPACE || key > GLFW_KEY_LAST)
+        return false;
     return currentKeys[key];
 }
 
 bool Input::isKeyPressed(int key)
 {
-    if (key < GLFW_KEY_SPACE || key > GLFW_KEY_LAST) return false;
+    if (key < GLFW_KEY_SPACE || key > GLFW_KEY_LAST)
+        return false;
     return currentKeys[key] && !previousKeys[key];
 }
 
 bool Input::isKeyReleased(int key)
 {
-    if (key < GLFW_KEY_SPACE || key > GLFW_KEY_LAST) return false;
+    if (key < GLFW_KEY_SPACE || key > GLFW_KEY_LAST)
+        return false;
     return previousKeys[key] && !currentKeys[key];
 }
 
@@ -114,7 +118,8 @@ void Input::mouse_button_callback(GLFWwindow *window, int button, int action, [[
     }
 }
 
-void Input::scroll_callback([[maybe_unused]] GLFWwindow *window, [[maybe_unused]] double xoffset,
+void Input::scroll_callback([[maybe_unused]] GLFWwindow *window,
+                            [[maybe_unused]] double xoffset,
                             [[maybe_unused]] double yoffset)
 {
     scrollDeltaY += static_cast<float>(yoffset);

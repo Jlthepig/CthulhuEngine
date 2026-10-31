@@ -1,9 +1,9 @@
-#include <cstdlib>
 #include <algorithm>
+#include <cstdlib>
 
 #define STB_IMAGE_IMPLEMENTATION
-#include <glad.h>
 #include <GLFW/glfw3.h>
+#include <glad.h>
 #include <stb_image.h>
 
 #include <Jolt/Jolt.h>
@@ -34,6 +34,7 @@ static void physicsFixedUpdateCallback(void *context, float fixedDt)
 {
     static_cast<Cthulhu::Engine *>(context)->processFixedUpdate(fixedDt);
 }
+
 namespace Cthulhu
 {
 
@@ -425,7 +426,8 @@ bool Engine::saveActiveSceneAs(std::string_view resourcePath)
     std::filesystem::create_directories(resolvedPath->parent_path(), error);
     if (error)
     {
-        Log::Print("FAILED TO CREATE SCENE DIRECTORY: " + resolvedPath->parent_path().string(), "ENGINE",
+        Log::Print("FAILED TO CREATE SCENE DIRECTORY: " + resolvedPath->parent_path().string(),
+                   "ENGINE",
                    LogType::LOG_ERROR);
         return false;
     }
@@ -478,9 +480,13 @@ void Engine::processFixedUpdate(float fixedDt)
 
         JPH::CharacterVirtual::ExtendedUpdateSettings settings;
 
-        runtime.character->ExtendedUpdate(fixedDt, JPH::Vec3(0.0f, config.gravity, 0.0f), settings,
+        runtime.character->ExtendedUpdate(fixedDt,
+                                          JPH::Vec3(0.0f, config.gravity, 0.0f),
+                                          settings,
                                           physicsWorld.getPhysicsSystem()->GetDefaultBroadPhaseLayerFilter(1),
-                                          physicsWorld.getPhysicsSystem()->GetDefaultLayerFilter(1), {}, {},
+                                          physicsWorld.getPhysicsSystem()->GetDefaultLayerFilter(1),
+                                          {},
+                                          {},
                                           *physicsWorld.getTempAllocator());
 
         charPos = runtime.character->GetPosition();
@@ -503,7 +509,7 @@ void Engine::applySimStateToSystems()
         .with(flecs::Disabled)
         .optional()
         .build()
-        .each([&](flecs::entity system) {systems.push_back(system);});
+        .each([&](flecs::entity system) { systems.push_back(system); });
 
     for (flecs::entity system : systems)
     {
@@ -553,7 +559,7 @@ void Engine::addSystemRegistration(SystemRegistration registration, void *contex
         return;
     }
 
-    systemRegistrations.push_back({registration,context});
+    systemRegistrations.push_back({registration, context});
     if (activeScene)
     {
         registration(context, activeScene->getWorld(), *this);
@@ -571,7 +577,6 @@ bool Engine::play()
 
     auto snapshot = std::make_unique<Scene::SceneSnapshot>(activeScene->captureScene());
 
-    
     auto playScene = createSceneInstance();
     if (!playScene->restoreScene(*snapshot))
     {
@@ -663,9 +668,7 @@ void Engine::update()
     Core::Input::update();
     Core::Audio::update();
 
-    const float simulationDt = simState == SimulationState::Stepping
-                                   ? physicsWorld.fixedDeltaTime()
-                                   : deltaTime;
+    const float simulationDt = simState == SimulationState::Stepping ? physicsWorld.fixedDeltaTime() : deltaTime;
 
     if (isSimulating())
     {
@@ -709,8 +712,10 @@ void Engine::render(std::span<const Rendering::OverlayVertex> overlayVertices)
 
     if (activeScene)
     {
-        activeScene->getWorld().each([&](flecs::entity e, const Scene::TransformComponent &transform,
-                                         const Scene::MeshComponent &, const Scene::MeshRuntimeComponent &meshRuntime) {
+        activeScene->getWorld().each([&](flecs::entity e,
+                                         const Scene::TransformComponent &transform,
+                                         const Scene::MeshComponent &,
+                                         const Scene::MeshRuntimeComponent &meshRuntime) {
             if (!e.has<Scene::TagActive>())
             {
                 return;
@@ -745,8 +750,13 @@ void Engine::render(std::span<const Rendering::OverlayVertex> overlayVertices)
         h = std::min(viewportHeight, fbh - y);
     }
 
-    renderer.render(static_cast<unsigned int>(w), static_cast<unsigned int>(h),
-                    deltaTime, frameRenderables, x, fbh - (y + h), overlayVertices);
+    renderer.render(static_cast<unsigned int>(w),
+                    static_cast<unsigned int>(h),
+                    deltaTime,
+                    frameRenderables,
+                    x,
+                    fbh - (y + h),
+                    overlayVertices);
 }
 
 void Engine::setViewportRect(int x, int y, int width, int height)

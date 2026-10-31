@@ -1,9 +1,9 @@
 #pragma once
 
+#include <flecs.h>
 #include <glm.hpp>
 #include <gtc/matrix_transform.hpp>
 #include <gtx/quaternion.hpp>
-#include <flecs.h>
 
 #include "components.hpp"
 

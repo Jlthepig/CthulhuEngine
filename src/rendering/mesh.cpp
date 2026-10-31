@@ -1,11 +1,12 @@
-
 #include "mesh.hpp"
+
 namespace Cthulhu::Rendering
 {
-void Mesh::setup(const std::vector<float> &vertices, const std::vector<unsigned int> &indices,
-                 const std::vector<vertexAttribute> &attributes, unsigned int stride)
+void Mesh::setup(const std::vector<float> &vertices,
+                 const std::vector<unsigned int> &indices,
+                 const std::vector<vertexAttribute> &attributes,
+                 unsigned int stride)
 {
-
     vertexData = vertices;
     indexData = indices;
 
@@ -14,17 +15,20 @@ void Mesh::setup(const std::vector<float> &vertices, const std::vector<unsigned 
 
     for (const auto &attr : attributes)
     {
-        if (attr.location != 0 || attr.componentCount != 3) continue;
+        if (attr.location != 0 || attr.componentCount != 3)
+            continue;
 
         const size_t strideBytes = stride == 0 ? 3 * sizeof(float) : stride;
 
-        if (strideBytes % sizeof(float) != 0 || attr.offset % sizeof(float) != 0 || strideBytes < 3 * sizeof(float) || attr.offset > strideBytes - 3 * sizeof(float))
+        if (strideBytes % sizeof(float) != 0 || attr.offset % sizeof(float) != 0 || strideBytes < 3 * sizeof(float) ||
+            attr.offset > strideBytes - 3 * sizeof(float))
         {
             break;
         }
 
         const size_t strideFloats = strideBytes / sizeof(float);
-        if (vertexData.size() % strideFloats != 0) break;
+        if (vertexData.size() % strideFloats != 0)
+            break;
 
         positionStrideFloats = strideFloats;
         positionOffsetFloats = attr.offset / sizeof(float);

@@ -5,10 +5,13 @@
 
 #include <glm.hpp>
 
-#include "overlayVertex.hpp"
 #include "entityId.hpp"
+#include "overlayVertex.hpp"
 
-namespace Cthulhu { class Engine; }
+namespace Cthulhu
+{
+class Engine;
+}
 
 namespace Cthulhu::Editor
 {
@@ -46,6 +49,10 @@ struct GizmoSystem
     GizmoFrame frame;
     std::vector<Rendering::OverlayVertex> vertices;
 
-    void update(Engine &engine, std::span<const Scene::EntityId> selection, GizmoMode mode, GizmoSpace space, float viewportHeight);
+    void update(Engine &engine,
+                std::span<const Scene::EntityId> selection,
+                GizmoMode mode,
+                GizmoSpace space,
+                float viewportHeight);
 };
-}
+} // namespace Cthulhu::Editor

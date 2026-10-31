@@ -10,6 +10,7 @@
 #include "viewportPanel.hpp"
 
 using namespace octogui;
+
 namespace Cthulhu
 {
 class Engine;
@@ -44,21 +45,27 @@ class EditorShell
     {
         return hierarchyPanelUI.panel();
     }
-        
-    [[nodiscard]] const ViewportPanel& viewport() const noexcept { return viewportPanelUI; }
+
+    [[nodiscard]] const ViewportPanel &viewport() const noexcept
+    {
+        return viewportPanelUI;
+    }
 
     [[nodiscard]] NodeHandle sceneArea() const noexcept
     {
         return sceneNode;
     }
+
     [[nodiscard]] NodeHandle inspectorPanel() const noexcept
     {
         return inspector;
     }
+
     [[nodiscard]] NodeHandle sceneTree() const noexcept
     {
         return hierarchyPanelUI.treeView();
     }
+
     [[nodiscard]] std::optional<Scene::EntityId> selectedEntity() const noexcept
     {
         return hierarchyPanelUI.selectedEntity();
@@ -71,7 +78,6 @@ class EditorShell
     IconButton pauseButton{};
     IconButton stopButton{};
 
-
     HierarchyPanel hierarchyPanelUI;
     ViewportPanel viewportPanelUI;
     NodeHandle sceneNode{};
@@ -82,6 +88,5 @@ class EditorShell
     std::string lastSceneText;
     bool lastPlaying = false;
     bool lastPaused = false;
-
 };
 } // namespace Cthulhu::Editor

@@ -115,26 +115,31 @@ bool fieldValueMatches(FieldType type, const FieldValue &value)
 {
     switch (type)
     {
-    case FieldType::Float:
-        return std::holds_alternative<float>(value);
-    case FieldType::Int:
-    case FieldType::Enum:
-        return std::holds_alternative<int>(value);
-    case FieldType::Bool:
-        return std::holds_alternative<bool>(value);
-    case FieldType::Vec3:
-    case FieldType::Color:
-        return std::holds_alternative<glm::vec3>(value);
-    case FieldType::String:
-    case FieldType::AssetRef:
-        return std::holds_alternative<std::string>(value);
-    case FieldType::EntityRef:
-        return std::holds_alternative<EntityId>(value);
+        case FieldType::Float:
+            return std::holds_alternative<float>(value);
+        case FieldType::Int:
+        case FieldType::Enum:
+            return std::holds_alternative<int>(value);
+        case FieldType::Bool:
+            return std::holds_alternative<bool>(value);
+        case FieldType::Vec3:
+        case FieldType::Color:
+            return std::holds_alternative<glm::vec3>(value);
+        case FieldType::String:
+        case FieldType::AssetRef:
+            return std::holds_alternative<std::string>(value);
+        case FieldType::EntityRef:
+            return std::holds_alternative<EntityId>(value);
     }
     return false;
 }
 
-FieldDescriptor makeField(std::string name, FieldType type, FieldGetter get, FieldSetter set, float min, float max,
+FieldDescriptor makeField(std::string name,
+                          FieldType type,
+                          FieldGetter get,
+                          FieldSetter set,
+                          float min,
+                          float max,
                           float step)
 {
     FieldDescriptor f;
@@ -191,7 +196,8 @@ bool ComponentRegistry::registerComponent(ComponentDescriptor descriptor)
         {
             if (descriptor.fields[j].name == descriptor.fields[i].name)
             {
-                Log::Print("DUPLICATE FIELD: " + descriptor.name + "." + descriptor.fields[i].name, "Components",
+                Log::Print("DUPLICATE FIELD: " + descriptor.name + "." + descriptor.fields[i].name,
+                           "Components",
                            LogType::LOG_ERROR);
                 return false;
             }
@@ -214,7 +220,8 @@ const ComponentDescriptor *ComponentRegistry::find(std::string_view name) const
     return nullptr;
 }
 
-std::optional<FieldValue> ComponentRegistry::getField(flecs::entity entity, std::string_view component,
+std::optional<FieldValue> ComponentRegistry::getField(flecs::entity entity,
+                                                      std::string_view component,
                                                       std::string_view field) const
 {
     const ComponentDescriptor *descriptor = find(component);
@@ -232,7 +239,9 @@ std::optional<FieldValue> ComponentRegistry::getField(flecs::entity entity, std:
     return fieldDescriptor->get(entity);
 }
 
-bool ComponentRegistry::setField(flecs::entity entity, std::string_view component, std::string_view field,
+bool ComponentRegistry::setField(flecs::entity entity,
+                                 std::string_view component,
+                                 std::string_view field,
                                  const FieldValue &value) const
 {
     const ComponentDescriptor *descriptor = find(component);

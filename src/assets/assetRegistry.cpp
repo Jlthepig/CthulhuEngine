@@ -26,17 +26,17 @@ std::string escapeJson(std::string_view text)
     {
         switch (c)
         {
-        case '"':
-            out += "\\\"";
-            break;
-        case '\\':
-            out += "\\\\";
-            break;
-        default:
-            if (static_cast<unsigned char>(c) >= 0x20)
-            {
-                out += c;
-            }
+            case '"':
+                out += "\\\"";
+                break;
+            case '\\':
+                out += "\\\\";
+                break;
+            default:
+                if (static_cast<unsigned char>(c) >= 0x20)
+                {
+                    out += c;
+                }
         }
     }
     return out;
@@ -153,8 +153,9 @@ bool AssetRegistry::save() const
     {
         sorted.push_back(&record);
     }
-    std::sort(sorted.begin(), sorted.end(),
-              [](const AssetRecord *a, const AssetRecord *b) { return a->path < b->path; });
+    std::sort(sorted.begin(), sorted.end(), [](const AssetRecord *a, const AssetRecord *b) {
+        return a->path < b->path;
+    });
 
     // preventing a mid write crash to corrupt registry
     const auto temp = file.parent_path() / (file.filename().string() + ".tmp");
@@ -209,7 +210,8 @@ AssetRegistry::ScanResult AssetRegistry::scan(const Project::Project &project)
 
     if (!usable)
     {
-        Log::Print("ASSET REGISTRY IS UNUSABLE, SCAN SKIPPED. FIX OR DELETE .cthulhu/assets.json", "AssetRegistry",
+        Log::Print("ASSET REGISTRY IS UNUSABLE, SCAN SKIPPED. FIX OR DELETE .cthulhu/assets.json",
+                   "AssetRegistry",
                    LogType::LOG_ERROR);
         return result;
     }
@@ -225,7 +227,8 @@ AssetRegistry::ScanResult AssetRegistry::scan(const Project::Project &project)
     std::vector<bool> seen(records.size(), false);
 
     std::error_code error;
-    std::filesystem::recursive_directory_iterator it(root, std::filesystem::directory_options::skip_permission_denied,
+    std::filesystem::recursive_directory_iterator it(root,
+                                                     std::filesystem::directory_options::skip_permission_denied,
                                                      error);
 
     if (error)
@@ -318,7 +321,8 @@ AssetRegistry::ScanResult AssetRegistry::scan(const Project::Project &project)
 
     Log::Print("Asset registry: " + std::to_string(result.total) + " assets (" + std::to_string(result.added) +
                    " new, " + std::to_string(result.missing) + " missing)",
-               "AssetRegistry", LogType::LOG_INFO);
+               "AssetRegistry",
+               LogType::LOG_INFO);
     return result;
 }
 
@@ -449,7 +453,8 @@ bool AssetRegistry::forget(AssetId id)
 
     if (!records[it->second].missing)
     {
-        Log::Print("ONLY MISSING ASSETS CAN BE FORGOTTEN: " + records[it->second].path, "AssetRegistry",
+        Log::Print("ONLY MISSING ASSETS CAN BE FORGOTTEN: " + records[it->second].path,
+                   "AssetRegistry",
                    LogType::LOG_ERROR);
         return false;
     }

@@ -2,8 +2,9 @@
 
 #include <vec2.hpp>
 
-#include <glad.h>
 #include <GLFW/glfw3.h>
+#include <glad.h>
+
 namespace Cthulhu::Core
 {
 class Input

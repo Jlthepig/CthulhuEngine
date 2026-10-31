@@ -6,6 +6,7 @@
 #include <vec3.hpp>
 
 #include "shader.hpp"
+
 namespace Cthulhu::Rendering
 {
 class ShadowMap

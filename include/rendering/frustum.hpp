@@ -1,6 +1,7 @@
 #pragma once
 
 #include <glm.hpp>
+
 namespace Cthulhu::Scene
 {
 struct AABB
@@ -8,6 +9,7 @@ struct AABB
     glm::vec3 min;
     glm::vec3 max;
 };
+
 struct Plane
 {
     glm::vec3 normal;

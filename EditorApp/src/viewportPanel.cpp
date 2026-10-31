@@ -3,9 +3,9 @@
 #include <GLFW/glfw3.h>
 
 #include "engine.hpp"
+#include "hierarchyPanel.hpp"
 #include "input.hpp"
 #include "viewportPanel.hpp"
-#include "hierarchyPanel.hpp"
 
 using namespace octogui;
 
@@ -181,39 +181,50 @@ void ViewportPanel::build(Context &ctx, NodeHandle viewportRoot)
 
 void ViewportPanel::update(Context &ctx)
 {
-    const bool canShortcut = !ctx.isValid(ctx.focused()) || (!ctx.isFocused(snapMoveInput) && !ctx.isFocused(snapRotateInput) && !ctx.isFocused(snapScaleInput));
+    const bool canShortcut =
+        !ctx.isValid(ctx.focused()) ||
+        (!ctx.isFocused(snapMoveInput) && !ctx.isFocused(snapRotateInput) && !ctx.isFocused(snapScaleInput));
     if (canShortcut && !Cthulhu::Core::Input::isMouseButtonDown(GLFW_MOUSE_BUTTON_RIGHT))
     {
-        if (Cthulhu::Core::Input::isKeyPressed(GLFW_KEY_Q)) setMode(ctx, GizmoMode::Select);
-        else if (Cthulhu::Core::Input::isKeyPressed(GLFW_KEY_W)) setMode(ctx, GizmoMode::Move);
-        else if (Cthulhu::Core::Input::isKeyPressed(GLFW_KEY_E)) setMode(ctx, GizmoMode::Rotate);
-        else if (Cthulhu::Core::Input::isKeyPressed(GLFW_KEY_R)) setMode(ctx, GizmoMode::Scale);
+        if (Cthulhu::Core::Input::isKeyPressed(GLFW_KEY_Q))
+            setMode(ctx, GizmoMode::Select);
+        else if (Cthulhu::Core::Input::isKeyPressed(GLFW_KEY_W))
+            setMode(ctx, GizmoMode::Move);
+        else if (Cthulhu::Core::Input::isKeyPressed(GLFW_KEY_E))
+            setMode(ctx, GizmoMode::Rotate);
+        else if (Cthulhu::Core::Input::isKeyPressed(GLFW_KEY_R))
+            setMode(ctx, GizmoMode::Scale);
     }
 
-    snapActive = Cthulhu::Core::Input::isKeyDown(GLFW_KEY_LEFT_CONTROL) || Cthulhu::Core::Input::isKeyDown(GLFW_KEY_RIGHT_CONTROL);
+    snapActive = Cthulhu::Core::Input::isKeyDown(GLFW_KEY_LEFT_CONTROL) ||
+                 Cthulhu::Core::Input::isKeyDown(GLFW_KEY_RIGHT_CONTROL);
 
-    if (ctx.isClicked(selectButton)) setMode(ctx, GizmoMode::Select);
-    else if (ctx.isClicked(moveButton)) setMode(ctx, GizmoMode::Move);
-    else if (ctx.isClicked(rotateButton)) setMode(ctx, GizmoMode::Rotate);
-    else if (ctx.isClicked(scaleButton)) setMode(ctx, GizmoMode::Scale);
+    if (ctx.isClicked(selectButton))
+        setMode(ctx, GizmoMode::Select);
+    else if (ctx.isClicked(moveButton))
+        setMode(ctx, GizmoMode::Move);
+    else if (ctx.isClicked(rotateButton))
+        setMode(ctx, GizmoMode::Rotate);
+    else if (ctx.isClicked(scaleButton))
+        setMode(ctx, GizmoMode::Scale);
 
-    if (ctx.isClicked(worldButton)) setSpace(ctx, GizmoSpace::World);
-    else if (ctx.isClicked(localButton)) setSpace(ctx, GizmoSpace::Local);
+    if (ctx.isClicked(worldButton))
+        setSpace(ctx, GizmoSpace::World);
+    else if (ctx.isClicked(localButton))
+        setSpace(ctx, GizmoSpace::Local);
 
     snapMoveValue = static_cast<float>(ctx.numericValue(snapMoveInput));
     snapRotateValue = static_cast<float>(ctx.numericValue(snapRotateInput));
     snapScaleValue = static_cast<float>(ctx.numericValue(snapScaleInput));
 }
 
-void ViewportPanel::updateMarquee(Context &ctx, NodeHandle sceneNode,
-                                  bool enabled, std::uint64_t sceneGeneration)
+void ViewportPanel::updateMarquee(Context &ctx, NodeHandle sceneNode, bool enabled, std::uint64_t sceneGeneration)
 {
     completedMarquee.reset();
     completedClick.reset();
     const auto &mouse = ctx.input().mouse;
 
-    if (!enabled || mouse.isDown(MouseButton::Right) ||
-        (marqueePending && marqueeGeneration != sceneGeneration) ||
+    if (!enabled || mouse.isDown(MouseButton::Right) || (marqueePending && marqueeGeneration != sceneGeneration) ||
         Cthulhu::Core::Input::isKeyPressed(GLFW_KEY_ESCAPE))
     {
         marqueePending = false;
@@ -256,7 +267,8 @@ void ViewportPanel::updateMarquee(Context &ctx, NodeHandle sceneNode,
         }
     }
 
-    if (!marqueePending) return;
+    if (!marqueePending)
+        return;
 
     const Vec2 point{std::clamp(mouse.position.x, left, right), std::clamp(mouse.position.y, top, bottom)};
 
@@ -268,13 +280,10 @@ void ViewportPanel::updateMarquee(Context &ctx, NodeHandle sceneNode,
         marqueeActive = true;
     }
 
-    const Rect box{
-        std::min(marqueeStart.x, point.x),
-        std::min(marqueeStart.y, point.y),
-        std::max(marqueeStart.x, point.x) -
-            std::min(marqueeStart.x, point.x),
-        std::max(marqueeStart.y, point.y) -
-            std::min(marqueeStart.y, point.y)};
+    const Rect box{std::min(marqueeStart.x, point.x),
+                   std::min(marqueeStart.y, point.y),
+                   std::max(marqueeStart.x, point.x) - std::min(marqueeStart.x, point.x),
+                   std::max(marqueeStart.y, point.y) - std::min(marqueeStart.y, point.y)};
 
     if (mouse.released(MouseButton::Left))
     {
@@ -294,7 +303,8 @@ void ViewportPanel::updateMarquee(Context &ctx, NodeHandle sceneNode,
         return;
     }
 
-    if (!marqueeActive) return;
+    if (!marqueeActive)
+        return;
 
     auto &draw = ctx.drawList();
     draw.pushClip(Rect{left, top, right - left, bottom - top});
@@ -308,24 +318,29 @@ void ViewportPanel::updateGizmo(Context &ctx, Engine &engine, const HierarchyPan
     gizmoSystem.update(engine, hierarchy.selection(), currentMode, currentSpace, ctx.tree().rect(sceneNode).h);
 
     const auto &frame = gizmoSystem.frame;
-    if (!frame.visible || currentMode == GizmoMode::Move) return;
+    if (!frame.visible || currentMode == GizmoMode::Move)
+        return;
 
     for (int axis = 0; axis < 3; ++axis)
     {
-        engine.getRenderer().addDebugLine(frame.pivot, frame.pivot + frame.basis[axis] * frame.axisLengthWorld, gizmoSystem.style.axisColors[axis]);
+        engine.getRenderer().addDebugLine(frame.pivot,
+                                          frame.pivot + frame.basis[axis] * frame.axisLengthWorld,
+                                          gizmoSystem.style.axisColors[axis]);
     }
 }
 
 void ViewportPanel::setMode(Context &ctx, GizmoMode mode)
 {
-    if (currentMode == mode) return;
+    if (currentMode == mode)
+        return;
     currentMode = mode;
     refreshToggles(ctx);
 }
 
 void ViewportPanel::setSpace(Context &ctx, GizmoSpace space)
 {
-    if (currentSpace == space) return;
+    if (currentSpace == space)
+        return;
     currentSpace = space;
     refreshToggles(ctx);
 }

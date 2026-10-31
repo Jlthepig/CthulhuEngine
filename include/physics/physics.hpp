@@ -5,6 +5,7 @@
 
 #include <glm.hpp>
 #include <gtc/quaternion.hpp>
+
 namespace JPH
 {
 class PhysicsSystem;
@@ -15,6 +16,7 @@ class ObjectVsBroadPhaseLayerFilter;
 class ObjectLayerPairFilter;
 class ContactListener;
 } // namespace JPH
+
 namespace Cthulhu::Physics
 {
 struct BodyTransform
@@ -47,6 +49,7 @@ struct PhysicsConfig
     float groundDepth{100.0f};
     float groundFriction{0.8f};
 };
+
 class PhysicsWorld
 {
   public:
@@ -69,14 +72,17 @@ class PhysicsWorld
     {
         return physicsSystem;
     }
+
     JPH::TempAllocatorImpl *getTempAllocator() const
     {
         return tempAllocator;
     }
+
     const PhysicsConfig &getConfig() const
     {
         return config;
     }
+
     float fixedDeltaTime() const
     {
         return config.fixedDeltaTime;

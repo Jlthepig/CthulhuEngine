@@ -17,7 +17,7 @@ bool EditorUi::init(GLFWwindow *glfwWindow, const std::filesystem::path &resourc
         Log::Print("FAILED TO INITIALIZE OCTOGUI RENDERER", "Editor", LogType::LOG_ERROR);
         return false;
     }
-    
+
     ctx.setTextureBackend(&renderer);
     ctx.setTheme(octogui::darkTheme());
 
@@ -37,7 +37,9 @@ bool EditorUi::init(GLFWwindow *glfwWindow, const std::filesystem::path &resourc
         Log::Print("EDITOR ICONS NOT LOADED: " + icons, "Editor", LogType::LOG_WARNING);
     }
 
-    (void) ctx.loadIcon("Cthulhu", (resourceRoot / "editor" / "icons" / "cthulhu.png").string(), octogui::IconColorMode::Original);
+    (void)ctx.loadIcon("Cthulhu",
+                       (resourceRoot / "editor" / "icons" / "cthulhu.png").string(),
+                       octogui::IconColorMode::Original);
 
     octogui::glfw::initInput(window);
 
@@ -65,7 +67,7 @@ void EditorUi::beginFrame(float deltaTime)
     ctx.beginFrame(deltaTime);
     ctx.layout();
 
-   mouseOverUi = ctx.isValid(ctx.hovered()) && !ctx.isHovered(ctx.root()) && !ctx.isHovered(sceneNode);
+    mouseOverUi = ctx.isValid(ctx.hovered()) && !ctx.isHovered(ctx.root()) && !ctx.isHovered(sceneNode);
 }
 
 void EditorUi::endFrame()
@@ -76,7 +78,8 @@ void EditorUi::endFrame()
     int framebufferHeight = 0;
     glfwGetFramebufferSize(window, &framebufferWidth, &framebufferHeight);
 
-    renderer.render(ctx.drawList(), ctx.input().displaySize,
+    renderer.render(ctx.drawList(),
+                    ctx.input().displaySize,
                     octogui::Vec2{static_cast<octogui::f32>(framebufferWidth),
                                   static_cast<octogui::f32>(framebufferHeight)});
 
@@ -95,7 +98,10 @@ PixelRect EditorUi::pixelRect(octogui::NodeHandle node) const
     const float scaleX = display.x > 0.0f ? static_cast<float>(framebufferWidth) / display.x : 1.0f;
     const float scaleY = display.y > 0.0f ? static_cast<float>(framebufferHeight) / display.y : 1.0f;
 
-    return {static_cast<int>(rect.x * scaleX), static_cast<int>(rect.y * scaleY), static_cast<int>(rect.w * scaleX),static_cast<int>(rect.h * scaleY)};
+    return {static_cast<int>(rect.x * scaleX),
+            static_cast<int>(rect.y * scaleY),
+            static_cast<int>(rect.w * scaleX),
+            static_cast<int>(rect.h * scaleY)};
 }
 
 bool EditorUi::wantsKeyboard() const noexcept

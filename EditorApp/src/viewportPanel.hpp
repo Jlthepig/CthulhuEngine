@@ -7,33 +7,71 @@
 
 #include "OctoGui/Context.h"
 
-namespace Cthulhu { class Engine; }
+namespace Cthulhu
+{
+class Engine;
+}
+
 namespace Cthulhu::Editor
 {
 
 class HierarchyPanel;
+
 class ViewportPanel
 {
   public:
     void build(octogui::Context &ctx, octogui::NodeHandle viewportRoot);
     void update(octogui::Context &ctx);
 
-    [[nodiscard]] GizmoMode mode() const noexcept { return currentMode; }
-    [[nodiscard]] GizmoSpace space() const noexcept { return currentSpace; }
-    [[nodiscard]] float snapMove() const noexcept { return snapMoveValue; }
-    [[nodiscard]] float snapRotate() const noexcept { return snapRotateValue; }
-    [[nodiscard]] float snapScale() const noexcept { return snapScaleValue; }
-    [[nodiscard]] bool snapEnabled() const noexcept { return snapActive; }
+    [[nodiscard]] GizmoMode mode() const noexcept
+    {
+        return currentMode;
+    }
 
-    [[nodiscard]] octogui::NodeHandle overlay() const noexcept { return overlayNode; }
+    [[nodiscard]] GizmoSpace space() const noexcept
+    {
+        return currentSpace;
+    }
+
+    [[nodiscard]] float snapMove() const noexcept
+    {
+        return snapMoveValue;
+    }
+
+    [[nodiscard]] float snapRotate() const noexcept
+    {
+        return snapRotateValue;
+    }
+
+    [[nodiscard]] float snapScale() const noexcept
+    {
+        return snapScaleValue;
+    }
+
+    [[nodiscard]] bool snapEnabled() const noexcept
+    {
+        return snapActive;
+    }
+
+    [[nodiscard]] octogui::NodeHandle overlay() const noexcept
+    {
+        return overlayNode;
+    }
+
     [[nodiscard]] std::span<const Rendering::OverlayVertex> overlayVertices() const noexcept
     {
         return gizmoSystem.vertices;
     }
 
     void updatePicking(octogui::Context &ctx, Engine &engine, HierarchyPanel &hierarchy, octogui::NodeHandle sceneNode);
-    void updateMarquee(octogui::Context& ctx, octogui::NodeHandle sceneNode, bool enabled, std::uint64_t sceneGeneration);
-    void updateGizmo(octogui::Context &ctx, Engine &engine, const HierarchyPanel &hierarchy, octogui::NodeHandle sceneNode);
+    void updateMarquee(octogui::Context &ctx,
+                       octogui::NodeHandle sceneNode,
+                       bool enabled,
+                       std::uint64_t sceneGeneration);
+    void updateGizmo(octogui::Context &ctx,
+                     Engine &engine,
+                     const HierarchyPanel &hierarchy,
+                     octogui::NodeHandle sceneNode);
 
   private:
     octogui::NodeHandle overlayNode{};

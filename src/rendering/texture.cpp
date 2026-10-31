@@ -6,6 +6,7 @@
 
 using KalaHeaders::KalaLog::Log;
 using KalaHeaders::KalaLog::LogType;
+
 namespace Cthulhu::Rendering
 {
 void Texture::load(const std::string &path)
@@ -46,7 +47,8 @@ void Texture::loadFromMemory(const unsigned char *data, int length, bool isSRGB)
 {
     if (isLoaded)
     {
-        Log::Print("TEXTURE FROM MEMORY IS ALREADY LOADED, DESTROY BEFORE RELOADING", "Texture(Memory)",
+        Log::Print("TEXTURE FROM MEMORY IS ALREADY LOADED, DESTROY BEFORE RELOADING",
+                   "Texture(Memory)",
                    LogType::LOG_WARNING);
         return;
     }

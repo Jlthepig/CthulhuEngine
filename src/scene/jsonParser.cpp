@@ -1,8 +1,8 @@
+#include <cmath>
+#include <cstdint>
+#include <limits>
 #include <string>
 #include <unordered_set>
-#include <cstdint>
-#include <cmath>
-#include <limits>
 
 #include <simdjson.h>
 
@@ -11,6 +11,7 @@
 
 using KalaHeaders::KalaLog::Log;
 using KalaHeaders::KalaLog::LogType;
+
 namespace Cthulhu::Scene
 {
 
@@ -47,7 +48,7 @@ static bool readVec3(simdjson::ondemand::array array, glm::vec3 &result)
 
 using EntityJson = simdjson::simdjson_result<simdjson::ondemand::value>;
 
-static bool readValue(simdjson::simdjson_result<simdjson::ondemand::value> json, ParsedValue& out)
+static bool readValue(simdjson::simdjson_result<simdjson::ondemand::value> json, ParsedValue &out)
 {
     simdjson::ondemand::json_type type;
     if (json.type().get(type))
@@ -57,8 +58,7 @@ static bool readValue(simdjson::simdjson_result<simdjson::ondemand::value> json,
 
     switch (type)
     {
-        case simdjson::ondemand::json_type::number:
-        {
+        case simdjson::ondemand::json_type::number: {
             double number = 0.0;
             if (json.get_double().get(number))
             {
@@ -67,8 +67,7 @@ static bool readValue(simdjson::simdjson_result<simdjson::ondemand::value> json,
             out = number;
             return true;
         }
-        case simdjson::ondemand::json_type::boolean:
-        {
+        case simdjson::ondemand::json_type::boolean: {
             bool flag = false;
             if (json.get_bool().get(flag))
             {
@@ -77,8 +76,7 @@ static bool readValue(simdjson::simdjson_result<simdjson::ondemand::value> json,
             out = flag;
             return true;
         }
-        case simdjson::ondemand::json_type::string:
-        {
+        case simdjson::ondemand::json_type::string: {
             std::string_view text;
             if (json.get_string().get(text))
             {
@@ -87,8 +85,7 @@ static bool readValue(simdjson::simdjson_result<simdjson::ondemand::value> json,
             out = std::string(text);
             return true;
         }
-        case simdjson::ondemand::json_type::array:
-        {
+        case simdjson::ondemand::json_type::array: {
             simdjson::ondemand::array array;
             glm::vec3 vector{};
             if (json.get_array().get(array) || !readVec3(array, vector))
@@ -98,8 +95,7 @@ static bool readValue(simdjson::simdjson_result<simdjson::ondemand::value> json,
             out = vector;
             return true;
         }
-        case simdjson::ondemand::json_type::object:
-        {
+        case simdjson::ondemand::json_type::object: {
             simdjson::ondemand::object object;
             std::string_view assetPath;
             if (json.get_object().get(object) || object["path"].get_string().get(assetPath))
@@ -128,7 +124,7 @@ static bool readValue(simdjson::simdjson_result<simdjson::ondemand::value> json,
     }
 }
 
-static bool readComponents(simdjson::ondemand::object& components, ParsedEntity& entity)
+static bool readComponents(simdjson::ondemand::object &components, ParsedEntity &entity)
 {
     for (auto componentJson : components)
     {
@@ -148,7 +144,9 @@ static bool readComponents(simdjson::ondemand::object& components, ParsedEntity&
             std::string_view fieldName;
             if (fieldJson.unescaped_key().get(fieldName))
             {
-                Log::Print("INVALID FIELD IN " + component.name + " ON: " + entity.name, "SceneParser", LogType::LOG_ERROR);
+                Log::Print("INVALID FIELD IN " + component.name + " ON: " + entity.name,
+                           "SceneParser",
+                           LogType::LOG_ERROR);
                 return false;
             }
 
@@ -157,7 +155,8 @@ static bool readComponents(simdjson::ondemand::object& components, ParsedEntity&
             if (!readValue(fieldJson.value(), field.value))
             {
                 Log::Print("INVALID VALUE FOR " + component.name + "." + field.name + " ON: " + entity.name,
-                           "SceneParser", LogType::LOG_ERROR);
+                           "SceneParser",
+                           LogType::LOG_ERROR);
                 return false;
             }
 
@@ -170,7 +169,7 @@ static bool readComponents(simdjson::ondemand::object& components, ParsedEntity&
     return true;
 }
 
-static bool readEntity(EntityJson& entityJson, ParsedEntity& entity)
+static bool readEntity(EntityJson &entityJson, ParsedEntity &entity)
 {
     simdjson::ondemand::object object;
     if (entityJson.get_object().get(object))
@@ -258,7 +257,10 @@ static bool readEntity(EntityJson& entityJson, ParsedEntity& entity)
     return true;
 }
 
-static void readLegacyNumber(simdjson::ondemand::object& json, const char* key, const char* field, ParsedComponent& component)
+static void readLegacyNumber(simdjson::ondemand::object &json,
+                             const char *key,
+                             const char *field,
+                             ParsedComponent &component)
 {
     double number = 0.0;
     if (!json[key].get_double().get(number))
@@ -267,10 +269,10 @@ static void readLegacyNumber(simdjson::ondemand::object& json, const char* key, 
     }
 }
 
-static bool readLegacyComponents(EntityJson& entityJson, ParsedEntity& entity)
+static bool readLegacyComponents(EntityJson &entityJson, ParsedEntity &entity)
 {
     ParsedComponent transform{"Transform", {}};
-    for (const char* key : {"position", "rotation", "scale"})
+    for (const char *key : {"position", "rotation", "scale"})
     {
         glm::vec3 vector{};
         auto array = entityJson[key].get_array();
@@ -499,7 +501,8 @@ std::optional<ParsedScene> JsonParser::parseScene(const std::string &path)
         // checks shared by every format
         if (!parsedEntityIds.insert(entity.id).second)
         {
-            Log::Print("SCENE CONTAINS DUPLICATE ENTITY ID: " + entityIdToString(entity.id), "JsonParser",
+            Log::Print("SCENE CONTAINS DUPLICATE ENTITY ID: " + entityIdToString(entity.id),
+                       "JsonParser",
                        LogType::LOG_ERROR);
             return std::nullopt;
         }

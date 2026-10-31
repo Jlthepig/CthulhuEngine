@@ -48,14 +48,15 @@ std::optional<Model> ModelLoader::loadGltf(const std::string &path)
     if (asset.error() != fastgltf::Error::None)
     {
         Log::Print("FAILED TO PARSE GLTF " + path + " Error: " + std::string(fastgltf::getErrorMessage(asset.error())),
-                   "ModelLoader", LogType::LOG_ERROR);
+                   "ModelLoader",
+                   LogType::LOG_ERROR);
         return std::nullopt;
     }
 
     fastgltf::Asset &gltf = asset.get();
     // pass 1 load materials and textures
     std::unordered_map<int, int> imageToTexture; // from gltf texture index to our texture index in
-                                                 // model.textures
+    // model.textures
 
     for (size_t matIdx = 0; matIdx < gltf.materials.size(); ++matIdx)
     {
@@ -63,9 +64,10 @@ std::optional<Model> ModelLoader::loadGltf(const std::string &path)
         Material material;
 
         // base color factor default to white
-        material.baseColorFactor =
-            glm::vec4(gltfMaterial.pbrData.baseColorFactor[0], gltfMaterial.pbrData.baseColorFactor[1],
-                      gltfMaterial.pbrData.baseColorFactor[2], gltfMaterial.pbrData.baseColorFactor[3]);
+        material.baseColorFactor = glm::vec4(gltfMaterial.pbrData.baseColorFactor[0],
+                                             gltfMaterial.pbrData.baseColorFactor[1],
+                                             gltfMaterial.pbrData.baseColorFactor[2],
+                                             gltfMaterial.pbrData.baseColorFactor[3]);
 
         if (gltfMaterial.pbrData.baseColorTexture.has_value())
         {
@@ -101,7 +103,6 @@ std::optional<Model> ModelLoader::loadGltf(const std::string &path)
                                         using BT = std::decay_t<decltype(bufferSource)>;
                                         if constexpr (std::is_same_v<BT, fastgltf::sources::Array>)
                                         {
-
                                             const unsigned char *data = reinterpret_cast<const unsigned char *>(
                                                 bufferSource.bytes.data() + bufferView.byteOffset);
                                             newTexture.loadFromMemory(data, static_cast<int>(bufferView.byteLength));
@@ -143,7 +144,6 @@ std::optional<Model> ModelLoader::loadGltf(const std::string &path)
                 auto it = imageToTexture.find(imageIdx);
                 if (it != imageToTexture.end())
                 {
-
                     material.metallicRoughnessTextureIndex = it->second;
                 }
                 else
@@ -164,10 +164,10 @@ std::optional<Model> ModelLoader::loadGltf(const std::string &path)
                                         using BT = std::decay_t<decltype(bufferSource)>;
                                         if constexpr (std::is_same_v<BT, fastgltf::sources::Array>)
                                         {
-
                                             const unsigned char *data = reinterpret_cast<const unsigned char *>(
                                                 bufferSource.bytes.data() + bufferView.byteOffset);
-                                            newTexture.loadFromMemory(data, static_cast<int>(bufferView.byteLength),
+                                            newTexture.loadFromMemory(data,
+                                                                      static_cast<int>(bufferView.byteLength),
                                                                       false);
                                         }
                                     },
@@ -176,12 +176,14 @@ std::optional<Model> ModelLoader::loadGltf(const std::string &path)
 
                             else if constexpr (std::is_same_v<T, fastgltf::sources::URI>)
                             {
-                                Log::Print("METALLIC/ROUGHNESS URI - NOT SUPPORTED YET", "ModelLoader",
+                                Log::Print("METALLIC/ROUGHNESS URI - NOT SUPPORTED YET",
+                                           "ModelLoader",
                                            LogType::LOG_WARNING);
                             }
                             else
                             {
-                                Log::Print("METALLIC/ROUGHNESS TEXTURE FORMAT NOT HANDLED", "ModelLoader",
+                                Log::Print("METALLIC/ROUGHNESS TEXTURE FORMAT NOT HANDLED",
+                                           "ModelLoader",
                                            LogType::LOG_WARNING);
                             }
                         },
@@ -226,10 +228,10 @@ std::optional<Model> ModelLoader::loadGltf(const std::string &path)
                                         using BT = std::decay_t<decltype(bufferSource)>;
                                         if constexpr (std::is_same_v<BT, fastgltf::sources::Array>)
                                         {
-
                                             const unsigned char *data = reinterpret_cast<const unsigned char *>(
                                                 bufferSource.bytes.data() + bufferView.byteOffset);
-                                            newTexture.loadFromMemory(data, static_cast<int>(bufferView.byteLength),
+                                            newTexture.loadFromMemory(data,
+                                                                      static_cast<int>(bufferView.byteLength),
                                                                       false);
                                         }
                                     },
@@ -258,12 +260,11 @@ std::optional<Model> ModelLoader::loadGltf(const std::string &path)
         const glm::mat3 linearTransform(worldTransform);
         const float determinant = glm::determinant(linearTransform);
         const bool mirrored = determinant < 0.0f;
-        const glm::mat3 normalTransform = std::abs(determinant) > FLT_EPSILON
-                                              ? glm::transpose(glm::inverse(linearTransform))
-                                              : glm::mat3(1.0f);
+        const glm::mat3 normalTransform =
+            std::abs(determinant) > FLT_EPSILON ? glm::transpose(glm::inverse(linearTransform)) : glm::mat3(1.0f);
 
         for (auto &primitive : mesh.primitives)
-    {
+        {
             std::vector<float> vertexData;
             std::vector<unsigned int> indexdata;
             std::vector<Mesh::vertexAttribute> attributes;
@@ -356,9 +357,11 @@ std::optional<Model> ModelLoader::loadGltf(const std::string &path)
 
             auto *textureIt = primitive.findAttribute("TEXCOORD_0");
             auto *texture1It = primitive.findAttribute("TEXCOORD_1");
-            Log::Print("Has TEXCOORD_0: " + std::to_string(textureIt != primitive.attributes.end()), "ModelLoader",
+            Log::Print("Has TEXCOORD_0: " + std::to_string(textureIt != primitive.attributes.end()),
+                       "ModelLoader",
                        LogType::LOG_INFO);
-            Log::Print("Has TEXCOORD_1: " + std::to_string(texture1It != primitive.attributes.end()), "ModelLoader",
+            Log::Print("Has TEXCOORD_1: " + std::to_string(texture1It != primitive.attributes.end()),
+                       "ModelLoader",
                        LogType::LOG_INFO);
             if (textureIt != primitive.attributes.end())
             {
@@ -378,7 +381,8 @@ std::optional<Model> ModelLoader::loadGltf(const std::string &path)
                     }
                 }
 
-                fastgltf::iterateAccessorWithIndex<glm::vec2>(gltf, uvAccessor,
+                fastgltf::iterateAccessorWithIndex<glm::vec2>(gltf,
+                                                              uvAccessor,
                                                               [&](glm::vec2 uv, size_t index) {
                                                                   expanded[index * newFloats + currentFloats] = uv.x;
                                                                   expanded[index * newFloats + currentFloats + 1] =
@@ -397,8 +401,11 @@ std::optional<Model> ModelLoader::loadGltf(const std::string &path)
                 auto &indexAccessor = gltf.accessors[primitive.indicesAccessor.value()];
                 indexdata.resize(indexAccessor.count);
 
-                fastgltf::iterateAccessorWithIndex<unsigned int>(
-                    gltf, indexAccessor, [&](unsigned int idx, size_t index) { indexdata[index] = idx; });
+                fastgltf::iterateAccessorWithIndex<unsigned int>(gltf,
+                                                                 indexAccessor,
+                                                                 [&](unsigned int idx, size_t index) {
+                                                                     indexdata[index] = idx;
+                                                                 });
             }
             else
             {
@@ -447,24 +454,27 @@ std::optional<Model> ModelLoader::loadGltf(const std::string &path)
         return std::nullopt;
     }
 
-    fastgltf::iterateSceneNodes(gltf, sceneIndex, fastgltf::math::fmat4x4(),
-                                [&](fastgltf::Node &node, const fastgltf::math::fmat4x4 &nodeTransform) {
-        if (!node.meshIndex.has_value())
-        {
-            return;
-        }
-
-        glm::mat4 worldTransform(1.0f);
-        for (glm::length_t column = 0; column < 4; ++column)
-        {
-            for (glm::length_t row = 0; row < 4; ++row)
+    fastgltf::iterateSceneNodes(
+        gltf,
+        sceneIndex,
+        fastgltf::math::fmat4x4(),
+        [&](fastgltf::Node &node, const fastgltf::math::fmat4x4 &nodeTransform) {
+            if (!node.meshIndex.has_value())
             {
-                worldTransform[column][row] = nodeTransform[static_cast<std::size_t>(column)]
-                                                           [static_cast<std::size_t>(row)];
+                return;
             }
-        }
-        appendMesh(node.meshIndex.value(), worldTransform);
-    });
+
+            glm::mat4 worldTransform(1.0f);
+            for (glm::length_t column = 0; column < 4; ++column)
+            {
+                for (glm::length_t row = 0; row < 4; ++row)
+                {
+                    worldTransform[column][row] =
+                        nodeTransform[static_cast<std::size_t>(column)][static_cast<std::size_t>(row)];
+                }
+            }
+            appendMesh(node.meshIndex.value(), worldTransform);
+        });
 
     if (modelMin.x <= modelMax.x)
     {

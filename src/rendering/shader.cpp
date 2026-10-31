@@ -13,7 +13,8 @@ bool Shader::load(const std::string &vertexPath, const std::string &fragmentPath
 {
     if (isLoaded)
     {
-        Log::Print("SHADER IS ALREADY LOADED, DESTROY BEFORE RELOADING: " + vertexPath + " | " + fragmentPath, "Shader",
+        Log::Print("SHADER IS ALREADY LOADED, DESTROY BEFORE RELOADING: " + vertexPath + " | " + fragmentPath,
+                   "Shader",
                    LogType::LOG_WARNING);
         return false;
     }
@@ -24,7 +25,8 @@ bool Shader::load(const std::string &vertexPath, const std::string &fragmentPath
 
     if (vertexShaderSource.empty() || fragmentShaderSource.empty())
     {
-        Log::Print("SHADER SOURCE FILE IS EMPTY OR MISSING: " + vertexPath + " | " + fragmentPath, "Shader",
+        Log::Print("SHADER SOURCE FILE IS EMPTY OR MISSING: " + vertexPath + " | " + fragmentPath,
+                   "Shader",
                    LogType::LOG_ERROR);
         return false;
     }
@@ -88,7 +90,8 @@ bool Shader::load(const std::string &vertexPath, const std::string &fragmentPath
     glGetProgramiv(shaderProgram, GL_LINK_STATUS, &success);
     if (!success)
     {
-        Log::Print("SHADER PROGRAM LINKING FAILED: " + vertexPath + " | " + fragmentPath, "ShaderProgram",
+        Log::Print("SHADER PROGRAM LINKING FAILED: " + vertexPath + " | " + fragmentPath,
+                   "ShaderProgram",
                    LogType::LOG_ERROR);
         glGetProgramInfoLog(shaderProgram, 512, NULL, infoLog);
         printf("%s\n", infoLog);
@@ -104,7 +107,8 @@ bool Shader::load(const std::string &vertexPath, const std::string &fragmentPath
     else
     {
         Log::Print("SHADER PROGRAM LINKING SUCCESS ID: " + std::to_string(shaderProgram) + " (" + vertexPath + ")",
-                   "ShaderProgram", LogType::LOG_SUCCESS);
+                   "ShaderProgram",
+                   LogType::LOG_SUCCESS);
     }
 
     glDeleteShader(vertexShader);

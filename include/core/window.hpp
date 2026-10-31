@@ -4,8 +4,8 @@
 
 #include <glm.hpp>
 
-#include <glad.h>
 #include <GLFW/glfw3.h>
+#include <glad.h>
 
 using std::make_unique;
 using std::unique_ptr;
@@ -14,6 +14,7 @@ namespace Cthulhu::Scene
 {
 class Camera;
 }
+
 namespace Cthulhu::Core
 {
 enum class WindowMode
@@ -22,12 +23,14 @@ enum class WindowMode
     Borderless,
     ExclusiveFullscreen
 };
+
 struct WindowConfig
 {
     glm::vec2 resolution = glm::vec2(1920.0f, 1080.0f);
     WindowMode initialMode = WindowMode::Windowed;
     bool vSync = false; // Currently hardcoded to 0 (off) in window.cpp
 };
+
 class Window
 {
   public:

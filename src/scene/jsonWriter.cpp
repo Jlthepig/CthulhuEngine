@@ -1,5 +1,5 @@
-#include <fstream>
 #include <filesystem>
+#include <fstream>
 #include <iomanip>
 #include <limits>
 #include <sstream>
@@ -15,6 +15,7 @@
 
 using KalaHeaders::KalaLog::Log;
 using KalaHeaders::KalaLog::LogType;
+
 namespace Cthulhu::Scene
 {
 namespace
@@ -27,24 +28,24 @@ std::string escapeJson(const std::string &s)
     {
         switch (c)
         {
-        case '"':
-            out += "\\\"";
-            break;
-        case '\\':
-            out += "\\\\";
-            break;
-        case '\n':
-            out += "\\n";
-            break;
-        case '\t':
-            out += "\\t";
-            break;
-        case '\r':
-            out += "\\r";
-            break;
-        default:
-            if (static_cast<unsigned char>(c) >= 0x20)
-                out += c;
+            case '"':
+                out += "\\\"";
+                break;
+            case '\\':
+                out += "\\\\";
+                break;
+            case '\n':
+                out += "\\n";
+                break;
+            case '\t':
+                out += "\\t";
+                break;
+            case '\r':
+                out += "\\r";
+                break;
+            default:
+                if (static_cast<unsigned char>(c) >= 0x20)
+                    out += c;
         }
     }
     return out;
@@ -74,6 +75,7 @@ struct JsonWriter
         depth++;
         firstStack.push_back(true);
     }
+
     void endObject()
     {
         depth--;
@@ -81,12 +83,14 @@ struct JsonWriter
         oss << "}";
         firstStack.pop_back();
     }
+
     void beginArray()
     {
         oss << "[";
         depth++;
         firstStack.push_back(true);
     }
+
     void endArray()
     {
         depth--;
@@ -107,22 +111,27 @@ struct JsonWriter
         firstStack.back() = false;
         oss << "\"" << escapeJson(k) << "\": ";
     }
+
     void value(float v)
     {
         oss << std::setprecision(std::numeric_limits<float>::max_digits10) << v;
     }
+
     void value(std::size_t v)
     {
         oss << v;
     }
+
     void value(int v)
     {
         oss << v;
     }
+
     void value(bool b)
     {
         oss << (b ? "true" : "false");
     }
+
     void value(const std::string &s)
     {
         oss << "\"" << escapeJson(s) << "\"";
@@ -156,58 +165,58 @@ struct JsonWriter
     }
 };
 
-bool writeField(JsonWriter &w, const FieldDescriptor &field, const FieldValue &value,
+bool writeField(JsonWriter &w,
+                const FieldDescriptor &field,
+                const FieldValue &value,
                 const Assets::AssetRegistry &registry)
 {
     w.key(field.name);
 
     switch (field.type)
     {
-    case FieldType::Float:
-        w.value(std::get<float>(value));
-        return true;
-    case FieldType::Int:
-        w.value(std::get<int>(value));
-        return true;
-    case FieldType::Bool:
-        w.value(std::get<bool>(value));
-        return true;
-    case FieldType::Vec3:
-    case FieldType::Color:
-        w.vec3Value(std::get<glm::vec3>(value));
-        return true;
-    case FieldType::String:
-        w.value(std::get<std::string>(value));
-        return true;
-    case FieldType::Enum:
-    {
-        const int index = std::get<int>(value);
-        if (index < 0 || index >= static_cast<int>(field.enumNames.size()))
-        {
-            Log::Print("CANNOT SAVE ENUM VALUE OUT OF RANGE: " + field.name, "SceneWriter", LogType::LOG_ERROR);
-            w.value(std::string{});
-            return false;
+        case FieldType::Float:
+            w.value(std::get<float>(value));
+            return true;
+        case FieldType::Int:
+            w.value(std::get<int>(value));
+            return true;
+        case FieldType::Bool:
+            w.value(std::get<bool>(value));
+            return true;
+        case FieldType::Vec3:
+        case FieldType::Color:
+            w.vec3Value(std::get<glm::vec3>(value));
+            return true;
+        case FieldType::String:
+            w.value(std::get<std::string>(value));
+            return true;
+        case FieldType::Enum: {
+            const int index = std::get<int>(value);
+            if (index < 0 || index >= static_cast<int>(field.enumNames.size()))
+            {
+                Log::Print("CANNOT SAVE ENUM VALUE OUT OF RANGE: " + field.name, "SceneWriter", LogType::LOG_ERROR);
+                w.value(std::string{});
+                return false;
+            }
+            w.value(field.enumNames[static_cast<size_t>(index)]);
+            return true;
         }
-        w.value(field.enumNames[static_cast<size_t>(index)]);
-        return true;
-    }
-    case FieldType::AssetRef:
-    {
-        const auto &path = std::get<std::string>(value);
-        w.beginObject();
-        w.key("path");
-        w.value(path);
-        if (const auto *record = registry.findByPath(path))
-        {
-            w.key("id");
-            w.value(Assets::assetIdToString(record->id));
+        case FieldType::AssetRef: {
+            const auto &path = std::get<std::string>(value);
+            w.beginObject();
+            w.key("path");
+            w.value(path);
+            if (const auto *record = registry.findByPath(path))
+            {
+                w.key("id");
+                w.value(Assets::assetIdToString(record->id));
+            }
+            w.endObject();
+            return true;
         }
-        w.endObject();
-        return true;
-    }
-    case FieldType::EntityRef:
-        w.value(entityIdToString(std::get<EntityId>(value)));
-        return true;
+        case FieldType::EntityRef:
+            w.value(entityIdToString(std::get<EntityId>(value)));
+            return true;
     }
     return false;
 }

@@ -1,13 +1,13 @@
-#include <cstdarg>
 #include <cmath>
+#include <cstdarg>
 
-#include <Jolt/Jolt.h>
 #include <Jolt/Core/Core.h>
 #include <Jolt/Core/Factory.h>
 #include <Jolt/Core/IssueReporting.h>
 #include <Jolt/Core/JobSystemThreadPool.h>
 #include <Jolt/Core/Memory.h>
 #include <Jolt/Core/TempAllocator.h>
+#include <Jolt/Jolt.h>
 #include <Jolt/Math/Real.h>
 #include <Jolt/Physics/Body/Body.h>
 #include <Jolt/Physics/Body/BodyCreationSettings.h>
@@ -49,12 +49,14 @@ namespace ObjectLayers
 static constexpr JPH::ObjectLayer NON_MOVING = 0;
 static constexpr JPH::ObjectLayer MOVING = 1;
 } // namespace ObjectLayers
+
 namespace BroadPhaseLayers
 {
 static constexpr JPH::BroadPhaseLayer NON_MOVING(0);
 static constexpr JPH::BroadPhaseLayer MOVING(1);
 static constexpr JPH::uint NUM_LAYER(2);
 } // namespace BroadPhaseLayers
+
 class BPLayerInterfaceImpl final : public JPH::BroadPhaseLayerInterface
 {
   public:
@@ -62,6 +64,7 @@ class BPLayerInterfaceImpl final : public JPH::BroadPhaseLayerInterface
     {
         return BroadPhaseLayers::NUM_LAYER;
     }
+
     virtual JPH::BroadPhaseLayer GetBroadPhaseLayer(JPH::ObjectLayer layer) const override
     {
         if (layer == ObjectLayers::NON_MOVING)
@@ -93,13 +96,12 @@ class ObjLayerPairFilterImpl final : public JPH::ObjectLayerPairFilter
 };
 
 class ContactListenerImpl final : public JPH::ContactListener
-{
-};
+{};
 
 bool PhysicsWorld::init(const PhysicsConfig &config)
 {
-    if (!std::isfinite(config.fixedDeltaTime) || config.fixedDeltaTime <= 0.0f ||
-        !std::isfinite(config.maxDeltaTime) || config.maxDeltaTime < config.fixedDeltaTime)
+    if (!std::isfinite(config.fixedDeltaTime) || config.fixedDeltaTime <= 0.0f || !std::isfinite(config.maxDeltaTime) ||
+        config.maxDeltaTime < config.fixedDeltaTime)
     {
         Log::Print("INVALID PHYSICS TIMESTEP CONFIGURATION", "Physics", LogType::LOG_ERROR);
         return false;
@@ -121,8 +123,13 @@ bool PhysicsWorld::init(const PhysicsConfig &config)
     contactListener = new ContactListenerImpl();
 
     physicsSystem = new JPH::PhysicsSystem();
-    physicsSystem->Init(this->config.maxBodies, 0, this->config.maxBodyPairs, this->config.maxContactConstraints,
-                        *bpLayerInterface, *objVsBpFilter, *objLayerPairFilter);
+    physicsSystem->Init(this->config.maxBodies,
+                        0,
+                        this->config.maxBodyPairs,
+                        this->config.maxContactConstraints,
+                        *bpLayerInterface,
+                        *objVsBpFilter,
+                        *objLayerPairFilter);
 
     physicsSystem->SetContactListener(contactListener);
     Log::Print("Initialized Jolt Physics System", "Physics", LogType::LOG_SUCCESS);
@@ -161,8 +168,11 @@ std::optional<uint32_t> PhysicsWorld::addStaticBox(glm::vec3 position, glm::quat
     }
 
     JPH::Quat joltRotation(rotation.x, rotation.y, rotation.z, rotation.w);
-    JPH::BodyCreationSettings bodySettings(shapeResult.Get(), JPH::RVec3(position.x, position.y, position.z),
-                                           joltRotation, JPH::EMotionType::Static, ObjectLayers::NON_MOVING);
+    JPH::BodyCreationSettings bodySettings(shapeResult.Get(),
+                                           JPH::RVec3(position.x, position.y, position.z),
+                                           joltRotation,
+                                           JPH::EMotionType::Static,
+                                           ObjectLayers::NON_MOVING);
 
     JPH::BodyID bodyId = bodyInterface.CreateAndAddBody(bodySettings, JPH::EActivation::DontActivate);
     if (bodyId.IsInvalid())
@@ -172,7 +182,9 @@ std::optional<uint32_t> PhysicsWorld::addStaticBox(glm::vec3 position, glm::quat
     return bodyId.GetIndexAndSequenceNumber();
 }
 
-std::optional<uint32_t> PhysicsWorld::addDynamicBox(glm::vec3 position, glm::quat rotation, glm::vec3 halfExtent,
+std::optional<uint32_t> PhysicsWorld::addDynamicBox(glm::vec3 position,
+                                                    glm::quat rotation,
+                                                    glm::vec3 halfExtent,
                                                     float mass)
 {
     if (!physicsSystem)
@@ -188,8 +200,11 @@ std::optional<uint32_t> PhysicsWorld::addDynamicBox(glm::vec3 position, glm::qua
     }
 
     JPH::Quat joltRotation(rotation.x, rotation.y, rotation.z, rotation.w);
-    JPH::BodyCreationSettings bodySettings(shapeResult.Get(), JPH::RVec3(position.x, position.y, position.z),
-                                           joltRotation, JPH::EMotionType::Dynamic, ObjectLayers::MOVING);
+    JPH::BodyCreationSettings bodySettings(shapeResult.Get(),
+                                           JPH::RVec3(position.x, position.y, position.z),
+                                           joltRotation,
+                                           JPH::EMotionType::Dynamic,
+                                           ObjectLayers::MOVING);
 
     bodySettings.mOverrideMassProperties = JPH::EOverrideMassProperties::CalculateInertia;
     bodySettings.mMassPropertiesOverride.mMass = mass;

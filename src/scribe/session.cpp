@@ -18,9 +18,9 @@ namespace
 class RenameSceneCommand final : public Command
 {
   public:
-    explicit RenameSceneCommand(std::string requestedName) : newName(std::move(requestedName))
-    {
-    }
+    explicit RenameSceneCommand(std::string requestedName)
+        : newName(std::move(requestedName))
+    {}
 
     std::string_view name() const override
     {
@@ -69,9 +69,10 @@ class RenameSceneCommand final : public Command
 };
 } // namespace
 
-Session::Session(Engine &engine) : engine(engine), boundGeneration(engine.getSceneGeneration())
-{
-}
+Session::Session(Engine &engine)
+    : engine(engine),
+      boundGeneration(engine.getSceneGeneration())
+{}
 
 Scene::Scene *Session::syncScene()
 {
@@ -315,7 +316,9 @@ Result Session::renameEntity(Scene::EntityId id, std::string_view newName)
     return execute(Commands::renameEntity(id, std::string(newName)));
 }
 
-Result Session::reparentEntity(Scene::EntityId child, std::optional<Scene::EntityId> newParent, std::optional<std::size_t> siblingIndex)
+Result Session::reparentEntity(Scene::EntityId child,
+                               std::optional<Scene::EntityId> newParent,
+                               std::optional<std::size_t> siblingIndex)
 {
     return execute(Commands::reparentEntity(child, newParent, siblingIndex));
 }
@@ -330,7 +333,9 @@ Result Session::removeComponent(Scene::EntityId id, std::string_view component)
     return execute(Commands::removeComponent(id, std::string(component)));
 }
 
-Result Session::setField(Scene::EntityId id, std::string_view component, std::string_view field,
+Result Session::setField(Scene::EntityId id,
+                         std::string_view component,
+                         std::string_view field,
                          const Scene::FieldValue &value)
 {
     return execute(Commands::setField(id, std::string(component), std::string(field), value));

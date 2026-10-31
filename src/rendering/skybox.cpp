@@ -103,7 +103,10 @@ void Skybox::convertToCubemap()
     for (unsigned int i = 0; i < 6; i++)
     {
         equirectShader.setMat4("view", captureViews[i]);
-        glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_CUBE_MAP_POSITIVE_X + i, cubemapTexture,
+        glFramebufferTexture2D(GL_FRAMEBUFFER,
+                               GL_COLOR_ATTACHMENT0,
+                               GL_TEXTURE_CUBE_MAP_POSITIVE_X + i,
+                               cubemapTexture,
                                0);
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
         cubeMesh.draw();
@@ -186,7 +189,10 @@ void Skybox::generateIrradianceMap()
     for (unsigned int i = 0; i < 6; i++)
     {
         irradianceShader.setMat4("view", captureViews[i]);
-        glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_CUBE_MAP_POSITIVE_X + i, irradianceMap,
+        glFramebufferTexture2D(GL_FRAMEBUFFER,
+                               GL_COLOR_ATTACHMENT0,
+                               GL_TEXTURE_CUBE_MAP_POSITIVE_X + i,
+                               irradianceMap,
                                0);
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
         cubeMesh.draw();
@@ -203,23 +209,119 @@ void Skybox::renderCube()
     if (cubeVAO == 0)
     {
         float vertices[] = {// back face
-                            -1.0f, -1.0f, -1.0f, 1.0f, -1.0f, -1.0f, 1.0f, 1.0f, -1.0f, 1.0f, 1.0f, -1.0f, -1.0f, 1.0f,
-                            -1.0f, -1.0f, -1.0f, -1.0f,
+                            -1.0f,
+                            -1.0f,
+                            -1.0f,
+                            1.0f,
+                            -1.0f,
+                            -1.0f,
+                            1.0f,
+                            1.0f,
+                            -1.0f,
+                            1.0f,
+                            1.0f,
+                            -1.0f,
+                            -1.0f,
+                            1.0f,
+                            -1.0f,
+                            -1.0f,
+                            -1.0f,
+                            -1.0f,
                             // front face
-                            -1.0f, -1.0f, 1.0f, 1.0f, -1.0f, 1.0f, 1.0f, 1.0f, 1.0f, 1.0f, 1.0f, 1.0f, -1.0f, 1.0f,
-                            1.0f, -1.0f, -1.0f, 1.0f,
+                            -1.0f,
+                            -1.0f,
+                            1.0f,
+                            1.0f,
+                            -1.0f,
+                            1.0f,
+                            1.0f,
+                            1.0f,
+                            1.0f,
+                            1.0f,
+                            1.0f,
+                            1.0f,
+                            -1.0f,
+                            1.0f,
+                            1.0f,
+                            -1.0f,
+                            -1.0f,
+                            1.0f,
                             // left face
-                            -1.0f, 1.0f, 1.0f, -1.0f, 1.0f, -1.0f, -1.0f, -1.0f, -1.0f, -1.0f, -1.0f, -1.0f, -1.0f,
-                            -1.0f, 1.0f, -1.0f, 1.0f, 1.0f,
+                            -1.0f,
+                            1.0f,
+                            1.0f,
+                            -1.0f,
+                            1.0f,
+                            -1.0f,
+                            -1.0f,
+                            -1.0f,
+                            -1.0f,
+                            -1.0f,
+                            -1.0f,
+                            -1.0f,
+                            -1.0f,
+                            -1.0f,
+                            1.0f,
+                            -1.0f,
+                            1.0f,
+                            1.0f,
                             // right face
-                            1.0f, 1.0f, 1.0f, 1.0f, -1.0f, -1.0f, 1.0f, 1.0f, -1.0f, 1.0f, -1.0f, -1.0f, 1.0f, -1.0f,
-                            1.0f, 1.0f, 1.0f, 1.0f,
+                            1.0f,
+                            1.0f,
+                            1.0f,
+                            1.0f,
+                            -1.0f,
+                            -1.0f,
+                            1.0f,
+                            1.0f,
+                            -1.0f,
+                            1.0f,
+                            -1.0f,
+                            -1.0f,
+                            1.0f,
+                            -1.0f,
+                            1.0f,
+                            1.0f,
+                            1.0f,
+                            1.0f,
                             // bottom face
-                            -1.0f, -1.0f, -1.0f, 1.0f, -1.0f, -1.0f, 1.0f, -1.0f, 1.0f, 1.0f, -1.0f, 1.0f, -1.0f, -1.0f,
-                            1.0f, -1.0f, -1.0f, -1.0f,
+                            -1.0f,
+                            -1.0f,
+                            -1.0f,
+                            1.0f,
+                            -1.0f,
+                            -1.0f,
+                            1.0f,
+                            -1.0f,
+                            1.0f,
+                            1.0f,
+                            -1.0f,
+                            1.0f,
+                            -1.0f,
+                            -1.0f,
+                            1.0f,
+                            -1.0f,
+                            -1.0f,
+                            -1.0f,
                             // top face
-                            -1.0f, 1.0f, -1.0f, 1.0f, 1.0f, 1.0f, 1.0f, 1.0f, -1.0f, 1.0f, 1.0f, 1.0f, -1.0f, 1.0f,
-                            -1.0f, -1.0f, 1.0f, 1.0f};
+                            -1.0f,
+                            1.0f,
+                            -1.0f,
+                            1.0f,
+                            1.0f,
+                            1.0f,
+                            1.0f,
+                            1.0f,
+                            -1.0f,
+                            1.0f,
+                            1.0f,
+                            1.0f,
+                            -1.0f,
+                            1.0f,
+                            -1.0f,
+                            -1.0f,
+                            1.0f,
+                            1.0f};
         glGenVertexArrays(1, &cubeVAO);
         glGenBuffers(1, &cubeVBO);
         glBindVertexArray(cubeVAO);
@@ -237,7 +339,6 @@ void Skybox::renderCube()
 
 void Skybox::generatePrefilterMap()
 {
-
     glm::mat4 captureProjection = glm::perspective(glm::radians(90.0f), 1.0f, 0.1f, 10.0f);
     glm::mat4 captureViews[] = {
         glm::lookAt(glm::vec3(0.0f, 0.0f, 0.0f), glm::vec3(1.0f, 0.0f, 0.0f), glm::vec3(0.0f, -1.0f, 0.0f)),
@@ -293,8 +394,11 @@ void Skybox::generatePrefilterMap()
         {
             prefilterShader.setMat4("view",
                                     captureViews[i]); // Reuse your existing 6 views
-            glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_CUBE_MAP_POSITIVE_X + i,
-                                   prefilterMap, mip);
+            glFramebufferTexture2D(GL_FRAMEBUFFER,
+                                   GL_COLOR_ATTACHMENT0,
+                                   GL_TEXTURE_CUBE_MAP_POSITIVE_X + i,
+                                   prefilterMap,
+                                   mip);
             glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
             renderCube(); // Call your existing cube drawing function
@@ -303,7 +407,8 @@ void Skybox::generatePrefilterMap()
     glBindFramebuffer(GL_FRAMEBUFFER, 0);
     prefilterShader.destroy();
 
-    KalaHeaders::KalaLog::Log::Print("Pre-filtered Environment Map generated", "Skybox",
+    KalaHeaders::KalaLog::Log::Print("Pre-filtered Environment Map generated",
+                                     "Skybox",
                                      KalaHeaders::KalaLog::LogType::LOG_SUCCESS);
 }
 

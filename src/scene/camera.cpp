@@ -6,8 +6,8 @@
 #include <gtc/random.hpp>
 #include <trigonometric.hpp>
 
-#include <glad.h>
 #include <GLFW/glfw3.h>
+#include <glad.h>
 
 #include "camera.hpp"
 #include "input.hpp"
@@ -15,9 +15,11 @@
 
 using KalaHeaders::KalaLog::Log;
 using KalaHeaders::KalaLog::LogType;
+
 namespace Cthulhu::Scene
 {
 static std::vector<unique_ptr<Camera>> cameraContainer;
+
 Camera *Camera::init()
 {
     unique_ptr<Camera> camera = std::make_unique<Camera>();
@@ -48,7 +50,6 @@ void Camera::updateFrontVector()
 
 void Camera::processMouse(float xoffset, float yoffset)
 {
-
     xoffset *= sensitivity;
     yoffset *= sensitivity;
 
@@ -60,7 +61,7 @@ void Camera::processMouse(float xoffset, float yoffset)
 
 void Camera::addRecoil(float pitchKick, float yawSpread)
 {
-    currentRecoil.y += pitchKick;                              // kick cam up
+    currentRecoil.y += pitchKick; // kick cam up
     currentRecoil.x += glm::linearRand(-yawSpread, yawSpread); // horizontal sway
     currentRecoil.y = glm::min(currentRecoil.y,
                                15.0f); // caps recoil max 15 degrees upwards kick
@@ -69,7 +70,7 @@ void Camera::addRecoil(float pitchKick, float yawSpread)
 void Camera::updateRecoil(float deltaTime)
 {
     float recoveryFactor = glm::exp(-8.0f * deltaTime); // higher = snappier recovery lower = slower or heavier
-                                                        // recovery pistol = higher sniper rifle = lower
+    // recovery pistol = higher sniper rifle = lower
     currentRecoil *= recoveryFactor;
 
     if (glm::abs(currentRecoil.x) < 0.001f && glm::abs(currentRecoil.y) < 0.001f)

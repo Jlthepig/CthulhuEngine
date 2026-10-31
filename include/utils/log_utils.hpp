@@ -71,36 +71,36 @@ constexpr u8 CACHED_TAGS_LENGTH = 50;
 enum class LogType
 {
     LOG_VERBOSE, // Spammy, frequent log message for detailed logs, sent to stdout
-    LOG_INFO,    // General-purpose log message, sent to stdout
-    LOG_DEBUG,   // Debugging message, only appears in debug builds, sent to stdout
+    LOG_INFO, // General-purpose log message, sent to stdout
+    LOG_DEBUG, // Debugging message, only appears in debug builds, sent to stdout
     LOG_SUCCESS, // Confirmation that an operation succeeded, sent to stdout
     LOG_WARNING, // Non-critical issue that should be looked into, sent to stdout
-    LOG_ERROR    // Serious issue or failure, sent to stderr, always flushes
+    LOG_ERROR // Serious issue or failure, sent to stderr, always flushes
 };
 enum class TimeFormat : u8
 {
-    TIME_NONE = 0,          // No time stamp
-    TIME_DEFAULT = 1,       // Uses TIME_HMS_MS_US
-    TIME_HMS = 2,           // 23:59:59
-    TIME_HMS_MS = 3,        // 23:59:59:123
-    TIME_HMS_MS_US = 4,     // 23:59:59:123:456
-    TIME_12H = 5,           // 11:59:59 PM
-    TIME_ISO_8601 = 6,      // 23:59:59Z
-    TIME_FILENAME = 7,      // 23-59-59
-    TIME_FILENAME_MS = 8,   // 23-59-59-123
+    TIME_NONE = 0, // No time stamp
+    TIME_DEFAULT = 1, // Uses TIME_HMS_MS_US
+    TIME_HMS = 2, // 23:59:59
+    TIME_HMS_MS = 3, // 23:59:59:123
+    TIME_HMS_MS_US = 4, // 23:59:59:123:456
+    TIME_12H = 5, // 11:59:59 PM
+    TIME_ISO_8601 = 6, // 23:59:59Z
+    TIME_FILENAME = 7, // 23-59-59
+    TIME_FILENAME_MS = 8, // 23-59-59-123
     TIME_FILENAME_MS_US = 9 // 23-59-59-123-456
 };
 enum class DateFormat : u8
 {
-    DATE_NONE = 0,         // No date stamp
-    DATE_DEFAULT = 1,      // Uses DATE_NONE
-    DATE_DMY = 2,          // 31/12/2026
-    DATE_MDY = 3,          // 12/31/2026
-    DATE_ISO_8601 = 4,     // 2026-12-31
-    DATE_TEXT_DMY = 5,     // 31 December, 2026
-    DATE_TEXT_MDY = 6,     // December 31, 2026
+    DATE_NONE = 0, // No date stamp
+    DATE_DEFAULT = 1, // Uses DATE_NONE
+    DATE_DMY = 2, // 31/12/2026
+    DATE_MDY = 3, // 12/31/2026
+    DATE_ISO_8601 = 4, // 2026-12-31
+    DATE_TEXT_DMY = 5, // 31 December, 2026
+    DATE_TEXT_MDY = 6, // December 31, 2026
     DATE_FILENAME_DMY = 7, // 31-12-2026
-    DATE_FILENAME_MDY = 8  // 12-31-2026
+    DATE_FILENAME_MDY = 8 // 12-31-2026
 };
 
 struct CachedPrefix
@@ -136,7 +136,7 @@ class Log
         const auto us_since_epoch = duration_cast<microseconds>(now.time_since_epoch()).count();
 
         const auto in_time_t = system_clock::to_time_t(now);
-        const int us = us_since_epoch % 1000;          // true microsecond precision
+        const int us = us_since_epoch % 1000; // true microsecond precision
         const int ms = (us_since_epoch / 1000) % 1000; // sub-millisecond precision
 
 #ifdef _WIN32
@@ -150,92 +150,93 @@ class Log
         static thread_local char buffer[20]{};
         switch (timeFormat)
         {
-        case TimeFormat::TIME_HMS: {
-            strftime(buffer, sizeof(buffer), "%H:%M:%S", &cachedLocal);
+            case TimeFormat::TIME_HMS: {
+                strftime(buffer, sizeof(buffer), "%H:%M:%S", &cachedLocal);
 
-            break;
-        }
-        case TimeFormat::TIME_HMS_MS: {
-            char tmp[20]{};
-            size_t length = strftime(tmp, sizeof(tmp), "%H:%M:%S", &cachedLocal);
+                break;
+            }
+            case TimeFormat::TIME_HMS_MS: {
+                char tmp[20]{};
+                size_t length = strftime(tmp, sizeof(tmp), "%H:%M:%S", &cachedLocal);
 
-            memcpy(buffer, tmp, length);
-            buffer[length++] = ':';
-            buffer[length++] = '0' + (ms / 100) % 10;
-            buffer[length++] = '0' + (ms / 10) % 10;
-            buffer[length++] = '0' + (ms % 10);
-            buffer[length] = '\0';
+                memcpy(buffer, tmp, length);
+                buffer[length++] = ':';
+                buffer[length++] = '0' + (ms / 100) % 10;
+                buffer[length++] = '0' + (ms / 10) % 10;
+                buffer[length++] = '0' + (ms % 10);
+                buffer[length] = '\0';
 
-            break;
-        }
-        case TimeFormat::TIME_HMS_MS_US: {
-            char tmp[20]{};
-            size_t length = strftime(tmp, sizeof(tmp), "%H:%M:%S", &cachedLocal);
+                break;
+            }
+            case TimeFormat::TIME_HMS_MS_US: {
+                char tmp[20]{};
+                size_t length = strftime(tmp, sizeof(tmp), "%H:%M:%S", &cachedLocal);
 
-            memcpy(buffer, tmp, length);
-            buffer[length++] = ':';
-            buffer[length++] = '0' + (ms / 100) % 10;
-            buffer[length++] = '0' + (ms / 10) % 10;
-            buffer[length++] = '0' + (ms % 10);
-            buffer[length++] = ':';
-            buffer[length++] = '0' + (us / 100) % 10;
-            buffer[length++] = '0' + (us / 10) % 10;
-            buffer[length++] = '0' + (us % 10);
-            buffer[length] = '\0';
+                memcpy(buffer, tmp, length);
+                buffer[length++] = ':';
+                buffer[length++] = '0' + (ms / 100) % 10;
+                buffer[length++] = '0' + (ms / 10) % 10;
+                buffer[length++] = '0' + (ms % 10);
+                buffer[length++] = ':';
+                buffer[length++] = '0' + (us / 100) % 10;
+                buffer[length++] = '0' + (us / 10) % 10;
+                buffer[length++] = '0' + (us % 10);
+                buffer[length] = '\0';
 
-            break;
-        }
-        case TimeFormat::TIME_12H: {
-            strftime(buffer, sizeof(buffer), "%I:%M:%S %p", &cachedLocal);
+                break;
+            }
+            case TimeFormat::TIME_12H: {
+                strftime(buffer, sizeof(buffer), "%I:%M:%S %p", &cachedLocal);
 
-            break;
-        }
-        case TimeFormat::TIME_ISO_8601: {
-            strftime(buffer, sizeof(buffer), "%H:%M:%SZ", &cachedUTC);
+                break;
+            }
+            case TimeFormat::TIME_ISO_8601: {
+                strftime(buffer, sizeof(buffer), "%H:%M:%SZ", &cachedUTC);
 
-            break;
-        }
-        case TimeFormat::TIME_FILENAME: {
-            strftime(buffer, sizeof(buffer), "%H-%M-%S", &cachedLocal);
+                break;
+            }
+            case TimeFormat::TIME_FILENAME: {
+                strftime(buffer, sizeof(buffer), "%H-%M-%S", &cachedLocal);
 
-            break;
-        }
-        case TimeFormat::TIME_FILENAME_MS: {
-            char tmp[20]{};
-            size_t length = strftime(tmp, sizeof(tmp), "%H-%M-%S", &cachedLocal);
+                break;
+            }
+            case TimeFormat::TIME_FILENAME_MS: {
+                char tmp[20]{};
+                size_t length = strftime(tmp, sizeof(tmp), "%H-%M-%S", &cachedLocal);
 
-            memcpy(buffer, tmp, length);
-            buffer[length++] = '-';
-            buffer[length++] = '0' + (ms / 100) % 10;
-            buffer[length++] = '0' + (ms / 10) % 10;
-            buffer[length++] = '0' + (ms % 10);
-            buffer[length] = '\0';
+                memcpy(buffer, tmp, length);
+                buffer[length++] = '-';
+                buffer[length++] = '0' + (ms / 100) % 10;
+                buffer[length++] = '0' + (ms / 10) % 10;
+                buffer[length++] = '0' + (ms % 10);
+                buffer[length] = '\0';
 
-            break;
-        }
-        case TimeFormat::TIME_FILENAME_MS_US: {
-            char tmp[20]{};
-            size_t length = strftime(tmp, sizeof(tmp), "%H-%M-%S", &cachedLocal);
+                break;
+            }
+            case TimeFormat::TIME_FILENAME_MS_US: {
+                char tmp[20]{};
+                size_t length = strftime(tmp, sizeof(tmp), "%H-%M-%S", &cachedLocal);
 
-            memcpy(buffer, tmp, length);
-            buffer[length++] = '-';
-            buffer[length++] = '0' + (ms / 100) % 10;
-            buffer[length++] = '0' + (ms / 10) % 10;
-            buffer[length++] = '0' + (ms % 10);
-            buffer[length++] = '-';
-            buffer[length++] = '0' + (us / 100) % 10;
-            buffer[length++] = '0' + (us / 10) % 10;
-            buffer[length++] = '0' + (us % 10);
-            buffer[length] = '\0';
+                memcpy(buffer, tmp, length);
+                buffer[length++] = '-';
+                buffer[length++] = '0' + (ms / 100) % 10;
+                buffer[length++] = '0' + (ms / 10) % 10;
+                buffer[length++] = '0' + (ms % 10);
+                buffer[length++] = '-';
+                buffer[length++] = '0' + (us / 100) % 10;
+                buffer[length++] = '0' + (us / 10) % 10;
+                buffer[length++] = '0' + (us % 10);
+                buffer[length] = '\0';
 
-            break;
-        }
-        default:
-            return empty;
+                break;
+            }
+            default:
+                return empty;
         }
 
         return string_view(buffer);
     }
+
     // Returns current date in chosen or default format
     static inline string_view GetDate(DateFormat dateFormat = DateFormat::DATE_DEFAULT)
     {
@@ -272,29 +273,29 @@ class Log
         char buffer[64]{};
         switch (dateFormat)
         {
-        case DateFormat::DATE_DMY:
-            strftime(buffer, sizeof(buffer), "%d/%m/%Y", &cachedLocal);
-            break;
-        case DateFormat::DATE_MDY:
-            strftime(buffer, sizeof(buffer), "%m/%d/%Y", &cachedLocal);
-            break;
-        case DateFormat::DATE_ISO_8601:
-            strftime(buffer, sizeof(buffer), "%Y-%m-%d", &cachedLocal);
-            break;
-        case DateFormat::DATE_TEXT_DMY:
-            strftime(buffer, sizeof(buffer), "%d %B, %Y", &cachedLocal);
-            break;
-        case DateFormat::DATE_TEXT_MDY:
-            strftime(buffer, sizeof(buffer), "%B %d, %Y", &cachedLocal);
-            break;
-        case DateFormat::DATE_FILENAME_DMY:
-            strftime(buffer, sizeof(buffer), "%d-%m-%Y", &cachedLocal);
-            break;
-        case DateFormat::DATE_FILENAME_MDY:
-            strftime(buffer, sizeof(buffer), "%m-%d-%Y", &cachedLocal);
-            break;
-        default:
-            return empty;
+            case DateFormat::DATE_DMY:
+                strftime(buffer, sizeof(buffer), "%d/%m/%Y", &cachedLocal);
+                break;
+            case DateFormat::DATE_MDY:
+                strftime(buffer, sizeof(buffer), "%m/%d/%Y", &cachedLocal);
+                break;
+            case DateFormat::DATE_ISO_8601:
+                strftime(buffer, sizeof(buffer), "%Y-%m-%d", &cachedLocal);
+                break;
+            case DateFormat::DATE_TEXT_DMY:
+                strftime(buffer, sizeof(buffer), "%d %B, %Y", &cachedLocal);
+                break;
+            case DateFormat::DATE_TEXT_MDY:
+                strftime(buffer, sizeof(buffer), "%B %d, %Y", &cachedLocal);
+                break;
+            case DateFormat::DATE_FILENAME_DMY:
+                strftime(buffer, sizeof(buffer), "%d-%m-%Y", &cachedLocal);
+                break;
+            case DateFormat::DATE_FILENAME_MDY:
+                strftime(buffer, sizeof(buffer), "%m-%d-%Y", &cachedLocal);
+                break;
+            default:
+                return empty;
         }
 
         cached[idx] = buffer;
@@ -310,8 +311,12 @@ class Log
     //   - flush: set to true for crash logs, diagnostics, assertion failures
     //   - timeFormat: optional time stamp
     //   - dateFormat: optional date stamp
-    static inline void Print(string_view message, string_view target, LogType type, unsigned int indentation = 0,
-                             bool flush = false, TimeFormat timeFormat = TimeFormat::TIME_DEFAULT,
+    static inline void Print(string_view message,
+                             string_view target,
+                             LogType type,
+                             unsigned int indentation = 0,
+                             bool flush = false,
+                             TimeFormat timeFormat = TimeFormat::TIME_DEFAULT,
                              DateFormat dateFormat = DateFormat::DATE_DEFAULT)
     {
 #ifndef KDEBUG
@@ -441,11 +446,11 @@ class Log
 
     static constexpr const char *LogTypeColor[] = {
         "\x1b[90m", // LOG_VERBOSE  dark grey
-        "",         // LOG_INFO     default (no code)
+        "", // LOG_INFO     default (no code)
         "\x1b[36m", // LOG_DEBUG    cyan
         "\x1b[32m", // LOG_SUCCESS  green
         "\x1b[33m", // LOG_WARNING  yellow
-        "\x1b[91m"  // LOG_ERROR    bright red
+        "\x1b[91m" // LOG_ERROR    bright red
     };
     static constexpr size_t LogTypeColorLength[] = {
         7, //"\x1b[90m"
@@ -453,7 +458,7 @@ class Log
         7, //"\x1b[36m"
         7, //"\x1b[32m"
         7, //"\x1b[33m"
-        7  //"\x1b[91m"
+        7 //"\x1b[91m"
     };
 
     static inline string TrimUTF8(string_view s)
@@ -484,7 +489,10 @@ class Log
 
     static constexpr const char *LogTypeTag[] = {"VERBOSE | ",
                                                  "", // LOG_INFO
-                                                 "DEBUG | ",   "SUCCESS | ", "WARNING | ", "ERROR | "};
+                                                 "DEBUG | ",
+                                                 "SUCCESS | ",
+                                                 "WARNING | ",
+                                                 "ERROR | "};
     static constexpr array<size_t, 6> LogTypeTagLength = {10, 0, 8, 10, 10, 8};
 
     static inline string_view GetCachedPrefix(LogType type, string_view target)
@@ -554,6 +562,7 @@ class Log
         thread_local size_t val{};
         return val;
     }
+
     static inline size_t &prefixClock()
     {
         thread_local size_t val{};

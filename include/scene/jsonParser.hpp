@@ -8,6 +8,7 @@
 #include "assetId.hpp"
 #include "entityId.hpp"
 #include "light.hpp"
+
 namespace Cthulhu::Scene
 {
 
@@ -50,6 +51,7 @@ struct ParsedScene
     Rendering::DirectionalLight directionalLight;
     std::vector<Rendering::PointLight> pointLights;
 };
+
 class JsonParser
 {
   public:

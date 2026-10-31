@@ -13,9 +13,9 @@ namespace Cthulhu::Scribe
 class History
 {
   public:
-    explicit History(std::size_t maxDepth = 512) : maxDepth(maxDepth)
-    {
-    }
+    explicit History(std::size_t maxDepth = 512)
+        : maxDepth(maxDepth)
+    {}
 
     void record(std::unique_ptr<Command> command);
 

@@ -4,6 +4,7 @@
 #include <filesystem>
 
 #include "shader.hpp"
+
 namespace Cthulhu::Rendering
 {
 class PointLightShadowMap
@@ -20,6 +21,7 @@ class PointLightShadowMap
     {
         return depthCubeMapArray;
     }
+
     Shader &getDepthShader()
     {
         return depthShader;

@@ -68,11 +68,15 @@ class Session
     Result deleteEntity(Scene::EntityId id);
     EntityResult duplicateEntity(Scene::EntityId id);
     Result renameEntity(Scene::EntityId id, std::string_view newName);
-    Result reparentEntity(Scene::EntityId child, std::optional<Scene::EntityId> newParent, std::optional<std::size_t> siblingIndex = std::nullopt);
+    Result reparentEntity(Scene::EntityId child,
+                          std::optional<Scene::EntityId> newParent,
+                          std::optional<std::size_t> siblingIndex = std::nullopt);
     Result addComponent(Scene::EntityId id, std::string_view component);
     Result removeComponent(Scene::EntityId id, std::string_view component);
 
-    Result setField(Scene::EntityId id, std::string_view component, std::string_view field,
+    Result setField(Scene::EntityId id,
+                    std::string_view component,
+                    std::string_view field,
                     const Scene::FieldValue &value);
 
     // << assets applied immediately never undoable >>

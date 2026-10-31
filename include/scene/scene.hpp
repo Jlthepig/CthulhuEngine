@@ -43,6 +43,7 @@ struct SceneSnapshot
     std::vector<Rendering::PointLight> pointLights;
     std::vector<EntitySnapshot> entities;
 };
+
 class Scene
 {
   public:
@@ -58,14 +59,17 @@ class Scene
     {
         return resourcePath;
     }
+
     [[nodiscard]] bool hasResourcePath() const noexcept
     {
         return resourcePath.has_value();
     }
+
     [[nodiscard]] bool isDirty() const noexcept
     {
         return dirty;
     }
+
     [[nodiscard]] bool needsSave() const noexcept
     {
         return dirty || !resourcePath.has_value();
@@ -75,6 +79,7 @@ class Scene
     {
         dirty = true;
     }
+
     void markClean() noexcept
     {
         dirty = false;
@@ -84,6 +89,7 @@ class Scene
     {
         resourcePath = std::move(path);
     }
+
     void clearResourcePath() noexcept
     {
         resourcePath.reset();
@@ -94,6 +100,7 @@ class Scene
     {
         return world;
     }
+
     [[nodiscard]] const flecs::world &getWorld() const noexcept
     {
         return world;
@@ -119,14 +126,13 @@ class Scene
     bool setParent(EntityId childId, EntityId parentId);
     bool clearParent(EntityId childId);
 
-    [[nodiscard]] std::optional<EntityId> getParent(EntityId childId) const;  
+    [[nodiscard]] std::optional<EntityId> getParent(EntityId childId) const;
     [[nodiscard]] std::vector<EntityId> getChildren(EntityId parentId) const;
     [[nodiscard]] std::vector<EntityId> getRootEntities() const;
     [[nodiscard]] std::optional<std::size_t> getSiblingOrder(EntityId childId) const;
     [[nodiscard]] bool hasCustomSiblingOrder(std::optional<EntityId> parentId) const;
     bool setSiblingOrder(EntityId childId, std::size_t order);
     bool clearCustomSiblingOrder(std::optional<EntityId> parentId);
-
 
     [[nodiscard]] std::optional<EntityId> duplicateEntity(EntityId sourceId);
 
@@ -136,7 +142,7 @@ class Scene
 
     [[nodiscard]] SceneSnapshot captureScene() const;
 
-    bool restoreScene(const SceneSnapshot& snapshot);
+    bool restoreScene(const SceneSnapshot &snapshot);
 
     [[nodiscard]] std::vector<AssetReference> getAssetReferences() const;
 
@@ -151,6 +157,7 @@ class Scene
         directionalLight = light;
         markDirty();
     }
+
     void addPointLight(const Rendering::PointLight &light)
     {
         pointLights.push_back(light);
@@ -161,6 +168,7 @@ class Scene
     {
         return directionalLight;
     }
+
     [[nodiscard]] const std::vector<Rendering::PointLight> &getPointLights() const noexcept
     {
         return pointLights;
@@ -177,6 +185,7 @@ class Scene
         name = n;
         markDirty();
     }
+
     [[nodiscard]] const std::string &getName() const noexcept
     {
         return name;
@@ -206,10 +215,9 @@ class Scene
     [[nodiscard]]
     EntityId generateUniqueEntityId() const;
 
-    void sortSiblings(std::vector<EntityId>& siblings, EntityId parentKey) const;
+    void sortSiblings(std::vector<EntityId> &siblings, EntityId parentKey) const;
     void appendToCustomSiblingGroup(EntityId parentKey, EntityId childId);
     void removeFromCustomSiblingGroup(EntityId parentKey, EntityId childId);
     void removeEntityFromSiblingOrders(EntityId id);
-
 };
 } // namespace Cthulhu::Scene

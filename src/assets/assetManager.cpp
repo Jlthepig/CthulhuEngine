@@ -189,7 +189,8 @@ std::optional<std::string> AssetManager::makeAssetKey(std::string_view resourceP
     {
         Log::Print("EXPECTED " + std::string(assetTypeName(expected)) + " ASSET, GOT " +
                        std::string(assetTypeName(type)) + ": " + *key,
-                   "AssetManager", LogType::LOG_ERROR);
+                   "AssetManager",
+                   LogType::LOG_ERROR);
         return std::nullopt;
     }
 
@@ -241,7 +242,8 @@ AudioClipHandle AssetManager::loadAudioClip(std::string_view resourcePath)
     }
     audioClips[slot.index] = clip;
 
-    Log::Print("Loaded audio clip: " + *key + (settings.stream ? " (streamed)" : ""), "AssetManager",
+    Log::Print("Loaded audio clip: " + *key + (settings.stream ? " (streamed)" : ""),
+               "AssetManager",
                LogType::LOG_INFO);
     return AudioClipHandle{slot.index, slot.generation};
 }

@@ -1,18 +1,22 @@
 #pragma once
 
 #include <glm.hpp>
+
 namespace flecs
 {
 struct entity;
 }
+
 namespace JPH
 {
 class CharacterVirtual;
 }
+
 namespace Cthulhu::Physics
 {
 class PhysicsWorld;
 }
+
 namespace Cthulhu::Physics
 {
 

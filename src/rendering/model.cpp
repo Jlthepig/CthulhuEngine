@@ -1,5 +1,5 @@
-
 #include "model.hpp"
+
 namespace Cthulhu::Rendering
 {
 void Model::draw()

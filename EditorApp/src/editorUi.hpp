@@ -9,48 +9,48 @@ struct GLFWwindow;
 
 namespace Cthulhu::Editor
 {
-    struct PixelRect
+struct PixelRect
+{
+    int x = 0;
+    int y = 0;
+    int width = 0;
+    int height = 0;
+};
+
+class EditorUi
+{
+  public:
+    bool init(GLFWwindow *window, const std::filesystem::path &resourceRoot);
+    void shutdown();
+
+    void beginFrame(float deltaTime);
+    void endFrame();
+
+    [[nodiscard]] octogui::Context &context() noexcept
     {
-        int x = 0;
-        int y = 0;
-        int width = 0;
-        int height = 0;
-    };
-    class EditorUi
+        return ctx;
+    }
+
+    [[nodiscard]] bool wantsMouse() const noexcept
     {
-        public:
-            bool init(GLFWwindow* window, const std::filesystem::path &resourceRoot);
-            void shutdown();
+        return mouseOverUi;
+    }
 
-            void beginFrame(float deltaTime);
-            void endFrame();
+    [[nodiscard]] bool wantsKeyboard() const noexcept;
 
-            [[nodiscard]] octogui::Context &context() noexcept
-            {
-                return ctx;
-            }
+    void setSceneNode(octogui::NodeHandle node) noexcept
+    {
+        sceneNode = node;
+    }
 
-            [[nodiscard]] bool wantsMouse() const noexcept
-            {
-                return mouseOverUi;
-            }
+    [[nodiscard]] PixelRect pixelRect(octogui::NodeHandle node) const;
 
-            [[nodiscard]] bool wantsKeyboard() const noexcept;
-
-            void setSceneNode(octogui::NodeHandle node) noexcept
-            {
-                sceneNode = node;
-            }
-
-            [[nodiscard]] PixelRect pixelRect(octogui::NodeHandle node) const;
-
-        private:
-            GLFWwindow* window = nullptr;
-            octogui::Context ctx;
-            octogui::OpenGLBackend renderer;
-            octogui::NodeHandle sceneNode{};
-            bool mouseOverUi = false;
-            bool initialized = false;
-
-    };
-}
+  private:
+    GLFWwindow *window = nullptr;
+    octogui::Context ctx;
+    octogui::OpenGLBackend renderer;
+    octogui::NodeHandle sceneNode{};
+    bool mouseOverUi = false;
+    bool initialized = false;
+};
+} // namespace Cthulhu::Editor

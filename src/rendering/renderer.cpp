@@ -15,6 +15,7 @@
 
 using KalaHeaders::KalaLog::Log;
 using KalaHeaders::KalaLog::LogType;
+
 namespace Cthulhu::Rendering
 {
 static_assert(std::is_standard_layout_v<OverlayVertex>);
@@ -73,7 +74,7 @@ void Renderer::init(GLFWwindow *window, Scene::Camera *camera, const RenderConfi
     glBindTexture(GL_TEXTURE_2D, 0);
 
     basicShader.use();
-    basicShader.setInt("uTexture", 0);   // diffuse
+    basicShader.setInt("uTexture", 0); // diffuse
     basicShader.setInt("uShadowMap", 1); // directional shadow
     basicShader.setInt("uPointShadowMaps", 2);
     basicShader.setInt("uMetallicRoughnessTexture", 6);
@@ -109,7 +110,22 @@ void Renderer::init(GLFWwindow *window, Scene::Camera *camera, const RenderConfi
 
     float quadVertices[] = {
         // positions        // texcoords
-        -1.0f, 1.0f, 0.0f, 1.0f, -1.0f, -1.0f, 0.0f, 0.0f, 1.0f, 1.0f, 1.0f, 1.0f, 1.0f, -1.0f, 1.0f, 0.0f,
+        -1.0f,
+        1.0f,
+        0.0f,
+        1.0f,
+        -1.0f,
+        -1.0f,
+        0.0f,
+        0.0f,
+        1.0f,
+        1.0f,
+        1.0f,
+        1.0f,
+        1.0f,
+        -1.0f,
+        1.0f,
+        0.0f,
     };
     unsigned int quadVAO, quadVBO;
     glGenVertexArrays(1, &quadVAO);
@@ -146,9 +162,7 @@ void Renderer::init(GLFWwindow *window, Scene::Camera *camera, const RenderConfi
 
     glBindVertexArray(0);
 
-    if (overlayShader.load(
-            enginePath("shaders/overlay.vertex"),
-            enginePath("shaders/overlay.fragment")))
+    if (overlayShader.load(enginePath("shaders/overlay.vertex"), enginePath("shaders/overlay.fragment")))
     {
         glGenVertexArrays(1, &overlayVAO);
         glGenBuffers(1, &overlayVBO);
@@ -156,15 +170,19 @@ void Renderer::init(GLFWwindow *window, Scene::Camera *camera, const RenderConfi
         glBindBuffer(GL_ARRAY_BUFFER, overlayVBO);
 
         glEnableVertexAttribArray(0);
-        glVertexAttribPointer(
-            0, 3, GL_FLOAT, GL_FALSE,
-            static_cast<GLsizei>(sizeof(OverlayVertex)),
-            reinterpret_cast<const void *>(offsetof(OverlayVertex, position)));
+        glVertexAttribPointer(0,
+                              3,
+                              GL_FLOAT,
+                              GL_FALSE,
+                              static_cast<GLsizei>(sizeof(OverlayVertex)),
+                              reinterpret_cast<const void *>(offsetof(OverlayVertex, position)));
         glEnableVertexAttribArray(1);
-        glVertexAttribPointer(
-            1, 4, GL_FLOAT, GL_FALSE,
-            static_cast<GLsizei>(sizeof(OverlayVertex)),
-            reinterpret_cast<const void *>(offsetof(OverlayVertex, color)));
+        glVertexAttribPointer(1,
+                              4,
+                              GL_FLOAT,
+                              GL_FALSE,
+                              static_cast<GLsizei>(sizeof(OverlayVertex)),
+                              reinterpret_cast<const void *>(offsetof(OverlayVertex, color)));
 
         glBindVertexArray(0);
         glBindBuffer(GL_ARRAY_BUFFER, 0);
@@ -255,10 +273,9 @@ void Renderer::drawOverlayTriangles(std::span<const OverlayVertex> vertices)
     if (vertices.empty() || overlayVAO == 0)
         return;
 
-    const std::size_t maximum = std::min(
-        static_cast<std::size_t>(std::numeric_limits<GLsizei>::max()),
-        static_cast<std::size_t>(std::numeric_limits<GLsizeiptr>::max()) /
-            sizeof(OverlayVertex));
+    const std::size_t maximum =
+        std::min(static_cast<std::size_t>(std::numeric_limits<GLsizei>::max()),
+                 static_cast<std::size_t>(std::numeric_limits<GLsizeiptr>::max()) / sizeof(OverlayVertex));
     if (vertices.size() % 3 != 0 || vertices.size() > maximum)
     {
         Log::Print("Invalid overlay triangle batch", "Renderer", LogType::LOG_ERROR);
@@ -274,8 +291,7 @@ void Renderer::drawOverlayTriangles(std::span<const OverlayVertex> vertices)
     glDisable(GL_STENCIL_TEST);
     glEnable(GL_BLEND);
     glBlendEquation(GL_FUNC_ADD);
-    glBlendFuncSeparate(
-        GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA, GL_ONE, GL_ONE_MINUS_SRC_ALPHA);
+    glBlendFuncSeparate(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA, GL_ONE, GL_ONE_MINUS_SRC_ALPHA);
 
     overlayShader.use();
     overlayShader.setMat4("viewProjection", projection * view);
@@ -296,8 +312,12 @@ void Renderer::drawOverlayTriangles(std::span<const OverlayVertex> vertices)
     glEnable(GL_DEPTH_TEST);
 }
 
-void Renderer::render(unsigned int width, unsigned int height, float deltaTime,
-                      const std::vector<Renderable> &renderables, int destX, int destY,
+void Renderer::render(unsigned int width,
+                      unsigned int height,
+                      float deltaTime,
+                      const std::vector<Renderable> &renderables,
+                      int destX,
+                      int destY,
                       std::span<const OverlayVertex> overlayVertices)
 {
     if (width == 0 || height == 0)
@@ -313,17 +333,22 @@ void Renderer::render(unsigned int width, unsigned int height, float deltaTime,
 
     if (camera != nullptr)
     {
-        projection = glm::perspective(glm::radians(camera->getFov()), (float)width / (float)height, config.nearPlane, config.farPlane);
+        projection = glm::perspective(glm::radians(camera->getFov()),
+                                      (float)width / (float)height,
+                                      config.nearPlane,
+                                      config.farPlane);
         view = camera->getViewMatrix();
     }
 
     frustum.extractFromMatrix(projection * view);
 
-    const std::size_t activePointLightCount = std::min(
-        pointLights.size(), std::min(maxPointLightCount, static_cast<std::size_t>(std::numeric_limits<int>::max())));
+    const std::size_t activePointLightCount =
+        std::min(pointLights.size(),
+                 std::min(maxPointLightCount, static_cast<std::size_t>(std::numeric_limits<int>::max())));
     if (pointLights.size() > activePointLightCount && !pointLightLimitWarningLogged)
     {
-        Log::Print("POINT LIGHT COUNT EXCEEDS GPU STORAGE CAPACITY; EXTRA LIGHTS ARE IGNORED", "Renderer",
+        Log::Print("POINT LIGHT COUNT EXCEEDS GPU STORAGE CAPACITY; EXTRA LIGHTS ARE IGNORED",
+                   "Renderer",
                    LogType::LOG_WARNING);
         pointLightLimitWarningLogged = true;
     }
@@ -356,7 +381,8 @@ void Renderer::render(unsigned int width, unsigned int height, float deltaTime,
     const std::size_t shadowCasters = pointShadowMap.ensureCapacity(activePointLightCount);
     if (shadowCasters < activePointLightCount && !pointShadowLimitWarningLogged)
     {
-        Log::Print("POINT SHADOW ARRAY CAPACITY EXCEEDED; REMAINING POINT LIGHTS WILL BE UNSHADOWED", "Renderer",
+        Log::Print("POINT SHADOW ARRAY CAPACITY EXCEEDED; REMAINING POINT LIGHTS WILL BE UNSHADOWED",
+                   "Renderer",
                    LogType::LOG_WARNING);
         pointShadowLimitWarningLogged = true;
     }
@@ -542,12 +568,11 @@ void Renderer::render(unsigned int width, unsigned int height, float deltaTime,
         outlineShader.use();
         outlineShader.setVec3("outlineColor", glm::vec3(1.0f, 0.45f, 0.0f));
 
-        const auto drawSelected = [&]()
-        {
+        const auto drawSelected = [&]() {
             for (const auto &renderable : renderables)
             {
-                if (std::find(outlineTargets.begin(), outlineTargets.end(),
-                              renderable.entityId) == outlineTargets.end())
+                if (std::find(outlineTargets.begin(), outlineTargets.end(), renderable.entityId) ==
+                    outlineTargets.end())
                     continue;
 
                 outlineShader.setMat4("mvp", projection * view * renderable.modelMatrix);
@@ -556,7 +581,7 @@ void Renderer::render(unsigned int width, unsigned int height, float deltaTime,
                     mesh.draw();
             }
         };
-        
+
         glStencilFunc(GL_ALWAYS, 1, 0xFF);
         glStencilOp(GL_KEEP, GL_KEEP, GL_REPLACE);
         glColorMask(GL_FALSE, GL_FALSE, GL_FALSE, GL_FALSE);
@@ -571,13 +596,18 @@ void Renderer::render(unsigned int width, unsigned int height, float deltaTime,
         glStencilFunc(GL_NOTEQUAL, 1, 0xFF);
         glStencilOp(GL_KEEP, GL_KEEP, GL_KEEP);
 
-        constexpr glm::vec2 offsets[] = {
-            {-1.0f, -1.0f}, {0.0f, -1.0f}, {1.0f, -1.0f},
-            {-1.0f,  0.0f},                 {1.0f,  0.0f},
-            {-1.0f,  1.0f}, {0.0f,  1.0f}, {1.0f,  1.0f}};
+        constexpr glm::vec2 offsets[] = {{-1.0f, -1.0f},
+                                         {0.0f, -1.0f},
+                                         {1.0f, -1.0f},
+                                         {-1.0f, 0.0f},
+                                         {1.0f, 0.0f},
+                                         {-1.0f, 1.0f},
+                                         {0.0f, 1.0f},
+                                         {1.0f, 1.0f}};
 
         constexpr float thicknessPixels = 2.0f;
-        const glm::vec2 pixelOffset{2.0f * thicknessPixels / static_cast<float>(width), 2.0f * thicknessPixels / static_cast<float>(height)};
+        const glm::vec2 pixelOffset{2.0f * thicknessPixels / static_cast<float>(width),
+                                    2.0f * thicknessPixels / static_cast<float>(height)};
 
         for (const auto &offset : offsets)
         {

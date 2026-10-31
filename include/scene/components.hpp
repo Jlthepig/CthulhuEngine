@@ -12,6 +12,7 @@ namespace Cthulhu::Rendering
 {
 struct Model;
 }
+
 namespace JPH
 {
 class CharacterVirtual;
@@ -122,10 +123,9 @@ struct WeaponRuntimeComponent
 };
 
 struct TagActive
-{
-};
+{};
+
 struct TagPlayer
-{
-};
+{};
 
 } // namespace Cthulhu::Scene

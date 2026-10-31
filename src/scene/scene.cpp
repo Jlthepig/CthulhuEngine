@@ -2,14 +2,15 @@
 #include <iterator>
 #include <unordered_set>
 
-#include "scene.hpp"
 #include "assetManager.hpp"
 #include "components.hpp"
 #include "light.hpp"
 #include "log_utils.hpp"
+#include "scene.hpp"
 
 using KalaHeaders::KalaLog::Log;
 using KalaHeaders::KalaLog::LogType;
+
 namespace Cthulhu::Scene
 {
 
@@ -30,11 +31,12 @@ void refreshSpatialRuntime(flecs::entity entity)
 }
 } // namespace
 
-Scene::Scene(const ComponentRegistry& registry) : componentRegistry(&registry)
+Scene::Scene(const ComponentRegistry &registry)
+    : componentRegistry(&registry)
 {
     world.observer<const EntityIdentityComponent>("EntityLookupAdd")
         .event(flecs::OnSet)
-        .each([this](flecs::entity entity, const EntityIdentityComponent& identity) {
+        .each([this](flecs::entity entity, const EntityIdentityComponent &identity) {
             auto [it, inserted] = entityLookup.try_emplace(identity.id, entity);
             if (!inserted && it->second != entity && it->second.is_alive())
             {
@@ -46,7 +48,7 @@ Scene::Scene(const ComponentRegistry& registry) : componentRegistry(&registry)
 
     world.observer<const EntityIdentityComponent>("EntityLookupRemove")
         .event(flecs::OnRemove)
-        .each([this](flecs::entity entity, const EntityIdentityComponent& identity) {
+        .each([this](flecs::entity entity, const EntityIdentityComponent &identity) {
             auto it = entityLookup.find(identity.id);
             if (it != entityLookup.end() && it->second == entity)
             {
@@ -82,7 +84,8 @@ std::optional<flecs::entity> Scene::createEntityWithId(EntityId id, const std::s
 
     if (entityLookup.contains(id))
     {
-        Log::Print("ATTEMPTED TO CREATE ENTITY WITH DUPLICATE ID: " + entityIdToString(id), "Scene",
+        Log::Print("ATTEMPTED TO CREATE ENTITY WITH DUPLICATE ID: " + entityIdToString(id),
+                   "Scene",
                    LogType::LOG_ERROR);
         return std::nullopt;
     }
@@ -139,9 +142,9 @@ bool Scene::isEntityAlive(EntityId id) const
 
 std::optional<EntityId> Scene::findEntityByName(std::string_view name) const
 {
-    for (const auto& [id, entity] : entityLookup)
+    for (const auto &[id, entity] : entityLookup)
     {
-        const auto* entityName = entity.try_get<NameComponent>();
+        const auto *entityName = entity.try_get<NameComponent>();
         if (entityName && entityName->name == name)
         {
             return id;
@@ -292,13 +295,13 @@ std::optional<EntityId> Scene::getParent(EntityId childId) const
     return parent.get<EntityIdentityComponent>().id;
 }
 
-void Scene::sortSiblings(std::vector<EntityId>& siblings, EntityId parentKey) const
+void Scene::sortSiblings(std::vector<EntityId> &siblings, EntityId parentKey) const
 {
     auto byName = [this](EntityId left, EntityId right) {
         const auto leftEntity = findEntity(left);
         const auto rightEntity = findEntity(right);
-        const auto* leftName = leftEntity ? leftEntity->try_get<NameComponent>() : nullptr;
-        const auto* rightName = rightEntity ? rightEntity->try_get<NameComponent>() : nullptr;
+        const auto *leftName = leftEntity ? leftEntity->try_get<NameComponent>() : nullptr;
+        const auto *rightName = rightEntity ? rightEntity->try_get<NameComponent>() : nullptr;
         const std::string_view leftText = leftName ? leftName->name : std::string_view{};
         const std::string_view rightText = rightName ? rightName->name : std::string_view{};
 
@@ -356,7 +359,7 @@ void Scene::removeFromCustomSiblingGroup(EntityId parentKey, EntityId childId)
         return;
     }
 
-    auto& siblings = order->second;
+    auto &siblings = order->second;
     siblings.erase(std::remove(siblings.begin(), siblings.end(), childId), siblings.end());
     if (siblings.empty())
     {
@@ -370,7 +373,7 @@ void Scene::removeEntityFromSiblingOrders(EntityId id)
 
     for (auto order = customSiblingOrders.begin(); order != customSiblingOrders.end();)
     {
-        auto& siblings = order->second;
+        auto &siblings = order->second;
         siblings.erase(std::remove(siblings.begin(), siblings.end(), id), siblings.end());
         if (siblings.empty())
         {
@@ -388,7 +391,7 @@ std::vector<EntityId> Scene::getRootEntities() const
     std::vector<EntityId> roots;
     roots.reserve(entityLookup.size());
 
-    for (const auto& [id, entity] : entityLookup)
+    for (const auto &[id, entity] : entityLookup)
     {
         if (id.isValid() && entity && entity.is_alive() && !getParent(id))
         {
@@ -682,8 +685,9 @@ std::vector<AssetReference> Scene::getAssetReferences() const
 
 std::vector<AssetReference> Scene::findAssetReferences(std::string_view resourcePath) const
 {
-
-    auto keyOf = [](std::string_view path) { return Assets::normaliseResourcePath(path).value_or(std::string(path)); };
+    auto keyOf = [](std::string_view path) {
+        return Assets::normaliseResourcePath(path).value_or(std::string(path));
+    };
 
     const std::string target = keyOf(resourcePath);
 
@@ -736,7 +740,7 @@ bool Scene::restoreSubtree(const std::vector<EntitySnapshot> &snapshots)
         }
     }
 
-    for (const auto& snapshot : snapshots)
+    for (const auto &snapshot : snapshots)
     {
         if (snapshot.hasCustomSiblingOrder && !setSiblingOrder(snapshot.id, snapshot.siblingOrder))
         {
@@ -771,7 +775,7 @@ SceneSnapshot Scene::captureScene() const
     return snapshot;
 }
 
-bool Scene::restoreScene(const SceneSnapshot& snapshot)
+bool Scene::restoreScene(const SceneSnapshot &snapshot)
 {
     if (!entityLookup.empty())
     {
@@ -788,7 +792,7 @@ bool Scene::restoreScene(const SceneSnapshot& snapshot)
     directionalLight = snapshot.directionalLight;
     pointLights = snapshot.pointLights;
 
-    dirty = snapshot.dirty; 
+    dirty = snapshot.dirty;
     return true;
 }
 

@@ -6,6 +6,7 @@
 
 #define a4 alignas(4)
 #define a16 alignas(16)
+
 namespace Cthulhu::Rendering
 {
 struct alignas(16) PointLightGPU
@@ -15,7 +16,7 @@ struct alignas(16) PointLightGPU
     glm::vec4 attenuation;
 };
 
-static_assert(sizeof(PointLightGPU) == 48,  "PointLightGPU must match the std430 shader layout");
+static_assert(sizeof(PointLightGPU) == 48, "PointLightGPU must match the std430 shader layout");
 
 struct SceneUniforms
 {
@@ -37,6 +38,5 @@ struct SceneUniforms
     a4 float pointShadowfarPlane;
     a4 int32_t pad1;
     a4 int32_t pad2;
-
 };
 } // namespace Cthulhu::Rendering

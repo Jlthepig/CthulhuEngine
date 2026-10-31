@@ -6,6 +6,7 @@
 
 using std::make_unique;
 using std::unique_ptr;
+
 namespace Cthulhu::Scene
 {
 class Camera
@@ -16,16 +17,20 @@ class Camera
     void processMouse(float xoffset, float yoffset);
     glm::vec3 getPosition() const;
     glm::vec3 setPosition(const glm::vec3 &newPos);
+
     void addSpeed(float additionalSpeed)
     {
         speed += additionalSpeed;
         speed = glm::clamp(speed, 1.0f, 25.0f);
     }
+
     glm::mat4 getViewMatrix() const;
+
     glm::vec3 getFront() const
     {
         return front;
     }
+
     float getFov() const;
 
     void addRecoil(float pitchKick, float yawSpread);

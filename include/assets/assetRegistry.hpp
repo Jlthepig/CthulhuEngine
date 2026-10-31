@@ -25,6 +25,7 @@ struct AudioImportSettings
 
     friend bool operator==(const AudioImportSettings &, const AudioImportSettings &) = default;
 };
+
 struct AssetRecord
 {
     AssetId id;

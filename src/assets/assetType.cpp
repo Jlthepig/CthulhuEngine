@@ -43,15 +43,15 @@ std::string_view assetTypeName(AssetType type)
 {
     switch (type)
     {
-    case AssetType::Model:
-        return "Model";
-    case AssetType::Audio:
-        return "Audio";
-    case AssetType::Scene:
-        return "Scene";
-    case AssetType::Unknown:
-    default:
-        return "Unknown";
+        case AssetType::Model:
+            return "Model";
+        case AssetType::Audio:
+            return "Audio";
+        case AssetType::Scene:
+            return "Scene";
+        case AssetType::Unknown:
+        default:
+            return "Unknown";
     }
 }
 } // namespace Cthulhu::Assets

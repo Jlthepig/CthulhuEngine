@@ -7,24 +7,28 @@
 
 #include "mesh.hpp"
 #include "shader.hpp"
+
 namespace Cthulhu::Rendering
 {
 class Skybox
 {
-
   public:
     void load(const std::filesystem::path &engineRoot, const std::filesystem::path &hdrPath);
     void draw(const glm::mat4 &view, const glm::mat4 &projection);
     void generateIrradianceMap();
+
     unsigned int getIrradianceMap() const
     {
         return irradianceMap;
     }
+
     void generatePrefilterMap();
+
     unsigned int getPrefilterMap() const
     {
         return prefilterMap;
     }
+
     void destroy();
 
   private:

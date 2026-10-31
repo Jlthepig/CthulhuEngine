@@ -13,6 +13,7 @@
 
 using KalaHeaders::KalaLog::Log;
 using KalaHeaders::KalaLog::LogType;
+
 namespace Cthulhu::Physics
 {
 
@@ -47,7 +48,8 @@ bool CharacterController::createRuntime(flecs::entity entity, PhysicsWorld &phys
     }
 
     JPH::RotatedTranslatedShapeSettings offsetSettings(
-        JPH::Vec3(0.0f, config.capsuleRadius + config.capsuleHeight * 0.5f, 0.0f), JPH::Quat::sIdentity(),
+        JPH::Vec3(0.0f, config.capsuleRadius + config.capsuleHeight * 0.5f, 0.0f),
+        JPH::Quat::sIdentity(),
         capsuleShape.Get());
 
     auto offsetShape = offsetSettings.Create();
@@ -64,8 +66,10 @@ bool CharacterController::createRuntime(flecs::entity entity, PhysicsWorld &phys
     settings.mCharacterPadding = 0.02f;
 
     auto *character = new JPH::CharacterVirtual(
-        &settings, JPH::RVec3(worldPosition.x, worldPosition.y, worldPosition.z),
-        JPH::Quat(transform.rotation.x, transform.rotation.y, transform.rotation.z, transform.rotation.w), physicsSystem);
+        &settings,
+        JPH::RVec3(worldPosition.x, worldPosition.y, worldPosition.z),
+        JPH::Quat(transform.rotation.x, transform.rotation.y, transform.rotation.z, transform.rotation.w),
+        physicsSystem);
 
     ++liveCharacterCount;
 

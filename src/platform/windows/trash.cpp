@@ -61,58 +61,72 @@ class RecycleOnlySink final : public IFileOperationProgressSink
     {
         return S_OK;
     }
+
     HRESULT STDMETHODCALLTYPE FinishOperations(HRESULT) override
     {
         return S_OK;
     }
+
     HRESULT STDMETHODCALLTYPE PreRenameItem(DWORD, IShellItem *, LPCWSTR) override
     {
         return S_OK;
     }
+
     HRESULT STDMETHODCALLTYPE PostRenameItem(DWORD, IShellItem *, LPCWSTR, HRESULT, IShellItem *) override
     {
         return S_OK;
     }
+
     HRESULT STDMETHODCALLTYPE PreMoveItem(DWORD, IShellItem *, IShellItem *, LPCWSTR) override
     {
         return S_OK;
     }
+
     HRESULT STDMETHODCALLTYPE PostMoveItem(DWORD, IShellItem *, IShellItem *, LPCWSTR, HRESULT, IShellItem *) override
     {
         return S_OK;
     }
+
     HRESULT STDMETHODCALLTYPE PreCopyItem(DWORD, IShellItem *, IShellItem *, LPCWSTR) override
     {
         return S_OK;
     }
+
     HRESULT STDMETHODCALLTYPE PostCopyItem(DWORD, IShellItem *, IShellItem *, LPCWSTR, HRESULT, IShellItem *) override
     {
         return S_OK;
     }
+
     HRESULT STDMETHODCALLTYPE PostDeleteItem(DWORD, IShellItem *, HRESULT, IShellItem *) override
     {
         return S_OK;
     }
+
     HRESULT STDMETHODCALLTYPE PreNewItem(DWORD, IShellItem *, LPCWSTR) override
     {
         return S_OK;
     }
+
     HRESULT STDMETHODCALLTYPE PostNewItem(DWORD, IShellItem *, LPCWSTR, LPCWSTR, DWORD, HRESULT, IShellItem *) override
     {
         return S_OK;
     }
+
     HRESULT STDMETHODCALLTYPE UpdateProgress(UINT, UINT) override
     {
         return S_OK;
     }
+
     HRESULT STDMETHODCALLTYPE ResetTimer() override
     {
         return S_OK;
     }
+
     HRESULT STDMETHODCALLTYPE PauseTimer() override
     {
         return S_OK;
     }
+
     HRESULT STDMETHODCALLTYPE ResumeTimer() override
     {
         return S_OK;

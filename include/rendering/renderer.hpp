@@ -5,8 +5,8 @@
 #include <span>
 #include <vector>
 
-#include <glad.h>
 #include <GLFW/glfw3.h>
+#include <glad.h>
 
 #include "camera.hpp"
 #include "entityId.hpp"
@@ -29,10 +29,12 @@ namespace Cthulhu::Scene
 {
 class Scene;
 }
+
 namespace Cthulhu::Rendering
 {
 struct Model;
 }
+
 namespace Cthulhu::Rendering
 {
 struct PersistentLine
@@ -42,6 +44,7 @@ struct PersistentLine
     glm::vec3 color;
     float lifetime;
 };
+
 struct Renderable
 {
     Model *model = nullptr;
@@ -57,6 +60,7 @@ struct DebugVertex
     glm::vec3 pos{};
     glm::vec3 color{};
 };
+
 struct RenderConfig
 {
     // Camera
@@ -92,8 +96,12 @@ class Renderer
     void setDirectionalLight(const DirectionalLight &light);
     void setPointLights(const std::vector<PointLight> &lights);
     void setOutlineTargets(std::span<const Scene::EntityId> entities);
-    void render(unsigned int width, unsigned int height, float deltaTime,
-                const std::vector<Renderable> &renderables, int destX = 0, int destY = 0,
+    void render(unsigned int width,
+                unsigned int height,
+                float deltaTime,
+                const std::vector<Renderable> &renderables,
+                int destX = 0,
+                int destY = 0,
                 std::span<const OverlayVertex> overlayVertices = {});
     void addDebugLine(const glm::vec3 &start, const glm::vec3 &end, const glm::vec3 &color, float duration = 0.0f);
     void shutdown();

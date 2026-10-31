@@ -12,8 +12,14 @@ EntityId generateEntityId()
     static thread_local std::mt19937_64 generator = []() {
         std::random_device randomDevice;
 
-        std::seed_seq seed{randomDevice(), randomDevice(), randomDevice(), randomDevice(),
-                           randomDevice(), randomDevice(), randomDevice(), randomDevice()};
+        std::seed_seq seed{randomDevice(),
+                           randomDevice(),
+                           randomDevice(),
+                           randomDevice(),
+                           randomDevice(),
+                           randomDevice(),
+                           randomDevice(),
+                           randomDevice()};
 
         return std::mt19937_64(seed);
     }();

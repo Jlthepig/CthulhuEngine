@@ -19,21 +19,21 @@ static std::string escapeString(const std::string &value)
     {
         switch (c)
         {
-        case '"':
-            result += "\\\"";
-            break;
-        case '\\':
-            result += "\\\\";
-            break;
-        case '\n':
-            result += "\\n";
-            break;
-        case '\t':
-            result += "\\t";
-            break;
-        default:
-            result += c;
-            break;
+            case '"':
+                result += "\\\"";
+                break;
+            case '\\':
+                result += "\\\\";
+                break;
+            case '\n':
+                result += "\\n";
+                break;
+            case '\t':
+                result += "\\t";
+                break;
+            default:
+                result += c;
+                break;
         }
     }
 

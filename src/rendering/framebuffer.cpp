@@ -13,7 +13,8 @@ void Framebuffer::create(unsigned int width, unsigned int height)
     this->height = height;
     if (width == 0 || height == 0)
     {
-        KalaHeaders::KalaLog::Log::Print("Framebuffer dimensions cannot be zero!", "Framebuffer",
+        KalaHeaders::KalaLog::Log::Print("Framebuffer dimensions cannot be zero!",
+                                         "Framebuffer",
                                          KalaHeaders::KalaLog::LogType::LOG_ERROR);
         return;
     }
@@ -37,12 +38,14 @@ void Framebuffer::create(unsigned int width, unsigned int height)
 
     if (glCheckFramebufferStatus(GL_FRAMEBUFFER) != GL_FRAMEBUFFER_COMPLETE)
     {
-        KalaHeaders::KalaLog::Log::Print("Framebuffer not complete!", "Framebuffer",
+        KalaHeaders::KalaLog::Log::Print("Framebuffer not complete!",
+                                         "Framebuffer",
                                          KalaHeaders::KalaLog::LogType::LOG_ERROR);
     }
     else
     {
-        KalaHeaders::KalaLog::Log::Print("Framebuffer created successfully", "Framebuffer",
+        KalaHeaders::KalaLog::Log::Print("Framebuffer created successfully",
+                                         "Framebuffer",
                                          KalaHeaders::KalaLog::LogType::LOG_SUCCESS);
     }
 
@@ -68,7 +71,8 @@ void Framebuffer::resize(unsigned int width, unsigned int height)
 {
     if (width == 0 || height == 0)
     {
-        KalaHeaders::KalaLog::Log::Print("Framebuffer resize dimensions cannot be zero!", "Framebuffer",
+        KalaHeaders::KalaLog::Log::Print("Framebuffer resize dimensions cannot be zero!",
+                                         "Framebuffer",
                                          KalaHeaders::KalaLog::LogType::LOG_ERROR);
         return;
     }
@@ -93,8 +97,15 @@ void Framebuffer::blitToScreen(int x, int y, unsigned int screenWidth, unsigned 
 {
     glBindFramebuffer(GL_READ_FRAMEBUFFER, fbo);
     glBindFramebuffer(GL_DRAW_FRAMEBUFFER, 0);
-    glBlitFramebuffer(0, 0, static_cast<GLint>(width), static_cast<GLint>(height), x, y,
-                      x + static_cast<GLint>(screenWidth), y + static_cast<GLint>(screenHeight), GL_COLOR_BUFFER_BIT,
+    glBlitFramebuffer(0,
+                      0,
+                      static_cast<GLint>(width),
+                      static_cast<GLint>(height),
+                      x,
+                      y,
+                      x + static_cast<GLint>(screenWidth),
+                      y + static_cast<GLint>(screenHeight),
+                      GL_COLOR_BUFFER_BIT,
                       GL_NEAREST);
 }
 

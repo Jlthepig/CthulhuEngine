@@ -29,8 +29,11 @@ class InspectorPanel
 {
   public:
     void build(octogui::Context &ctx, octogui::NodeHandle panel);
-    void update(octogui::Context &ctx, Engine &engine, Scribe::Session &session,
-                Scene::Scene *scene, std::optional<Scene::EntityId> selectedEntity);
+    void update(octogui::Context &ctx,
+                Engine &engine,
+                Scribe::Session &session,
+                Scene::Scene *scene,
+                std::optional<Scene::EntityId> selectedEntity);
 
   private:
     struct Binding
@@ -54,11 +57,13 @@ class InspectorPanel
     std::optional<Scene::EntityId> builtEntity;
     octogui::NodeHandle addComponentCombo{};
     octogui::NodeHandle addComponentButton{};
+
     struct RemoveBinding
     {
-      octogui::NodeHandle button{};
-      std::string component;
+        octogui::NodeHandle button{};
+        std::string component;
     };
+
     std::vector<RemoveBinding> removeBindings;
     bool initialized = false;
 

@@ -9,9 +9,11 @@
 
 using KalaHeaders::KalaLog::Log;
 using KalaHeaders::KalaLog::LogType;
+
 namespace Cthulhu::Core
 {
 static std::vector<unique_ptr<Window>> windowContainer;
+
 Window *Window::createWindow(const WindowConfig &config, const char *windowTitle)
 {
     unique_ptr<Window> window = std::make_unique<Window>();
@@ -45,30 +47,30 @@ void Window::setWindowMode(WindowMode newMode)
     }
     switch (newMode)
     {
-    case WindowMode::Windowed: {
-        glfwSetWindowMonitor(glfWwindow, nullptr, cachedX, cachedY, cachedWidth, cachedHeight, 0);
-        glfwSetWindowAttrib(glfWwindow, GLFW_DECORATED, GLFW_TRUE);
-        // update state
-        windowSize = glm::vec2(cachedWidth, cachedHeight);
-        break;
-    }
-    case WindowMode::Borderless: {
-        GLFWmonitor *monitor = getCurrentMonitor();
-        const GLFWvidmode *mode = glfwGetVideoMode(monitor);
-        glfwSetWindowMonitor(glfWwindow, monitor, 0, 0, mode->width, mode->height, 0);
-        glfwSetWindowAttrib(glfWwindow, GLFW_DECORATED, GLFW_FALSE);
-        // update state
-        windowSize = glm::vec2(mode->width, mode->height);
-        break;
-    }
-    case WindowMode::ExclusiveFullscreen: {
-        GLFWmonitor *monitor = getCurrentMonitor();
-        const GLFWvidmode *mode = glfwGetVideoMode(monitor);
-        glfwSetWindowMonitor(glfWwindow, monitor, 0, 0, mode->width, mode->height, mode->refreshRate);
-        // update state
-        windowSize = glm::vec2(mode->width, mode->height);
-        break;
-    }
+        case WindowMode::Windowed: {
+            glfwSetWindowMonitor(glfWwindow, nullptr, cachedX, cachedY, cachedWidth, cachedHeight, 0);
+            glfwSetWindowAttrib(glfWwindow, GLFW_DECORATED, GLFW_TRUE);
+            // update state
+            windowSize = glm::vec2(cachedWidth, cachedHeight);
+            break;
+        }
+        case WindowMode::Borderless: {
+            GLFWmonitor *monitor = getCurrentMonitor();
+            const GLFWvidmode *mode = glfwGetVideoMode(monitor);
+            glfwSetWindowMonitor(glfWwindow, monitor, 0, 0, mode->width, mode->height, 0);
+            glfwSetWindowAttrib(glfWwindow, GLFW_DECORATED, GLFW_FALSE);
+            // update state
+            windowSize = glm::vec2(mode->width, mode->height);
+            break;
+        }
+        case WindowMode::ExclusiveFullscreen: {
+            GLFWmonitor *monitor = getCurrentMonitor();
+            const GLFWvidmode *mode = glfwGetVideoMode(monitor);
+            glfwSetWindowMonitor(glfWwindow, monitor, 0, 0, mode->width, mode->height, mode->refreshRate);
+            // update state
+            windowSize = glm::vec2(mode->width, mode->height);
+            break;
+        }
     }
     currentMode = newMode;
     int fbWidth, fbHeight;

@@ -23,7 +23,8 @@ std::optional<std::filesystem::path> Project::resolveResourcePath(std::string_vi
 
     if (!resourcePath.starts_with(prefix))
     {
-        Log::Print("RESOURCE PATH MUST START WITH 'res://': " + std::string(resourcePath), "Project",
+        Log::Print("RESOURCE PATH MUST START WITH 'res://': " + std::string(resourcePath),
+                   "Project",
                    LogType::LOG_ERROR);
         return std::nullopt;
     }
@@ -214,7 +215,8 @@ std::optional<Project> Project::open(const std::filesystem::path &projectFilePat
 
     if (error)
     {
-        Log::Print("FAILED TO CREATE PROJECT INTERNAL DIRECTORY: " + internalDirectory.string(), "Project",
+        Log::Print("FAILED TO CREATE PROJECT INTERNAL DIRECTORY: " + internalDirectory.string(),
+                   "Project",
                    LogType::LOG_ERROR);
         return std::nullopt;
     }

@@ -1,11 +1,12 @@
 #pragma once
 
 #include <cstddef>
-#include <vector>
 #include <span>
+#include <vector>
 
 #include <glad.h>
 #include <glm.hpp>
+
 namespace Cthulhu::Rendering
 {
 
@@ -21,8 +22,10 @@ class Mesh
 
     int materialIndex = -1;
 
-    void setup(const std::vector<float> &vertices, const std::vector<unsigned int> &indices,
-               const std::vector<vertexAttribute> &attributes, unsigned int stride);
+    void setup(const std::vector<float> &vertices,
+               const std::vector<unsigned int> &indices,
+               const std::vector<vertexAttribute> &attributes,
+               unsigned int stride);
     size_t getIndexCount() const;
     size_t getVertexDataSize() const;
 

@@ -14,16 +14,19 @@
 #include "renderer.hpp"
 
 struct GLFWwindow;
+
 namespace Cthulhu::Scene
 {
 class Scene;
 class Camera;
 struct SceneSnapshot;
 } // namespace Cthulhu::Scene
+
 namespace Cthulhu::Core
 {
 class Window;
 }
+
 namespace Cthulhu
 {
 enum class EngineState
@@ -65,7 +68,7 @@ class Engine
 
     // we split one frame to allow OctoGui to draw the ui between render() and run()
     bool shouldClose() const;
-    void update(); 
+    void update();
     void render(std::span<const Rendering::OverlayVertex> overlayVertices = {}); // 3d
     void present(); // swap bufferes and poll window events
     void setViewportRect(int x, int y, int width, int height);
@@ -79,6 +82,7 @@ class Engine
 
     void setUpdateCallback(UpdateCallback callback, void *context = nullptr);
     void setRaycastCallback(RaycastCallback callback, void *context = nullptr);
+
     void triggerRaycastCallback(const Physics::RaycastHitInfo &hit)
     {
         if (raycastCallback)
@@ -96,19 +100,23 @@ class Engine
     {
         return state;
     }
+
     bool isInitialized() const
     {
         return state != EngineState::Uninitialized;
     }
 
     void setSimulationState(SimulationState state);
+
     SimulationState getSimulationState() const
     {
         return simState;
     }
+
     void stepSimulation();
 
     void setWorldMode(WorldMode mode);
+
     WorldMode getWorldMode() const
     {
         return worldMode;
@@ -116,12 +124,13 @@ class Engine
 
     bool isSimulating() const
     {
-        return worldMode == WorldMode::Play && (simState == SimulationState::Running || simState == SimulationState::Stepping);
+        return worldMode == WorldMode::Play &&
+               (simState == SimulationState::Running || simState == SimulationState::Stepping);
     }
 
-    
-    bool play(); 
-    bool stop(); 
+    bool play();
+    bool stop();
+
     bool isPlaying() const
     {
         return editSnapshot != nullptr;
@@ -131,6 +140,7 @@ class Engine
     {
         return camera;
     }
+
     Core::Window *getWindow()
     {
         return window;
@@ -140,10 +150,12 @@ class Engine
     {
         return renderer;
     }
+
     Physics::PhysicsWorld &getPhysicsWorld()
     {
         return physicsWorld;
     }
+
     Assets::AssetManager &getAssetManager()
     {
         return assetManager;
@@ -153,6 +165,7 @@ class Engine
     {
         return componentRegistry;
     }
+
     const Scene::ComponentRegistry &getComponentRegistry() const
     {
         return componentRegistry;
@@ -183,7 +196,6 @@ class Engine
         return project ? &*project : nullptr;
     }
 
-    
     const std::filesystem::path &getEngineResourceRoot() const
     {
         return engineResourceRoot;
@@ -208,13 +220,13 @@ class Engine
     GLFWwindow *glfwWindow = nullptr;
 
     std::unique_ptr<Scene::Scene> createSceneInstance();
-    
+
     void activateScene(std::unique_ptr<Scene::Scene> newScene, bool newDocument = true);
     void releaseActiveScene();
 
     std::unique_ptr<Cthulhu::Scene::Scene> activeScene;
     uint64_t sceneGeneration{};
-    std::unique_ptr<Scene::SceneSnapshot> editSnapshot; 
+    std::unique_ptr<Scene::SceneSnapshot> editSnapshot;
     uint64_t editGeneration{};
 
     std::vector<Rendering::Renderable> frameRenderables;
@@ -234,8 +246,8 @@ class Engine
         SystemRegistration registration = nullptr;
         void *contex = nullptr;
     };
-    std::vector<SystemRegistrationEntry> systemRegistrations;
 
+    std::vector<SystemRegistrationEntry> systemRegistrations;
 
     EngineState state = EngineState::Uninitialized;
     bool glfwInitialized = false;

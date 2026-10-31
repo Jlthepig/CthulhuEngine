@@ -6,6 +6,7 @@ namespace Cthulhu::Rendering
 {
 struct Model;
 }
+
 namespace Cthulhu::Core
 {
 struct AudioClipData;

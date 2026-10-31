@@ -4,10 +4,9 @@
 #include <trigonometric.hpp>
 #include <vec3.hpp>
 
-
-
 #include "log_utils.hpp"
 #include "pointShadowMap.hpp"
+
 namespace Cthulhu::Rendering
 {
 void PointLightShadowMap::init(unsigned int width, unsigned int height, const std::filesystem::path &engineResourceRoot)
@@ -57,14 +56,23 @@ std::size_t PointLightShadowMap::ensureCapacity(std::size_t requestedCubeCount)
 
     const GLsizei layerCount = static_cast<GLsizei>(targetCubeCount * 6);
     glBindTexture(GL_TEXTURE_CUBE_MAP_ARRAY, depthCubeMapArray);
-    glTexImage3D(GL_TEXTURE_CUBE_MAP_ARRAY, 0, GL_R32F, static_cast<GLsizei>(shadowWidth),
-                 static_cast<GLsizei>(shadowHeight), layerCount, 0, GL_RED, GL_FLOAT, nullptr);
+    glTexImage3D(GL_TEXTURE_CUBE_MAP_ARRAY,
+                 0,
+                 GL_R32F,
+                 static_cast<GLsizei>(shadowWidth),
+                 static_cast<GLsizei>(shadowHeight),
+                 layerCount,
+                 0,
+                 GL_RED,
+                 GL_FLOAT,
+                 nullptr);
     GLint allocatedLayerCount = 0;
     glGetTexLevelParameteriv(GL_TEXTURE_CUBE_MAP_ARRAY, 0, GL_TEXTURE_DEPTH, &allocatedLayerCount);
     glBindTexture(GL_TEXTURE_CUBE_MAP_ARRAY, 0);
     if (allocatedLayerCount < layerCount)
     {
-        KalaHeaders::KalaLog::Log::Print("POINT SHADOW ARRAY ALLOCATION FAILED", "PointShadowMap",
+        KalaHeaders::KalaLog::Log::Print("POINT SHADOW ARRAY ALLOCATION FAILED",
+                                         "PointShadowMap",
                                          KalaHeaders::KalaLog::LogType::LOG_ERROR);
         failedCubeCount = targetCubeCount;
         return std::min(allocatedCubeCount, targetCubeCount);
@@ -77,7 +85,8 @@ std::size_t PointLightShadowMap::ensureCapacity(std::size_t requestedCubeCount)
     if (status != GL_FRAMEBUFFER_COMPLETE)
     {
         KalaHeaders::KalaLog::Log::Print("POINT SHADOW ARRAY FBO NOT COMPLETE: " + std::to_string(status),
-                                         "PointShadowMap", KalaHeaders::KalaLog::LogType::LOG_ERROR);
+                                         "PointShadowMap",
+                                         KalaHeaders::KalaLog::LogType::LOG_ERROR);
         failedCubeCount = targetCubeCount;
         return std::min(allocatedCubeCount, targetCubeCount);
     }

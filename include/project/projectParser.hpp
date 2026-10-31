@@ -4,6 +4,7 @@
 #include <string>
 
 #include "projectConfig.hpp"
+
 namespace Cthulhu::Project
 {
 class ProjectParser

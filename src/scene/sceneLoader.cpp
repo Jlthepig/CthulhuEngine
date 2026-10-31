@@ -2,20 +2,22 @@
 #include <cmath>
 #include <limits>
 
-#include "sceneLoader.hpp"
 #include "assetRegistry.hpp"
 #include "components.hpp"
 #include "jsonParser.hpp"
-#include "project.hpp"
 #include "log_utils.hpp"
+#include "project.hpp"
+#include "sceneLoader.hpp"
 
 using KalaHeaders::KalaLog::Log;
 using KalaHeaders::KalaLog::LogType;
+
 namespace Cthulhu::Scene
 {
 namespace
 {
-std::string resolveReference(const Assets::AssetRegistry &registry, const std::optional<Assets::AssetId> &id,
+std::string resolveReference(const Assets::AssetRegistry &registry,
+                             const std::optional<Assets::AssetId> &id,
                              const std::string &pathHint)
 {
     if (!id)
@@ -36,7 +38,8 @@ std::string resolveReference(const Assets::AssetRegistry &registry, const std::o
     return pathHint;
 }
 
-std::optional<FieldValue> toFieldValue(const FieldDescriptor &field, const ParsedValue &value,
+std::optional<FieldValue> toFieldValue(const FieldDescriptor &field,
+                                       const ParsedValue &value,
                                        const Assets::AssetRegistry &assets)
 {
     const auto *number = std::get_if<double>(&value);
@@ -44,91 +47,94 @@ std::optional<FieldValue> toFieldValue(const FieldDescriptor &field, const Parse
 
     switch (field.type)
     {
-    case FieldType::Float:
-        if (number && std::isfinite(*number) &&
-            *number >= std::numeric_limits<float>::lowest() &&
-            *number <= std::numeric_limits<float>::max())
-        {
-            return FieldValue{static_cast<float>(*number)};
-        }
-        return std::nullopt;
-    case FieldType::Int:
-        if (number && std::isfinite(*number) && std::floor(*number) == *number &&
-            *number >= std::numeric_limits<int>::lowest() &&
-            *number <= std::numeric_limits<int>::max())
-        {
-            return FieldValue{static_cast<int>(*number)};
-        }
-        return std::nullopt;
-    case FieldType::Bool:
-        if (const auto *flag = std::get_if<bool>(&value))
-        {
-            return FieldValue{*flag};
-        }
-        return std::nullopt;
-    case FieldType::Vec3:
-    case FieldType::Color:
-        if (const auto *vector = std::get_if<glm::vec3>(&value))
-        {
-            return FieldValue{*vector};
-        }
-        return std::nullopt;
-    case FieldType::String:
-        if (text)
-        {
-            return FieldValue{*text};
-        }
-        return std::nullopt;
-    case FieldType::Enum:
-        if (text)
-        {
-            for (size_t i = 0; i < field.enumNames.size(); ++i)
+        case FieldType::Float:
+            if (number && std::isfinite(*number) && *number >= std::numeric_limits<float>::lowest() &&
+                *number <= std::numeric_limits<float>::max())
             {
-                if (field.enumNames[i] == *text)
+                return FieldValue{static_cast<float>(*number)};
+            }
+            return std::nullopt;
+        case FieldType::Int:
+            if (number && std::isfinite(*number) && std::floor(*number) == *number &&
+                *number >= std::numeric_limits<int>::lowest() && *number <= std::numeric_limits<int>::max())
+            {
+                return FieldValue{static_cast<int>(*number)};
+            }
+            return std::nullopt;
+        case FieldType::Bool:
+            if (const auto *flag = std::get_if<bool>(&value))
+            {
+                return FieldValue{*flag};
+            }
+            return std::nullopt;
+        case FieldType::Vec3:
+        case FieldType::Color:
+            if (const auto *vector = std::get_if<glm::vec3>(&value))
+            {
+                return FieldValue{*vector};
+            }
+            return std::nullopt;
+        case FieldType::String:
+            if (text)
+            {
+                return FieldValue{*text};
+            }
+            return std::nullopt;
+        case FieldType::Enum:
+            if (text)
+            {
+                for (size_t i = 0; i < field.enumNames.size(); ++i)
                 {
-                    return FieldValue{static_cast<int>(i)};
+                    if (field.enumNames[i] == *text)
+                    {
+                        return FieldValue{static_cast<int>(i)};
+                    }
                 }
             }
-        }
-        return std::nullopt;
-    case FieldType::AssetRef:
-        if (const auto *ref = std::get_if<ParsedAssetRef>(&value))
-        {
-            return FieldValue{resolveReference(assets, ref->id, ref->path)};
-        }
-        if (text)
-        {
-            return FieldValue{*text};
-        }
-        return std::nullopt;
-    case FieldType::EntityRef:
-        if (text)
-        {
-            if (auto id = entityIdFromString(*text))
+            return std::nullopt;
+        case FieldType::AssetRef:
+            if (const auto *ref = std::get_if<ParsedAssetRef>(&value))
             {
-                return FieldValue{*id};
+                return FieldValue{resolveReference(assets, ref->id, ref->path)};
             }
-        }
-        return std::nullopt;
+            if (text)
+            {
+                return FieldValue{*text};
+            }
+            return std::nullopt;
+        case FieldType::EntityRef:
+            if (text)
+            {
+                if (auto id = entityIdFromString(*text))
+                {
+                    return FieldValue{*id};
+                }
+            }
+            return std::nullopt;
     }
     return std::nullopt;
 }
 
-bool applyComponents(flecs::entity entity, const ParsedEntity &parsed, const ComponentRegistry &components,
+bool applyComponents(flecs::entity entity,
+                     const ParsedEntity &parsed,
+                     const ComponentRegistry &components,
                      const Assets::AssetRegistry &assets)
 {
     for (const auto &parsedComponent : parsed.components)
     {
         if (!components.find(parsedComponent.name))
         {
-            Log::Print("UNKNOWN COMPONENT SKIPPED (lost if saved): " + parsedComponent.name + " on " + parsed.name,"SceneLoader", LogType::LOG_WARNING);
+            Log::Print("UNKNOWN COMPONENT SKIPPED (lost if saved): " + parsedComponent.name + " on " + parsed.name,
+                       "SceneLoader",
+                       LogType::LOG_WARNING);
         }
     }
 
     // registration order
     for (const auto &descriptor : components.getAll())
     {
-        const auto found = std::find_if(parsed.components.begin(), parsed.components.end(),
+        const auto found = std::find_if(parsed.components.begin(),
+                                        parsed.components.end(),
                                         [&](const ParsedComponent &c) { return c.name == descriptor.name; });
         if (found == parsed.components.end())
         {
@@ -142,7 +148,8 @@ bool applyComponents(flecs::entity entity, const ParsedEntity &parsed, const Com
             if (!field)
             {
                 Log::Print("UNKNOWN FIELD IGNORED: " + descriptor.name + "." + parsedField.name + " on " + parsed.name,
-                           "SceneLoader", LogType::LOG_WARNING);
+                           "SceneLoader",
+                           LogType::LOG_WARNING);
                 continue;
             }
 
@@ -150,7 +157,8 @@ bool applyComponents(flecs::entity entity, const ParsedEntity &parsed, const Com
             if (!value)
             {
                 Log::Print("INVALID VALUE FOR " + descriptor.name + "." + field->name + " on " + parsed.name,
-                           "SceneLoader", LogType::LOG_ERROR);
+                           "SceneLoader",
+                           LogType::LOG_ERROR);
                 return false;
             }
 
@@ -179,13 +187,14 @@ bool restoreSiblingOrders(const std::vector<ParsedEntity> &entities, Scene &scen
 
     for (const auto &[parentId, orderedEntities] : groups)
     {
-        const std::vector<EntityId> siblings =
-            parentId.isValid() ? scene.getChildren(parentId) : scene.getRootEntities();
+        const std::vector<EntityId> siblings = parentId.isValid() ? scene.getChildren(parentId)
+                                                                  : scene.getRootEntities();
 
         if (orderedEntities.size() != siblings.size())
         {
             Log::Print("CUSTOM SIBLING ORDER DOES NOT COVER THE WHOLE SIBLING GROUP",
-                       "SceneLoader", LogType::LOG_ERROR);
+                       "SceneLoader",
+                       LogType::LOG_ERROR);
             return false;
         }
 
@@ -197,7 +206,8 @@ bool restoreSiblingOrders(const std::vector<ParsedEntity> &entities, Scene &scen
             if (order >= desiredOrder.size() || assigned[order])
             {
                 Log::Print("CUSTOM SIBLING ORDER HAS A DUPLICATE OR OUT-OF-RANGE INDEX",
-                           "SceneLoader", LogType::LOG_ERROR);
+                           "SceneLoader",
+                           LogType::LOG_ERROR);
                 return false;
             }
             desiredOrder[order] = entity->id;
@@ -208,8 +218,7 @@ bool restoreSiblingOrders(const std::vector<ParsedEntity> &entities, Scene &scen
         {
             if (!assigned[order] || !scene.setSiblingOrder(desiredOrder[order], order))
             {
-                Log::Print("FAILED TO RESTORE CUSTOM SIBLING ORDER",
-                           "SceneLoader", LogType::LOG_ERROR);
+                Log::Print("FAILED TO RESTORE CUSTOM SIBLING ORDER", "SceneLoader", LogType::LOG_ERROR);
                 return false;
             }
         }
@@ -220,7 +229,9 @@ bool restoreSiblingOrders(const std::vector<ParsedEntity> &entities, Scene &scen
 
 } // namespace
 
-bool SceneLoader::load(const std::string &path, Scene &scene, [[maybe_unused]] const Cthulhu::Project::Project &project,
+bool SceneLoader::load(const std::string &path,
+                       Scene &scene,
+                       [[maybe_unused]] const Cthulhu::Project::Project &project,
                        const Assets::AssetRegistry &registry)
 {
     auto parsed = JsonParser::parseScene(path); // the parsed information provided by the json parser
@@ -240,11 +251,11 @@ bool SceneLoader::load(const std::string &path, Scene &scene, [[maybe_unused]] c
         auto entity = scene.createEntityWithId(parsedEntity.id, parsedEntity.name);
         if (!entity)
         {
-            Log::Print("FAILED TO CREATE ENTITY FROM SCENE: " + entityIdToString(parsedEntity.id), "SceneLoader",
+            Log::Print("FAILED TO CREATE ENTITY FROM SCENE: " + entityIdToString(parsedEntity.id),
+                       "SceneLoader",
                        LogType::LOG_ERROR);
             return false;
         }
-
     }
 
     for (const auto &parsedEntity : parsed->entities)
@@ -256,7 +267,8 @@ bool SceneLoader::load(const std::string &path, Scene &scene, [[maybe_unused]] c
 
         if (!scene.isEntityAlive(*parsedEntity.parentId))
         {
-            Log::Print("ENTITY REFERENCES MISSING PARENT: " + entityIdToString(*parsedEntity.parentId), "SceneLoader",
+            Log::Print("ENTITY REFERENCES MISSING PARENT: " + entityIdToString(*parsedEntity.parentId),
+                       "SceneLoader",
                        LogType::LOG_ERROR);
             return false;
         }
@@ -285,7 +297,7 @@ bool SceneLoader::load(const std::string &path, Scene &scene, [[maybe_unused]] c
 
     scene.setDirectionalLight(parsed->directionalLight);
     for (auto &pl : parsed->pointLights) // for every light in scene/parsed
-                                         // information  add a light
+    // information  add a light
     {
         scene.addPointLight(pl);
     }

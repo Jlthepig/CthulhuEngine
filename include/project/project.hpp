@@ -5,6 +5,7 @@
 #include <string_view>
 
 #include "projectConfig.hpp"
+
 namespace Cthulhu::Project
 {
 class Project

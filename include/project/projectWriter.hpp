@@ -3,6 +3,7 @@
 #include <filesystem>
 
 #include "projectConfig.hpp"
+
 namespace Cthulhu::Project
 {
 class ProjectWriter

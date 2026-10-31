@@ -1,6 +1,7 @@
 #pragma once
 
 #include <glm.hpp>
+
 namespace Cthulhu::Rendering
 {
 struct DirectionalLight
