@@ -690,7 +690,7 @@ void Engine::update()
     }
 }
 
-void Engine::render()
+void Engine::render(std::span<const Rendering::OverlayVertex> overlayVertices)
 {
     if (state == EngineState::Uninitialized || !glfwWindow)
     {
@@ -745,7 +745,8 @@ void Engine::render()
         h = std::min(viewportHeight, fbh - y);
     }
 
-    renderer.render(static_cast<unsigned int>(w), static_cast<unsigned int>(h), deltaTime, frameRenderables, x, fbh - (y + h));
+    renderer.render(static_cast<unsigned int>(w), static_cast<unsigned int>(h),
+                    deltaTime, frameRenderables, x, fbh - (y + h), overlayVertices);
 }
 
 void Engine::setViewportRect(int x, int y, int width, int height)

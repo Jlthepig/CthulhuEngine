@@ -2,6 +2,7 @@
 #include <ext/matrix_clip_space.hpp>
 #include <ext/matrix_transform.hpp>
 #include <limits>
+#include <type_traits>
 
 #include "components.hpp"
 #include "log_utils.hpp"
@@ -16,6 +17,8 @@ using KalaHeaders::KalaLog::Log;
 using KalaHeaders::KalaLog::LogType;
 namespace Cthulhu::Rendering
 {
+static_assert(std::is_standard_layout_v<OverlayVertex>);
+
 void Renderer::setScene(Cthulhu::Scene::Scene *scene)
 {
     this->scene = scene;
@@ -143,6 +146,30 @@ void Renderer::init(GLFWwindow *window, Scene::Camera *camera, const RenderConfi
 
     glBindVertexArray(0);
 
+    if (overlayShader.load(
+            enginePath("shaders/overlay.vertex"),
+            enginePath("shaders/overlay.fragment")))
+    {
+        glGenVertexArrays(1, &overlayVAO);
+        glGenBuffers(1, &overlayVBO);
+        glBindVertexArray(overlayVAO);
+        glBindBuffer(GL_ARRAY_BUFFER, overlayVBO);
+
+        glEnableVertexAttribArray(0);
+        glVertexAttribPointer(
+            0, 3, GL_FLOAT, GL_FALSE,
+            static_cast<GLsizei>(sizeof(OverlayVertex)),
+            reinterpret_cast<const void *>(offsetof(OverlayVertex, position)));
+        glEnableVertexAttribArray(1);
+        glVertexAttribPointer(
+            1, 4, GL_FLOAT, GL_FALSE,
+            static_cast<GLsizei>(sizeof(OverlayVertex)),
+            reinterpret_cast<const void *>(offsetof(OverlayVertex, color)));
+
+        glBindVertexArray(0);
+        glBindBuffer(GL_ARRAY_BUFFER, 0);
+    }
+
     glGenBuffers(1, &sceneUBO);
     glBindBuffer(GL_UNIFORM_BUFFER, sceneUBO);
     glBufferData(GL_UNIFORM_BUFFER, sizeof(SceneUniforms), nullptr, GL_DYNAMIC_DRAW);
@@ -223,7 +250,55 @@ void Renderer::bindMaterial(const Material &material, const std::vector<Texture>
     }
 }
 
-void Renderer::render(unsigned int width, unsigned int height, float deltaTime,const std::vector<Renderable> &renderables, int destX, int destY)
+void Renderer::drawOverlayTriangles(std::span<const OverlayVertex> vertices)
+{
+    if (vertices.empty() || overlayVAO == 0)
+        return;
+
+    const std::size_t maximum = std::min(
+        static_cast<std::size_t>(std::numeric_limits<GLsizei>::max()),
+        static_cast<std::size_t>(std::numeric_limits<GLsizeiptr>::max()) /
+            sizeof(OverlayVertex));
+    if (vertices.size() % 3 != 0 || vertices.size() > maximum)
+    {
+        Log::Print("Invalid overlay triangle batch", "Renderer", LogType::LOG_ERROR);
+        return;
+    }
+
+    glDepthMask(GL_TRUE);
+    glClearDepth(1.0);
+    glClear(GL_DEPTH_BUFFER_BIT);
+    glEnable(GL_DEPTH_TEST);
+    glDepthFunc(GL_LESS);
+    glDisable(GL_CULL_FACE);
+    glDisable(GL_STENCIL_TEST);
+    glEnable(GL_BLEND);
+    glBlendEquation(GL_FUNC_ADD);
+    glBlendFuncSeparate(
+        GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA, GL_ONE, GL_ONE_MINUS_SRC_ALPHA);
+
+    overlayShader.use();
+    overlayShader.setMat4("viewProjection", projection * view);
+    glBindVertexArray(overlayVAO);
+    glBindBuffer(GL_ARRAY_BUFFER, overlayVBO);
+
+    // Orphan and upload the borrowed frame data; retain only the GPU buffer object.
+    const auto bytes = static_cast<GLsizeiptr>(vertices.size_bytes());
+    glBufferData(GL_ARRAY_BUFFER, bytes, nullptr, GL_STREAM_DRAW);
+    glBufferSubData(GL_ARRAY_BUFFER, 0, bytes, vertices.data());
+    glDrawArrays(GL_TRIANGLES, 0, static_cast<GLsizei>(vertices.size()));
+
+    glBindVertexArray(0);
+    glBindBuffer(GL_ARRAY_BUFFER, 0);
+    glDisable(GL_BLEND);
+    glEnable(GL_CULL_FACE);
+    glDepthMask(GL_TRUE);
+    glEnable(GL_DEPTH_TEST);
+}
+
+void Renderer::render(unsigned int width, unsigned int height, float deltaTime,
+                      const std::vector<Renderable> &renderables, int destX, int destY,
+                      std::span<const OverlayVertex> overlayVertices)
 {
     if (width == 0 || height == 0)
     {
@@ -516,6 +591,7 @@ void Renderer::render(unsigned int width, unsigned int height, float deltaTime,c
         glDepthFunc(GL_LESS);
     }
 
+    drawOverlayTriangles(overlayVertices);
     sceneFramebuffer.unbind();
 
     glViewport(0, 0, width, height);
@@ -531,6 +607,11 @@ void Renderer::shutdown()
     gridShader.destroy();
     lineShader.destroy();
     outlineShader.destroy();
+    overlayShader.destroy();
+    glDeleteVertexArrays(1, &overlayVAO);
+    glDeleteBuffers(1, &overlayVBO);
+    overlayVAO = 0;
+    overlayVBO = 0;
     basicShader.destroy();
     skybox.destroy();
     sceneFramebuffer.destroy();

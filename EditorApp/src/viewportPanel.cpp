@@ -182,7 +182,7 @@ void ViewportPanel::build(Context &ctx, NodeHandle viewportRoot)
 void ViewportPanel::update(Context &ctx)
 {
     const bool canShortcut = !ctx.isValid(ctx.focused()) || (!ctx.isFocused(snapMoveInput) && !ctx.isFocused(snapRotateInput) && !ctx.isFocused(snapScaleInput));
-    if (canShortcut)
+    if (canShortcut && !Cthulhu::Core::Input::isMouseButtonDown(GLFW_MOUSE_BUTTON_RIGHT))
     {
         if (Cthulhu::Core::Input::isKeyPressed(GLFW_KEY_Q)) setMode(ctx, GizmoMode::Select);
         else if (Cthulhu::Core::Input::isKeyPressed(GLFW_KEY_W)) setMode(ctx, GizmoMode::Move);
@@ -308,7 +308,7 @@ void ViewportPanel::updateGizmo(Context &ctx, Engine &engine, const HierarchyPan
     gizmoSystem.update(engine, hierarchy.selection(), currentMode, currentSpace, ctx.tree().rect(sceneNode).h);
 
     const auto &frame = gizmoSystem.frame;
-    if (!frame.visible) return;
+    if (!frame.visible || currentMode == GizmoMode::Move) return;
 
     for (int axis = 0; axis < 3; ++axis)
     {

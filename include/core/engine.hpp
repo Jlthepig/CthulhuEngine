@@ -3,6 +3,7 @@
 #include <filesystem>
 #include <memory>
 #include <optional>
+#include <span>
 #include <string_view>
 #include <vector>
 
@@ -65,7 +66,7 @@ class Engine
     // we split one frame to allow OctoGui to draw the ui between render() and run()
     bool shouldClose() const;
     void update(); 
-    void render(); // 3d 
+    void render(std::span<const Rendering::OverlayVertex> overlayVertices = {}); // 3d
     void present(); // swap bufferes and poll window events
     void setViewportRect(int x, int y, int width, int height);
 

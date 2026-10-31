@@ -241,7 +241,7 @@ int main(int argc, char* argv[]) {
             viewport.height
         );
 
-        engine.render();
+        engine.render(shell.viewport().overlayVertices());
 
         ui.endFrame();
 

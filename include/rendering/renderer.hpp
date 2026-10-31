@@ -16,6 +16,8 @@
 #include "grid.hpp"
 #include "light.hpp"
 #include "material.hpp"
+
+#include "overlayVertex.hpp"
 #include "pointShadowMap.hpp"
 #include "sceneUniforms.hpp"
 #include "shader.hpp"
@@ -52,8 +54,8 @@ struct Renderable
 
 struct DebugVertex
 {
-    glm::vec3 pos;
-    glm::vec3 color;
+    glm::vec3 pos{};
+    glm::vec3 color{};
 };
 struct RenderConfig
 {
@@ -90,7 +92,9 @@ class Renderer
     void setDirectionalLight(const DirectionalLight &light);
     void setPointLights(const std::vector<PointLight> &lights);
     void setOutlineTargets(std::span<const Scene::EntityId> entities);
-    void render(unsigned int width, unsigned int height, float deltaTime, const std::vector<Renderable> &renderables, int destX = 0, int destY = 0);
+    void render(unsigned int width, unsigned int height, float deltaTime,
+                const std::vector<Renderable> &renderables, int destX = 0, int destY = 0,
+                std::span<const OverlayVertex> overlayVertices = {});
     void addDebugLine(const glm::vec3 &start, const glm::vec3 &end, const glm::vec3 &color, float duration = 0.0f);
     void shutdown();
 
@@ -106,6 +110,9 @@ class Renderer
     Cthulhu::Rendering::Shader lineShader;
     std::vector<Scene::EntityId> outlineTargets;
     Shader outlineShader;
+    Shader overlayShader;
+    GLuint overlayVAO = 0;
+    GLuint overlayVBO = 0;
     Cthulhu::Rendering::GridLines grid;
     Cthulhu::Rendering::Skybox skybox;
     Cthulhu::Rendering::Framebuffer sceneFramebuffer;
@@ -136,5 +143,6 @@ class Renderer
 
     void bindMaterial(const Material &material, const std::vector<Texture> &modelTextures);
     void bindDefaultMaterial();
+    void drawOverlayTriangles(std::span<const OverlayVertex> vertices);
 };
 } // namespace Cthulhu::Rendering

@@ -1,9 +1,11 @@
 #pragma once
 
 #include <span>
+#include <vector>
 
 #include <glm.hpp>
 
+#include "overlayVertex.hpp"
 #include "entityId.hpp"
 
 namespace Cthulhu { class Engine; }
@@ -42,6 +44,7 @@ struct GizmoSystem
 {
     GizmoStyle style;
     GizmoFrame frame;
+    std::vector<Rendering::OverlayVertex> vertices;
 
     void update(Engine &engine, std::span<const Scene::EntityId> selection, GizmoMode mode, GizmoSpace space, float viewportHeight);
 };

@@ -26,6 +26,10 @@ class ViewportPanel
     [[nodiscard]] bool snapEnabled() const noexcept { return snapActive; }
 
     [[nodiscard]] octogui::NodeHandle overlay() const noexcept { return overlayNode; }
+    [[nodiscard]] std::span<const Rendering::OverlayVertex> overlayVertices() const noexcept
+    {
+        return gizmoSystem.vertices;
+    }
 
     void updatePicking(octogui::Context &ctx, Engine &engine, HierarchyPanel &hierarchy, octogui::NodeHandle sceneNode);
     void updateMarquee(octogui::Context& ctx, octogui::NodeHandle sceneNode, bool enabled, std::uint64_t sceneGeneration);
