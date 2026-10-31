@@ -11,6 +11,50 @@
 using KalaHeaders::KalaLog::Log;
 using KalaHeaders::KalaLog::LogType;
 
+namespace
+{
+
+bool isInHiddenFolder(std::string_view key)
+{
+    const std::filesystem::path relative(std::string(key.substr(std::string_view("res://").size())));
+
+    for (const auto &part : relative.parent_path())
+    {
+        const std::string name = part.string();
+        if (!name.empty() && name.front() == '.')
+        {
+            return true;
+        }
+    }
+    return false;
+}
+
+std::optional<Cthulhu::Assets::AssetId> importFailed(const std::string &why)
+{
+    Log::Print("IMPORT FAILED: " + why, "AssetManager", LogType::LOG_ERROR);
+    return std::nullopt;
+}
+
+bool moveFailed(const std::string &why)
+{
+    Log::Print("MOVE FAILED: " + why, "AssetManager", LogType::LOG_ERROR);
+    return false;
+}
+
+bool deleteFailed(const std::string &why)
+{
+    Log::Print("DELETE FAILED: " + why, "AssetManager", LogType::LOG_ERROR);
+    return false;
+}
+
+bool settingsFailed(const std::string &why)
+{
+    Log::Print("IMPORT SETTINGS FAILED: " + why, "AssetManager", LogType::LOG_ERROR);
+    return false;
+}
+
+} // namespace
+
 namespace Cthulhu::Assets
 {
 std::optional<std::string> normaliseResourcePath(std::string_view resourcePath)
@@ -326,50 +370,6 @@ void AssetManager::shutdown()
     registryLoaded = false;
     project = nullptr;
 }
-
-namespace
-{
-
-bool isInHiddenFolder(std::string_view key)
-{
-    const std::filesystem::path relative(std::string(key.substr(std::string_view("res://").size())));
-
-    for (const auto &part : relative.parent_path())
-    {
-        const std::string name = part.string();
-        if (!name.empty() && name.front() == '.')
-        {
-            return true;
-        }
-    }
-    return false;
-}
-
-std::optional<AssetId> importFailed(const std::string &why)
-{
-    Log::Print("IMPORT FAILED: " + why, "AssetManager", LogType::LOG_ERROR);
-    return std::nullopt;
-}
-
-bool moveFailed(const std::string &why)
-{
-    Log::Print("MOVE FAILED: " + why, "AssetManager", LogType::LOG_ERROR);
-    return false;
-}
-
-bool deleteFailed(const std::string &why)
-{
-    Log::Print("DELETE FAILED: " + why, "AssetManager", LogType::LOG_ERROR);
-    return false;
-}
-
-bool settingsFailed(const std::string &why)
-{
-    Log::Print("IMPORT SETTINGS FAILED: " + why, "AssetManager", LogType::LOG_ERROR);
-    return false;
-}
-
-} // namespace
 
 std::optional<AssetId> AssetManager::importFile(const std::filesystem::path &sourceFile, std::string_view destination)
 {

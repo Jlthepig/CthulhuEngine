@@ -318,8 +318,8 @@ void ViewportPanel::updateGizmo(Context &ctx, Engine &engine, const HierarchyPan
     gizmoSystem.update(engine, hierarchy.selection(), currentMode, currentSpace, ctx.tree().rect(sceneNode).h);
 
     const auto &frame = gizmoSystem.frame;
-    if (!frame.visible || currentMode == GizmoMode::Move)
-        return;
+    
+    if (!frame.visible || currentMode != GizmoMode::Scale) return;
 
     for (int axis = 0; axis < 3; ++axis)
     {

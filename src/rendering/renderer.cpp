@@ -2,6 +2,7 @@
 #include <ext/matrix_clip_space.hpp>
 #include <ext/matrix_transform.hpp>
 #include <limits>
+#include <string>
 #include <type_traits>
 
 #include "components.hpp"
@@ -270,8 +271,7 @@ void Renderer::bindMaterial(const Material &material, const std::vector<Texture>
 
 void Renderer::drawOverlayTriangles(std::span<const OverlayVertex> vertices)
 {
-    if (vertices.empty() || overlayVAO == 0)
-        return;
+    if (vertices.empty() || overlayVAO == 0) return;
 
     const std::size_t maximum =
         std::min(static_cast<std::size_t>(std::numeric_limits<GLsizei>::max()),
@@ -298,11 +298,45 @@ void Renderer::drawOverlayTriangles(std::span<const OverlayVertex> vertices)
     glBindVertexArray(overlayVAO);
     glBindBuffer(GL_ARRAY_BUFFER, overlayVBO);
 
-    // Orphan and upload the borrowed frame data; retain only the GPU buffer object.
     const auto bytes = static_cast<GLsizeiptr>(vertices.size_bytes());
     glBufferData(GL_ARRAY_BUFFER, bytes, nullptr, GL_STREAM_DRAW);
     glBufferSubData(GL_ARRAY_BUFFER, 0, bytes, vertices.data());
-    glDrawArrays(GL_TRIANGLES, 0, static_cast<GLsizei>(vertices.size()));
+    
+    const auto transparentTriangle = [&](std::size_t first)
+    {
+        return vertices[first].color.a < 1.0f || vertices[first + 1].color.a < 1.0f || vertices[first + 2].color.a < 1.0f;
+    };
+
+    const auto drawPass = [&](bool transparent)
+    {
+        std::size_t first = 0;
+        while (first < vertices.size())
+        {
+            while (first < vertices.size() && transparentTriangle(first) != transparent)
+            {
+                first += 3;
+            }
+
+            std::size_t end = first;
+            while (end < vertices.size() && transparentTriangle(end) == transparent)
+            {
+                end += 3;
+            }
+
+            if (end > first)
+            {
+                glDrawArrays(GL_TRIANGLES, static_cast<GLint>(first),  static_cast<GLsizei>(end - first));
+            }
+            first = end;
+        }
+    };
+
+    glDisable(GL_BLEND);
+    drawPass(false);
+
+    glEnable(GL_BLEND);
+    glDepthMask(GL_FALSE);
+    drawPass(true);
 
     glBindVertexArray(0);
     glBindBuffer(GL_ARRAY_BUFFER, 0);

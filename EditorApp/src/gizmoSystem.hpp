@@ -32,6 +32,16 @@ enum class GizmoSpace
 struct GizmoStyle
 {
     float axisLengthPixels = 96.0f;
+    float planeOffset = 0.20f;
+    float planeSize = 0.18f;
+    float planeOpacity = 0.18f;
+    float centreSizePixels = 10.0f;
+    float borderWidthPixels = 1.25f;
+
+    float rotationRadius = 0.80f;
+    float rotationThicknessPixels = 2.5f;
+    float rotationRearBrightness = 0.40f;
+    
     glm::vec3 axisColors[3]{{0.92f, 0.30f, 0.28f}, {0.40f, 0.82f, 0.35f}, {0.30f, 0.56f, 0.96f}};
 };
 
