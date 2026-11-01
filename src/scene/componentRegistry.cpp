@@ -2,6 +2,7 @@
 
 #include <algorithm>
 #include <cmath>
+#include <limits>
 
 #include "log_utils.hpp"
 
@@ -74,7 +75,13 @@ std::optional<FieldValue> sanitize(const FieldDescriptor &field, const FieldValu
         {
             return value;
         }
-        return FieldValue{std::clamp(i, static_cast<int>(field.min), static_cast<int>(field.max))};
+        constexpr double intMin = std::numeric_limits<int>::lowest();
+        constexpr double intMax = std::numeric_limits<int>::max();
+
+        const int minimum = static_cast<int>(std::clamp(static_cast<double>(field.min), intMin, intMax));
+        const int maximum = static_cast<int>(std::clamp(static_cast<double>(field.max), intMin, intMax));
+
+        return FieldValue{std::clamp(i, minimum, maximum)};
     }
 
     if (field.type == FieldType::Enum)

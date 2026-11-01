@@ -15,6 +15,11 @@ struct ValidationHealth
 	bool armored = false;
 };
 
+struct ValidationInteger
+{
+	int value = 0;
+};
+
 inline void validateComponentDescriptors(Engine& engine, CS::Scene& scene, Results& r)
 {
 	auto& registry = engine.getComponentRegistry();
@@ -97,6 +102,48 @@ inline void validateComponentDescriptors(Engine& engine, CS::Scene& scene, Resul
 	const auto& moved = w.get<CS::TransformComponent>();
 	check(r, moved.position == glm::vec3(1.0f, 2.0f, 3.0f) && moved.matrixDirty,
 		  "D10 transform setField marks the matrix dirty");
+
+	auto integer = CS::makeComponentDescriptor<ValidationInteger>("V_IntegerLimits");
+	auto limits = CS::makeField(
+		"wide",
+		CS::FieldType::Int,
+		[](flecs::entity e) -> CS::FieldValue {
+			return e.get<ValidationInteger>().value;
+		},
+		[](flecs::entity e, const CS::FieldValue& value) {
+			e.set(ValidationInteger{std::get<int>(value)});
+		},
+		-std::numeric_limits<float>::max(),
+		std::numeric_limits<float>::max());
+
+	integer.fields.push_back(limits);
+	limits.name = "fractional";
+	limits.min = 1.5f;
+	limits.max = 5.5f;
+	integer.fields.push_back(limits);
+
+	const bool registered = local.registerComponent(std::move(integer));
+	w.set(ValidationInteger{});
+
+	check(r, registered && local.setField(w, "V_IntegerLimits", "wide", 42) &&
+				 w.get<ValidationInteger>().value == 42,
+		  "Integer limits: wide bounds preserve ordinary values");
+
+	check(r, local.setField(w, "V_IntegerLimits", "wide", std::numeric_limits<int>::max()) &&
+				 w.get<ValidationInteger>().value == std::numeric_limits<int>::max(),
+		  "Integer limits: wide bounds preserve INT_MAX");
+
+	check(r, local.setField(w, "V_IntegerLimits", "wide", std::numeric_limits<int>::lowest()) &&
+				 w.get<ValidationInteger>().value == std::numeric_limits<int>::lowest(),
+		  "Integer limits: wide bounds preserve INT_MIN");
+
+	check(r, local.setField(w, "V_IntegerLimits", "fractional", -10) &&
+				 w.get<ValidationInteger>().value == 1,
+		  "Integer limits: fractional minimum keeps truncation behaviour");
+
+	check(r, local.setField(w, "V_IntegerLimits", "fractional", 10) &&
+				 w.get<ValidationInteger>().value == 5,
+		  "Integer limits: fractional maximum keeps truncation behaviour");
 
 	scene.destroyEntity(idOf(w));
 }

@@ -60,6 +60,7 @@ inline int run(Engine& engine)
 
 	validateScribeCore(engine, r);
 	validateScribeEntities(engine, r);
+	validateScribeTransforms(engine, r);
 	validateScribeComponents(engine, r);
 	validateScribeImport(engine, r);
 	validateScribeMove(engine, r);

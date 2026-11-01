@@ -1,5 +1,7 @@
 #pragma once
 
+#include <limits>
+
 #include "testCommon.hpp"
 #include "session.hpp"
 
@@ -241,4 +243,185 @@ inline void validateScribeCore(Engine& engine, Results& r)
     engine.loadScene(SAVE_PATH);
     check(r, !session.undo() && !session.canUndo(), "N10 scene switch clears history");
 }
+
+inline void validateScribeTransforms(Engine &engine, Results &r)
+{
+    using Scribe::TransformValue;
+    using Status = Scribe::Result::Status;
+
+    check(r, engine.loadScene(SAVE_PATH), "Transforms: load fixture");
+    Scribe::Session session(engine);
+    auto *scene = engine.getActiveScene();
+    const auto first = session.createEntity("Transform_First");
+    const auto second = session.createEntity("Transform_Second");
+    check(r, scene && first.ok() && second.ok(), "Transforms: create two entities");
+    if (!scene || !first.ok() || !second.ok())
+    {
+        return;
+    }
+
+    const auto read = [&](CS::EntityId id) -> std::optional<TransformValue> {
+        const auto entity = scene->findEntity(id);
+        const auto *transform = entity ? entity->try_get<CS::TransformComponent>() : nullptr;
+        if (!transform)
+        {
+            return std::nullopt;
+        }
+        return TransformValue{id, transform->position, transform->rotation, transform->scale};
+    };
+
+    const TransformValue original[]{
+        {first.id, {}, {}, glm::vec3{1.0f}},
+        {second.id, {}, {}, glm::vec3{1.0f}}};
+    const TransformValue requested[]{
+        {first.id, {1.0f, 2.0f, 3.0f}, {0.1f, 0.2f, 0.3f}, glm::vec3{2.0f}},
+        {second.id, {4.0f, 5.0f, 6.0f}, {0.4f, 0.5f, 0.6f}, glm::vec3{3.0f}}};
+    const std::string previousUndo(session.undoName());
+
+    const auto applied = session.setTransforms(requested);
+    check(r, applied.status == Status::Applied &&
+                 read(first.id) == requested[0] && read(second.id) == requested[1],
+          "Transforms: apply the whole group");
+
+    const bool undone = session.undo();
+    check(r, undone && read(first.id) == original[0] && read(second.id) == original[1] &&
+                 session.undoName() == previousUndo,
+          "Transforms: one undo restores the whole group");
+
+    const auto noChange = session.setTransforms(original);
+    check(r, noChange.status == Status::NoChange && session.canRedo(),
+          "Transforms: no-op preserves redo");
+
+    const bool redone = session.redo();
+    check(r, redone && read(first.id) == requested[0] && read(second.id) == requested[1],
+          "Transforms: redo restores the whole group");
+
+    TransformValue invalid[]{requested[0], requested[1]};
+    invalid[0].position.x = 100.0f;
+    invalid[1].id = {};
+    const auto missing = session.setTransforms(invalid);
+    check(r, !missing.ok() && read(first.id) == requested[0] && read(second.id) == requested[1],
+          "Transforms: missing entity changes nothing");
+
+    invalid[1] = invalid[0];
+    const auto duplicate = session.setTransforms(invalid);
+    check(r, !duplicate.ok() && read(first.id) == requested[0] && read(second.id) == requested[1],
+          "Transforms: duplicate entity changes nothing");
+
+    invalid[1] = requested[1];
+    invalid[1].scale.z = std::numeric_limits<float>::infinity();
+    const auto nonFinite = session.setTransforms(invalid);
+    check(r, !nonFinite.ok() && read(first.id) == requested[0] && read(second.id) == requested[1],
+          "Transforms: non-finite value changes nothing");
+
+    const CS::EntityId selection[]{first.id, second.id};
+    const std::string undoBeforePreview(session.undoName());
+    const bool dirtyBeforePreview = scene->isDirty();
+
+    const bool began = session.beginTransformEdit(selection).ok();
+    check(r, began && session.transformEditActive(), "Preview: begin captures the selection");
+    if (!began || session.transformStart().size() != 2)
+    {
+        return;
+    }
+
+    const auto captured = session.transformStart();
+    std::vector<TransformValue> start(captured.begin(), captured.end());
+    auto preview = start;
+    for (auto &value : preview)
+    {
+        value.position.x += 2.0f;
+    }
+
+    const bool firstPreview = session.previewTransforms(preview).ok();
+    for (std::size_t i = 0; i < preview.size(); ++i)
+    {
+        preview[i].position.x = start[i].position.x + 5.0f;
+    }
+    const bool secondPreview = session.previewTransforms(preview).ok();
+
+    check(r, firstPreview && secondPreview &&
+                 read(preview[0].id) == preview[0] && read(preview[1].id) == preview[1] &&
+                 session.undoName() == undoBeforePreview,
+          "Preview: repeated updates do not enter history");
+
+    check(r, !session.canUndo() && !session.canRedo() &&
+                 !session.undo() && !session.redo() && !session.renameEntity(first.id, "Blocked").ok(),
+          "Preview: other history edits are blocked");
+
+    auto invalidPreview = preview;
+    invalidPreview[1].scale.z = std::numeric_limits<float>::infinity();
+    check(r, !session.previewTransforms(invalidPreview).ok() &&
+                 read(preview[0].id) == preview[0] && read(preview[1].id) == preview[1],
+          "Preview: invalid values preserve the last valid preview");
+
+    check(r, session.finishTransformEdit(false).ok() && !session.transformEditActive() &&
+                 read(first.id) == requested[0] && read(second.id) == requested[1] &&
+                 session.undoName() == undoBeforePreview && scene->isDirty() == dirtyBeforePreview,
+          "Preview: cancel restores values, history and dirty state");
+
+    const bool beganNoOp = session.beginTransformEdit(selection).ok();
+    const bool movedNoOp = session.previewTransforms(preview).ok();
+    const bool returnedNoOp = session.previewTransforms(start).ok();
+    const auto noOpCommit = session.finishTransformEdit(true);
+    check(r, beganNoOp && movedNoOp && returnedNoOp && noOpCommit.status == Status::NoChange &&
+                 session.undoName() == undoBeforePreview && scene->isDirty() == dirtyBeforePreview,
+          "Preview: returning to the start records nothing");
+
+    const bool beganCommit = session.beginTransformEdit(selection).ok();
+    const bool previewedCommit = session.previewTransforms(preview).ok();
+    const auto committed = session.finishTransformEdit(true);
+    check(r, beganCommit && previewedCommit && committed.status == Status::Applied &&
+                 !session.transformEditActive(),
+          "Preview: commit records the gesture");
+
+    check(r, session.undo() && read(first.id) == requested[0] && read(second.id) == requested[1],
+          "Preview: one undo restores both entities");
+
+    const bool beganCancel = session.beginTransformEdit(selection).ok();
+    const bool previewedCancel = session.previewTransforms(preview).ok();
+    check(r, beganCancel && previewedCancel && session.finishTransformEdit(false).ok() && session.canRedo(),
+          "Preview: cancellation preserves redo");
+
+    check(r, session.redo() &&
+                 read(preview[0].id) == preview[0] && read(preview[1].id) == preview[1],
+          "Preview: redo reapplies the committed gesture");
+
+    {
+        Scribe::Session scoped(engine);
+        const bool began = scoped.beginTransformEdit(selection).ok();
+        const bool updated = scoped.previewTransforms(start).ok();
+        check(r, began && updated, "Preview: scoped session can preview");
+    }
+
+    check(r, read(preview[0].id) == preview[0] && read(preview[1].id) == preview[1],
+          "Preview: session destruction cancels an unfinished edit");
+
+    const auto previousWorldMode = engine.getWorldMode();
+    engine.setWorldMode(WorldMode::Edit);
+    const bool beganPlay = session.beginTransformEdit(selection).ok();
+    const bool previewedPlay = session.previewTransforms(start).ok();
+    const bool cancelledPlay = session.finishTransformEdit(false).ok();
+    const bool played = engine.play();
+    const bool stopped = played && engine.stop();
+    scene = engine.getActiveScene();
+    engine.setWorldMode(previousWorldMode);
+    check(r, beganPlay && previewedPlay && cancelledPlay && stopped &&
+                 read(preview[0].id) == preview[0] && read(preview[1].id) == preview[1],
+          "Preview: cancelling before Play preserves the edit scene");
+
+    const bool beganReplacement = session.beginTransformEdit(selection).ok();
+    const bool previewedReplacement = session.previewTransforms(start).ok();
+    const bool replaced = engine.loadScene(SAVE_PATH);
+    const auto stalePreview = session.previewTransforms(preview);
+    scene = engine.getActiveScene();
+    check(r, beganReplacement && previewedReplacement && replaced && !stalePreview.ok() &&
+                 !session.transformEditActive() && session.transformStart().empty() && !session.canUndo(),
+          "Preview: scene replacement discards the old gesture safely");
+
+    while (session.undo())
+    {
+    }
+}
+
 } // namespace Cthulhu::Validation

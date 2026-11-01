@@ -77,6 +77,14 @@ Session::Session(Engine &engine)
 Scene::Scene *Session::syncScene()
 {
     const bool playing = engine.isPlaying();
+
+    if (transformActive && (playing || engine.getSceneGeneration() != transformGeneration))
+    {
+        transformActive = false;
+        transformBefore.clear();
+        transformAfter.clear();
+    }
+
     if (playing != boundPlaying)
     {
         boundPlaying = playing;
@@ -97,26 +105,26 @@ Scene::Scene *Session::syncScene()
     return engine.getActiveScene();
 }
 
-bool Session::refuseDuringPlay()
+bool Session::refuseEdit()
 {
     syncScene();
-    if (!engine.isPlaying())
+    if (!engine.isPlaying() && !transformActive)
     {
         return false;
     }
 
-    Log::Print("CANNOT EDIT DURING PLAY", "Scribe", LogType::LOG_ERROR);
+    Log::Print("CANNOT EDIT DURING PLAY OR A TRANSFORM PREVIEW", "Scribe", LogType::LOG_ERROR);
     return true;
 }
 
 bool Session::canUndo() const noexcept
 {
-    return !engine.isPlaying() && history.canUndo();
+    return !engine.isPlaying() && !transformActive && history.canUndo();
 }
 
 bool Session::canRedo() const noexcept
 {
-    return !engine.isPlaying() && history.canRedo();
+    return !engine.isPlaying() && !transformActive && history.canRedo();
 }
 
 void Session::refreshDirty(Scene::Scene &scene)
@@ -133,9 +141,9 @@ void Session::refreshDirty(Scene::Scene &scene)
 
 Result Session::execute(std::unique_ptr<Command> command)
 {
-    if (refuseDuringPlay())
+    if (refuseEdit())
     {
-        return Result::failed("CANNOT EDIT DURING PLAY");
+        return Result::failed("CANNOT EDIT DURING PLAY OR A TRANSFORM PREVIEW");
     }
 
     Scene::Scene *scene = syncScene();
@@ -167,7 +175,7 @@ Result Session::execute(std::unique_ptr<Command> command)
 
 bool Session::undo()
 {
-    if (refuseDuringPlay())
+    if (refuseEdit())
     {
         return false;
     }
@@ -190,7 +198,7 @@ bool Session::undo()
 
 bool Session::redo()
 {
-    if (refuseDuringPlay())
+    if (refuseEdit())
     {
         return false;
     }
@@ -213,9 +221,9 @@ bool Session::redo()
 
 Result Session::save()
 {
-    if (refuseDuringPlay())
+    if (refuseEdit())
     {
-        return Result::failed("CANNOT EDIT DURING PLAY");
+        return Result::failed("CANNOT EDIT DURING PLAY OR A TRANSFORM PREVIEW");
     }
 
     if (!syncScene())
@@ -234,9 +242,9 @@ Result Session::save()
 
 Result Session::saveAs(std::string_view resourcePath)
 {
-    if (refuseDuringPlay())
+    if (refuseEdit())
     {
-        return Result::failed("CANNOT EDIT DURING PLAY");
+        return Result::failed("CANNOT EDIT DURING PLAY OR A TRANSFORM PREVIEW");
     }
 
     if (!syncScene())
@@ -341,11 +349,16 @@ Result Session::setField(Scene::EntityId id,
     return execute(Commands::setField(id, std::string(component), std::string(field), value));
 }
 
+Result Session::setTransforms(std::span<const TransformValue> values)
+{
+    return execute(Commands::setTransforms(std::vector<TransformValue>(values.begin(), values.end())));
+}
+
 AssetResult Session::importAsset(const std::filesystem::path &sourceFile, std::string_view destination)
 {
-    if (refuseDuringPlay())
+    if (refuseEdit())
     {
-        return {Result::failed("CANNOT EDIT DURING PLAY"), {}};
+        return {Result::failed("CANNOT EDIT DURING PLAY OR A TRANSFORM PREVIEW"), {}};
     }
 
     syncScene();
@@ -366,9 +379,9 @@ AssetResult Session::importAsset(const std::filesystem::path &sourceFile, std::s
 
 Result Session::moveAsset(Assets::AssetId id, std::string_view destination)
 {
-    if (refuseDuringPlay())
+    if (refuseEdit())
     {
-        return Result::failed("CANNOT EDIT DURING PLAY");
+        return Result::failed("CANNOT EDIT DURING PLAY OR A TRANSFORM PREVIEW");
     }
 
     Scene::Scene *scene = syncScene();
@@ -412,9 +425,9 @@ Result Session::replaceReferences(std::string_view from, std::string_view to)
 
 Result Session::deleteAsset(Assets::AssetId id)
 {
-    if (refuseDuringPlay())
+    if (refuseEdit())
     {
-        return Result::failed("CANNOT EDIT DURING PLAY");
+        return Result::failed("CANNOT EDIT DURING PLAY OR A TRANSFORM PREVIEW");
     }
 
     Scene::Scene *scene = syncScene();
@@ -509,9 +522,9 @@ void Session::rewriteReferences(Scene::Scene &scene, std::string_view from, std:
 
 Result Session::setAudioImportSettings(Assets::AssetId id, const Assets::AudioImportSettings &settings)
 {
-    if (refuseDuringPlay())
+    if (refuseEdit())
     {
-        return Result::failed("CANNOT EDIT DURING PLAY");
+        return Result::failed("CANNOT EDIT DURING PLAY OR A TRANSFORM PREVIEW");
     }
 
     syncScene();

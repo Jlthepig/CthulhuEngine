@@ -1,8 +1,11 @@
+#include <GLFW/glfw3.h>
+
 #include <string>
 
 #include "editorShell.hpp"
 
 #include "engine.hpp"
+#include "input.hpp"
 #include "log_utils.hpp"
 #include "scene.hpp"
 #include "session.hpp"
@@ -231,6 +234,9 @@ void EditorShell::update(Context &ctx, Engine &engine, Scribe::Session &session)
     hierarchyPanelUI.update(ctx, engine, session);
     viewportPanelUI.update(ctx);
 
+    const bool wasPlaying = engine.isPlaying();
+    const bool togglePlay = !ctx.isValid(ctx.focused()) && Core::Input::isKeyPressed(GLFW_KEY_F5);
+
     if (ctx.isClicked(saveButton.button))
     {
         const auto result = session.save();
@@ -240,8 +246,13 @@ void EditorShell::update(Context &ctx, Engine &engine, Scribe::Session &session)
         }
     }
 
-    if (ctx.isClicked(playButton.button) && !engine.isPlaying())
+    if ((ctx.isClicked(playButton.button) || togglePlay) && !wasPlaying)
     {
+        if (!viewportPanelUI.finishGizmoDrag(session, false))
+        {
+            return;
+        }
+
         const bool ok = engine.play();
         (void)ok;
     }
@@ -252,7 +263,7 @@ void EditorShell::update(Context &ctx, Engine &engine, Scribe::Session &session)
         engine.setSimulationState(paused ? SimulationState::Running : SimulationState::Paused);
     }
 
-    if (ctx.isClicked(stopButton.button) && engine.isPlaying())
+    if ((ctx.isClicked(stopButton.button) || togglePlay) && wasPlaying)
     {
         const bool ok = engine.stop();
         (void)ok;
@@ -281,6 +292,11 @@ void EditorShell::update(Context &ctx, Engine &engine, Scribe::Session &session)
         lastPlaying = playing;
     }
 
+    if (ctx.input().mouse.pressed(MouseButton::Left))
+    {
+        viewportPanelUI.updateGizmo(ctx, engine, session, hierarchyPanelUI, sceneNode);
+    }
+
     viewportPanelUI.updateMarquee(ctx,
                                   sceneNode,
                                   !engine.isPlaying() && engine.hasActiveScene(),
@@ -291,7 +307,7 @@ void EditorShell::update(Context &ctx, Engine &engine, Scribe::Session &session)
     else
         engine.getRenderer().setOutlineTargets(hierarchyPanelUI.selection());
     inspectorUI.update(ctx, engine, session, engine.getActiveScene(), hierarchyPanelUI.selectedEntity());
-    viewportPanelUI.updateGizmo(ctx, engine, hierarchyPanelUI, sceneNode);
+    viewportPanelUI.updateGizmo(ctx, engine, session, hierarchyPanelUI, sceneNode);
 
     std::string sceneText = "No scene";
     if (const auto *activeScene = engine.getActiveScene())

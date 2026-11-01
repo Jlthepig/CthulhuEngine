@@ -14,6 +14,11 @@ namespace Cthulhu::Editor
 {
 namespace
 {
+
+constexpr GizmoHandle axisHandles[]{GizmoHandle::X, GizmoHandle::Y, GizmoHandle::Z};
+
+constexpr GizmoHandle planeHandles[]{GizmoHandle::YZ, GizmoHandle::ZX, GizmoHandle::XY};
+
 bool finiteVector(const glm::vec3 &value)
 {
     return std::isfinite(value.x) && std::isfinite(value.y) && std::isfinite(value.z);
@@ -123,7 +128,7 @@ const std::vector<RingVertex> &rotationRingMesh()
     return mesh;
 }
 
-void appendRotationRings(const GizmoFrame &frame, const GizmoStyle &style,const Scene::Camera &camera, std::vector<Rendering::OverlayVertex> &vertices)
+void appendRotationRings(const GizmoFrame &frame, const GizmoStyle &style,const Scene::Camera &camera, std::vector<Rendering::OverlayVertex> &vertices, std::vector<GizmoPart> &parts)
 {
     const float radius = frame.axisLengthWorld * style.rotationRadius;
     const float tubeRadius = frame.axisLengthWorld * (style.rotationThicknessPixels * 0.5f) / style.axisLengthPixels;
@@ -144,6 +149,8 @@ void appendRotationRings(const GizmoFrame &frame, const GizmoStyle &style,const 
 
     for (int axis = 0; axis < 3; ++axis)
     {
+        const std::size_t first = vertices.size();
+
         const glm::vec3 u = frame.basis[(axis + 1) % 3];
         const glm::vec3 v = frame.basis[(axis + 2) % 3];
         const glm::vec3 normal = frame.basis[axis];
@@ -169,6 +176,11 @@ void appendRotationRings(const GizmoFrame &frame, const GizmoStyle &style,const 
 
             vertices.push_back({position, glm::vec4(style.axisColors[axis] * brightness, 1.0f)});
         }
+
+        parts.push_back({
+            axisHandles[axis],
+            first,
+            vertices.size() - first});
     }
 }
 
@@ -193,11 +205,85 @@ void appendBorder(std::vector<Rendering::OverlayVertex> &vertices, const glm::ve
     appendQuad(vertices, origin + u * (1.0f - inset) + v * inset, u * inset, innerV, color);
 }
 
+void appendBox(std::vector<Rendering::OverlayVertex> &vertices, const glm::vec3 &centre, const glm::mat3 &basis, const glm::vec3 &halfExtent, const glm::vec3 &color, 
+    const glm::vec3 &light)
+{
+    for (int axis = 0; axis < 3; ++axis)
+    {
+        const int side = (axis + 1) % 3;
+        const int up = (axis + 2) % 3;
+
+        for (int sign = -1; sign <= 1; sign += 2)
+        {
+            const float direction = static_cast<float>(sign);
+            const glm::vec3 normal = basis[axis] * direction;
+            const glm::vec3 u = basis[side] * halfExtent[side] * direction;
+            const glm::vec3 v = basis[up] * halfExtent[up];
+
+            const float brightness = 0.65f + 0.35f * glm::max(glm::dot(normal, light), 0.0f);
+
+            appendQuad(vertices, centre + normal * halfExtent[axis] - u - v, u * 2.0f, v * 2.0f, glm::vec4(color * brightness, 1.0f));
+        }
+    }
+}
+
+void appendScaleHandles(const GizmoFrame &frame, const GizmoStyle &style, const Scene::Camera &camera, std::vector<Rendering::OverlayVertex> &vertices, std::vector<GizmoPart> &parts)
+{
+    const float unitsPerPixel = frame.axisLengthWorld / style.axisLengthPixels;
+    const float shaftHalf = unitsPerPixel * style.scaleShaftWidthPixels * 0.5f;
+    const float handleHalf = unitsPerPixel * style.scaleHandleSizePixels * 0.5f;
+    const float centreHalf = unitsPerPixel * style.scaleCentreSizePixels * 0.5f;
+
+    const float start = centreHalf + shaftHalf;
+    const float end = frame.axisLengthWorld - handleHalf;
+
+    if (!std::isfinite(shaftHalf) || !std::isfinite(handleHalf) || !std::isfinite(centreHalf) ||
+        shaftHalf <= 0.0f || handleHalf <= 0.0f || centreHalf <= 0.0f || end <= start)
+    {
+        return;
+    }
+
+    const glm::mat4 inverseView = glm::inverse(camera.getViewMatrix());
+    const glm::vec3 light = glm::normalize(glm::vec3(inverseView[0]) * 0.35f + glm::vec3(inverseView[1]) * 0.55f + glm::vec3(inverseView[2]));
+
+    constexpr std::size_t verticesPerBox = 36;
+    vertices.reserve(vertices.size() + 7 * verticesPerBox);
+
+    for (int axis = 0; axis < 3; ++axis)
+    {
+        const std::size_t first = vertices.size();
+
+        const glm::vec3 direction = frame.basis[axis];
+        const glm::mat3 shaftBasis{frame.basis[(axis + 1) % 3], frame.basis[(axis + 2) % 3], direction};
+
+        const glm::vec3 shaftCentre = frame.pivot + direction * ((start + end) * 0.5f);
+
+        appendBox(vertices, shaftCentre, shaftBasis, glm::vec3{shaftHalf, shaftHalf, (end - start) * 0.5f}, style.axisColors[axis], light);
+
+        appendBox(vertices, frame.pivot + direction * frame.axisLengthWorld, frame.basis, glm::vec3(handleHalf), style.axisColors[axis], light);
+
+        parts.push_back({
+            axisHandles[axis],
+            first,
+            vertices.size() - first});
+    }
+
+    const std::size_t first = vertices.size();
+    appendBox(vertices, frame.pivot, frame.basis, glm::vec3(centreHalf), glm::vec3{0.90f, 0.92f, 0.95f},  light);
+    parts.push_back({
+        GizmoHandle::Centre,
+        first,
+        vertices.size() - first});
+}
+
 } // namespace
 
 void GizmoSystem::update(Engine &engine, std::span<const Scene::EntityId> selection, GizmoMode mode, GizmoSpace space, float viewportHeight)
 {
     vertices.clear();
+    parts.clear();
+
+    hovered = GizmoHandle::None;
     frame = {};
 
     if (engine.isPlaying() || mode == GizmoMode::Select || selection.empty() || !std::isfinite(viewportHeight) ||
@@ -211,7 +297,7 @@ void GizmoSystem::update(Engine &engine, std::span<const Scene::EntityId> select
     if (!scene || !camera) return;
 
     glm::dvec3 positionSum(0.0);
-    std::size_t count = 0;
+    std::size_t count{};
 
     for (const Scene::EntityId id : selection)
     {
@@ -245,8 +331,7 @@ void GizmoSystem::update(Engine &engine, std::span<const Scene::EntityId> select
         return;
     }
 
-    const glm::mat4 projection =
-        glm::perspective(glm::radians(camera->getFov()), 1.0f, config.nearPlane, config.farPlane);
+    const glm::mat4 projection = glm::perspective(glm::radians(camera->getFov()), 1.0f, config.nearPlane, config.farPlane);
 
     const float projectionY = std::abs(projection[1][1]);
     if (!std::isfinite(projectionY) || projectionY <= 0.0f)
@@ -260,9 +345,17 @@ void GizmoSystem::update(Engine &engine, std::span<const Scene::EntityId> select
 
     if (!frame.visible) return;
 
+    parts.reserve(10);
+
     if (mode == GizmoMode::Rotate)
     {
-        appendRotationRings(frame, style, *camera, vertices);
+        appendRotationRings(frame, style, *camera, vertices, parts);
+        return;
+    }
+
+    if (mode == GizmoMode::Scale)
+    {
+        appendScaleHandles(frame, style, *camera, vertices, parts);
         return;
     }
 
@@ -273,6 +366,8 @@ void GizmoSystem::update(Engine &engine, std::span<const Scene::EntityId> select
 
     for (int axis = 0; axis < 3; ++axis)
     {
+        const std::size_t first = vertices.size();
+
         const glm::vec3 side = frame.basis[(axis + 1) % 3];
         const glm::vec3 up = frame.basis[(axis + 2) % 3];
         const glm::vec3 forward = frame.basis[axis];
@@ -281,9 +376,10 @@ void GizmoSystem::update(Engine &engine, std::span<const Scene::EntityId> select
         {
             const glm::vec3 offset = side * vertex.position.x + up * vertex.position.y + forward * vertex.position.z;
 
-            vertices.push_back({frame.pivot + offset * frame.axisLengthWorld,
-                                glm::vec4(style.axisColors[axis] * vertex.brightness, 1.0f)});
+            vertices.push_back({frame.pivot + offset * frame.axisLengthWorld, glm::vec4(style.axisColors[axis] * vertex.brightness, 1.0f)});
         }
+
+        parts.push_back({axisHandles[axis], first, vertices.size() - first});
     }
 
     struct Plane
@@ -292,6 +388,7 @@ void GizmoSystem::update(Engine &engine, std::span<const Scene::EntityId> select
         glm::vec3 u;
         glm::vec3 v;
         glm::vec3 color;
+        GizmoHandle handle;
         float depth;
     };
 
@@ -312,11 +409,18 @@ void GizmoSystem::update(Engine &engine, std::span<const Scene::EntityId> select
         const glm::vec3 centre = origin + (u + v) * size * 0.5f;
 
         planes[normal] = {
-            origin, u * size, v * size,
+            origin,
+            u * size,
+            v * size,
             style.axisColors[normal],
+            planeHandles[normal],
             glm::dot(centre - camera->getPosition(), camera->getFront())};
 
-        appendBorder(vertices, origin, u * size, v * size, borderInset, glm::vec4(style.axisColors[normal], 1.0f));
+        const std::size_t first = vertices.size();
+
+        appendBorder(vertices,  origin,  u * size,  v * size,  borderInset,  glm::vec4(style.axisColors[normal], 1.0f));
+
+        parts.push_back({planeHandles[normal], first, vertices.size() - first});
     }
 
     const glm::mat4 inverseView = glm::inverse(camera->getViewMatrix());
@@ -331,8 +435,13 @@ void GizmoSystem::update(Engine &engine, std::span<const Scene::EntityId> select
 
         const float inset = std::clamp(style.borderWidthPixels / style.centreSizePixels, 0.0f, 0.49f);
 
+        const std::size_t first = vertices.size();
         appendBorder(vertices, origin, u, v, inset, glm::vec4{0.90f, 0.92f, 0.95f, 1.0f});
         appendQuad(vertices, origin + (u + v) * inset, u * (1.0f - 2.0f * inset), v * (1.0f - 2.0f * inset), glm::vec4{0.12f, 0.14f, 0.17f, 1.0f});
+        parts.push_back({
+            GizmoHandle::Centre,
+            first,
+            vertices.size() - first});
     }
 
     std::sort(planes.begin(), planes.end(),
@@ -343,7 +452,11 @@ void GizmoSystem::update(Engine &engine, std::span<const Scene::EntityId> select
 
     for (const auto &plane : planes)
     {
+        const std::size_t first = vertices.size();
+
         appendQuad(vertices, plane.origin, plane.u, plane.v, glm::vec4(plane.color, style.planeOpacity));
+
+        parts.push_back({plane.handle, first, vertices.size() - first});
     }
 
 }

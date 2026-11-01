@@ -7,10 +7,12 @@
 #include <optional>
 #include <string_view>
 #include <vector>
+#include <span>
 
 #include "assetRegistry.hpp"
 #include "command.hpp"
 #include "componentRegistry.hpp"
+#include "transformValue.hpp"
 #include "history.hpp"
 #include "scene.hpp"
 
@@ -31,6 +33,23 @@ class Session
 
     Session(const Session &) = delete;
     Session &operator=(const Session &) = delete;
+
+    ~Session();
+
+    Result beginTransformEdit(std::span<const Scene::EntityId> selection);
+    Result previewTransforms(std::span<const TransformValue> values);
+    Result finishTransformEdit(bool commit);
+
+    [[nodiscard]] bool transformEditActive() const noexcept
+    {
+        return transformActive;
+    }
+
+    // Borrowed until the edit finishes. Preview values must retain this ID order.
+    [[nodiscard]] std::span<const TransformValue> transformStart() const noexcept
+    {
+        return transformActive ? std::span<const TransformValue>{transformBefore}: std::span<const TransformValue>{};
+    }
 
     Result execute(std::unique_ptr<Command> command);
 
@@ -74,10 +93,8 @@ class Session
     Result addComponent(Scene::EntityId id, std::string_view component);
     Result removeComponent(Scene::EntityId id, std::string_view component);
 
-    Result setField(Scene::EntityId id,
-                    std::string_view component,
-                    std::string_view field,
-                    const Scene::FieldValue &value);
+    Result setField(Scene::EntityId id, std::string_view component, std::string_view field, const Scene::FieldValue &value);
+    Result setTransforms(std::span<const TransformValue> values);
 
     // << assets applied immediately never undoable >>
     AssetResult importAsset(const std::filesystem::path &sourceFile, std::string_view destination);
@@ -101,10 +118,16 @@ class Session
     uint64_t boundGeneration{};
     bool boundPlaying = false;
 
+    std::vector<TransformValue> transformBefore;
+    std::vector<TransformValue> transformAfter;
+    std::uint64_t transformGeneration = 0;
+    bool transformActive = false;
+    bool transformWasDirty = false;
+
     Scene::Scene *syncScene();
     void refreshDirty(Scene::Scene &scene);
 
-    bool refuseDuringPlay();
+    bool refuseEdit();
 
     void rewriteReferences(Scene::Scene &scene, std::string_view from, std::string_view to);
 };

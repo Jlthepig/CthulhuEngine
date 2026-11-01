@@ -1,11 +1,18 @@
 #include <algorithm>
+#include <cmath>
+
+#include <gtc/matrix_transform.hpp>
 
 #include <GLFW/glfw3.h>
 
 #include "engine.hpp"
 #include "hierarchyPanel.hpp"
 #include "input.hpp"
+#include "pickingMath.hpp"
 #include "viewportPanel.hpp"
+#include "window.hpp"
+#include "session.hpp"
+#include "log_utils.hpp"
 
 using namespace octogui;
 
@@ -224,11 +231,22 @@ void ViewportPanel::updateMarquee(Context &ctx, NodeHandle sceneNode, bool enabl
     completedClick.reset();
     const auto &mouse = ctx.input().mouse;
 
-    if (!enabled || mouse.isDown(MouseButton::Right) || (marqueePending && marqueeGeneration != sceneGeneration) ||
-        Cthulhu::Core::Input::isKeyPressed(GLFW_KEY_ESCAPE))
+    if (!enabled || mouse.isDown(MouseButton::Right) ||
+    ((marqueePending || gizmoCaptured) && marqueeGeneration != sceneGeneration) ||
+    Cthulhu::Core::Input::isKeyPressed(GLFW_KEY_ESCAPE))
     {
+        gizmoCaptured = false;
         marqueePending = false;
         marqueeActive = false;
+        return;
+    }
+
+    if (gizmoCaptured)
+    {
+        if (mouse.released(MouseButton::Left) || !mouse.isDown(MouseButton::Left))
+        {
+            gizmoCaptured = false;
+        }
         return;
     }
 
@@ -313,19 +331,174 @@ void ViewportPanel::updateMarquee(Context &ctx, NodeHandle sceneNode, bool enabl
     draw.popClip();
 }
 
-void ViewportPanel::updateGizmo(Context &ctx, Engine &engine, const HierarchyPanel &hierarchy, NodeHandle sceneNode)
+bool ViewportPanel::finishGizmoDrag(Scribe::Session &session, bool commit)
 {
+    const auto result = session.finishTransformEdit(commit);
+    if (!result.ok())
+    {
+        KalaHeaders::KalaLog::Log::Print(result.error, "Gizmo", KalaHeaders::KalaLog::LogType::LOG_ERROR);
+        return false;
+    }
+
+    drag.handle = GizmoHandle::None;
+    return true;
+}
+
+void ViewportPanel::updateGizmo(Context &ctx, Engine &engine, Scribe::Session &session, const HierarchyPanel &hierarchy, NodeHandle sceneNode)
+{
+    const auto &mouse = ctx.input().mouse;
+
+    if (drag.handle != GizmoHandle::None)
+    {
+        const bool cancel = !session.transformEditActive() || engine.isPlaying() ||
+                            !engine.getWindow() ||
+                            glfwGetWindowAttrib(engine.getWindow()->getWindow(), GLFW_FOCUSED) != GLFW_TRUE ||
+                            engine.getSceneGeneration() != drag.generation ||
+                            hierarchy.selection() != drag.selection ||
+                            currentMode != drag.mode || currentSpace != drag.space ||
+                            Core::Input::isKeyPressed(GLFW_KEY_ESCAPE) || mouse.isDown(MouseButton::Right) ||
+                            (!mouse.isDown(MouseButton::Left) && !mouse.released(MouseButton::Left));
+
+        if (cancel || mouse.released(MouseButton::Left))
+        {
+            (void)finishGizmoDrag(session, !cancel);
+        }
+    }
+
+    const GizmoHandle previous = gizmoSystem.hovered;
+
     gizmoSystem.update(engine, hierarchy.selection(), currentMode, currentSpace, ctx.tree().rect(sceneNode).h);
 
-    const auto &frame = gizmoSystem.frame;
-    
-    if (!frame.visible || currentMode != GizmoMode::Scale) return;
-
-    for (int axis = 0; axis < 3; ++axis)
+    if (drag.handle == GizmoHandle::None)
     {
-        engine.getRenderer().addDebugLine(frame.pivot,
-                                          frame.pivot + frame.basis[axis] * frame.axisLengthWorld,
-                                          gizmoSystem.style.axisColors[axis]);
+        const Rect rect = ctx.tree().rect(sceneNode);
+        const NodeHandle hovered = ctx.hovered();
+
+        if (gizmoCaptured || Core::Input::isKeyPressed(GLFW_KEY_ESCAPE) || !gizmoSystem.frame.visible ||
+            mouse.isDown(MouseButton::Right) ||
+            !rect.contains(mouse.position) ||
+            ctx.tree().rect(header).contains(mouse.position) ||
+            (ctx.isValid(hovered) && hovered != sceneNode && hovered != overlayNode))
+        {
+            return;
+        }
+
+        auto *camera = engine.getCamera();
+        auto *window = engine.getWindow();
+        if (!camera || !window)
+        {
+            return;
+        }
+
+        GLFWwindow *nativeWindow = window->getWindow();
+        if (glfwGetInputMode(nativeWindow, GLFW_CURSOR) != GLFW_CURSOR_NORMAL)
+        {
+            return;
+        }
+
+        const Vec2 display = ctx.input().displaySize;
+        if (rect.w <= 0.0f || rect.h <= 0.0f || display.x <= 0.0f || display.y <= 0.0f)
+        {
+            return;
+        }
+
+        int framebufferWidth = 0;
+        int framebufferHeight = 0;
+        glfwGetFramebufferSize(nativeWindow, &framebufferWidth, &framebufferHeight);
+
+        const int width = static_cast<int>(rect.w * static_cast<float>(framebufferWidth) / display.x);
+        const int height = static_cast<int>(rect.h * static_cast<float>(framebufferHeight) / display.y);
+        if (width <= 0 || height <= 0)
+        {
+            return;
+        }
+
+        const auto &config = engine.getRenderer().getConfig();
+        const glm::mat4 projection = glm::perspective(glm::radians(camera->getFov()),
+                                                    static_cast<float>(width) / static_cast<float>(height),
+                                                    config.nearPlane,
+                                                    config.farPlane);
+
+        const glm::mat4 viewProjection = projection * camera->getViewMatrix();
+        const glm::mat4 inverseViewProjection = glm::inverse(viewProjection);
+
+        const float x = 2.0f * (mouse.position.x - rect.x) / rect.w - 1.0f;
+        const float y = 1.0f - 2.0f * (mouse.position.y - rect.y) / rect.h;
+
+        glm::vec4 nearPoint = inverseViewProjection * glm::vec4{x, y, -1.0f, 1.0f};
+        glm::vec4 farPoint = inverseViewProjection * glm::vec4{x, y, 1.0f, 1.0f};
+
+        if (nearPoint.w == 0.0f || farPoint.w == 0.0f)
+        {
+            return;
+        }
+
+        nearPoint /= nearPoint.w;
+        farPoint /= farPoint.w;
+
+        const glm::vec3 segment = glm::vec3(farPoint - nearPoint);
+        const float distance = glm::length(segment);
+        if (!std::isfinite(distance) || distance <= 0.0f)
+        {
+            return;
+        }
+
+        gizmoSystem.hovered = gizmoSystem.pick(PickingRay{glm::vec3(nearPoint), segment / distance},distance, viewProjection,
+                                    glm::vec2{rect.w, rect.h}, glm::vec2{mouse.position.x - rect.x, mouse.position.y - rect.y}, previous);
+
+        if (mouse.pressed(MouseButton::Left) && !gizmoCaptured &&
+            gizmoSystem.hovered != GizmoHandle::None)
+        {
+            gizmoCaptured = true;
+            marqueeGeneration = engine.getSceneGeneration();
+
+            const auto result = session.beginTransformEdit(hierarchy.selection());
+            if (!result.ok())
+            {
+                KalaHeaders::KalaLog::Log::Print(
+                    result.error, "Gizmo", KalaHeaders::KalaLog::LogType::LOG_ERROR);
+                return;
+            }
+
+            drag.handle = gizmoSystem.hovered;
+            drag.mode = currentMode;
+            drag.space = currentSpace;
+            drag.frame = gizmoSystem.frame;
+            drag.cameraBasis = glm::transpose(glm::mat3(camera->getViewMatrix()));
+            drag.mouseStart = mouse.position;
+            drag.generation = engine.getSceneGeneration();
+            drag.selection = hierarchy.selection();
+
+            const auto start = session.transformStart();
+            drag.values.assign(start.begin(), start.end());
+        }
+    }
+    else
+    {
+        gizmoSystem.hovered = drag.handle;
+    }
+
+    if (gizmoSystem.hovered == GizmoHandle::None)
+    {
+        return;
+    }
+
+    for (const GizmoPart &part : gizmoSystem.parts)
+    {
+        if (part.handle != gizmoSystem.hovered ||
+            part.firstVertex > gizmoSystem.vertices.size() ||
+            part.vertexCount > gizmoSystem.vertices.size() - part.firstVertex)
+        {
+            continue;
+        }
+
+        const std::size_t end = part.firstVertex + part.vertexCount;
+        for (std::size_t first = part.firstVertex; first < end; ++first)
+        {
+            auto &color = gizmoSystem.vertices[first].color;
+            const float brightness = glm::max(color.r, glm::max(color.g, color.b));
+            color = glm::vec4(gizmoSystem.style.hoverColor * brightness, color.a);
+        }
     }
 }
 

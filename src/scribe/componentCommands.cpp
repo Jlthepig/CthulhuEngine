@@ -1,3 +1,7 @@
+#include <algorithm>
+#include <cmath>
+
+#include "components.hpp"
 #include "componentCommands.hpp"
 #include "assetManager.hpp"
 #include "log_utils.hpp"
@@ -231,6 +235,73 @@ class SetFieldCommand final : public Command
     Scene::FieldValue oldValue;
 };
 
+class SetTransformsCommand final : public Command
+{
+  public:
+    explicit SetTransformsCommand(std::vector<TransformValue> values) : requested(std::move(values))
+    {
+        std::sort(requested.begin(), requested.end(), [](const TransformValue &a, const TransformValue &b) {
+            return a.id.high < b.id.high || (a.id.high == b.id.high && a.id.low < b.id.low);
+        });
+    }
+
+    SetTransformsCommand(std::vector<TransformValue> initial, std::vector<TransformValue> values) : SetTransformsCommand(std::move(values))
+    {
+        before = std::move(initial);
+    }
+
+    std::string_view name() const override
+    {
+        return "Transform Entities";
+    }
+
+    Result apply(Context &context) override
+    {
+        before.clear();
+        before.reserve(requested.size());
+
+        for (const auto &value : requested)
+        {
+            for (int axis = 0; axis < 3; ++axis)
+            {
+                if (!std::isfinite(value.position[axis]) || !std::isfinite(value.rotation[axis]) ||
+                    !std::isfinite(value.scale[axis]))
+                {
+                    return Result::failed("NON-FINITE TRANSFORM");
+                }
+            }
+
+            if (!before.empty() && before.back().id == value.id)
+            {
+                return Result::failed("DUPLICATE TRANSFORM ENTITY");
+            }
+
+            const auto entity = context.scene.findEntity(value.id);
+            const auto *transform = entity ? entity->try_get<Scene::TransformComponent>() : nullptr;
+            if (!transform)
+            {
+                return Result::failed("ENTITY HAS NO TRANSFORM");
+            }
+
+            before.push_back({value.id, transform->position, transform->rotation, transform->scale});
+        }
+
+        return writeTransforms(context, requested);
+    }
+
+    void revert(Context &context) override
+    {
+        const Result result = writeTransforms(context, before);
+        if (!result.ok())
+        {
+            Log::Print("UNDO TRANSFORMS FAILED: " + result.error, "Scribe", LogType::LOG_ERROR);
+        }
+    }
+
+  private:
+    std::vector<TransformValue> requested;
+    std::vector<TransformValue> before;
+};
 class ReplaceReferencesCommand final : public Command
 {
   public:
@@ -333,7 +404,47 @@ class ReplaceReferencesCommand final : public Command
     std::string to;
     std::vector<Change> changed;
 };
+
 } // namespace
+
+Result writeTransforms(Context &context, std::span<const TransformValue> values)
+{
+    for (const auto &value : values)
+    {
+        const auto entity = context.scene.findEntity(value.id);
+        if (!entity || !entity->has<Scene::TransformComponent>())
+        {
+            return Result::failed("ENTITY HAS NO TRANSFORM");
+        }
+    }
+
+    bool changed = false;
+    for (const auto &value : values)
+    {
+        const auto entity = context.scene.findEntity(value.id);
+        if (!entity || !entity->has<Scene::TransformComponent>())
+        {
+            return Result::failed("ENTITY LOST ITS TRANSFORM DURING GROUP EDIT");
+        }
+
+        auto transform = entity->get<Scene::TransformComponent>();
+        if (transform.position == value.position && transform.rotation == value.rotation &&
+            transform.scale == value.scale)
+        {
+            continue;
+        }
+
+        transform.position = value.position;
+        transform.rotation = value.rotation;
+        transform.scale = value.scale;
+        transform.matrixDirty = true;
+        entity->set(transform);
+        context.emit(ChangeType::ComponentChanged, value.id, "Transform");
+        changed = true;
+    }
+
+    return changed ? Result::applied() : Result::noChange();
+}
 
 std::unique_ptr<Command> addComponent(Scene::EntityId id, std::string component)
 {
@@ -348,6 +459,16 @@ std::unique_ptr<Command> removeComponent(Scene::EntityId id, std::string compone
 std::unique_ptr<Command> setField(Scene::EntityId id, std::string component, std::string field, Scene::FieldValue value)
 {
     return std::make_unique<SetFieldCommand>(id, std::move(component), std::move(field), std::move(value));
+}
+
+std::unique_ptr<Command> setTransforms(std::vector<TransformValue> values)
+{
+    return std::make_unique<SetTransformsCommand>(std::move(values));
+}
+
+std::unique_ptr<Command> completedTransformEdit(std::vector<TransformValue> before, std::vector<TransformValue> after)
+{
+    return std::make_unique<SetTransformsCommand>(std::move(before), std::move(after));
 }
 
 std::unique_ptr<Command> replaceReferences(std::string from, std::string to)

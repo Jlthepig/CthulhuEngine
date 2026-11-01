@@ -19,6 +19,7 @@ static const float scrollSensitivity = 5.0f;
 static Cthulhu::Scene::Camera *camera = nullptr;
 static Cthulhu::Editor::EditorUi *editorUi = nullptr;
 static bool isCameraLooking = false;
+static const Cthulhu::Editor::ViewportPanel *viewportPanel = nullptr;
 
 void onUpdate([[maybe_unused]] void *context, [[maybe_unused]] float deltaTime)
 {
@@ -61,13 +62,7 @@ void onUpdate([[maybe_unused]] void *context, [[maybe_unused]] float deltaTime)
                                          KalaHeaders::KalaLog::LogType::LOG_INFO);
     }
 
-    if (sceneHasKeyboard && Cthulhu::Core::Input::isKeyPressed(GLFW_KEY_F5))
-    {
-        const bool ok = engine->isPlaying() ? engine->stop() : engine->play();
-
-        (void)ok;
-    }
-
+    const bool gizmoDragging = viewportPanel && viewportPanel->gizmoDragActive();
     const float scrollDeltaY = Cthulhu::Core::Input::getScrollDeltaY();
 
     const bool rightMouseDown = Cthulhu::Core::Input::isMouseButtonDown(GLFW_MOUSE_BUTTON_2);
@@ -91,13 +86,13 @@ void onUpdate([[maybe_unused]] void *context, [[maybe_unused]] float deltaTime)
 
         camera->processKeyboard(deltaTime);
 
-        if (scrollDeltaY != 0.0f)
+        if (scrollDeltaY != 0.0f && !gizmoDragging)
         {
             camera->addSpeed(scrollDeltaY * scrollSensitivity);
         }
     }
 
-    if (scrollDeltaY != 0.0f && camera && sceneHasMouse &&
+    if (scrollDeltaY != 0.0f && !gizmoDragging && camera && sceneHasMouse &&
         !Cthulhu::Core::Input::isMouseButtonDown(GLFW_MOUSE_BUTTON_2))
     {
         camera->setPosition(camera->getPosition() + camera->getFront() * scrollDeltaY * scrollSensitivity);
@@ -169,6 +164,7 @@ int main(int argc, char *argv[])
 
     Cthulhu::Editor::EditorShell shell;
     shell.build(ui.context());
+    viewportPanel = &shell.viewport();
 
     ui.setSceneNode(shell.sceneArea());
 
@@ -201,6 +197,8 @@ int main(int argc, char *argv[])
         engine.present();
     }
 
+    (void)session.finishTransformEdit(false);
+    viewportPanel = nullptr;
     editorUi = nullptr;
 
     ui.shutdown();

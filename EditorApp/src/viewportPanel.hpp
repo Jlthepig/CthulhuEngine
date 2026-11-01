@@ -4,12 +4,18 @@
 #include <optional>
 
 #include "gizmoSystem.hpp"
+#include "transformValue.hpp"
 
 #include "OctoGui/Context.h"
 
 namespace Cthulhu
 {
 class Engine;
+}
+
+namespace Cthulhu::Scribe
+{
+class Session;
 }
 
 namespace Cthulhu::Editor
@@ -53,6 +59,13 @@ class ViewportPanel
         return snapActive;
     }
 
+    [[nodiscard]] bool gizmoDragActive() const noexcept
+    {
+        return drag.handle != GizmoHandle::None;
+    }
+
+    bool finishGizmoDrag(Scribe::Session &session, bool commit);
+
     [[nodiscard]] octogui::NodeHandle overlay() const noexcept
     {
         return overlayNode;
@@ -70,6 +83,7 @@ class ViewportPanel
                        std::uint64_t sceneGeneration);
     void updateGizmo(octogui::Context &ctx,
                      Engine &engine,
+                     Scribe::Session &session,
                      const HierarchyPanel &hierarchy,
                      octogui::NodeHandle sceneNode);
 
@@ -102,6 +116,23 @@ class ViewportPanel
     float snapRotateValue = 15.0f;
     float snapScaleValue = 0.1f;
     bool snapActive = false;
+
+    struct GizmoDrag
+    {
+        GizmoHandle handle = GizmoHandle::None;
+        GizmoMode mode = GizmoMode::Select;
+        GizmoSpace space = GizmoSpace::World;
+        GizmoFrame frame;
+        glm::mat3 cameraBasis{1.0f};
+        octogui::Vec2 mouseStart{};
+        std::uint64_t generation = 0;
+        std::vector<Scene::EntityId> selection;
+        std::vector<Scribe::TransformValue> values;
+    };
+
+    GizmoDrag drag;
+
+    bool gizmoCaptured = false;
 
     bool marqueePending = false;
     bool marqueeActive = false;
