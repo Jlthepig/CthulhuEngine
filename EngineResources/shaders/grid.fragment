@@ -1,28 +1,88 @@
 #version 430 core
+
+in vec3 nearPoint;
+in vec3 farPoint;
 out vec4 FragColor;
 
-in vec3 fragPos;
-
-// Pull camera position directly from the global Scene UBO
-layout(std140, binding = 0) uniform SceneData {
+layout(std140, binding = 0) uniform SceneData
+{
     mat4 view;
     mat4 projection;
     vec3 viewPos;
-    
-    // Remaining UBO members omitted since grid only needs viewPos
-    // The GPU still reads the full block, but we only declare what we use
 };
 
-uniform float fadeDistance = 40.0;
+uniform float baseSpacing = 1.0;
+uniform float farDistance = 100.0;
+uniform vec3 gridColor = vec3(0.24, 0.26, 0.29);
+uniform float minorOpacity = 0.22;
+uniform float majorOpacity = 0.40;
+
+float gridCoverage(vec2 position, vec2 pixelWidth, float spacing)
+{
+    vec2 distanceToLine = abs(fract(position / spacing + 0.5) - 0.5) * spacing;
+    vec2 coverage = 1.0 - smoothstep(vec2(0.0), vec2(1.0), distanceToLine / pixelWidth);
+    return max(coverage.x, coverage.y);
+}
 
 void main()
 {
-    float dist = distance(fragPos, viewPos);
+    vec3 ray = farPoint - nearPoint;
+    float denominator = ray.y;
+    float safeDenominator = abs(denominator) > 0.000001
+                                ? denominator
+                                : (denominator < 0.0 ? -0.000001 : 0.000001);
 
-    float alpha = 1.0 - smoothstep(fadeDistance * 0.5, fadeDistance, dist);
+    float t = -nearPoint.y / safeDenominator;
+    vec3 world = nearPoint + ray * t;
 
-    float heightFade = 1.0 - smoothstep(5.0, 20.0, abs(fragPos.y - viewPos.y));
-    alpha *= heightFade;
-    
-    FragColor = vec4(1.0, 1.0, 1.0, alpha);
+    vec2 pixelWidth = max(fwidth(world.xz), vec2(0.000001));
+    float footprint = max(pixelWidth.x, pixelWidth.y);
+    float spacing = max(baseSpacing, 0.0001);
+    float level = max(log(max(footprint * 12.0 / spacing, 1.0)) / log(10.0), 0.0);
+    float stepSize = spacing * pow(10.0, floor(level));
+    float transition = fract(level);
+
+    float fine = gridCoverage(world.xz, pixelWidth, stepSize);
+    float medium = gridCoverage(world.xz, pixelWidth, stepSize * 10.0);
+    float coarse = gridCoverage(world.xz, pixelWidth, stepSize * 100.0);
+
+    float minor = mix(fine, medium, transition);
+    float major = mix(medium, coarse, transition);
+    float alpha = max(minor * minorOpacity, major * majorOpacity);
+
+    float xAxis = 1.0 - smoothstep(0.0, 1.25, abs(world.z) / pixelWidth.y);
+    float zAxis = 1.0 - smoothstep(0.0, 1.25, abs(world.x) / pixelWidth.x);
+    float axis = max(xAxis, zAxis);
+
+    vec3 axisColor = mix(
+        vec3(0.65, 0.25, 0.23),
+        vec3(0.25, 0.40, 0.70),
+        zAxis / max(xAxis + zAxis, 0.000001));
+
+    vec3 color = mix(gridColor, axisColor, axis);
+    alpha = max(alpha, axis * 0.65);
+
+    vec4 viewPosition = view * vec4(world, 1.0);
+    float distanceFade = 1.0 - smoothstep(
+        farDistance * 0.60,
+        farDistance * 0.95,
+        -viewPosition.z);
+
+    float horizonFade = smoothstep(0.01, 0.08, abs(ray.y) / length(ray));
+    alpha *= distanceFade * horizonFade;
+
+    if (abs(denominator) <= 0.000001 || t < 0.0 || t > 1.0 || alpha <= 0.001)
+    {
+        discard;
+    }
+
+    vec4 clip = projection * viewPosition;
+    float depth = clip.z / clip.w * 0.5 + 0.5;
+    if (depth < 0.0 || depth >= 1.0)
+    {
+        discard;
+    }
+
+    gl_FragDepth = min(depth + 0.000001, 1.0);
+    FragColor = vec4(color, alpha);
 }

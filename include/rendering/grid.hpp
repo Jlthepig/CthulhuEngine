@@ -5,14 +5,12 @@ namespace Cthulhu::Rendering
 class GridLines
 {
   public:
-    void setupGrid(int size);
+    void setupGrid();
     void draw();
     void destroy();
 
   private:
-    unsigned int VAO;
-    unsigned int VBO;
-    int vertexCount = 0;
+    unsigned int VAO{};
 };
 
 } // namespace Cthulhu::Rendering

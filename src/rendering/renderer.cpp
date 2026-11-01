@@ -56,7 +56,7 @@ void Renderer::init(GLFWwindow *window, Scene::Camera *camera, const RenderConfi
     skybox.load(config.engineResourceRoot, config.engineResourceRoot / "images/Test2.hdr");
     skybox.generateIrradianceMap();
     skybox.generatePrefilterMap();
-    grid.setupGrid(config.gridSize);
+    grid.setupGrid();
 
     glGenTextures(1, &defaultDataTexture);
     glBindTexture(GL_TEXTURE_2D, defaultDataTexture);
@@ -535,17 +535,26 @@ void Renderer::render(unsigned int width,
         }
     }
 
-    // grid
-    glEnable(GL_BLEND);
-    glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
-    gridShader.use();
-    glm::mat4 gridModel = glm::mat4(1.0f);
-    gridShader.setMat4("model", gridModel);
-    grid.draw();
-    glDisable(GL_BLEND);
-
     // skybox
     skybox.draw(view, projection);
+
+    // grid
+    glEnable(GL_DEPTH_TEST);
+    glDepthFunc(GL_LESS);
+    glDepthMask(GL_FALSE);
+    glDisable(GL_CULL_FACE);
+    glEnable(GL_BLEND);
+    glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+
+    gridShader.use();
+    gridShader.setMat4("inverseViewProjection", glm::inverse(projection * view));
+    gridShader.setFloat("baseSpacing", std::max(config.gridSpacing, 0.0001f));
+    gridShader.setFloat("farDistance", config.farPlane);
+    grid.draw();
+
+    glDisable(GL_BLEND);
+    glEnable(GL_CULL_FACE);
+    glDepthMask(GL_TRUE);
 
     for (size_t i = 0; i < persistentLines.size();)
     {

@@ -72,7 +72,7 @@ struct RenderConfig
     float dirLightOrthoSize = 20.0f; // The -20 to 20 range in shadow map
 
     // World
-    float gridSize = 256.0f;
+    float gridSpacing = 1.0f;
     glm::vec4 clearColor = glm::vec4(0.2f, 0.3f, 0.3f, 1.0f);
 
     // engine resources root
