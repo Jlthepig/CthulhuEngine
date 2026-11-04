@@ -51,8 +51,6 @@ class Session
         return transformActive ? std::span<const TransformValue>{transformBefore}: std::span<const TransformValue>{};
     }
 
-    Result execute(std::unique_ptr<Command> command);
-
     bool undo();
     bool redo();
 
@@ -126,6 +124,8 @@ class Session
 
     Scene::Scene *syncScene();
     void refreshDirty(Scene::Scene &scene);
+
+    Result execute(std::unique_ptr<Command> command);
 
     bool refuseEdit();
 

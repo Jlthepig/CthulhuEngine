@@ -27,6 +27,11 @@ namespace Cthulhu::Core
 class Window;
 }
 
+namespace Cthulhu::Scribe
+{
+    class Session;
+}
+
 namespace Cthulhu
 {
 enum class EngineState
@@ -136,6 +141,21 @@ class Engine
         return editSnapshot != nullptr;
     }
 
+    bool hasTransformOwner() const
+    {
+        return transformOwner != nullptr;
+    }
+
+    void setTransformOwner(Scribe::Session *owner)
+    {
+        transformOwner = owner;
+    }
+
+    Scribe::Session *getTransformOwner() const
+    {
+        return transformOwner;
+    }
+
     Scene::Camera *getCamera()
     {
         return camera;
@@ -218,6 +238,8 @@ class Engine
     Scene::Camera *camera = nullptr;
     Core::Window *window = nullptr;
     GLFWwindow *glfwWindow = nullptr;
+
+    Scribe::Session * transformOwner = nullptr;
 
     std::unique_ptr<Scene::Scene> createSceneInstance();
 

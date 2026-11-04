@@ -1,5 +1,4 @@
 #include <algorithm>
-#include <cmath>
 
 #include "components.hpp"
 #include "componentCommands.hpp"
@@ -76,17 +75,18 @@ class AddComponentCommand final : public Command
         return Result::applied();
     }
 
-    void revert(Context &context) override
+    Result revert(Context &context) override
     {
         Target target;
         if (!findTarget(context, id, component, false, target).ok())
         {
             Log::Print("UNDO ADD FAILED: " + component, "Scribe", LogType::LOG_ERROR);
-            return;
+            return Result::failed("UNDO ADD FAILED");
         }
 
         target.descriptor->remove(target.entity);
         context.emit(ChangeType::ComponentRemoved, id, component);
+        return Result::applied();
     }
 
   private:
@@ -129,16 +129,17 @@ class RemoveComponentCommand final : public Command
         return Result::applied();
     }
 
-    void revert(Context &context) override
+    Result revert(Context &context) override
     {
         auto entity = context.scene.findEntity(id);
         if (!entity || !context.scene.getComponentRegistry()->apply(*entity, {saved}))
         {
             Log::Print("UNDO REMOVE FAILED: " + component, "Scribe", LogType::LOG_ERROR);
-            return;
+            return Result::failed("UNDO REMOVE FAILED");
         }
 
         context.emit(ChangeType::ComponentAdded, id, component);
+        return Result::applied();
     }
 
   private:
@@ -200,7 +201,7 @@ class SetFieldCommand final : public Command
         return Result::applied();
     }
 
-    void revert(Context &context) override
+    Result revert(Context &context) override
     {
         auto entity = context.scene.findEntity(id);
         Scene::ComponentSnapshot snapshot{component, {{field, oldValue}}};
@@ -209,10 +210,11 @@ class SetFieldCommand final : public Command
         if (!entity || !context.scene.getComponentRegistry()->apply(*entity, {snapshot}))
         {
             Log::Print("UNDO FAILED: " + label, "Scribe", LogType::LOG_ERROR);
-            return;
+            return Result::failed("UNDO FAILED");
         }
 
         context.emit(ChangeType::ComponentChanged, id, component);
+        return Result::applied();
     }
 
     bool mergeWith(const Command &next) override
@@ -225,6 +227,11 @@ class SetFieldCommand final : public Command
 
         requested = edit->requested;
         return true;
+    }
+
+    bool isEmpty() const override
+    {
+        return oldValue == requested;
     }
 
   private:
@@ -287,13 +294,14 @@ class SetTransformsCommand final : public Command
         return writeTransforms(context, requested);
     }
 
-    void revert(Context &context) override
+    Result revert(Context &context) override
     {
         const Result result = writeTransforms(context, before);
         if (!result.ok())
         {
             Log::Print("UNDO TRANSFORMS FAILED: " + result.error, "Scribe", LogType::LOG_ERROR);
         }
+        return result;
     }
 
   private:
@@ -371,9 +379,18 @@ class ReplaceReferencesCommand final : public Command
         return changed.empty() ? Result::noChange() : Result::applied();
     }
 
-    void revert(Context &context) override
+    Result revert(Context &context) override
     {
         const auto &registry = *context.scene.getComponentRegistry();
+
+        for (const auto &change : changed)
+        {
+            auto entity = context.scene.findEntity(change.reference.entity);
+            if (!entity)
+            {
+                return Result::failed("UNDO REPLACE FAILED: ENTITY GONE");
+            }
+        }
 
         for (const auto &change : changed)
         {
@@ -383,12 +400,12 @@ class ReplaceReferencesCommand final : public Command
 
             if (!entity || !registry.apply(*entity, {snapshot}))
             {
-                Log::Print("UNDO REPLACE FAILED: " + change.reference.component, "Scribe", LogType::LOG_ERROR);
-                continue;
+                return Result::failed("UNDO REPLACE FAILED: " + change.reference.component);
             }
 
             context.emit(ChangeType::ComponentChanged, change.reference.entity, change.reference.component);
         }
+        return Result::applied();
     }
 
   private:

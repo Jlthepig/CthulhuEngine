@@ -55,10 +55,11 @@ class CreateEntityCommand final : public Command
         return Result::applied();
     }
 
-    void revert(Context &context) override
+    Result revert(Context &context) override
     {
         context.scene.destroyEntity(id);
         context.emit(ChangeType::EntityDestroyed, id);
+        return Result::applied();
     }
 
   private:
@@ -97,18 +98,19 @@ class DeleteEntityCommand final : public Command
         return Result::applied();
     }
 
-    void revert(Context &context) override
+    Result revert(Context &context) override
     {
         if (!context.scene.restoreSubtree(subtree))
         {
             Log::Print("UNDO DELETE FAILED TO RESTORE SUBTREE", "Scribe", LogType::LOG_ERROR);
-            return;
+            return Result::failed("UNDO DELETE FAILED TO RESTORE SUBTREE");
         }
 
         for (const auto &snapshot : subtree)
         {
             context.emit(ChangeType::EntityCreated, snapshot.id);
         }
+        return Result::applied();
     }
 
   private:
@@ -160,7 +162,7 @@ class DuplicateEntityCommand final : public Command
         return Result::applied();
     }
 
-    void revert(Context &context) override
+    Result revert(Context &context) override
     {
         context.scene.destroyEntity(subtree.front().id);
 
@@ -168,6 +170,7 @@ class DuplicateEntityCommand final : public Command
         {
             context.emit(ChangeType::EntityDestroyed, it->id);
         }
+        return Result::applied();
     }
 
   private:
@@ -211,10 +214,11 @@ class RenameEntityCommand final : public Command
         return Result::applied();
     }
 
-    void revert(Context &context) override
+    Result revert(Context &context) override
     {
         context.scene.renameEntity(id, oldName);
         context.emit(ChangeType::EntityRenamed, id);
+        return Result::applied();
     }
 
     bool mergeWith(const Command &next) override
@@ -227,6 +231,11 @@ class RenameEntityCommand final : public Command
 
         newName = rename->newName;
         return true;
+    }
+
+    bool isEmpty() const override
+    {
+        return oldName == newName;
     }
 
   private:
@@ -335,13 +344,13 @@ class ReparentEntityCommand final : public Command
         return Result::applied();
     }
 
-    void revert(Context &context) override
+    Result revert(Context &context) override
     {
         auto &scene = context.scene;
 
         if (!oldSiblingIndex)
         {
-            return;
+            return Result::failed("NO OLD SIBLING INDEX");
         }
 
         const bool parentRestored = oldParent ? scene.setParent(child, *oldParent) : scene.clearParent(child);
@@ -349,7 +358,7 @@ class ReparentEntityCommand final : public Command
         if (!parentRestored || !scene.setSiblingOrder(child, *oldSiblingIndex))
         {
             Log::Print("UNDO REPARENT FAILED TO RESTORE SIBLING POSITION", "Scribe", LogType::LOG_ERROR);
-            return;
+            return Result::failed("UNDO REPARENT FAILED TO RESTORE SIBLING POSITION");
         }
 
         if (!oldParentWasCustom)
@@ -362,6 +371,7 @@ class ReparentEntityCommand final : public Command
         }
 
         context.emit(ChangeType::EntityReparented, child);
+        return Result::applied();
     }
 
   private:

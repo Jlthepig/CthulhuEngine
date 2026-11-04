@@ -106,7 +106,6 @@ struct ChangeEvent
 
 struct Context
 {
-    Engine &engine;
     Scene::Scene &scene;
     std::vector<ChangeEvent> &events;
 
@@ -124,9 +123,14 @@ class Command
     [[nodiscard]] virtual std::string_view name() const = 0;
 
     virtual Result apply(Context &context) = 0;
-    virtual void revert(Context &context) = 0;
+    virtual Result revert(Context &context) = 0;
 
     virtual bool mergeWith(const Command &)
+    {
+        return false;
+    }
+
+    virtual bool isEmpty() const
     {
         return false;
     }

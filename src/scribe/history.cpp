@@ -20,6 +20,10 @@ void History::record(std::unique_ptr<Command> command)
     if (mergeOpen && !undoStack.empty() && undoStack.back().serial != savedSerial &&
         undoStack.back().command->mergeWith(*command))
     {
+        if (undoStack.back().command->isEmpty())
+        {
+            undoStack.pop_back();
+        }
         return;
     }
 
@@ -54,7 +58,17 @@ bool History::undo(Context &context)
     Entry entry = std::move(undoStack.back());
     undoStack.pop_back();
 
-    entry.command->revert(context);
+    const Result result = entry.command->revert(context);
+    if (!result.ok())
+    {
+        // only really possible if something edited the scene outside Scribe
+        Log::Print("UNDO FAILED: " + std::string(entry.command->name()) + ": " + result.error,
+                   "Scribe",
+                   LogType::LOG_ERROR);
+        undoStack.push_back(std::move(entry));
+        return false;
+    }
+
     redoStack.push_back(std::move(entry));
     return true;
 }

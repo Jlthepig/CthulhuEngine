@@ -1,5 +1,4 @@
 #include <algorithm>
-#include <cmath>
 #include <utility>
 
 #include "componentCommands.hpp"
@@ -17,6 +16,11 @@ Session::~Session()
 
 Result Session::beginTransformEdit(std::span<const Scene::EntityId> selection)
 {
+    if (engine.getTransformOwner() && engine.getTransformOwner() != this)
+    {
+        return Result::failed("ANOTHER SESSION IS EDITING TRANSFORMS");
+    }
+
     if (refuseEdit())
     {
         return Result::failed("CANNOT EDIT DURING PLAY OR A TRANSFORM PREVIEW");
@@ -65,6 +69,7 @@ Result Session::beginTransformEdit(std::span<const Scene::EntityId> selection)
     transformGeneration = engine.getSceneGeneration();
     transformWasDirty = scene->isDirty();
     transformActive = true;
+    engine.setTransformOwner(this);
     history.endMerge();
     return Result::applied();
 }
@@ -89,7 +94,7 @@ Result Session::previewTransforms(std::span<const TransformValue> values)
         }
     }
 
-    Context context{engine, *scene, events};
+    Context context{*scene, events};
     const Result result = Commands::writeTransforms(context, values);
     if (!result.ok())
     {
@@ -122,17 +127,33 @@ Result Session::finishTransformEdit(bool commit)
         return Result::noChange();
     }
 
-    Context context{engine, *scene, events};
-    const Result result = Commands::writeTransforms(context, commit ? transformAfter : transformBefore);
-    if (!result.ok())
-    {
-        return result;
+    Context context{*scene, events};
+    
+    const auto &targets = commit ? transformAfter : transformBefore;
+    std::vector<TransformValue> survivors;
+    for (const auto &v : targets) {
+        if (scene->findEntity(v.id)) survivors.push_back(v);
     }
-
-    const bool changed = commit && transformBefore != transformAfter;
+    
+    const Result result = Commands::writeTransforms(context, survivors);
+    const bool lostTarget = survivors.size() != targets.size();
+    const bool changed = commit && !lostTarget && transformBefore != transformAfter;
+    const auto beforeCopy = transformBefore;
+    const auto afterCopy = transformAfter;
+    transformActive = false;
+    transformBefore.clear();
+    transformAfter.clear();
+    if (engine.getTransformOwner() == this)
+    {
+        engine.setTransformOwner(nullptr);
+    }
+    history.endMerge();
+    if (!result.ok() || lostTarget) {
+        return Result::failed("TRANSFORM TARGET LOST DURING PREVIEW");
+    }
     if (changed)
     {
-        history.record(Commands::completedTransformEdit(std::move(transformBefore), std::move(transformAfter)));
+        history.record(Commands::completedTransformEdit(std::move(beforeCopy), std::move(afterCopy)));
         refreshDirty(*scene);
     }
     else if (transformWasDirty)
@@ -144,10 +165,6 @@ Result Session::finishTransformEdit(bool commit)
         scene->markClean();
     }
 
-    transformActive = false;
-    transformBefore.clear();
-    transformAfter.clear();
-    history.endMerge();
     return changed ? Result::applied() : Result::noChange();
 }
 } // namespace Cthulhu::Scribe

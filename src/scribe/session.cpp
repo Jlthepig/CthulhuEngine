@@ -45,10 +45,11 @@ class RenameSceneCommand final : public Command
         return Result::applied();
     }
 
-    void revert(Context &context) override
+    Result revert(Context &context) override
     {
         context.scene.setName(oldName);
         context.emit(ChangeType::SceneRenamed);
+        return Result::applied();
     }
 
     bool mergeWith(const Command &next) override
@@ -61,6 +62,11 @@ class RenameSceneCommand final : public Command
 
         newName = rename->newName;
         return true;
+    }
+
+    bool isEmpty() const override
+    {
+        return oldName == newName;
     }
 
   private:
@@ -83,6 +89,10 @@ Scene::Scene *Session::syncScene()
         transformActive = false;
         transformBefore.clear();
         transformAfter.clear();
+        if (engine.getTransformOwner() == this)
+        {
+            engine.setTransformOwner(nullptr);
+        }
     }
 
     if (playing != boundPlaying)
@@ -157,8 +167,15 @@ Result Session::execute(std::unique_ptr<Command> command)
         return Result::failed("NULL COMMAND");
     }
 
-    Context context{engine, *scene, events};
+    Context context{*scene, events};
+
+    const uint64_t genBefore = engine.getSceneGeneration();
     Result result = command->apply(context);
+    if (engine.getSceneGeneration() != genBefore || engine.getActiveScene() != scene)
+    {
+        return Result::failed("COMMAND CHANGED ACTIVE SCENE");
+    }
+    
 
     if (result.status == Result::Status::Applied)
     {
@@ -186,7 +203,7 @@ bool Session::undo()
         return false;
     }
 
-    Context context{engine, *scene, events};
+    Context context{*scene, events};
     if (!history.undo(context))
     {
         return false;
@@ -209,7 +226,7 @@ bool Session::redo()
         return false;
     }
 
-    Context context{engine, *scene, events};
+    Context context{*scene, events};
     if (!history.redo(context))
     {
         return false;

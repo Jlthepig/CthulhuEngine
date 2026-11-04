@@ -569,6 +569,12 @@ void Engine::addSystemRegistration(SystemRegistration registration, void *contex
 
 bool Engine::play()
 {
+    if (transformOwner)
+    {
+        Log::Print("CANNOT PLAY DURING TRANSFORM PREVIEW", "ENGINE", LogType::LOG_ERROR);
+        return false;
+    }
+
     if (!activeScene || isPlaying() || worldMode != WorldMode::Edit)
     {
         Log::Print("PLAY NEEDS AN ACTIVE SCENE IN EDIT MODE", "ENGINE", LogType::LOG_ERROR);
