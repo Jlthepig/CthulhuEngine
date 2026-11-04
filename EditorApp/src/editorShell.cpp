@@ -308,6 +308,7 @@ void EditorShell::update(Context &ctx, Engine &engine, Scribe::Session &session)
         engine.getRenderer().setOutlineTargets(hierarchyPanelUI.selection());
     inspectorUI.update(ctx, engine, session, engine.getActiveScene(), hierarchyPanelUI.selectedEntity());
     viewportPanelUI.updateGizmo(ctx, engine, session, hierarchyPanelUI, sceneNode);
+    viewportPanelUI.drawGizmoFeedback(ctx);
 
     std::string sceneText = "No scene";
     if (const auto *activeScene = engine.getActiveScene())

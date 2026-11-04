@@ -458,6 +458,37 @@ void GizmoSystem::update(Engine &engine, std::span<const Scene::EntityId> select
 
         parts.push_back({plane.handle, first, vertices.size() - first});
     }
-
 }
+
+void GizmoSystem::applyHighlight(bool active)
+{
+    if (hovered == GizmoHandle::None)
+    {
+        return;
+    }
+
+    for (const GizmoPart &part : parts)
+    {
+        if (part.firstVertex > vertices.size() || part.vertexCount > vertices.size() - part.firstVertex)
+        {
+            continue;
+        }
+
+        const std::size_t end = part.firstVertex + part.vertexCount;
+        for (std::size_t first = part.firstVertex; first < end; ++first)
+        {
+            auto &color = vertices[first].color;
+            if (part.handle == hovered)
+            {
+                const float brightness = glm::max(color.r, glm::max(color.g, color.b));
+                color = glm::vec4(style.hoverColor * brightness, color.a);
+            }
+            else if (active)
+            {
+                color = glm::vec4(glm::vec3(color) * style.inactiveBrightness, color.a);
+            }
+        }
+    }
+}
+
 } // namespace Cthulhu::Editor

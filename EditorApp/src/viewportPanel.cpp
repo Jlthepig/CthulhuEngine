@@ -350,7 +350,12 @@ void ViewportPanel::updateGizmo(Context &ctx, Engine &engine, Scribe::Session &s
 
     if (drag.handle != GizmoHandle::None)
     {
-        const bool cancel = !session.transformEditActive() || engine.isPlaying() ||
+        const auto viewport = ctx.tree().rect(sceneNode);
+        const auto &startViewport = drag.viewport;
+        const bool resized = viewport.x != startViewport.x || viewport.y != startViewport.y ||
+                             viewport.w != startViewport.w || viewport.h != startViewport.h;
+
+        const bool cancel = resized || !session.transformEditActive() || engine.isPlaying() ||
                             !engine.getWindow() ||
                             glfwGetWindowAttrib(engine.getWindow()->getWindow(), GLFW_FOCUSED) != GLFW_TRUE ||
                             engine.getSceneGeneration() != drag.generation ||
@@ -359,9 +364,31 @@ void ViewportPanel::updateGizmo(Context &ctx, Engine &engine, Scribe::Session &s
                             Core::Input::isKeyPressed(GLFW_KEY_ESCAPE) || mouse.isDown(MouseButton::Right) ||
                             (!mouse.isDown(MouseButton::Left) && !mouse.released(MouseButton::Left));
 
-        if (cancel || mouse.released(MouseButton::Left))
+        if (cancel)
         {
-            (void)finishGizmoDrag(session, !cancel);
+            (void)finishGizmoDrag(session, false);
+        }
+        else
+        {
+            if (drag.mode == GizmoMode::Move && !updateMoveDrag(ctx, session))
+            {
+                (void)finishGizmoDrag(session, false);
+            }
+            if (drag.handle != GizmoHandle::None && drag.mode == GizmoMode::Rotate &&
+                !updateRotateDrag(ctx, session))
+            {
+                (void)finishGizmoDrag(session, false);
+            }
+            if (drag.handle != GizmoHandle::None && drag.mode == GizmoMode::Scale &&
+                !updateScaleDrag(ctx, session))
+            {
+                (void)finishGizmoDrag(session, false);
+            }
+
+            if (drag.handle != GizmoHandle::None && mouse.released(MouseButton::Left))
+            {
+                (void)finishGizmoDrag(session, true);
+            }
         }
     }
 
@@ -455,8 +482,7 @@ void ViewportPanel::updateGizmo(Context &ctx, Engine &engine, Scribe::Session &s
             const auto result = session.beginTransformEdit(hierarchy.selection());
             if (!result.ok())
             {
-                KalaHeaders::KalaLog::Log::Print(
-                    result.error, "Gizmo", KalaHeaders::KalaLog::LogType::LOG_ERROR);
+                KalaHeaders::KalaLog::Log::Print(result.error, "Gizmo", KalaHeaders::KalaLog::LogType::LOG_ERROR);
                 return;
             }
 
@@ -464,6 +490,8 @@ void ViewportPanel::updateGizmo(Context &ctx, Engine &engine, Scribe::Session &s
             drag.mode = currentMode;
             drag.space = currentSpace;
             drag.frame = gizmoSystem.frame;
+            drag.viewProjection = viewProjection;
+            drag.translation = {};
             drag.cameraBasis = glm::transpose(glm::mat3(camera->getViewMatrix()));
             drag.mouseStart = mouse.position;
             drag.generation = engine.getSceneGeneration();
@@ -471,6 +499,22 @@ void ViewportPanel::updateGizmo(Context &ctx, Engine &engine, Scribe::Session &s
 
             const auto start = session.transformStart();
             drag.values.assign(start.begin(), start.end());
+
+            if (drag.mode == GizmoMode::Move && !beginLinearDrag(engine, inverseViewProjection, rect))
+            {
+                (void)finishGizmoDrag(session, false);
+                return;
+            }
+            if (drag.mode == GizmoMode::Rotate && !beginRotateDrag(engine, inverseViewProjection, rect))
+            {
+                (void)finishGizmoDrag(session, false);
+                return;
+            }
+            if (drag.mode == GizmoMode::Scale && !beginScaleDrag(engine, inverseViewProjection, rect))
+            {
+                (void)finishGizmoDrag(session, false);
+                return;
+            }
         }
     }
     else
@@ -478,28 +522,7 @@ void ViewportPanel::updateGizmo(Context &ctx, Engine &engine, Scribe::Session &s
         gizmoSystem.hovered = drag.handle;
     }
 
-    if (gizmoSystem.hovered == GizmoHandle::None)
-    {
-        return;
-    }
-
-    for (const GizmoPart &part : gizmoSystem.parts)
-    {
-        if (part.handle != gizmoSystem.hovered ||
-            part.firstVertex > gizmoSystem.vertices.size() ||
-            part.vertexCount > gizmoSystem.vertices.size() - part.firstVertex)
-        {
-            continue;
-        }
-
-        const std::size_t end = part.firstVertex + part.vertexCount;
-        for (std::size_t first = part.firstVertex; first < end; ++first)
-        {
-            auto &color = gizmoSystem.vertices[first].color;
-            const float brightness = glm::max(color.r, glm::max(color.g, color.b));
-            color = glm::vec4(gizmoSystem.style.hoverColor * brightness, color.a);
-        }
-    }
+    gizmoSystem.applyHighlight(gizmoDragActive());
 }
 
 void ViewportPanel::setMode(Context &ctx, GizmoMode mode)

@@ -70,6 +70,8 @@ struct GizmoStyle
     float scaleShaftWidthPixels = 2.5f;
     float scaleHandleSizePixels = 9.0f;
     float scaleCentreSizePixels = 11.0f;
+    float inactiveBrightness = 0.35f;
+    float guideWidthPixels = 1.25f;
 
     glm::vec3 hoverColor{1.0f, 0.78f, 0.15f};
     glm::vec3 axisColors[3]{{0.92f, 0.30f, 0.28f}, {0.40f, 0.82f, 0.35f}, {0.30f, 0.56f, 0.96f}};
@@ -92,6 +94,7 @@ struct GizmoSystem
     GizmoHandle hovered = GizmoHandle::None;
 
     void update(Engine &engine, std::span<const Scene::EntityId> selection, GizmoMode mode, GizmoSpace space, float viewportHeight);
+    void applyHighlight(bool active);
     
     [[nodiscard]] GizmoHandle pick(const PickingRay &ray, float maxDistance, const glm::mat4 &viewProjection, const glm::vec2 &viewportSize, 
                                     const glm::vec2 mousePosition, GizmoHandle previous) const;

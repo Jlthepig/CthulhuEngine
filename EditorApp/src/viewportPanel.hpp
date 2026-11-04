@@ -2,6 +2,7 @@
 
 #include <cstdint>
 #include <optional>
+#include <vector>
 
 #include "gizmoSystem.hpp"
 #include "transformValue.hpp"
@@ -65,6 +66,7 @@ class ViewportPanel
     }
 
     bool finishGizmoDrag(Scribe::Session &session, bool commit);
+    void drawGizmoFeedback(octogui::Context &ctx) const;
 
     [[nodiscard]] octogui::NodeHandle overlay() const noexcept
     {
@@ -116,18 +118,57 @@ class ViewportPanel
     float snapRotateValue = 15.0f;
     float snapScaleValue = 0.1f;
     bool snapActive = false;
-
+    struct LinearDrag
+    {
+        glm::mat4 inverseViewProjection{1.0f};
+        glm::dvec3 u{}, v{}, normal{};
+        glm::dvec2 start{};
+        double unitsPerPixel = 0.0;
+        bool vertical = false;
+    };
+    struct RotateDrag
+    {
+        glm::mat4 inverseViewProjection{1.0f};
+        glm::dvec3 axis{}, u{}, v{};
+        double previousAngle = 0.0;
+        double startAngle = 0.0;
+        double appliedAngle = 0.0;
+        double angle = 0.0;
+        double radiansPerPixel = 0.0;
+        bool vertical = false;
+        bool tracking = false;
+        std::vector<glm::dvec3> offsets;
+        std::vector<glm::dmat3> initialRotations;
+        std::vector<glm::dmat3> inverseFrames;
+    };
+    struct ScaleDrag
+    {
+        bool uniform = false;
+        glm::dvec3 axis{};
+        double minimumFactor = 0.0001;
+        double maximumFactor = 1.0;
+        std::vector<glm::dvec3> offsets;
+        std::vector<int> localAxes;
+    };
     struct GizmoDrag
     {
         GizmoHandle handle = GizmoHandle::None;
         GizmoMode mode = GizmoMode::Select;
         GizmoSpace space = GizmoSpace::World;
         GizmoFrame frame;
+        glm::mat4 viewProjection{1.0f};
+        glm::dvec3 translation{};
+        octogui::Rect viewport{};
+        LinearDrag linear;
+        RotateDrag rotate;
+        ScaleDrag scale;
         glm::mat3 cameraBasis{1.0f};
         octogui::Vec2 mouseStart{};
         std::uint64_t generation = 0;
         std::vector<Scene::EntityId> selection;
         std::vector<Scribe::TransformValue> values;
+        std::vector<glm::dmat3> inverseParents;
+        std::vector<std::uint8_t> followsSelection;
     };
 
     GizmoDrag drag;
@@ -142,6 +183,16 @@ class ViewportPanel
     bool selectionCtrl = false;
     bool selectionAdditive = false;
     std::uint64_t marqueeGeneration = 0;
+
+    [[nodiscard]] std::optional<glm::dvec2> linearCoordinates(octogui::Vec2 point) const;
+    bool beginLinearDrag(Engine &engine, const glm::mat4 &inverseViewProjection, const octogui::Rect &viewport);
+    bool updateMoveDrag(octogui::Context &ctx, Scribe::Session &session);
+    bool prepareDragParents(Engine &engine);
+    [[nodiscard]] std::optional<double> rotateAngle(octogui::Vec2 point) const;
+    bool beginRotateDrag(Engine &engine, const glm::mat4 &inverseViewProjection, const octogui::Rect &viewport);
+    bool updateRotateDrag(octogui::Context &ctx, Scribe::Session &session);
+    bool beginScaleDrag(Engine &engine, const glm::mat4 &inverseViewProjection, const octogui::Rect &viewport);
+    bool updateScaleDrag(octogui::Context &ctx, Scribe::Session &session);
 
     void setMode(octogui::Context &ctx, GizmoMode mode);
     void setSpace(octogui::Context &ctx, GizmoSpace space);
