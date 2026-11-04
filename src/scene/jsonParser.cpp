@@ -46,6 +46,17 @@ static bool readVec3(simdjson::ondemand::array array, glm::vec3 &result)
     return index == 3;
 }
 
+static bool readFloat(double v, float &out)
+{
+    if (!std::isfinite(v) || v < std::numeric_limits<float>::lowest() || v > std::numeric_limits<float>::max())
+    {
+        return false;
+    }
+
+    out = static_cast<float>(v);
+    return true;
+}
+
 using EntityJson = simdjson::simdjson_result<simdjson::ondemand::value>;
 
 static bool readValue(simdjson::simdjson_result<simdjson::ondemand::value> json, ParsedValue &out)
@@ -541,13 +552,11 @@ std::optional<ParsedScene> JsonParser::parseScene(const std::string &path)
     }
 
     auto intensityResult = dirLightJson["intensity"].get_double();
-    if (intensityResult.error())
+    if (intensityResult.error() || !readFloat(intensityResult.value(), result.directionalLight.intensity))
     {
         Log::Print("INVALID DIRECTIONAL LIGHT INTENSITY", "JsonParser", LogType::LOG_ERROR);
         return std::nullopt;
     }
-
-    result.directionalLight.intensity = static_cast<float>(intensityResult.value());
 
     auto pointLightsResult = doc["point_lights"].get_array();
     if (pointLightsResult.error())
@@ -589,8 +598,7 @@ std::optional<ParsedScene> JsonParser::parseScene(const std::string &path)
             {
                 return !required;
             }
-            out = static_cast<float>(value.value());
-            return true;
+            return ::Cthulhu::Scene::readFloat(value.value(), out);
         };
 
         if (!readFloat("intensity", light.intensity, true) || !readFloat("radius", light.radius, false) ||

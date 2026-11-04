@@ -159,6 +159,10 @@ std::optional<uint32_t> PhysicsWorld::addStaticBox(glm::vec3 position, glm::quat
     { /* error */
         return std::nullopt;
     }
+
+    if (!std::isfinite(halfExtent.x) || halfExtent.x <= 0.0f || !std::isfinite(halfExtent.y) 
+        || halfExtent.y <= 0.0f || !std::isfinite(halfExtent.z) || halfExtent.z <= 0.0f) return std::nullopt;
+
     JPH::BodyInterface &bodyInterface = physicsSystem->GetBodyInterface();
     JPH::BoxShapeSettings shapeSettings(JPH::Vec3(halfExtent.x, halfExtent.y, halfExtent.z));
     auto shapeResult = shapeSettings.Create();
@@ -191,6 +195,11 @@ std::optional<uint32_t> PhysicsWorld::addDynamicBox(glm::vec3 position,
     { /* error */
         return std::nullopt;
     }
+
+    if (!std::isfinite(mass) || mass <= 0.0f) return std::nullopt;
+    if (!std::isfinite(halfExtent.x) || halfExtent.x <= 0.0f || !std::isfinite(halfExtent.y) 
+        || halfExtent.y <= 0.0f || !std::isfinite(halfExtent.z) || halfExtent.z <= 0.0f) return std::nullopt;
+
     JPH::BodyInterface &bodyInterface = physicsSystem->GetBodyInterface();
     JPH::BoxShapeSettings shapeSettings(JPH::Vec3(halfExtent.x, halfExtent.y, halfExtent.z));
     auto shapeResult = shapeSettings.Create();

@@ -118,7 +118,8 @@ std::optional<FieldValue> toFieldValue(const FieldDescriptor &field,
 bool applyComponents(flecs::entity entity,
                      const ParsedEntity &parsed,
                      const ComponentRegistry &components,
-                     const Assets::AssetRegistry &assets)
+                     const Assets::AssetRegistry &assets,
+                     bool transformsOnly = false)
 {
     for (const auto &parsedComponent : parsed.components)
     {
@@ -133,6 +134,11 @@ bool applyComponents(flecs::entity entity,
     // registration order
     for (const auto &descriptor : components.getAll())
     {
+        const bool isTransform = descriptor.name == "Transform";
+        if (transformsOnly != isTransform)
+        {
+            continue;
+        }
         const auto found = std::find_if(parsed.components.begin(),
                                         parsed.components.end(),
                                         [&](const ParsedComponent &c) { return c.name == descriptor.name; });
@@ -280,10 +286,21 @@ bool SceneLoader::load(const std::string &path,
         }
     }
 
+    // transform first so bodies are in correct world pose regardless of json order 
     for (const auto &parsedEntity : parsed->entities)
     {
         auto entity = scene.findEntity(parsedEntity.id);
-        if (!entity || !applyComponents(*entity, parsedEntity, *scene.getComponentRegistry(), registry))
+        if (!entity || !applyComponents(*entity, parsedEntity, *scene.getComponentRegistry(), registry, true))
+        {
+            Log::Print("FAILED TO LOAD COMPONENTS OF: " + parsedEntity.name, "SceneLoader", LogType::LOG_ERROR);
+            return false;
+        }
+    }
+
+    for (const auto &parsedEntity : parsed->entities)
+    {
+        auto entity = scene.findEntity(parsedEntity.id);
+        if (!entity || !applyComponents(*entity, parsedEntity, *scene.getComponentRegistry(), registry, false))
         {
             Log::Print("FAILED TO LOAD COMPONENTS OF: " + parsedEntity.name, "SceneLoader", LogType::LOG_ERROR);
             return false;

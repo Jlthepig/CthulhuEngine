@@ -706,12 +706,16 @@ std::vector<AssetReference> Scene::findAssetReferences(std::string_view resource
 bool Scene::restoreSubtree(const std::vector<EntitySnapshot> &snapshots)
 {
     std::vector<EntityId> created;
+    const auto savedOrders = customSiblingOrders;
+    const bool savedDirty = dirty;
 
     auto rollback = [&]() {
         for (auto it = created.rbegin(); it != created.rend(); ++it)
         {
             destroyEntity(*it);
         }
+        customSiblingOrders = savedOrders;
+        dirty = savedDirty;
     };
 
     for (const auto &snapshot : snapshots)
@@ -723,8 +727,61 @@ bool Scene::restoreSubtree(const std::vector<EntitySnapshot> &snapshots)
             return false;
         }
         created.push_back(snapshot.id);
+    }
 
-        if (!componentRegistry->apply(*entity, snapshot.components))
+    for (const auto &snapshot : snapshots)
+    {
+        if (snapshot.parentId && !setParent(snapshot.id, *snapshot.parentId))
+        {
+            rollback();
+            return false;
+        }
+    }
+
+    // validate the  sibling groups before we are  changing them
+    {
+        std::unordered_map<EntityId, std::vector<const EntitySnapshot *>, EntityIdHash> groups;
+        for (const auto &snapshot : snapshots)
+        {
+            if (snapshot.hasCustomSiblingOrder)
+            {
+                groups[snapshot.parentId.value_or(EntityId{})].push_back(&snapshot);
+            }
+        }
+        for (const auto &[parentId, ordered] : groups)
+        {
+            const std::vector<EntityId> siblings = parentId.isValid() ? getChildren(parentId) : getRootEntities();
+            if (ordered.size() != siblings.size())
+            {
+                rollback();
+                return false;
+            }
+            std::vector<bool> assigned(siblings.size(), false);
+            for (const EntitySnapshot *snapshot : ordered)
+            {
+                if (snapshot->siblingOrder >= siblings.size() || assigned[snapshot->siblingOrder])
+                {
+                    rollback();
+                    return false;
+                }
+                assigned[snapshot->siblingOrder] = true;
+            }
+        }
+    }
+
+    // transform first so the observers can read the correct  world poses 
+    for (const auto &snapshot : snapshots)
+    {
+        std::vector<ComponentSnapshot> transforms;
+        for (const auto &c : snapshot.components)
+        {
+            if (c.component == "Transform")
+            {
+                transforms.push_back(c);
+            }
+        }
+        auto entity = findEntity(snapshot.id);
+        if (!entity || !componentRegistry->apply(*entity, transforms))
         {
             rollback();
             return false;
@@ -733,7 +790,16 @@ bool Scene::restoreSubtree(const std::vector<EntitySnapshot> &snapshots)
 
     for (const auto &snapshot : snapshots)
     {
-        if (snapshot.parentId && !setParent(snapshot.id, *snapshot.parentId))
+        std::vector<ComponentSnapshot> rest;
+        for (const auto &c : snapshot.components)
+        {
+            if (c.component != "Transform")
+            {
+                rest.push_back(c);
+            }
+        }
+        auto entity = findEntity(snapshot.id);
+        if (!entity || !componentRegistry->apply(*entity, rest))
         {
             rollback();
             return false;

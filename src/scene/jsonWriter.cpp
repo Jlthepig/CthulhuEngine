@@ -1,3 +1,5 @@
+#include <cmath>
+#include <cstdio>
 #include <filesystem>
 #include <fstream>
 #include <iomanip>
@@ -43,9 +45,23 @@ std::string escapeJson(const std::string &s)
             case '\r':
                 out += "\\r";
                 break;
+            case '\b':
+                out += "\\b";
+                break;
+            case '\f':
+                out += "\\f";
+                break;
             default:
-                if (static_cast<unsigned char>(c) >= 0x20)
+                if (static_cast<unsigned char>(c) < 0x20)
+                {
+                    char buf[7];
+                    std::snprintf(buf, sizeof(buf), "\\u%04x", static_cast<unsigned char>(c));
+                    out += buf;
+                }
+                else
+                {
                     out += c;
+                }
         }
     }
     return out;
@@ -112,8 +128,14 @@ struct JsonWriter
         oss << "\"" << escapeJson(k) << "\": ";
     }
 
+    bool valid = true;
+
     void value(float v)
     {
+        if (!std::isfinite(v))
+        {
+            valid = false;
+        }
         oss << std::setprecision(std::numeric_limits<float>::max_digits10) << v;
     }
 
@@ -354,6 +376,12 @@ bool SceneWriter::writeScene(const Scene &scene, const std::string &path, const 
     w.endArray();
 
     w.endObject();
+
+    if (!w.valid)
+    {
+        Log::Print("CANNOT SAVE SCENE WITH NON-FINITE NUMBERS", "SceneWriter", LogType::LOG_ERROR);
+        return false;
+    }
 
     std::filesystem::path tempPath{path};
     tempPath += ".tmp";

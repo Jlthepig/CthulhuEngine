@@ -108,7 +108,7 @@ ComponentDescriptor describePhysics()
     type.enumNames = {"Static", "Dynamic"}; // HAS TO match PhysicsBodyType order >> IMPORTANT
     d.fields.push_back(std::move(type));
 
-    d.fields.push_back(makeField(
+    auto halfExtent = makeField(
         "halfExtent",
         FieldType::Vec3,
         [](flecs::entity e) -> FieldValue { return e.get<PhysicsComponent>().halfExtent; },
@@ -119,9 +119,11 @@ ComponentDescriptor describePhysics()
         },
         0.0f,
         0.0f,
-        0.05f));
+        0.05f);
 
-    d.fields.push_back(makeField(
+    d.fields.push_back(std::move(halfExtent));
+
+    auto mass = makeField(
         "mass",
         FieldType::Float,
         [](flecs::entity e) -> FieldValue { return e.get<PhysicsComponent>().mass; },
@@ -132,7 +134,9 @@ ComponentDescriptor describePhysics()
         },
         0.001f,
         unbounded,
-        0.1f));
+        0.1f);
+
+    d.fields.push_back(std::move(mass));
 
     return d;
 }
@@ -141,7 +145,7 @@ ComponentDescriptor describeWeapon()
 {
     auto d = makeComponentDescriptor<WeaponComponent>("Weapon");
 
-    d.fields.push_back(makeField(
+    auto fireRate = makeField(
         "fireRate",
         FieldType::Float,
         [](flecs::entity e) -> FieldValue { return e.get<WeaponComponent>().fireRate; },
@@ -152,9 +156,11 @@ ComponentDescriptor describeWeapon()
         },
         0.0f,
         unbounded,
-        0.1f));
+        0.1f);
 
-    d.fields.push_back(makeField(
+    d.fields.push_back(std::move(fireRate));
+
+    auto maxRange = makeField(
         "maxRange",
         FieldType::Float,
         [](flecs::entity e) -> FieldValue { return e.get<WeaponComponent>().maxRange; },
@@ -165,7 +171,8 @@ ComponentDescriptor describeWeapon()
         },
         0.0f,
         unbounded,
-        1.0f));
+        1.0f);
+    d.fields.push_back(std::move(maxRange));
 
     return d;
 }
@@ -186,7 +193,7 @@ ComponentDescriptor describeAudioSource()
     file.assetType = Assets::AssetType::Audio;
     d.fields.push_back(std::move(file));
 
-    d.fields.push_back(makeField(
+    auto volume = makeField(
         "volume",
         FieldType::Float,
         [](flecs::entity e) -> FieldValue { return e.get<AudioSourceComponent>().volume; },
@@ -197,9 +204,11 @@ ComponentDescriptor describeAudioSource()
         },
         0.0f,
         unbounded,
-        0.05f));
+        0.05f);
 
-    d.fields.push_back(makeField(
+    d.fields.push_back(std::move(volume));
+
+    auto loop = makeField(
         "loop",
         FieldType::Bool,
         [](flecs::entity e) -> FieldValue { return e.get<AudioSourceComponent>().loop; },
@@ -207,7 +216,8 @@ ComponentDescriptor describeAudioSource()
             auto c = e.get<AudioSourceComponent>();
             c.loop = std::get<bool>(v);
             e.set(c);
-        }));
+        });
+    d.fields.push_back(std::move(loop));
 
     return d;
 }
@@ -216,7 +226,7 @@ ComponentDescriptor describeCharacterController()
 {
     auto d = makeComponentDescriptor<CharacterControllerComponent>("CharacterController");
 
-    d.fields.push_back(makeField(
+    auto gravity = makeField(
         "gravity",
         FieldType::Float,
         [](flecs::entity e) -> FieldValue { return e.get<CharacterControllerComponent>().gravity; },
@@ -227,9 +237,11 @@ ComponentDescriptor describeCharacterController()
         },
         0.0f,
         0.0f,
-        0.1f));
+        0.1f);
 
-    d.fields.push_back(makeField(
+    d.fields.push_back(std::move(gravity));
+
+    auto jumpVelocity = makeField(
         "jumpVelocity",
         FieldType::Float,
         [](flecs::entity e) -> FieldValue { return e.get<CharacterControllerComponent>().jumpVelocity; },
@@ -240,9 +252,11 @@ ComponentDescriptor describeCharacterController()
         },
         0.0f,
         unbounded,
-        0.1f));
+        0.1f);
 
-    d.fields.push_back(makeField(
+    d.fields.push_back(std::move(jumpVelocity));
+
+    auto capsuleRadius = makeField(
         "capsuleRadius",
         FieldType::Float,
         [](flecs::entity e) -> FieldValue { return e.get<CharacterControllerComponent>().capsuleRadius; },
@@ -253,9 +267,11 @@ ComponentDescriptor describeCharacterController()
         },
         0.01f,
         unbounded,
-        0.01f));
+        0.01f);
 
-    d.fields.push_back(makeField(
+    d.fields.push_back(std::move(capsuleRadius));
+
+    auto capsuleHeight = makeField(
         "capsuleHeight",
         FieldType::Float,
         [](flecs::entity e) -> FieldValue { return e.get<CharacterControllerComponent>().capsuleHeight; },
@@ -266,9 +282,11 @@ ComponentDescriptor describeCharacterController()
         },
         0.01f,
         unbounded,
-        0.05f));
+        0.05f);
 
-    d.fields.push_back(makeField(
+    d.fields.push_back(std::move(capsuleHeight));
+
+    auto maxWalkableSlope = makeField(
         "maxWalkableSlope",
         FieldType::Float,
         [](flecs::entity e) -> FieldValue { return e.get<CharacterControllerComponent>().maxWalkableSlope; },
@@ -279,9 +297,11 @@ ComponentDescriptor describeCharacterController()
         },
         0.0f,
         90.0f,
-        1.0f));
+        1.0f);
 
-    d.fields.push_back(makeField(
+    d.fields.push_back(std::move(maxWalkableSlope));
+
+    auto maxPushStrength = makeField(
         "maxPushStrength",
         FieldType::Float,
         [](flecs::entity e) -> FieldValue { return e.get<CharacterControllerComponent>().maxPushStrength; },
@@ -292,7 +312,9 @@ ComponentDescriptor describeCharacterController()
         },
         0.0f,
         unbounded,
-        1.0f));
+        1.0f);
+
+    d.fields.push_back(std::move(maxPushStrength));
 
     return d;
 }
@@ -301,7 +323,7 @@ ComponentDescriptor describeCamera()
 {
     auto d = makeComponentDescriptor<CameraComponent>("Camera");
 
-    d.fields.push_back(makeField(
+    auto front = makeField(
         "front",
         FieldType::Vec3,
         [](flecs::entity e) -> FieldValue { return e.get<CameraComponent>().front; },
@@ -309,7 +331,9 @@ ComponentDescriptor describeCamera()
             auto c = e.get<CameraComponent>();
             c.front = std::get<glm::vec3>(v);
             e.set(c);
-        }));
+        });
+
+    d.fields.push_back(std::move(front));
 
     return d;
 }
