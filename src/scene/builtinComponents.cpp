@@ -18,19 +18,19 @@ ComponentDescriptor describeTransform()
     auto d = makeComponentDescriptor<TransformComponent>("Transform");
     d.core = true;
 
-    d.fields.push_back(makeField(
+    auto position = makeField(
         "position",
         FieldType::Vec3,
         [](flecs::entity e) -> FieldValue { return e.get<TransformComponent>().position; },
         [](flecs::entity e, const FieldValue &v) {
             auto c = e.get<TransformComponent>();
             c.position = std::get<glm::vec3>(v);
-            c.matrixDirty = true;
             e.set(c);
         },
         0.0f,
         0.0f,
-        0.1f));
+        0.1f);
+    d.fields.push_back(std::move(position));
 
     auto rotation = makeField(
         "rotation",
@@ -39,25 +39,36 @@ ComponentDescriptor describeTransform()
         [](flecs::entity e, const FieldValue &v) {
             auto c = e.get<TransformComponent>();
             c.rotation = std::get<glm::vec3>(v);
-            c.matrixDirty = true;
             e.set(c);
         });
     rotation.hint = FieldHint::Degrees;
     d.fields.push_back(std::move(rotation));
     
-    d.fields.push_back(makeField(
+    auto scale = makeField(
         "scale",
         FieldType::Vec3,
         [](flecs::entity e) -> FieldValue { return e.get<TransformComponent>().scale; },
         [](flecs::entity e, const FieldValue &v) {
             auto c = e.get<TransformComponent>();
             c.scale = std::get<glm::vec3>(v);
-            c.matrixDirty = true;
             e.set(c);
         },
         0.0f,
         0.0f,
-        0.1f));
+        0.1f);
+    d.fields.push_back(std::move(scale));
+
+    auto shear = makeField(
+        "shear", FieldType::Vec3,
+        [](flecs::entity e) -> FieldValue { return e.get<TransformComponent>().shear; },
+        [](flecs::entity e, const FieldValue &v) {
+            auto c = e.get<TransformComponent>();
+            c.shear = std::get<glm::vec3>(v);
+            e.set(c);
+        },
+        0.0f, 0.0f, 0.1f);
+    shear.hint = FieldHint::Hidden; // shear is not exposed in the editor, but it is still serialized
+    d.fields.push_back(std::move(shear));
     
     return d;
 }

@@ -55,10 +55,10 @@ struct CameraComponent
 struct TransformComponent
 {
     glm::vec3 position{0.0f};
-    glm::vec3 rotation{0.0f};
+    glm::vec3 rotation{0.0f}; // radians are made as Rz * Ry * Rx in the localRotationMatrix
     glm::vec3 scale{1.0f};
+    // shear << x=XY, y=XZ, z=YZ >> and local = R * H * S
     glm::vec3 shear{0.0f};
-    bool matrixDirty{true};
     glm::mat4 cachedModelMatrix{1.0f};
     glm::mat4 cachedNormalMatrix{1.0f};
 };

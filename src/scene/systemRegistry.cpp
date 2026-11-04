@@ -1,6 +1,7 @@
 #include <Jolt/Jolt.h>
 #include <Jolt/Physics/Character/CharacterVirtual.h>
 #include <gtc/matrix_transform.hpp>
+#include <gtx/euler_angles.hpp>
 
 #include "audio.hpp"
 #include "characterController.hpp"
@@ -115,8 +116,10 @@ void RegisterCoreSystems(flecs::world &world, Cthulhu::Engine *engineContext)
             const auto bodyTransform = engineContext->getPhysicsWorld().getBodyTransform(*runtime.bodyId);
 
             transform.position = worldPositionToLocal(entity, bodyTransform.position);
-            transform.rotation = glm::eulerAngles(worldRotationToLocal(entity, bodyTransform.rotation));
-            transform.matrixDirty = true;
+            const glm::quat localQuat = worldRotationToLocal(entity, bodyTransform.rotation);
+            glm::vec3 euler{};
+            glm::extractEulerAngleXYZ(glm::mat4_cast(localQuat), euler.x, euler.y, euler.z);
+            transform.rotation = euler;
         })
         .add<GameplaySystem>();
 
@@ -147,7 +150,6 @@ void RegisterCoreSystems(flecs::world &world, Cthulhu::Engine *engineContext)
             const float alpha = engineContext->getPhysicsWorld().getInterpolationAlpha();
 
             transform.position = worldPositionToLocal(entity, glm::mix(runtime.prevPos, runtime.currentPos, alpha));
-            transform.matrixDirty = true;
         })
         .add<GameplaySystem>();
 
@@ -184,7 +186,15 @@ void RegisterCoreSystems(flecs::world &world, Cthulhu::Engine *engineContext)
                 transform.cachedModelMatrix = localMatrix;
             }
 
-            transform.cachedNormalMatrix = glm::transpose(glm::inverse(transform.cachedModelMatrix));
+            const float det = glm::determinant(glm::mat3(transform.cachedModelMatrix));
+            if (!std::isfinite(det) || det == 0.0f) 
+            {
+                transform.cachedNormalMatrix = glm::mat4(1.0f);
+            } 
+            else 
+            {
+                transform.cachedNormalMatrix = glm::transpose(glm::inverse(transform.cachedModelMatrix));
+            }
         });
 
     // << weapon >>

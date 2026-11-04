@@ -325,6 +325,11 @@ void InspectorPanel::rebuild(Context &ctx, Engine &engine, Scene::Scene *scene)
 
         for (const Scene::FieldDescriptor &field : component.fields)
         {
+            if (field.hint == Scene::FieldHint::Hidden)
+            {
+                continue;
+            }
+
             const auto currentValue = registry.getField(*entity, component.name, field.name);
             if (!currentValue)
             {

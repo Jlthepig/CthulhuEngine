@@ -1,5 +1,7 @@
 #pragma once
 
+#include <cmath>
+
 #include <flecs.h>
 #include <glm.hpp>
 #include <gtc/matrix_transform.hpp>
@@ -33,6 +35,15 @@ inline glm::mat4 composeLocalMatrix(const TransformComponent &transform, const g
     matrix[2] = (rotation[2] + rotation[0] * transform.shear.y + rotation[1] * transform.shear.z) * transform.scale.z;
     matrix[3] = glm::vec4(transform.position, 1.0f);
     return matrix;
+}
+
+inline bool isLocalMatrixRepresentable(const TransformComponent &t)
+{
+    const glm::mat4 m = composeLocalMatrix(t, localRotationMatrix(t.rotation));
+    for (int c = 0; c < 4; ++c)
+        for (int r = 0; r < 4; ++r)
+            if (!std::isfinite(m[c][r])) return false;
+    return true;
 }
 
 inline WorldTransform getWorldTransform(flecs::entity entity)

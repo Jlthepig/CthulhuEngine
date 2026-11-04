@@ -6,6 +6,7 @@
 #include "assetManager.hpp"
 #include "log_utils.hpp"
 #include "scene.hpp"
+#include "transformUtils.hpp"
 
 using KalaHeaders::KalaLog::Log;
 using KalaHeaders::KalaLog::LogType;
@@ -262,14 +263,11 @@ class SetTransformsCommand final : public Command
 
         for (const auto &value : requested)
         {
-            for (int axis = 0; axis < 3; ++axis)
+            if (!isFiniteTransform(value))
             {
-                if (!std::isfinite(value.position[axis]) || !std::isfinite(value.rotation[axis]) ||
-                    !std::isfinite(value.scale[axis]) || !std::isfinite(value.shear[axis]))
-                {
-                    return Result::failed("NON-FINITE TRANSFORM");
-                }
+                return Result::failed("NON-FINITE TRANSFORM");
             }
+            
 
             if (!before.empty() && before.back().id == value.id)
             {
@@ -283,7 +281,7 @@ class SetTransformsCommand final : public Command
                 return Result::failed("ENTITY HAS NO TRANSFORM");
             }
 
-            before.push_back({value.id, transform->position, transform->rotation, transform->scale, transform->shear});
+            before.push_back(captureTransform(value.id, *transform));
         }
 
         return writeTransforms(context, requested);
@@ -416,6 +414,11 @@ Result writeTransforms(Context &context, std::span<const TransformValue> values)
         {
             return Result::failed("ENTITY HAS NO TRANSFORM");
         }
+        const Scene::TransformComponent probe{value.position, value.rotation, value.scale, value.shear};
+        if (!Scene::isLocalMatrixRepresentable(probe))
+        {
+            return Result::failed("TRANSFORM MATRIX NOT REPRESENTABLE");
+        }
     }
 
     bool changed = false;
@@ -438,7 +441,6 @@ Result writeTransforms(Context &context, std::span<const TransformValue> values)
         transform.rotation = value.rotation;
         transform.scale = value.scale;
         transform.shear = value.shear;
-        transform.matrixDirty = true;
         entity->set(transform);
         context.emit(ChangeType::ComponentChanged, value.id, "Transform");
         changed = true;

@@ -9,21 +9,6 @@
 
 namespace Cthulhu::Scribe
 {
-namespace
-{
-bool finiteTransform(const TransformValue &value)
-{
-    for (int axis = 0; axis < 3; ++axis)
-    {
-        if (!std::isfinite(value.position[axis]) || !std::isfinite(value.rotation[axis]) ||
-            !std::isfinite(value.scale[axis]) || !std::isfinite(value.shear[axis]))
-        {
-            return false;
-        }
-    }
-    return true;
-}
-} // namespace
 
 Session::~Session()
 {
@@ -54,8 +39,8 @@ Result Session::beginTransformEdit(std::span<const Scene::EntityId> selection)
             return Result::failed("ENTITY HAS NO TRANSFORM");
         }
 
-        const TransformValue value{id, transform->position, transform->rotation, transform->scale, transform->shear};
-        if (!finiteTransform(value))
+        const TransformValue value = captureTransform(id, *transform);
+        if (!isFiniteTransform(value))
         {
             return Result::failed("NON-FINITE STARTING TRANSFORM");
         }
@@ -98,7 +83,7 @@ Result Session::previewTransforms(std::span<const TransformValue> values)
 
     for (std::size_t i = 0; i < values.size(); ++i)
     {
-        if (values[i].id != transformBefore[i].id || !finiteTransform(values[i]))
+        if (values[i].id != transformBefore[i].id || !isFiniteTransform(values[i]))
         {
             return Result::failed("INVALID TRANSFORM PREVIEW");
         }

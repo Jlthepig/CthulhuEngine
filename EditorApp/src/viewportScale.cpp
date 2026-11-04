@@ -85,7 +85,9 @@ bool setLocalLinear(const glm::dmat3 &linear, Scribe::TransformValue &value)
         .scale = glm::vec3(signedScale),
         .shear = glm::vec3(shear)
     };
-    if (candidate.scale.x == 0.0f || candidate.scale.y == 0.0f || candidate.scale.z == 0.0f)
+    constexpr float kMinAxisScale = 1e-6f;
+    if (std::abs(candidate.scale.x) < kMinAxisScale || std::abs(candidate.scale.y) < kMinAxisScale ||
+        std::abs(candidate.scale.z) < kMinAxisScale)
     {
         return false;
     }

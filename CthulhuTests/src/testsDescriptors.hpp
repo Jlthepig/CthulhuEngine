@@ -97,11 +97,10 @@ inline void validateComponentDescriptors(Engine& engine, CS::Scene& scene, Resul
 	player->remove(w);
 	check(r, tagged && !player->has(w), "D9 tag component add and remove");
 
-	w.get_mut<CS::TransformComponent>().matrixDirty = false;
 	registry.setField(w, "Transform", "position", glm::vec3(1.0f, 2.0f, 3.0f));
 	const auto& moved = w.get<CS::TransformComponent>();
-	check(r, moved.position == glm::vec3(1.0f, 2.0f, 3.0f) && moved.matrixDirty,
-		  "D10 transform setField marks the matrix dirty");
+	check(r, moved.position == glm::vec3(1.0f, 2.0f, 3.0f),
+		  "D10 transform setField writes position");
 
 	auto integer = CS::makeComponentDescriptor<ValidationInteger>("V_IntegerLimits");
 	auto limits = CS::makeField(
@@ -173,6 +172,7 @@ inline void validateDescriptorSnapshots(Engine& engine, CS::Scene& scene, Result
 	e.set(ValidationHealth{42.0f, true});
 	e.set(CS::WeaponComponent{5.0f, -5.0f}); // maxRange below the field limit on purpose
 	registry.setField(e, "Transform", "position", glm::vec3(4.0f, 5.0f, 6.0f));
+	registry.setField(e, "Transform", "shear", glm::vec3(0.25f, -0.5f, 0.75f));
 
 	auto dupId = scene.duplicateEntity(idOf(e));
 	auto dup = dupId ? scene.findEntity(*dupId) : std::nullopt;
@@ -180,7 +180,9 @@ inline void validateDescriptorSnapshots(Engine& engine, CS::Scene& scene, Result
 	const auto* dupWeapon = dup ? dup->try_get<CS::WeaponComponent>() : nullptr;
 	const auto* dupTransform = dup ? dup->try_get<CS::TransformComponent>() : nullptr;
 	check(r, dupHealth && dupHealth->health == 42.0f && dupHealth->armored, "S2 duplicate copies user component");
-	check(r, dupTransform && dupTransform->position == glm::vec3(4.0f, 5.0f, 6.0f), "S2 duplicate copies transform");
+	check(r, dupTransform && dupTransform->position == glm::vec3(4.0f, 5.0f, 6.0f) &&
+				 dupTransform->shear == glm::vec3(0.25f, -0.5f, 0.75f),
+		  "S2 duplicate copies transform");
 	check(r, dupWeapon && dupWeapon->maxRange == -5.0f, "S3 snapshots keep values exactly (no clamping)");
 	if (dupId)
 	{
@@ -193,7 +195,10 @@ inline void validateDescriptorSnapshots(Engine& engine, CS::Scene& scene, Result
 	const bool restored = snapshot && scene.restoreSubtree(*snapshot);
 	auto back = scene.findEntity(id);
 	const auto* backHealth = back ? back->try_get<ValidationHealth>() : nullptr;
+	const auto* backTransform = back ? back->try_get<CS::TransformComponent>() : nullptr;
 	check(r, restored && backHealth && backHealth->health == 42.0f, "S4 capture/restore round-trips user component");
+	check(r, backTransform && backTransform->shear == glm::vec3(0.25f, -0.5f, 0.75f),
+		  "S4 capture/restore round-trips shear");
 	if (back)
 	{
 		scene.destroyEntity(id);

@@ -36,7 +36,8 @@ using FieldValue = std::variant<float, int, bool, glm::vec3, std::string, Entity
 enum class FieldHint : uint8_t
 {
     None,
-    Degrees
+    Degrees,
+    Hidden
 };
 
 using FieldGetter = FieldValue (*)(flecs::entity entity);
