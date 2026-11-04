@@ -278,7 +278,7 @@ void appendScaleHandles(const GizmoFrame &frame, const GizmoStyle &style, const 
 
 } // namespace
 
-void GizmoSystem::update(Engine &engine, std::span<const Scene::EntityId> selection, GizmoMode mode, GizmoSpace space, float viewportHeight)
+void GizmoSystem::update(Engine &engine, std::span<const Scene::EntityId> selection, GizmoMode mode, GizmoSpace space, float viewportHeight, const glm::mat3 *basisOverride)
 {
     vertices.clear();
     parts.clear();
@@ -312,7 +312,7 @@ void GizmoSystem::update(Engine &engine, std::span<const Scene::EntityId> select
             return;
 
         if (count == 0 && space == GizmoSpace::Local)
-            frame.basis = glm::mat3_cast(world.rotation);
+            frame.basis = basisOverride ? *basisOverride : glm::mat3_cast(world.rotation);
 
         positionSum += glm::dvec3(position);
         ++count;

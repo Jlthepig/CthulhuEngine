@@ -16,6 +16,25 @@ struct WorldTransform
     glm::quat rotation{1.0f, 0.0f, 0.0f, 0.0f};
 };
 
+inline glm::mat4 localRotationMatrix(const glm::vec3 &rotation)
+{
+    glm::mat4 matrix(1.0f);
+    matrix = glm::rotate(matrix, rotation.x, glm::vec3(1.0f, 0.0f, 0.0f));
+    matrix = glm::rotate(matrix, rotation.y, glm::vec3(0.0f, 1.0f, 0.0f));
+    matrix = glm::rotate(matrix, rotation.z, glm::vec3(0.0f, 0.0f, 1.0f));
+    return matrix;
+}
+
+inline glm::mat4 composeLocalMatrix(const TransformComponent &transform, const glm::mat4 &rotation)
+{
+    glm::mat4 matrix;
+    matrix[0] = rotation[0] * transform.scale.x;
+    matrix[1] = (rotation[1] + rotation[0] * transform.shear.x) * transform.scale.y;
+    matrix[2] = (rotation[2] + rotation[0] * transform.shear.y + rotation[1] * transform.shear.z) * transform.scale.z;
+    matrix[3] = glm::vec4(transform.position, 1.0f);
+    return matrix;
+}
+
 inline WorldTransform getWorldTransform(flecs::entity entity)
 {
     WorldTransform result;
@@ -30,20 +49,10 @@ inline WorldTransform getWorldTransform(flecs::entity entity)
     }
 
     const auto &transform = entity.get<TransformComponent>();
-    glm::mat4 localMatrix(1.0f);
-    localMatrix = glm::translate(localMatrix, transform.position);
-    localMatrix = glm::rotate(localMatrix, transform.rotation.x, glm::vec3(1.0f, 0.0f, 0.0f));
-    localMatrix = glm::rotate(localMatrix, transform.rotation.y, glm::vec3(0.0f, 1.0f, 0.0f));
-    localMatrix = glm::rotate(localMatrix, transform.rotation.z, glm::vec3(0.0f, 0.0f, 1.0f));
-    localMatrix = glm::scale(localMatrix, transform.scale);
+    const glm::mat4 rotation = localRotationMatrix(transform.rotation);
 
-    glm::mat4 localRotation(1.0f);
-    localRotation = glm::rotate(localRotation, transform.rotation.x, glm::vec3(1.0f, 0.0f, 0.0f));
-    localRotation = glm::rotate(localRotation, transform.rotation.y, glm::vec3(0.0f, 1.0f, 0.0f));
-    localRotation = glm::rotate(localRotation, transform.rotation.z, glm::vec3(0.0f, 0.0f, 1.0f));
-
-    result.matrix *= localMatrix;
-    result.rotation = glm::normalize(result.rotation * glm::quat_cast(localRotation));
+    result.matrix *= composeLocalMatrix(transform, rotation);
+    result.rotation = glm::normalize(result.rotation * glm::quat_cast(rotation));
     return result;
 }
 

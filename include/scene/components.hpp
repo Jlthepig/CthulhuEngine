@@ -57,6 +57,7 @@ struct TransformComponent
     glm::vec3 position{0.0f};
     glm::vec3 rotation{0.0f};
     glm::vec3 scale{1.0f};
+    glm::vec3 shear{0.0f};
     bool matrixDirty{true};
     glm::mat4 cachedModelMatrix{1.0f};
     glm::mat4 cachedNormalMatrix{1.0f};

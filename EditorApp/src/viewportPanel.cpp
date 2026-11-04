@@ -394,7 +394,18 @@ void ViewportPanel::updateGizmo(Context &ctx, Engine &engine, Scribe::Session &s
 
     const GizmoHandle previous = gizmoSystem.hovered;
 
-    gizmoSystem.update(engine, hierarchy.selection(), currentMode, currentSpace, ctx.tree().rect(sceneNode).h);
+    const glm::mat3 *basisOverride = nullptr;
+    if (gizmoDragActive() && drag.mode == GizmoMode::Scale)
+    {
+        basisOverride = &drag.frame.basis;
+    }
+
+    gizmoSystem.update(engine,
+                       hierarchy.selection(),
+                       currentMode,
+                       currentSpace,
+                       ctx.tree().rect(sceneNode).h,
+                       basisOverride);
 
     if (drag.handle == GizmoHandle::None)
     {

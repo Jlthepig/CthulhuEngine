@@ -265,7 +265,7 @@ class SetTransformsCommand final : public Command
             for (int axis = 0; axis < 3; ++axis)
             {
                 if (!std::isfinite(value.position[axis]) || !std::isfinite(value.rotation[axis]) ||
-                    !std::isfinite(value.scale[axis]))
+                    !std::isfinite(value.scale[axis]) || !std::isfinite(value.shear[axis]))
                 {
                     return Result::failed("NON-FINITE TRANSFORM");
                 }
@@ -283,7 +283,7 @@ class SetTransformsCommand final : public Command
                 return Result::failed("ENTITY HAS NO TRANSFORM");
             }
 
-            before.push_back({value.id, transform->position, transform->rotation, transform->scale});
+            before.push_back({value.id, transform->position, transform->rotation, transform->scale, transform->shear});
         }
 
         return writeTransforms(context, requested);
@@ -429,7 +429,7 @@ Result writeTransforms(Context &context, std::span<const TransformValue> values)
 
         auto transform = entity->get<Scene::TransformComponent>();
         if (transform.position == value.position && transform.rotation == value.rotation &&
-            transform.scale == value.scale)
+            transform.scale == value.scale && transform.shear == value.shear)
         {
             continue;
         }
@@ -437,6 +437,7 @@ Result writeTransforms(Context &context, std::span<const TransformValue> values)
         transform.position = value.position;
         transform.rotation = value.rotation;
         transform.scale = value.scale;
+        transform.shear = value.shear;
         transform.matrixDirty = true;
         entity->set(transform);
         context.emit(ChangeType::ComponentChanged, value.id, "Transform");

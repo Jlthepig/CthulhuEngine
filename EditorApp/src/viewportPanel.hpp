@@ -143,12 +143,17 @@ class ViewportPanel
     };
     struct ScaleDrag
     {
+        struct Root
+        {
+            glm::dmat3 worldLinear{1.0};
+            glm::dvec3 offset{};
+        };
+
         bool uniform = false;
         glm::dvec3 axis{};
         double minimumFactor = 0.0001;
         double maximumFactor = 1.0;
-        std::vector<glm::dvec3> offsets;
-        std::vector<int> localAxes;
+        std::vector<Root> roots;
     };
     struct GizmoDrag
     {

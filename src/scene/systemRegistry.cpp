@@ -173,12 +173,7 @@ void RegisterCoreSystems(flecs::world &world, Cthulhu::Engine *engineContext)
         .parent()
         .cascade()
         .each([](TransformComponent &transform, const TransformComponent *parentTransform) {
-            glm::mat4 localMatrix = glm::mat4(1.0f);
-            localMatrix = glm::translate(localMatrix, transform.position);
-            localMatrix = glm::rotate(localMatrix, transform.rotation.x, glm::vec3(1.0f, 0.0f, 0.0f));
-            localMatrix = glm::rotate(localMatrix, transform.rotation.y, glm::vec3(0.0f, 1.0f, 0.0f));
-            localMatrix = glm::rotate(localMatrix, transform.rotation.z, glm::vec3(0.0f, 0.0f, 1.0f));
-            localMatrix = glm::scale(localMatrix, transform.scale);
+            const glm::mat4 localMatrix = composeLocalMatrix(transform, localRotationMatrix(transform.rotation));
 
             if (parentTransform)
             {

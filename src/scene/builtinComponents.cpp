@@ -44,7 +44,7 @@ ComponentDescriptor describeTransform()
         });
     rotation.hint = FieldHint::Degrees;
     d.fields.push_back(std::move(rotation));
-
+    
     d.fields.push_back(makeField(
         "scale",
         FieldType::Vec3,
@@ -58,7 +58,7 @@ ComponentDescriptor describeTransform()
         0.0f,
         0.0f,
         0.1f));
-
+    
     return d;
 }
 

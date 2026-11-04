@@ -93,7 +93,7 @@ struct GizmoSystem
     std::vector<GizmoPart> parts;
     GizmoHandle hovered = GizmoHandle::None;
 
-    void update(Engine &engine, std::span<const Scene::EntityId> selection, GizmoMode mode, GizmoSpace space, float viewportHeight);
+    void update(Engine &engine, std::span<const Scene::EntityId> selection, GizmoMode mode, GizmoSpace space, float viewportHeight, const glm::mat3 *basisOverride = nullptr);
     void applyHighlight(bool active);
     
     [[nodiscard]] GizmoHandle pick(const PickingRay &ray, float maxDistance, const glm::mat4 &viewProjection, const glm::vec2 &viewportSize, 

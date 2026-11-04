@@ -16,7 +16,7 @@ bool finiteTransform(const TransformValue &value)
     for (int axis = 0; axis < 3; ++axis)
     {
         if (!std::isfinite(value.position[axis]) || !std::isfinite(value.rotation[axis]) ||
-            !std::isfinite(value.scale[axis]))
+            !std::isfinite(value.scale[axis]) || !std::isfinite(value.shear[axis]))
         {
             return false;
         }
@@ -54,7 +54,7 @@ Result Session::beginTransformEdit(std::span<const Scene::EntityId> selection)
             return Result::failed("ENTITY HAS NO TRANSFORM");
         }
 
-        const TransformValue value{id, transform->position, transform->rotation, transform->scale};
+        const TransformValue value{id, transform->position, transform->rotation, transform->scale, transform->shear};
         if (!finiteTransform(value))
         {
             return Result::failed("NON-FINITE STARTING TRANSFORM");
