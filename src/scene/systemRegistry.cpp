@@ -210,11 +210,13 @@ void RegisterCoreSystems(flecs::world &world, Cthulhu::Engine *engineContext)
     world
         .system<const WeaponComponent, WeaponRuntimeComponent, const TransformComponent, const CameraComponent>(
             "WeaponSystem")
-        .each([engineContext](const WeaponComponent &weapon,
+        .each([engineContext](flecs::iter &it,
+                              size_t,
+                              const WeaponComponent &weapon,
                               WeaponRuntimeComponent &runtime,
                               const TransformComponent &transform,
                               const CameraComponent &camera) {
-            runtime.timeSinceLastShot += engineContext->getDeltaTime();
+            runtime.timeSinceLastShot += it.delta_time();
 
             if (!runtime.wantsToFire)
             {

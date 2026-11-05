@@ -25,25 +25,32 @@ std::unordered_map<uint32_t, ma_sound *> activeSounds;
 std::unordered_map<uint32_t, const AudioClipData *> soundClips;
 uint32_t Audio::nextInstanceId = 1;
 
-void Audio::init()
+bool Audio::init()
 {
-    ma_result result = ma_engine_init(NULL, &g_audioEngine);
+    if (g_audioReady)
+    {
+        return true;
+    }
+
+    const ma_result result = ma_engine_init(nullptr, &g_audioEngine);
     if (result != MA_SUCCESS)
     {
-        KalaHeaders::KalaLog::Log::Print("Failed to initialize Miniaudio Engine",
-                                         "Audio",
-                                         KalaHeaders::KalaLog::LogType::LOG_ERROR);
-        return;
+        KalaHeaders::KalaLog::Log::Print("Failed to initialize Miniaudio Engine", "Audio",KalaHeaders::KalaLog::LogType::LOG_ERROR);
+        return false;
     }
 
     g_audioReady = true;
-    KalaHeaders::KalaLog::Log::Print("Miniaudio Engine initialized",
-                                     "Audio",
-                                     KalaHeaders::KalaLog::LogType::LOG_SUCCESS);
+    KalaHeaders::KalaLog::Log::Print("Miniaudio Engine initialized", "Audio",KalaHeaders::KalaLog::LogType::LOG_SUCCESS);
+    return true;
 }
 
 void Audio::shutdown()
 {
+    if (!g_audioReady)
+    {
+        return;
+    }
+
     for (auto &pair : activeSounds)
     {
         ma_sound_uninit(pair.second);

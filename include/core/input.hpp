@@ -14,6 +14,8 @@ class Input
     static GLFWwindow *getWindowHandle();
     static void update();
 
+    static void shutdown();
+
     static bool isKeyDown(int key);
     static bool isKeyPressed(int key);
     static bool isKeyReleased(int key);
