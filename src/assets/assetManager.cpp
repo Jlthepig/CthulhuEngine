@@ -104,6 +104,22 @@ AssetManager::~AssetManager()
     }
 }
 
+bool AssetManager::setProject(const Project::Project *activeProject)
+{
+    if (modelTable.liveCount() != 0 || audioClipTable.liveCount() != 0)
+    {
+        Log::Print("CANNOT CHANGE PROJECT WHILE ASSETS ARE LOADED","AssetManager",LogType::LOG_ERROR);
+        return false;
+    }
+
+    modelTable.clear();
+    audioClipTable.clear();
+    registry.clear();
+    registryLoaded = false;
+    project = activeProject;
+    return true;
+}
+
 AssetRegistry::ScanResult AssetManager::refreshRegistry()
 {
     if (!project)
@@ -113,7 +129,11 @@ AssetRegistry::ScanResult AssetManager::refreshRegistry()
 
     if (!registryLoaded)
     {
-        registry.load(project->getRootPath() / ".cthulhu" / "assets.json");
+        const auto registryFile = project->resolveResourcePath("res://.cthulhu/assets.json");
+        if (!registryFile || !registry.load(*registryFile))
+        {
+            return {};
+        }
         registryLoaded = true;
     }
 

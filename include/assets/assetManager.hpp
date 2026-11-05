@@ -33,10 +33,7 @@ class AssetManager
     AssetManager(const AssetManager &) = delete;
     AssetManager &operator=(const AssetManager &) = delete;
 
-    void setProject(const Project::Project *activeProject) noexcept
-    {
-        project = activeProject;
-    }
+    [[nodiscard]] bool setProject(const Project::Project *activeProject);
 
     AssetRegistry::ScanResult refreshRegistry();
 

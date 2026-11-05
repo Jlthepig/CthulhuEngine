@@ -128,13 +128,11 @@ std::vector<AssetSlotTable::Collected> AssetSlotTable::collectUnreferenced()
         slot.key.clear();
         slot.alive = false;
 
-        ++slot.generation;
-        if (slot.generation == 0)
+        if (slot.generation != std::numeric_limits<uint32_t>::max())
         {
-            slot.generation = 1;
+            ++slot.generation;
+            freeSlots.push_back(index);
         }
-
-        freeSlots.push_back(index);
     }
 
     return collected;
@@ -142,8 +140,27 @@ std::vector<AssetSlotTable::Collected> AssetSlotTable::collectUnreferenced()
 
 void AssetSlotTable::clear()
 {
-    slots.clear();
-    freeSlots.clear();
     indexByKey.clear();
+    freeSlots.clear();
+
+    for (uint32_t index = 0; index < slots.size(); ++index)
+    {
+        auto &slot = slots[index];
+
+        if (slot.alive && slot.generation != std::numeric_limits<uint32_t>::max())
+        {
+            ++slot.generation;
+        }
+
+        slot.key.clear();
+        slot.refCount = 0;
+        slot.alive = false;
+
+        if (slot.generation != std::numeric_limits<uint32_t>::max())
+        {
+            freeSlots.push_back(index);
+        }
+    }
 }
+
 } // namespace Cthulhu::Assets

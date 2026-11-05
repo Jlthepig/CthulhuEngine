@@ -1,12 +1,60 @@
+#if defined(_WIN32)
+#ifndef WIN32_LEAN_AND_MEAN
+#define WIN32_LEAN_AND_MEAN
+#endif
+#ifndef NOMINMAX
+#define NOMINMAX
+#endif
+#include <Windows.h>
+#endif
+
 #include "project.hpp"
-#include "log_utils.hpp"
 #include "projectParser.hpp"
 #include "projectWriter.hpp"
+#include "log_utils.hpp"
 
 using namespace KalaHeaders::KalaLog;
 
 namespace Cthulhu::Project
 {
+
+static bool hasDirectResourcePath(const std::filesystem::path &root, const std::filesystem::path &relative)
+{
+    std::filesystem::path current = root;
+
+    for (const auto &part : relative.lexically_normal())
+    {
+        current /= part;
+
+#if defined(_WIN32)
+        const DWORD attributes = GetFileAttributesW(current.c_str());
+        if (attributes == INVALID_FILE_ATTRIBUTES)
+        {
+            const DWORD error = GetLastError();
+            return error == ERROR_FILE_NOT_FOUND || error == ERROR_PATH_NOT_FOUND;
+        }
+
+        if ((attributes & FILE_ATTRIBUTE_REPARSE_POINT) != 0)
+        {
+            return false;
+        }
+#else
+        std::error_code error;
+        const auto status = std::filesystem::symlink_status(current, error);
+        if (error == std::errc::no_such_file_or_directory)
+        {
+            return true;
+        }
+        if (error || std::filesystem::is_symlink(status))
+        {
+            return false;
+        }
+#endif
+    }
+
+    return true;
+}
+
 static bool isInsideProjectRoot(const std::filesystem::path &root, const std::filesystem::path &path)
 {
     auto relative = path.lexically_normal().lexically_relative(root.lexically_normal());
@@ -57,6 +105,12 @@ std::optional<std::filesystem::path> Project::resolveResourcePath(std::string_vi
     if (!isInsideProjectRoot(canonicalRoot, resolved))
     {
         Log::Print("RESOURCE PATH ESCAPES PROJECT ROOT: " + std::string(resourcePath), "Project", LogType::LOG_ERROR);
+        return std::nullopt;
+    }
+
+    if (!hasDirectResourcePath(canonicalRoot, relativePath))
+    {
+        Log::Print("RESOURCE PATH CONTAINS A LINK OR CANNOT BE CHECKED: " + std::string(resourcePath),"Project", LogType::LOG_ERROR);
         return std::nullopt;
     }
 

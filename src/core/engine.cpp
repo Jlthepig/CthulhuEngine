@@ -68,7 +68,11 @@ bool Engine::init(const std::filesystem::path &projectFilePath)
     }
 
     project = std::move(*openedProject);
-    assetManager.setProject(&*project);
+    if (!assetManager.setProject(&*project))
+    {
+        shutdown();
+        return false;
+    }
     assetManager.refreshRegistry();
 
     const auto &projectConfig = project->getConfig();

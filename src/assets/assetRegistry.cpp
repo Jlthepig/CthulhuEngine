@@ -247,6 +247,14 @@ AssetRegistry::ScanResult AssetRegistry::scan(const Project::Project &project)
         const auto &entry = *it;
         const std::string name = entry.path().filename().string();
 
+        auto key = normaliseResourcePath("res://" + entry.path().lexically_relative(root).generic_string());
+
+        if (!key || !project.resolveResourcePath(*key))
+        {
+            it.disable_recursion_pending();
+            continue;
+        }
+
         const bool isDirectory = entry.is_directory(error);
         if (error)
         {
@@ -272,8 +280,8 @@ AssetRegistry::ScanResult AssetRegistry::scan(const Project::Project &project)
             continue;
         }
 
-        auto key = normaliseResourcePath("res://" + entry.path().lexically_relative(root).generic_string());
-        if (!key || getAssetType(*key) == AssetType::Unknown)
+        
+        if (getAssetType(*key) == AssetType::Unknown)
         {
             continue;
         }
