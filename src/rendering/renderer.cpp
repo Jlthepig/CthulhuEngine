@@ -32,13 +32,18 @@ void Renderer::setOutlineTargets(std::span<const Scene::EntityId> entities)
     outlineTargets.assign(entities.begin(), entities.end());
 }
 
-void Renderer::init(GLFWwindow *window, Scene::Camera *camera, const RenderConfig &config)
+bool Renderer::init(GLFWwindow *window, Scene::Camera *camera, const RenderConfig &config)
 {
     this->config = config;
 
     auto enginePath = [&config](const std::filesystem::path &relative) {
         return (config.engineResourceRoot / relative).lexically_normal().string();
     };
+
+    if (!basicShader.load(enginePath("shaders/basic.vertex"), enginePath("shaders/basic.fragment")))
+    {
+        return false;
+    }
 
     this->camera = camera;
     this->window = window;
@@ -50,7 +55,6 @@ void Renderer::init(GLFWwindow *window, Scene::Camera *camera, const RenderConfi
     glEnable(GL_DEPTH_TEST);
     glEnable(GL_CULL_FACE);
 
-    basicShader.load(enginePath("shaders/basic.vertex"), enginePath("shaders/basic.fragment"));
     gridShader.load(enginePath("shaders/grid.vertex"), enginePath("shaders/grid.fragment"));
 
     skybox.load(config.engineResourceRoot, config.engineResourceRoot / "images/Test2.hdr");
@@ -211,6 +215,7 @@ void Renderer::init(GLFWwindow *window, Scene::Camera *camera, const RenderConfi
     glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 1, pointLightsSSBO);
     glBindBuffer(GL_SHADER_STORAGE_BUFFER, 0);
     Log::Print("Renderer Initialized Successfully", "ENGINE", LogType::LOG_SUCCESS);
+    return true;
 }
 
 void Renderer::addPointLight(const PointLight &light)

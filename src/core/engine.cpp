@@ -38,6 +38,104 @@ static void physicsFixedUpdateCallback(void *context, float fixedDt)
 namespace Cthulhu
 {
 
+namespace
+{
+class ScopedFlag
+{
+  public:
+    explicit ScopedFlag(bool &flag)
+        : flag(flag),
+          previous(flag)
+    {
+        flag = true;
+    }
+
+    ~ScopedFlag()
+    {
+        flag = previous;
+    }
+
+    ScopedFlag(const ScopedFlag &) = delete;
+    ScopedFlag &operator=(const ScopedFlag &) = delete;
+
+  private:
+    bool &flag;
+    bool previous;
+};
+} // namespace
+
+bool Engine::transitionBlocked() const
+{
+    return progressingSimulation || dispatchingRegistrations ||
+           state == EngineState::ShuttingDown ||
+           (activeScene && ecs_stage_is_readonly(activeScene->getWorld().c_ptr())) ||
+           (activeScene && ecs_is_deferred(activeScene->getWorld().c_ptr()));
+}
+
+bool Engine::requestTransition(EngineTransition transition, std::string argument)
+{
+    if (!isInitialized() || state == EngineState::ShuttingDown)
+    {
+        return false;
+    }
+
+    if (pendingTransition)
+    {
+        Log::Print("A LIFECYCLE TRANSITION IS ALREADY QUEUED", "ENGINE", LogType::LOG_ERROR);
+        return false;
+    }
+
+    if (transition == EngineTransition::LoadScene && argument.empty())
+    {
+        return false;
+    }
+
+    pendingTransition = TransitionRequest{transition, std::move(argument)};
+    return true;
+}
+
+void Engine::applyPendingTransition()
+{
+    if (!pendingTransition || transitionBlocked() || state == EngineState::Uninitialized)
+    {
+        return;
+    }
+
+    TransitionRequest request = std::move(*pendingTransition);
+    pendingTransition.reset();
+
+    bool succeeded = true;
+    switch (request.transition)
+    {
+        case EngineTransition::LoadScene:
+            succeeded = loadScene(request.argument);
+            break;
+        case EngineTransition::CreateEmptyScene:
+            succeeded = createEmptyScene(request.argument);
+            break;
+        case EngineTransition::UnloadScene:
+            unloadScene();
+            break;
+        case EngineTransition::Play:
+            succeeded = play();
+            break;
+        case EngineTransition::Stop:
+            succeeded = stop();
+            break;
+        case EngineTransition::Shutdown:
+            shutdown();
+            break;
+        default:
+            succeeded = false;
+            break;
+    }
+
+    if (!succeeded)
+    {
+        Log::Print("QUEUED LIFECYCLE TRANSITION FAILED", "ENGINE", LogType::LOG_ERROR);
+    }
+} 
+
 Engine::Engine()
 {
     if (!Scene::registerBuiltinComponents(componentRegistry))
@@ -162,10 +260,18 @@ bool Engine::init(const std::filesystem::path &projectFilePath)
     camera = Scene::Camera::init();
 
     Core::Input::init(glfwWindow, resolution);
-    Core::Audio::init();
+    if (!Core::Audio::init())
+    {
+        shutdown();
+        return false;
+    }
     audioInitialized = true;
 
-    renderer.init(glfwWindow, camera, renderConfig);
+    if (!renderer.init(glfwWindow, camera, renderConfig))
+    {
+        shutdown();
+        return false;
+    }
     rendererInitialized = true;
 
     int fbW, fbH;
@@ -195,6 +301,15 @@ void Engine::shutdown()
     {
         return;
     }
+
+    if (transitionBlocked())
+    {
+        Log::Print("SHUTDOWN REQUIRES A FRAME BOUNDARY", "ENGINE", LogType::LOG_ERROR);
+        return;
+    }
+
+    pendingTransition.reset();
+
     if (state == EngineState::Initialized && !glfwInitialized)
     {
         return;
@@ -209,7 +324,11 @@ void Engine::shutdown()
     raycastCallback = nullptr;
     raycastContext = nullptr;
 
-    unloadScene();
+    if (activeScene)
+    {
+        releaseActiveScene();
+        ++sceneGeneration;
+    }
 
     assetManager.shutdown();
 
@@ -230,6 +349,8 @@ void Engine::shutdown()
         physicsWorld.shutdown();
         physicsInitialized = false;
     }
+
+    Core::Input::shutdown();
 
     camera = nullptr;
     window = nullptr;
@@ -258,9 +379,13 @@ std::unique_ptr<Scene::Scene> Engine::createSceneInstance()
 
     Scene::RegisterCoreSystems(newScene->getWorld(), this);
 
-    for (const auto &entry : systemRegistrations)
     {
-        entry.registration(entry.contex, newScene->getWorld(), *this);
+        const ScopedFlag dispatch(dispatchingRegistrations);
+
+        for (const auto &entry : systemRegistrations)
+        {
+            entry.registration(entry.contex, newScene->getWorld(), *this);
+        }
     }
 
     return newScene;
@@ -268,6 +393,12 @@ std::unique_ptr<Scene::Scene> Engine::createSceneInstance()
 
 bool Engine::loadScene(std::string_view resourcePath)
 {
+    if (transitionBlocked())
+    {
+        Log::Print("LIFECYCLE TRANSITION REQUIRES A FRAME BOUNDARY","ENGINE",LogType::LOG_ERROR);
+        return false;
+    }
+
     if (!project)
     {
         Log::Print("CANNOT LOAD SCENE WITHOUT AN ACTIVE PROJECT", "ENGINE", LogType::LOG_ERROR);
@@ -307,6 +438,12 @@ bool Engine::loadScene(std::string_view resourcePath)
 
 bool Engine::createEmptyScene(const std::string &name)
 {
+    if (transitionBlocked())
+    {
+        Log::Print("LIFECYCLE TRANSITION REQUIRES A FRAME BOUNDARY","ENGINE",LogType::LOG_ERROR);
+        return false;
+    }
+
     if (!isInitialized())
     {
         Log::Print("CANNOT CREATE SCENE BEFORE ENGINE INITIALIZATION", "ENGINE", LogType::LOG_ERROR);
@@ -347,6 +484,12 @@ void Engine::activateScene(std::unique_ptr<Scene::Scene> newScene, bool newDocum
 
 void Engine::unloadScene()
 {
+    if (transitionBlocked())
+    {
+        Log::Print("LIFECYCLE TRANSITION REQUIRES A FRAME BOUNDARY","ENGINE",LogType::LOG_ERROR);
+        return;
+    }
+
     if (!activeScene)
         return;
 
@@ -430,9 +573,7 @@ bool Engine::saveActiveSceneAs(std::string_view resourcePath)
     std::filesystem::create_directories(resolvedPath->parent_path(), error);
     if (error)
     {
-        Log::Print("FAILED TO CREATE SCENE DIRECTORY: " + resolvedPath->parent_path().string(),
-                   "ENGINE",
-                   LogType::LOG_ERROR);
+        Log::Print("FAILED TO CREATE SCENE DIRECTORY: " + resolvedPath->parent_path().string(),"ENGINE",LogType::LOG_ERROR);
         return false;
     }
 
@@ -563,9 +704,16 @@ void Engine::addSystemRegistration(SystemRegistration registration, void *contex
         return;
     }
 
+    if (transitionBlocked())
+    {
+        Log::Print("CANNOT REGISTER SYSTEMS DURING CALLBACK DISPATCH OR SIMULATION","ENGINE",LogType::LOG_ERROR);
+        return;
+    }
+
     systemRegistrations.push_back({registration, context});
     if (activeScene)
     {
+        const ScopedFlag dispatch(dispatchingRegistrations);
         registration(context, activeScene->getWorld(), *this);
         applySimStateToSystems();
     }
@@ -573,6 +721,12 @@ void Engine::addSystemRegistration(SystemRegistration registration, void *contex
 
 bool Engine::play()
 {
+    if (transitionBlocked())
+    {
+        Log::Print("LIFECYCLE TRANSITION REQUIRES A FRAME BOUNDARY","ENGINE",LogType::LOG_ERROR);
+        return false;
+    }
+
     if (transformOwner)
     {
         Log::Print("CANNOT PLAY DURING TRANSFORM PREVIEW", "ENGINE", LogType::LOG_ERROR);
@@ -606,6 +760,12 @@ bool Engine::play()
 
 bool Engine::stop()
 {
+    if (transitionBlocked())
+    {
+        Log::Print("LIFECYCLE TRANSITION REQUIRES A FRAME BOUNDARY","ENGINE",LogType::LOG_ERROR);
+        return false;
+    }
+
     if (!isPlaying())
     {
         Log::Print("STOP CALLED WHILE NOT PLAYING", "ENGINE", LogType::LOG_ERROR);
@@ -652,7 +812,10 @@ void Engine::run()
         present();
     }
 
-    state = EngineState::Initialized;
+    if (state == EngineState::Running)
+    {
+        state = EngineState::Initialized;
+    }
 }
 
 bool Engine::shouldClose() const
@@ -662,6 +825,12 @@ bool Engine::shouldClose() const
 
 void Engine::update()
 {
+    if (state == EngineState::Uninitialized || !glfwWindow)
+    {
+        return;
+    }
+
+    applyPendingTransition();
     if (state == EngineState::Uninitialized || !glfwWindow)
     {
         return;
@@ -680,15 +849,18 @@ void Engine::update()
 
     const float simulationDt = simState == SimulationState::Stepping ? physicsWorld.fixedDeltaTime() : deltaTime;
 
-    if (isSimulating())
     {
-        physicsWorld.step(simulationDt);
-    }
+        const ScopedFlag progress(progressingSimulation);
 
-    // ecs systems always progress gameplay systems must follow applySimStateToSystems()
-    if (activeScene)
-    {
-        activeScene->getWorld().progress(simulationDt);
+        if (isSimulating())
+        {
+            physicsWorld.step(simulationDt);
+        }
+
+        if (activeScene)
+        {
+            activeScene->getWorld().progress(simulationDt);
+        }
     }
 
     if (simState == SimulationState::Stepping)
@@ -701,6 +873,8 @@ void Engine::update()
     {
         updateCallback(updateContext, deltaTime);
     }
+
+    applyPendingTransition();
 }
 
 void Engine::render(std::span<const Rendering::OverlayVertex> overlayVertices)

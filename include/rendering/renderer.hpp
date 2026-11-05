@@ -91,7 +91,7 @@ class Renderer
 {
   public:
     void setScene(Cthulhu::Scene::Scene *scene);
-    void init(GLFWwindow *window, Scene::Camera *camera, const RenderConfig &config);
+    bool init(GLFWwindow *window, Scene::Camera *camera, const RenderConfig &config);
     void addPointLight(const PointLight &light);
     void setDirectionalLight(const DirectionalLight &light);
     void setPointLights(const std::vector<PointLight> &lights);

@@ -23,8 +23,27 @@ bool Input::firstMouse = true;
 float Input::lastX{};
 float Input::lastY{};
 
+void Input::shutdown()
+{
+    windowHandle = nullptr;
+
+    std::memset(currentKeys, 0, sizeof(currentKeys));
+    std::memset(previousKeys, 0, sizeof(previousKeys));
+    std::memset(currentMouseButtons, 0, sizeof(currentMouseButtons));
+    std::memset(previousMouseButtons, 0, sizeof(previousMouseButtons));
+
+    mouseDeltaX = 0.0f;
+    mouseDeltaY = 0.0f;
+    scrollDeltaY = 0.0f;
+    lastX = 0.0f;
+    lastY = 0.0f;
+    firstMouse = true;
+}
+
 void Input::init(GLFWwindow *window, glm::vec2 resolution)
 {
+    shutdown(); 
+
     windowHandle = window;
     lastX = resolution.x / 2.0f;
     lastY = resolution.y / 2.0f;
@@ -42,6 +61,11 @@ GLFWwindow *Input::getWindowHandle()
 
 void Input::update()
 {
+    if (!windowHandle)
+    {
+        return;
+    }
+
     memcpy(previousKeys, currentKeys, sizeof(currentKeys));
     memcpy(previousMouseButtons, currentMouseButtons, sizeof(currentMouseButtons));
 

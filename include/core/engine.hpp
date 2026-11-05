@@ -55,6 +55,16 @@ enum class WorldMode : uint8_t
     Play
 };
 
+enum class EngineTransition
+{
+    LoadScene,
+    CreateEmptyScene,
+    UnloadScene,
+    Play,
+    Stop,
+    Shutdown
+};
+
 class Engine
 {
   public:
@@ -70,6 +80,7 @@ class Engine
     bool init(const std::filesystem::path &projectFilePath);
     void run();
     void shutdown();
+    [[nodiscard]] bool requestTransition(EngineTransition transition, std::string argument = {});
 
     // we split one frame to allow OctoGui to draw the ui between render() and run()
     bool shouldClose() const;
@@ -270,6 +281,19 @@ class Engine
     };
 
     std::vector<SystemRegistrationEntry> systemRegistrations;
+
+    struct TransitionRequest
+    {
+        EngineTransition transition;
+        std::string argument;
+    };
+
+    std::optional<TransitionRequest> pendingTransition;
+    bool progressingSimulation = false;
+    bool dispatchingRegistrations = false;
+
+    [[nodiscard]] bool transitionBlocked() const;
+    void applyPendingTransition();
 
     EngineState state = EngineState::Uninitialized;
     bool glfwInitialized = false;

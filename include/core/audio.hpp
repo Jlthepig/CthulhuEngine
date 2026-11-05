@@ -11,7 +11,7 @@ struct AudioClipData;
 class Audio
 {
   public:
-    static void init();
+    static bool init();
     static void update();
     static void shutdown();
     static uint32_t playSound2D(const std::string &filePath, float volume = 1.0f, bool loop = false);

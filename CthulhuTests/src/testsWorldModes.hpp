@@ -1,5 +1,9 @@
 #pragma once
 
+#include <chrono>
+#include <cmath>
+#include <thread>
+
 #include "systemRegistry.hpp"
 #include "testCommon.hpp"
 
@@ -60,6 +64,26 @@ inline void validateWorldModes(Engine& engine, Results& r)
 	engine.setWorldMode(WorldMode::Play);
 	engine.setSimulationState(SimulationState::Paused);
 	check(r, gameplaySystemsAre(engine, false), "W4 Play + Paused keeps gameplay off");
+
+	auto *stepScene = engine.getActiveScene();
+	auto weapon = stepScene->createEntity("V_StepWeapon");
+	weapon.set(CS::WeaponComponent{10.0f, 50.0f});
+	weapon.set(CS::CameraComponent{});
+
+	engine.update();
+	std::this_thread::sleep_for(std::chrono::milliseconds(100));
+
+	engine.stepSimulation();
+	engine.update();
+
+	const auto &runtime = weapon.get<CS::WeaponRuntimeComponent>();
+	check(r,
+		  std::abs(runtime.timeSinceLastShot - engine.getPhysicsWorld().fixedDeltaTime()) < 0.00001f &&
+			  engine.getSimulationState() == SimulationState::Paused,
+		  "W6 paused step advances weapon cooldown by one simulation tick");
+
+	stepScene->destroyEntity(idOf(weapon));
+
 	engine.setSimulationState(SimulationState::Running);
 	check(r, gameplaySystemsAre(engine, true), "W4 Play + Running turns gameplay on");
 }
