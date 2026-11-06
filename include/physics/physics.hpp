@@ -15,6 +15,7 @@ class BroadPhaseLayerInterface;
 class ObjectVsBroadPhaseLayerFilter;
 class ObjectLayerPairFilter;
 class ContactListener;
+class Factory;
 } // namespace JPH
 
 namespace Cthulhu::Physics
@@ -43,6 +44,7 @@ struct PhysicsConfig
     int maxContactConstraints{1024};
     float fixedDeltaTime{1.0f / 60.0f};
     int collisionSteps{1};
+    int maxStepsPerUpdate{16};
     float maxDeltaTime{0.25f};
     float groundWidth{100.0f};
     float groundHeight{0.5f};
@@ -53,6 +55,14 @@ struct PhysicsConfig
 class PhysicsWorld
 {
   public:
+    PhysicsWorld() = default;
+    ~PhysicsWorld();
+
+    PhysicsWorld(const PhysicsWorld &) = delete;
+    PhysicsWorld &operator=(const PhysicsWorld &) = delete;
+    PhysicsWorld(PhysicsWorld &&) = delete;
+    PhysicsWorld &operator=(PhysicsWorld &&) = delete;
+
     bool init(const PhysicsConfig &config);
     void step(float deltaTime);
     void (*onFixedUpdate)(void *context, float fixedDt) = nullptr;
@@ -65,6 +75,7 @@ class PhysicsWorld
     void removeBody(uint32_t bodyId);
     uint32_t getBodyCount() const;
     BodyTransform getBodyTransform(uint32_t bodyId);
+    void setStaticBodyTransform(uint32_t bodyId, const BodyTransform &transform);
 
     RaycastHitInfo raycast(const glm::vec3 &origin, const glm::vec3 &direction, float maxDistance);
 
@@ -90,7 +101,8 @@ class PhysicsWorld
 
   private:
     PhysicsConfig config;
-    float physicsAccumulator{};
+    double physicsAccumulator{};
+    JPH::Factory *factory = nullptr;
 
     // Jolt State
     JPH::TempAllocatorImpl *tempAllocator = nullptr;

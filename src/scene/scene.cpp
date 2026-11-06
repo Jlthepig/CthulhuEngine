@@ -1,5 +1,6 @@
 #include <algorithm>
 #include <iterator>
+#include <vector>
 #include <unordered_set>
 
 #include "assetManager.hpp"
@@ -18,15 +19,26 @@ namespace
 {
 void refreshSpatialRuntime(flecs::entity entity)
 {
-    if (const auto *physics = entity.try_get<PhysicsComponent>())
+    std::vector<flecs::entity> pending{entity};
+
+    while (!pending.empty())
     {
-        const PhysicsComponent refreshed = *physics;
-        entity.set(refreshed);
-    }
-    if (const auto *character = entity.try_get<CharacterControllerComponent>())
-    {
-        const CharacterControllerComponent refreshed = *character;
-        entity.set(refreshed);
+        const flecs::entity current = pending.back();
+        pending.pop_back();
+
+        current.children([&](flecs::entity child) {pending.push_back(child); });
+
+        if (const auto *physics = current.try_get<PhysicsComponent>())
+        {
+            const PhysicsComponent refreshed = *physics;
+            current.set(refreshed);
+        }
+
+        if (const auto *character = current.try_get<CharacterControllerComponent>())
+        {
+            const CharacterControllerComponent refreshed = *character;
+            current.set(refreshed);
+        }
     }
 }
 } // namespace

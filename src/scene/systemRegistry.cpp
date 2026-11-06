@@ -104,21 +104,37 @@ void RegisterCoreSystems(flecs::world &world, Cthulhu::Engine *engineContext)
         .each(
             [engineContext](flecs::entity entity, PhysicsComponent &) { createPhysicsRuntime(entity, engineContext); });
 
-    world.system<flecs::entity, TransformComponent, const PhysicsRuntimeComponent>("PhysicsSyncSystem")
+    world.system<flecs::entity,
+                 TransformComponent,
+                 const PhysicsComponent,
+                 const PhysicsRuntimeComponent>("PhysicsSyncSystem")
         .each([engineContext](flecs::entity entity,
                               TransformComponent &transform,
+                              const PhysicsComponent &physics,
                               const PhysicsRuntimeComponent &runtime) {
-            if (!runtime.bodyId)
+            if (physics.type != PhysicsBodyType::Dynamic || !runtime.bodyId || entity.has<CharacterControllerComponent>())
             {
                 return;
             }
 
             const auto bodyTransform = engineContext->getPhysicsWorld().getBodyTransform(*runtime.bodyId);
 
-            transform.position = worldPositionToLocal(entity, bodyTransform.position);
+            const auto localPosition = worldPositionToLocal(entity, bodyTransform.position);
+
+            if (!localPosition)
+                return;
+
             const glm::quat localQuat = worldRotationToLocal(entity, bodyTransform.rotation);
+
             glm::vec3 euler{};
-            glm::extractEulerAngleXYZ(glm::mat4_cast(localQuat), euler.x, euler.y, euler.z);
+            glm::extractEulerAngleXYZ( glm::mat4_cast(localQuat), euler.x, euler.y, euler.z);
+
+            if (!std::isfinite(euler.x) || !std::isfinite(euler.y) || !std::isfinite(euler.z))
+            {
+                return;
+            }
+
+            transform.position = *localPosition;
             transform.rotation = euler;
         })
         .add<GameplaySystem>();
@@ -149,7 +165,11 @@ void RegisterCoreSystems(flecs::world &world, Cthulhu::Engine *engineContext)
                               TransformComponent &transform) {
             const float alpha = engineContext->getPhysicsWorld().getInterpolationAlpha();
 
-            transform.position = worldPositionToLocal(entity, glm::mix(runtime.prevPos, runtime.currentPos, alpha));
+            const auto localPosition = worldPositionToLocal(
+                entity, glm::mix(runtime.prevPos, runtime.currentPos, alpha));
+
+            if (localPosition)
+                transform.position = *localPosition;
         })
         .add<GameplaySystem>();
 

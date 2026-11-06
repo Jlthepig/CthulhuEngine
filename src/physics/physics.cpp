@@ -1,5 +1,7 @@
 #include <cmath>
 #include <cstdarg>
+#include <limits>
+#include <algorithm>
 
 #include <Jolt/Jolt.h>
 #include <Jolt/Core/Core.h>
@@ -22,6 +24,7 @@
 #include <Jolt/Physics/Collision/Shape/BoxShape.h>
 #include <Jolt/Physics/PhysicsSystem.h>
 #include <Jolt/RegisterTypes.h>
+#include <Jolt/Physics/Constraints/ContactConstraintManager.h>
 
 #include <gtc/quaternion.hpp>
 
@@ -98,22 +101,63 @@ class ObjLayerPairFilterImpl final : public JPH::ObjectLayerPairFilter
 class ContactListenerImpl final : public JPH::ContactListener
 {};
 
+PhysicsWorld::~PhysicsWorld()
+{
+    shutdown();
+}
+
 bool PhysicsWorld::init(const PhysicsConfig &config)
 {
-    if (!std::isfinite(config.fixedDeltaTime) || config.fixedDeltaTime <= 0.0f || !std::isfinite(config.maxDeltaTime) ||
-        config.maxDeltaTime < config.fixedDeltaTime)
+    constexpr std::size_t bytesPerMB = 1024u * 1024u;
+
+    const bool validConfig =
+        config.tempAllocatorSizeMB > 0 &&
+        static_cast<std::size_t>(config.tempAllocatorSizeMB) <=
+            std::numeric_limits<std::size_t>::max() / bytesPerMB &&
+        config.threadCount >= -1 &&
+        config.maxBodies > 0 &&
+        static_cast<std::uint32_t>(config.maxBodies) <=
+            JPH::BodyID::cMaxBodyIndex + 1u &&
+        config.maxBodyPairs > 0 &&
+        static_cast<std::uint32_t>(config.maxBodyPairs) <=
+            JPH::ContactConstraintManager::cMaxBodyPairsLimit &&
+        config.maxContactConstraints > 0 &&
+        static_cast<std::uint32_t>(config.maxContactConstraints) <=
+            JPH::ContactConstraintManager::cMaxContactConstraintsLimit &&
+        config.collisionSteps > 0 &&
+        config.maxStepsPerUpdate > 0 &&
+        std::isfinite(config.fixedDeltaTime) &&
+        config.fixedDeltaTime > 0.0f &&
+        std::isfinite(1.0f / config.fixedDeltaTime) &&
+        std::isfinite(config.maxDeltaTime) &&
+        config.maxDeltaTime >= config.fixedDeltaTime &&
+        std::isfinite(config.groundWidth) && config.groundWidth > 0.0f &&
+        std::isfinite(config.groundHeight) && config.groundHeight > 0.0f &&
+        std::isfinite(config.groundDepth) && config.groundDepth > 0.0f &&
+        std::isfinite(config.groundFriction) && config.groundFriction >= 0.0f;
+
+    if (!validConfig)
     {
-        Log::Print("INVALID PHYSICS TIMESTEP CONFIGURATION", "Physics", LogType::LOG_ERROR);
+        Log::Print("INVALID PHYSICS CONFIGURATION", "Physics", LogType::LOG_ERROR);
+        return false;
+    }
+
+    if (physicsSystem || factory || JPH::Factory::sInstance)
+    {
+        Log::Print("JOLT ALREADY HAS AN OWNER", "Physics", LogType::LOG_ERROR);
         return false;
     }
 
     this->config = config;
     JPH::Trace = joltTrace;
     JPH::RegisterDefaultAllocator();
-    JPH::Factory::sInstance = new JPH::Factory();
+    factory = new JPH::Factory();
+    JPH::Factory::sInstance = factory;
     JPH::RegisterTypes();
 
-    tempAllocator = new JPH::TempAllocatorImpl(this->config.tempAllocatorSizeMB * 1024 * 1024);
+    const std::size_t allocatorBytes = static_cast<std::size_t>(config.tempAllocatorSizeMB) * bytesPerMB;
+
+    tempAllocator = new JPH::TempAllocatorImpl(allocatorBytes);
     jobSystem = new JPH::JobSystemThreadPool(JPH::cMaxPhysicsJobs, JPH::cMaxPhysicsBarriers, this->config.threadCount);
 
     // Allocate the filters
@@ -133,23 +177,33 @@ bool PhysicsWorld::init(const PhysicsConfig &config)
 
     physicsSystem->SetContactListener(contactListener);
     Log::Print("Initialized Jolt Physics System", "Physics", LogType::LOG_SUCCESS);
+    physicsAccumulator = 0.0;
     return true;
 }
 
 void PhysicsWorld::step(float deltaTime)
 {
-    if (!physicsSystem)
+    if (!physicsSystem || !std::isfinite(deltaTime) || deltaTime <= 0.0f)
         return;
-    physicsAccumulator += deltaTime;
-    if (physicsAccumulator > this->config.maxDeltaTime)
-        physicsAccumulator = this->config.maxDeltaTime;
 
-    while (physicsAccumulator >= this->config.fixedDeltaTime)
+    const double fixedDt = config.fixedDeltaTime;
+    physicsAccumulator = std::min(physicsAccumulator + static_cast<double>(deltaTime), static_cast<double>(config.maxDeltaTime));
+
+    int steps{};
+
+    while (physicsAccumulator >= fixedDt && steps < config.maxStepsPerUpdate)
     {
-        if (onFixedUpdate)
-            onFixedUpdate(onFixedUpdateContext, this->config.fixedDeltaTime);
-        physicsSystem->Update(this->config.fixedDeltaTime, this->config.collisionSteps, tempAllocator, jobSystem);
-        physicsAccumulator -= this->config.fixedDeltaTime;
+        if (onFixedUpdate) onFixedUpdate(onFixedUpdateContext, config.fixedDeltaTime);
+
+        physicsSystem->Update(config.fixedDeltaTime, config.collisionSteps, tempAllocator, jobSystem);
+
+        physicsAccumulator -= fixedDt;
+        ++steps;
+    }
+
+    if (physicsAccumulator >= fixedDt)
+    {
+        physicsAccumulator = std::fmod(physicsAccumulator, fixedDt);
     }
 }
 
@@ -263,7 +317,9 @@ RaycastHitInfo PhysicsWorld::raycast(const glm::vec3 &origin, const glm::vec3 &d
 
 float PhysicsWorld::getInterpolationAlpha()
 {
-    return physicsAccumulator / this->config.fixedDeltaTime;
+    if (!physicsSystem) return 0.0f;
+
+    return std::clamp(static_cast<float>(physicsAccumulator / config.fixedDeltaTime),0.0f, std::nextafter(1.0f, 0.0f));
 }
 
 BodyTransform PhysicsWorld::getBodyTransform(uint32_t bodyIdValue)
@@ -285,6 +341,42 @@ BodyTransform PhysicsWorld::getBodyTransform(uint32_t bodyIdValue)
     return result;
 }
 
+void PhysicsWorld::setStaticBodyTransform(uint32_t bodyIdValue, const BodyTransform &transform)
+{
+    if (!physicsSystem || (bodyIdValue & JPH::BodyID::cBroadPhaseBit) != 0)
+    {
+        return;
+    }
+
+    const JPH::BodyID bodyId(bodyIdValue);
+    const JPH::Body *body = physicsSystem->GetBodyLockInterface().TryGetBody(bodyId);
+
+    if (!body || !body->IsStatic())
+        return;
+
+    const auto &p = transform.position;
+    const auto &q = transform.rotation;
+
+    if (!std::isfinite(p.x) || !std::isfinite(p.y) || !std::isfinite(p.z) ||
+        !std::isfinite(q.w) || !std::isfinite(q.x) ||
+        !std::isfinite(q.y) || !std::isfinite(q.z))
+    {
+        return;
+    }
+
+    const float lengthSquared = glm::dot(q, q);
+    if (!std::isfinite(lengthSquared) || lengthSquared <= 0.0f)
+        return;
+
+    const glm::quat rotation = glm::normalize(q);
+
+    physicsSystem->GetBodyInterface().SetPositionAndRotationWhenChanged(
+        bodyId,
+        JPH::RVec3(p.x, p.y, p.z),
+        JPH::Quat(rotation.x, rotation.y, rotation.z, rotation.w),
+        JPH::EActivation::DontActivate);
+}
+
 uint32_t PhysicsWorld::getBodyCount() const
 {
     return physicsSystem ? physicsSystem->GetNumBodies() : 0;
@@ -292,47 +384,57 @@ uint32_t PhysicsWorld::getBodyCount() const
 
 void PhysicsWorld::removeBody(uint32_t bodyIdValue)
 {
-    if (!physicsSystem || bodyIdValue == 0)
+    if (!physicsSystem || (bodyIdValue & JPH::BodyID::cBroadPhaseBit) != 0)
     {
         return;
     }
 
-    JPH::BodyID bodyId(bodyIdValue);
+    const JPH::BodyID bodyId(bodyIdValue);
 
-    if (bodyId.IsInvalid())
-    {
-        return;
-    }
-
+    const JPH::Body *body = physicsSystem->GetBodyLockInterface().TryGetBody(bodyId);
+    if (!body) return;
+    
+    const bool added = body->IsInBroadPhase();
     auto &bodyInterface = physicsSystem->GetBodyInterface();
 
-    if (bodyInterface.IsAdded(bodyId))
-    {
-        bodyInterface.RemoveBody(bodyId);
-    }
+    if (added) bodyInterface.RemoveBody(bodyId);
 
     bodyInterface.DestroyBody(bodyId);
 }
 
 void PhysicsWorld::shutdown()
 {
-    JPH::UnregisterTypes();
-    delete JPH::Factory::sInstance;
-    JPH::Factory::sInstance = nullptr;
-
     delete physicsSystem;
-    delete jobSystem;
-    delete tempAllocator;
-
-    delete bpLayerInterface;
-    delete objVsBpFilter;
-    delete objLayerPairFilter;
-    delete contactListener;
-
     physicsSystem = nullptr;
+
+    delete jobSystem;
     jobSystem = nullptr;
+
+    delete tempAllocator;
     tempAllocator = nullptr;
 
-    Log::Print("Jolt Physics System Shutdown Successfully.", "Physics", LogType::LOG_SUCCESS);
+    delete bpLayerInterface;
+    bpLayerInterface = nullptr;
+
+    delete objVsBpFilter;
+    objVsBpFilter = nullptr;
+
+    delete objLayerPairFilter;
+    objLayerPairFilter = nullptr;
+
+    delete contactListener;
+    contactListener = nullptr;
+
+    physicsAccumulator = 0.0;
+    onFixedUpdate = nullptr;
+    onFixedUpdateContext = nullptr;
+
+    if (factory)
+    {
+        JPH::UnregisterTypes();
+        delete factory;
+        factory = nullptr;
+        JPH::Factory::sInstance = nullptr;
+    }
 }
 } // namespace Cthulhu::Physics

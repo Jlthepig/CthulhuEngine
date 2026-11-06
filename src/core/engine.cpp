@@ -25,6 +25,7 @@
 #include "scene.hpp"
 #include "sceneLoader.hpp"
 #include "systemRegistry.hpp"
+#include "transformUtils.hpp"
 #include "window.hpp"
 
 using KalaHeaders::KalaLog::Log;
@@ -593,6 +594,24 @@ void Engine::processFixedUpdate(float fixedDt)
     {
         return;
     }
+
+    activeScene->getWorld().each([this](flecs::entity entity, const Scene::PhysicsComponent &physics,
+                const Scene::PhysicsRuntimeComponent &runtime,
+                const Scene::TransformComponent &) {
+            if (physics.type != Scene::PhysicsBodyType::Static || !runtime.bodyId || entity.has<Scene::CharacterControllerComponent>())
+            {
+                return;
+            }
+
+            const Scene::WorldTransform world = Scene::getWorldTransform(entity);
+
+            physicsWorld.setStaticBodyTransform(
+                *runtime.bodyId,
+                Physics::BodyTransform{
+                    glm::vec3(world.matrix[3]),
+                    world.rotation,
+                });
+        });
 
     activeScene->getWorld().each([fixedDt, this](const Scene::CharacterControllerComponent &config,
                                                  Scene::CharacterControllerRuntimeComponent &runtime) {

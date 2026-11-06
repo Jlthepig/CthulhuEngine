@@ -1,6 +1,7 @@
 #pragma once
 
 #include <cmath>
+#include <optional>
 
 #include <flecs.h>
 #include <glm.hpp>
@@ -67,16 +68,41 @@ inline WorldTransform getWorldTransform(flecs::entity entity)
     return result;
 }
 
-inline glm::vec3 worldPositionToLocal(flecs::entity entity, const glm::vec3 &worldPosition)
+inline std::optional<glm::vec3> worldPositionToLocal(flecs::entity entity, const glm::vec3 &worldPosition)
 {
-    auto parent = entity.parent();
-    if (!parent || !parent.is_alive() || !parent.has<TransformComponent>())
+    if (!std::isfinite(worldPosition.x) || !std::isfinite(worldPosition.y) || !std::isfinite(worldPosition.z))
     {
-        return worldPosition;
+        return std::nullopt;
     }
 
+    const auto parent = entity.parent();
+    if (!parent || !parent.is_alive() || !parent.has<TransformComponent>())
+        return worldPosition;
+
     const WorldTransform parentTransform = getWorldTransform(parent);
-    return glm::vec3(glm::inverse(parentTransform.matrix) * glm::vec4(worldPosition, 1.0f));
+
+    for (int column = 0; column < 4; ++column)
+    {
+        for (int row = 0; row < 4; ++row)
+        {
+            if (!std::isfinite(parentTransform.matrix[column][row]))
+                return std::nullopt;
+        }
+    }
+
+    const float determinant = glm::determinant(glm::mat3(parentTransform.matrix));
+
+    if (!std::isfinite(determinant) || determinant == 0.0f)
+        return std::nullopt;
+
+    const glm::vec4 local = glm::inverse(parentTransform.matrix) * glm::vec4(worldPosition, 1.0f);
+
+    if (!std::isfinite(local.x) || !std::isfinite(local.y) || !std::isfinite(local.z) || !std::isfinite(local.w))
+    {
+        return std::nullopt;
+    }
+
+    return glm::vec3(local);
 }
 
 inline glm::quat worldRotationToLocal(flecs::entity entity, const glm::quat &worldRotation)
