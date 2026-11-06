@@ -1,5 +1,5 @@
 #include <unordered_map>
-#include <vector>
+#include <cmath>
 
 #define MINIAUDIO_IMPLEMENTATION
 #include <miniaudio.h>
@@ -21,9 +21,23 @@ struct AudioClipData
     ma_sound sound;
 };
 
-std::unordered_map<uint32_t, ma_sound *> activeSounds;
-std::unordered_map<uint32_t, const AudioClipData *> soundClips;
+struct AudioVoice
+{
+    ma_sound *sound = nullptr;
+    const AudioClipData *clip = nullptr;
+};
+
+using VoiceMap = std::unordered_map<uint32_t, AudioVoice>;
+
+static VoiceMap activeSounds;
+
 uint32_t Audio::nextInstanceId = 1;
+static VoiceMap::iterator destroyVoice(VoiceMap::iterator voice)
+{
+    ma_sound_uninit(voice->second.sound);
+    delete voice->second.sound;
+    return activeSounds.erase(voice);
+}
 
 bool Audio::init()
 {
@@ -47,17 +61,13 @@ bool Audio::init()
 void Audio::shutdown()
 {
     if (!g_audioReady)
-    {
         return;
+
+    while (!activeSounds.empty())
+    {
+        destroyVoice(activeSounds.begin());
     }
 
-    for (auto &pair : activeSounds)
-    {
-        ma_sound_uninit(pair.second);
-        delete pair.second;
-    }
-    activeSounds.clear();
-    soundClips.clear();
     ma_engine_uninit(&g_audioEngine);
     g_audioReady = false;
 }
@@ -66,13 +76,9 @@ void Audio::update()
 {
     for (auto it = activeSounds.begin(); it != activeSounds.end();)
     {
-        ma_sound *pSound = it->second;
-        if (ma_sound_at_end(pSound))
+        if (ma_sound_at_end(it->second.sound))
         {
-            ma_sound_uninit(pSound);
-            delete pSound;
-            soundClips.erase(it->first);
-            it = activeSounds.erase(it);
+            it = destroyVoice(it);
         }
         else
         {
@@ -83,36 +89,48 @@ void Audio::update()
 
 void Audio::stopSound(uint32_t instanceId)
 {
-    if (instanceId == 0)
-        return;
-    auto it = activeSounds.find(instanceId);
-    if (it != activeSounds.end())
+    const auto voice = activeSounds.find(instanceId);
+    if (voice != activeSounds.end())
     {
-        ma_sound *pSound = it->second;
-        ma_sound_uninit(pSound);
-        delete pSound;
-        activeSounds.erase(it);
-        soundClips.erase(instanceId);
+        destroyVoice(voice);
     }
+}
+
+bool Audio::setSoundSettings(uint32_t instanceId, float volume, bool loop)
+{
+    if (!std::isfinite(volume) || volume < 0.0f)
+        return false;
+
+    const auto voice = activeSounds.find(instanceId);
+    if (voice == activeSounds.end())
+        return false;
+
+    ma_sound_set_volume(voice->second.sound, volume);
+    ma_sound_set_looping(voice->second.sound, loop);
+    return true;
 }
 
 std::size_t Audio::stopClipSounds(const AudioClipData *clip)
 {
-    std::vector<uint32_t> ids;
-    for (const auto &[id, source] : soundClips)
+    if (!clip)
+        return 0;
+
+    std::size_t stopped{};
+
+    for (auto it = activeSounds.begin(); it != activeSounds.end();)
     {
-        if (source == clip)
+        if (it->second.clip == clip)
         {
-            ids.push_back(id);
+            it = destroyVoice(it);
+            ++stopped;
+        }
+        else
+        {
+            ++it;
         }
     }
 
-    for (const uint32_t id : ids)
-    {
-        stopSound(id);
-    }
-
-    return ids.size();
+    return stopped;
 }
 
 AudioClipData *Audio::loadClip(const std::string &filePath, bool stream)
@@ -132,9 +150,7 @@ AudioClipData *Audio::loadClip(const std::string &filePath, bool stream)
         if (ma_sound_init_from_file(&g_audioEngine, filePath.c_str(), MA_SOUND_FLAG_STREAM, NULL, NULL, &probe) !=
             MA_SUCCESS)
         {
-            KalaHeaders::KalaLog::Log::Print("Failed to open audio stream: " + filePath,
-                                             "Audio",
-                                             KalaHeaders::KalaLog::LogType::LOG_ERROR);
+            KalaHeaders::KalaLog::Log::Print("Failed to open audio stream: " + filePath, "Audio", KalaHeaders::KalaLog::LogType::LOG_ERROR);
             delete clip;
             return nullptr;
         }
@@ -147,9 +163,7 @@ AudioClipData *Audio::loadClip(const std::string &filePath, bool stream)
 
     if (result != MA_SUCCESS)
     {
-        KalaHeaders::KalaLog::Log::Print("Failed to load audio clip: " + filePath,
-                                         "Audio",
-                                         KalaHeaders::KalaLog::LogType::LOG_ERROR);
+        KalaHeaders::KalaLog::Log::Print("Failed to load audio clip: " + filePath, "Audio", KalaHeaders::KalaLog::LogType::LOG_ERROR);
         delete clip;
         return nullptr;
     }
@@ -161,46 +175,58 @@ AudioClipData *Audio::loadClip(const std::string &filePath, bool stream)
 void Audio::destroyClip(AudioClipData *clip)
 {
     if (!clip)
-    {
         return;
-    }
+
+    stopClipSounds(clip);
 
     if (clip->hasTemplate)
     {
         ma_sound_uninit(&clip->sound);
     }
+
     delete clip;
 }
 
 uint32_t Audio::playClip(const AudioClipData *clip, float volume, bool loop)
 {
-    if (!g_audioReady || !clip)
+    if (!g_audioReady || !clip || !std::isfinite(volume) || volume < 0.0f || nextInstanceId == 0)
     {
         return 0;
     }
 
-    ma_sound *pSound = new ma_sound();
-    const ma_result result =
+    ma_sound *sound = new ma_sound();
+
+    const ma_result initResult =
         clip->stream
-            ? ma_sound_init_from_file(&g_audioEngine, clip->filePath.c_str(), MA_SOUND_FLAG_STREAM, NULL, NULL, pSound)
-            : ma_sound_init_copy(&g_audioEngine, &clip->sound, 0, NULL, pSound);
+            ? ma_sound_init_from_file(
+                  &g_audioEngine, clip->filePath.c_str(),
+                  MA_SOUND_FLAG_STREAM, nullptr, nullptr, sound)
+            : ma_sound_init_copy(&g_audioEngine, &clip->sound, 0, nullptr, sound);
 
-    if (result != MA_SUCCESS)
+    if (initResult != MA_SUCCESS)
     {
-        KalaHeaders::KalaLog::Log::Print("Failed to play audio clip",
-                                         "Audio",
-                                         KalaHeaders::KalaLog::LogType::LOG_ERROR);
-        delete pSound;
+        KalaHeaders::KalaLog::Log::Print("Failed to initialize audio voice","Audio", KalaHeaders::KalaLog::LogType::LOG_ERROR);
+
+        delete sound;
         return 0;
     }
 
-    ma_sound_set_volume(pSound, volume);
-    ma_sound_set_looping(pSound, loop);
-    ma_sound_start(pSound);
+    ma_sound_set_volume(sound, volume);
+    ma_sound_set_looping(sound, loop);
+
+    const ma_result startResult = ma_sound_start(sound);
+    if (startResult != MA_SUCCESS)
+    {
+        ma_sound_uninit(sound);
+        delete sound;
+
+        KalaHeaders::KalaLog::Log::Print("Failed to start audio voice", "Audio", KalaHeaders::KalaLog::LogType::LOG_ERROR);
+
+        return 0;
+    }
 
     const uint32_t instanceId = nextInstanceId++;
-    activeSounds[instanceId] = pSound;
-    soundClips[instanceId] = clip;
+    activeSounds.emplace(instanceId, AudioVoice{sound, clip});
     return instanceId;
 }
 

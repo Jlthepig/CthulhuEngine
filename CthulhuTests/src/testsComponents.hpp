@@ -157,6 +157,33 @@ inline void validateAudio(Engine& engine, CS::Scene& scene, Results& r)
 	scene.destroyEntity(idOf(a2));
 	check(r, sounds() == base, "09 delete audio entity -> sound stopped");
 	scene.destroyEntity(idOf(a));
+
+	auto *directClip = Core::Audio::loadClip(resolved->string());
+    auto *otherClip = Core::Audio::loadClip(resolved->string());
+
+    const uint32_t firstVoice =
+        Core::Audio::playClip(directClip, 0.0f, true);
+    const uint32_t secondVoice =
+        Core::Audio::playClip(directClip, 0.0f, true);
+    const uint32_t otherVoice =
+        Core::Audio::playClip(otherClip, 0.0f, true);
+
+    check(r, firstVoice != 0 && secondVoice != 0 && otherVoice != 0,
+          "09 direct playback creates independent voices");
+
+    Core::Audio::destroyClip(directClip);
+
+    check(r, !Core::Audio::isSoundActive(firstVoice) &&
+             !Core::Audio::isSoundActive(secondVoice),
+          "09 destroying a clip stops all its direct voices");
+
+    check(r, otherVoice != 0 && Core::Audio::isSoundActive(otherVoice), "09 destroying a clip preserves another clip's voice");
+
+    check(r, Core::Audio::setSoundSettings(otherVoice, 0.0f, false), "09 settings can change on an existing voice");
+
+    Core::Audio::destroyClip(otherClip);
+
+    check(r, sounds() == base, "09 direct playback cleanup leaves no active voices");
 }
 
 inline void validateMeshAndDuplication(Engine& engine, CS::Scene& scene, Results& r)

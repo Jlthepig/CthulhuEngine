@@ -14,8 +14,8 @@ class Audio
     static bool init();
     static void update();
     static void shutdown();
-    static uint32_t playSound2D(const std::string &filePath, float volume = 1.0f, bool loop = false);
     static void stopSound(uint32_t soundId);
+    static bool setSoundSettings(uint32_t soundId, float volume, bool loop);
     static std::size_t stopClipSounds(const AudioClipData *clip);
 
     static AudioClipData *loadClip(const std::string &filePath, bool stream = false);

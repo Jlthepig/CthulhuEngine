@@ -299,7 +299,12 @@ void RegisterCoreSystems(flecs::world &world, Cthulhu::Engine *engineContext)
             {
                 if (old->clip == clip)
                 {
-                    runtime = *old; // same clip keep playback state
+                    runtime = *old;
+
+                    if (runtime.isPlaying && runtime.soundInstanceId != 0)
+                    {
+                        Core::Audio::setSoundSettings(runtime.soundInstanceId, source.volume, source.loop);
+                    }
                 }
                 else if (old->isPlaying && old->soundInstanceId != 0)
                 {
