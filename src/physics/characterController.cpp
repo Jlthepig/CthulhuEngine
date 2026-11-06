@@ -7,13 +7,8 @@
 
 #include "characterController.hpp"
 #include "components.hpp"
-#include "log_utils.hpp"
 #include "physics.hpp"
 #include "transformUtils.hpp"
-
-using KalaHeaders::KalaLog::Log;
-using KalaHeaders::KalaLog::LogType;
-
 namespace Cthulhu::Physics
 {
 

@@ -7,17 +7,26 @@ namespace Cthulhu::Rendering
 class Texture
 {
   public:
+    Texture() = default;
+    ~Texture();
+
+    Texture(const Texture &) = delete;
+    Texture &operator=(const Texture &) = delete;
+
+    Texture(Texture &&other) noexcept;
+    Texture &operator=(Texture &&other) noexcept;
+
     void load(const std::string &path);
-    void loadFromMemory(const unsigned char *data, int length, bool isSRGB = true);
+    bool loadFromMemory(const unsigned char *data, int length, bool isSRGB = true);
     void bind(unsigned int slot);
     void destroy();
     unsigned int getID() const;
 
   private:
-    unsigned int textureID = 0;
+    unsigned int textureID{};
     int width = 128;
     int height = 128;
-    int nrChannels;
+    int nrChannels{};
     bool isLoaded = false;
 };
 } // namespace Cthulhu::Rendering

@@ -32,6 +32,7 @@ layout(std140, binding = 0) uniform SceneData {
 uniform mat4 model;
 uniform mat4 lightSpaceMatrix;
 uniform mat4 uNormalMatrix;
+uniform float uModelHandedness;
 
 void main()
 {
@@ -39,21 +40,24 @@ void main()
     TexCoord = aTexCoord;
     FragPos = vec3(model * vec4(aPos, 1.0));
     
-    vec3 N = normalize(mat3(uNormalMatrix) * aNormal);
-    vec3 T = mat3(uNormalMatrix) * aTangent.xyz;
+    vec3 N = mat3(uNormalMatrix) * aNormal;
+    N = dot(N, N) > 0.00000001 ? normalize(N) : vec3(0.0, 1.0, 0.0);
 
-    // SAFETY: If model has no tangents T will be 0. Generate fallabck
-    if (length(T) < 0.01) {
-        vec3 up = abs(N.y) < 0.999 ? vec3(0.0, 1.0, 0.0) : vec3(1.0, 0.0, 0.0);
+    vec3 T = mat3(model) * aTangent.xyz;
+    T -= dot(T, N) * N;
+
+    if (dot(T, T) < 0.00000001) {
+        vec3 up = abs(N.y) < 0.999
+            ? vec3(0.0, 1.0, 0.0)
+            : vec3(1.0, 0.0, 0.0);
         T = normalize(cross(up, N));
     } else {
         T = normalize(T);
     }
 
-    // Gram-Schmidt
-    T = normalize(T - dot(T, N) * N);
-    vec3 B = cross(N, T) * aTangent.w; // w is handedness
-    
+    float tangentHandedness = aTangent.w < 0.0 ? -1.0 : 1.0;
+    vec3 B = cross(N, T) * tangentHandedness * uModelHandedness;
+
     TBN = mat3(T, B, N);
 
     FragPosLightSpace = lightSpaceMatrix * vec4(FragPos, 1.0);

@@ -13,6 +13,15 @@ namespace Cthulhu::Rendering
 class Mesh
 {
   public:
+    Mesh() = default;
+    ~Mesh();
+
+    Mesh(const Mesh &) = delete;
+    Mesh &operator=(const Mesh &) = delete;
+
+    Mesh(Mesh &&other) noexcept;
+    Mesh &operator=(Mesh &&other) noexcept;
+    
     struct vertexAttribute
     {
         unsigned int location;
@@ -36,15 +45,15 @@ class Mesh
     void destroy();
 
   private:
-    unsigned int VAO;
-    unsigned int VBO;
-    unsigned int EBO;
+    unsigned int VAO{};
+    unsigned int VBO{};
+    unsigned int EBO{};
 
     std::vector<float> vertexData;
     std::vector<unsigned int> indexData;
 
-    size_t positionStrideFloats = 0;
-    size_t positionOffsetFloats = 0;
+    size_t positionStrideFloats{};
+    size_t positionOffsetFloats{};
 };
 
 } // namespace Cthulhu::Rendering

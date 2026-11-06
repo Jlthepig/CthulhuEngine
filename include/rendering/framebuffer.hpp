@@ -7,8 +7,8 @@ namespace Cthulhu::Rendering
 class Framebuffer
 {
   public:
-    void create(unsigned int width, unsigned int height);
-    void resize(unsigned int width, unsigned int height);
+    bool create(unsigned int width, unsigned int height);
+    bool resize(unsigned int width, unsigned int height);
     void bind();
     void unbind();
     void destroy();

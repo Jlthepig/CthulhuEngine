@@ -10,6 +10,14 @@ namespace Cthulhu::Rendering
 {
 struct Model
 {
+    Model() = default;
+
+    Model(const Model &) = delete;
+    Model &operator=(const Model &) = delete;
+
+    Model(Model &&) noexcept = default;
+    Model &operator=(Model &&) noexcept = default;
+
     std::vector<Mesh> meshes;
     std::vector<Material> materials;
     std::vector<Texture> textures;

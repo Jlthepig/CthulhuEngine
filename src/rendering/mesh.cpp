@@ -1,12 +1,61 @@
+#include <limits>
+#include <utility>
+
 #include "mesh.hpp"
 
 namespace Cthulhu::Rendering
 {
+
+Mesh::~Mesh()
+{
+    destroy();
+}
+
+Mesh::Mesh(Mesh &&other) noexcept
+{
+    *this = std::move(other);
+}
+
+Mesh &Mesh::operator=(Mesh &&other) noexcept
+{
+    if (this == &other)
+        return *this;
+
+    destroy();
+
+    VAO = std::exchange(other.VAO, 0);
+    VBO = std::exchange(other.VBO, 0);
+    EBO = std::exchange(other.EBO, 0);
+
+    vertexData = std::move(other.vertexData);
+    indexData = std::move(other.indexData);
+
+    positionStrideFloats = std::exchange(other.positionStrideFloats, 0);
+    positionOffsetFloats = std::exchange(other.positionOffsetFloats, 0);
+    materialIndex = std::exchange(other.materialIndex, -1);
+
+    return *this;
+}
+
 void Mesh::setup(const std::vector<float> &vertices,
                  const std::vector<unsigned int> &indices,
                  const std::vector<vertexAttribute> &attributes,
                  unsigned int stride)
 {
+    destroy();
+
+    if (vertices.size() >
+            static_cast<std::size_t>(std::numeric_limits<GLsizeiptr>::max()) /
+                sizeof(float) ||
+        indices.size() >
+            static_cast<std::size_t>(std::numeric_limits<GLsizeiptr>::max()) /
+                sizeof(unsigned int) ||
+        indices.size() >
+            static_cast<std::size_t>(std::numeric_limits<GLsizei>::max()))
+    {
+        return;
+    }
+
     vertexData = vertices;
     indexData = indices;
 
@@ -87,15 +136,32 @@ bool Mesh::getPosition(size_t index, glm::vec3 &position) const noexcept
 
 void Mesh::draw()
 {
+    if (VAO == 0 || indexData.empty())
+        return;
+
     glBindVertexArray(VAO);
-    glDrawElements(GL_TRIANGLES, (GLsizei)indexData.size(), GL_UNSIGNED_INT, 0);
+    glDrawElements(GL_TRIANGLES, static_cast<GLsizei>(indexData.size()),
+                   GL_UNSIGNED_INT, nullptr);
     glBindVertexArray(0);
 }
 
 void Mesh::destroy()
 {
-    glDeleteVertexArrays(1, &VAO);
-    glDeleteBuffers(1, &VBO);
-    glDeleteBuffers(1, &EBO);
+    if (VAO != 0)
+        glDeleteVertexArrays(1, &VAO);
+    if (VBO != 0)
+        glDeleteBuffers(1, &VBO);
+    if (EBO != 0)
+        glDeleteBuffers(1, &EBO);
+
+    VAO = 0;
+    VBO = 0;
+    EBO = 0;
+
+    vertexData.clear();
+    indexData.clear();
+    positionStrideFloats = 0;
+    positionOffsetFloats = 0;
+    materialIndex = -1;
 }
 } // namespace Cthulhu::Rendering

@@ -50,7 +50,12 @@ bool Renderer::init(GLFWwindow *window, Scene::Camera *camera, const RenderConfi
 
     int width, height;
     glfwGetFramebufferSize(window, &width, &height);
-    sceneFramebuffer.create(width, height);
+    if (!sceneFramebuffer.create(width, height))
+    {
+        Log::Print("FAILED TO CREATE SCENE FRAMEBUFFER", "Renderer", LogType::LOG_ERROR);
+        basicShader.destroy();
+        return false;
+    }
 
     glEnable(GL_DEPTH_TEST);
     glEnable(GL_CULL_FACE);
@@ -363,7 +368,13 @@ void Renderer::render(unsigned int width,
     {
         return;
     }
-    sceneFramebuffer.resize(width, height);
+    
+    if (!sceneFramebuffer.resize(width, height))
+    {
+        Log::Print("FAILED TO RESIZE SCENE FRAMEBUFFER", "Renderer", LogType::LOG_ERROR);
+        return;
+    }
+
     glEnable(GL_DEPTH_TEST);
     glDepthMask(GL_TRUE);
     glEnable(GL_CULL_FACE);
@@ -430,9 +441,13 @@ void Renderer::render(unsigned int width,
     shadowMap.beginPass();
     for (const auto &renderable : renderables)
     {
+        glFrontFace(glm::determinant(glm::mat3(renderable.modelMatrix)) < 0.0f
+                        ? GL_CW
+                        : GL_CCW);
         shadowMap.getDepthShader().setMat4("model", renderable.modelMatrix);
         renderable.model->draw();
     }
+    glFrontFace(GL_CCW);
     shadowMap.endPass();
     for (std::size_t i = 0; i < shadowCasters; i++)
     {
@@ -453,10 +468,14 @@ void Renderer::render(unsigned int width,
             pointShadowMap.bindFace(face, captureViews[face]);
             for (const auto &renderable : renderables)
             {
+                glFrontFace(glm::determinant(glm::mat3(renderable.modelMatrix)) < 0.0f
+                                ? GL_CW
+                                : GL_CCW);
                 pointShadowMap.getDepthShader().setMat4("model", renderable.modelMatrix);
                 renderable.model->draw();
             }
         }
+        glFrontFace(GL_CCW);
         pointShadowMap.endPass();
     }
 
@@ -522,6 +541,10 @@ void Renderer::render(unsigned int width,
 
         basicShader.setMat4("model", renderable.modelMatrix);
         basicShader.setMat4("uNormalMatrix", renderable.normalMatrix);
+        const bool mirrored = glm::determinant(glm::mat3(renderable.modelMatrix)) < 0.0f;
+
+        glFrontFace(mirrored ? GL_CW : GL_CCW);
+        basicShader.setFloat("uModelHandedness", mirrored ? -1.0f : 1.0f);
 
         for (size_t meshIdx = 0; meshIdx < renderable.model->meshes.size(); meshIdx++)
         {
@@ -540,6 +563,7 @@ void Renderer::render(unsigned int width,
         }
     }
 
+    glFrontFace(GL_CCW);
     // skybox
     skybox.draw(view, projection);
 
@@ -623,11 +647,15 @@ void Renderer::render(unsigned int width,
                     outlineTargets.end())
                     continue;
 
+                glFrontFace(glm::determinant(glm::mat3(renderable.modelMatrix)) < 0.0f
+                                ? GL_CW
+                                : GL_CCW);
                 outlineShader.setMat4("mvp", projection * view * renderable.modelMatrix);
 
                 for (auto &mesh : renderable.model->meshes)
                     mesh.draw();
             }
+                    glFrontFace(GL_CCW);
         };
 
         glStencilFunc(GL_ALWAYS, 1, 0xFF);
