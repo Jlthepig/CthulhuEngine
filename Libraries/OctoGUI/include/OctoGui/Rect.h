@@ -107,7 +107,7 @@ struct Rect {
   [[nodiscard]]
   constexpr bool intersects(Rect other) const noexcept {
     return x < other.maxX() && maxX() > other.x && y < other.maxY() &&
-           maxY() > other.x;
+           maxY() > other.y;
   }
 
   // modifications

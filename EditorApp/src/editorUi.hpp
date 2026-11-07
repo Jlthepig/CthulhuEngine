@@ -33,7 +33,7 @@ class EditorUi
 
     [[nodiscard]] bool wantsMouse() const noexcept
     {
-        return mouseOverUi;
+        return mouseOverUi || ctx.contextMenuOwnsInput();
     }
 
     [[nodiscard]] bool wantsKeyboard() const noexcept;

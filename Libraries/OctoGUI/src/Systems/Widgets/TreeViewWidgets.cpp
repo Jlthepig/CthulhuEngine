@@ -10,6 +10,25 @@ namespace octogui {
 namespace {
 
 using detail::treeViewItem;
+void clearTreeViewDropState(TreeViewState& state,
+                            EventSystem& events,
+                            NodeHandle handle) {
+    state.dragging = false;
+    state.dragged = {};
+    state.dragStart = {};
+    state.dropTarget = {};
+    state.dropPosition = TreeViewDropPosition::Inside;
+
+    state.pendingDrop = false;
+    state.pendingDragged = {};
+    state.pendingDropTarget = {};
+    state.pendingDropPos = TreeViewDropPosition::Inside;
+
+    UIEvent discarded;
+    while (events.pollFiltered(discarded, UIEventType::TreeViewDrop, handle)) {
+    }
+}
+
 
 void advanceGeneration(TreeViewItemSlot& item) noexcept {
     ++item.generation;
@@ -388,6 +407,9 @@ void WidgetSystem::clearTreeView(Tree& tree, EventSystem& events,
     return;
   }
 
+    cancelTreeViewPress(tree, handle);
+    clearTreeViewDropState(*state, events, handle);
+
     const TreeViewItemId oldSelection =
             state->selected;
 
@@ -598,6 +620,22 @@ void WidgetSystem::setTreeViewItemExpanded(
 
     slot->expanded = expanded;
     state->visibleItemsDirty = true;
+    tree.markPaintDirty(handle);
+}
+
+void WidgetSystem::setTreeViewDragEnabled(
+        Tree& tree,
+        EventSystem& events,
+        NodeHandle handle,
+        bool enabled) {
+    TreeViewState* state = tree.treeViewState(handle);
+    if (!state || state->dragEnabled == enabled) {
+        return;
+    }
+
+    state->dragEnabled = enabled;
+    cancelTreeViewPress(tree, handle);
+    clearTreeViewDropState(*state, events, handle);
     tree.markPaintDirty(handle);
 }
 
@@ -989,7 +1027,8 @@ void WidgetSystem::updateTreeViewDrag(
     TreeViewState* state =
             tree.treeViewState(handle);
 
-    if (!state || !state->pressed || state->pressedChevron) {
+    if (!state || !state->dragEnabled ||
+        !state->pressed || state->pressedChevron) {
         return;
     }
 

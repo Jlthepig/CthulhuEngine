@@ -231,7 +231,7 @@ void ViewportPanel::updateMarquee(Context &ctx, NodeHandle sceneNode, bool enabl
     completedClick.reset();
     const auto &mouse = ctx.input().mouse;
 
-    if (!enabled || mouse.isDown(MouseButton::Right) ||
+    if (!enabled || ctx.contextMenuOwnsInput() ||  mouse.isDown(MouseButton::Right) ||
     ((marqueePending || gizmoCaptured) && marqueeGeneration != sceneGeneration) ||
     Cthulhu::Core::Input::isKeyPressed(GLFW_KEY_ESCAPE))
     {
@@ -355,7 +355,7 @@ void ViewportPanel::updateGizmo(Context &ctx, Engine &engine, Scribe::Session &s
         const bool resized = viewport.x != startViewport.x || viewport.y != startViewport.y ||
                              viewport.w != startViewport.w || viewport.h != startViewport.h;
 
-        const bool cancel = resized || !session.transformEditActive() || engine.isPlaying() ||
+        const bool cancel = ctx.contextMenuOwnsInput() || resized || !session.transformEditActive() || engine.isPlaying() ||
                             !engine.getWindow() ||
                             glfwGetWindowAttrib(engine.getWindow()->getWindow(), GLFW_FOCUSED) != GLFW_TRUE ||
                             engine.getSceneGeneration() != drag.generation ||
@@ -412,7 +412,7 @@ void ViewportPanel::updateGizmo(Context &ctx, Engine &engine, Scribe::Session &s
         const Rect rect = ctx.tree().rect(sceneNode);
         const NodeHandle hovered = ctx.hovered();
 
-        if (gizmoCaptured || Core::Input::isKeyPressed(GLFW_KEY_ESCAPE) || !gizmoSystem.frame.visible ||
+        if (ctx.contextMenuOwnsInput() || gizmoCaptured || Core::Input::isKeyPressed(GLFW_KEY_ESCAPE) || !gizmoSystem.frame.visible ||
             mouse.isDown(MouseButton::Right) ||
             !rect.contains(mouse.position) ||
             ctx.tree().rect(header).contains(mouse.position) ||

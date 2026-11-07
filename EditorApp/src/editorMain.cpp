@@ -69,7 +69,8 @@ void onUpdate([[maybe_unused]] void *context, [[maybe_unused]] float deltaTime)
 
     const bool rightMousePressed = Cthulhu::Core::Input::isMouseButtonPressed(GLFW_MOUSE_BUTTON_2);
 
-    const bool shouldLook = camera && rightMouseDown && (isCameraLooking || (sceneHasMouse && rightMousePressed));
+     const bool shouldLook = camera && rightMouseDown && (!editorUi || !editorUi->context().contextMenuOwnsInput()) &&
+                             (isCameraLooking || (sceneHasMouse && rightMousePressed));
 
     const int cursorModeWanted = shouldLook ? GLFW_CURSOR_DISABLED : GLFW_CURSOR_NORMAL;
 

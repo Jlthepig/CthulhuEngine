@@ -104,6 +104,46 @@ void Context::setEnabled(NodeHandle handle, bool enabled) {
   impl->tree.setEnabled(handle, enabled);
 }
 
+void Context::setTooltip(NodeHandle handle, std::string_view text) {
+  impl->tooltips.set(impl->tree, handle, text);
+}
+
+bool Context::openContextMenu(NodeHandle owner, Vec2 position, std::span<const ContextMenuItem> items) {
+    const MouseState& mouse = impl->input.mouse;
+    if (impl->menus.ownsInput() ||
+        mouse.isDown(MouseButton::Left) ||
+        mouse.wasDown(MouseButton::Left) ||
+        mouse.isDown(MouseButton::Middle) ||
+        mouse.wasDown(MouseButton::Middle)) {
+        return false;
+    }
+
+    const NodeHandle root = ensureRoot();
+    const Rect viewport = impl->tree.rect(root).intersection(Rect{0.0f, 0.0f, impl->input.displaySize.x, impl->input.displaySize.y});
+
+    if (!impl->menus.open(impl->tree, root, owner, viewport, position, items, impl->text.font())) {
+        return false;
+    }
+
+    impl->menuFocus = impl->interaction.state().focused;
+    impl->interaction.clearFocus(impl->tree, impl->widgets, impl->events);
+    impl->interaction.suspend(impl->tree, impl->widgets, impl->events, mouse.position);
+    impl->tooltips.reset();
+    return true;
+}
+
+void Context::closeContextMenu() {
+    impl->menus.close();
+}
+
+bool Context::contextMenuOwnsInput() const noexcept {
+    return impl->menus.ownsInput();
+}
+
+bool Context::pollContextMenuSelection(ContextMenuSelection& selection) noexcept {
+    return impl->menus.poll(impl->tree, impl->root, selection);
+}
+
 const Theme &Context::theme() const noexcept { return impl->styles.theme(); }
 
 void Context::setTheme(const Theme &theme) {
@@ -147,12 +187,42 @@ void Context::layout() {
 
   Font *font = impl->text.font().isLoaded() ? &impl->text.font() : nullptr;
 
-  impl->interaction.update(impl->tree, impl->root, impl->input, impl->widgets,
-                           impl->events, font);
+    const Rect viewport = impl->tree.rect(impl->root).intersection(Rect{0.0f, 0.0f, impl->input.displaySize.x, impl->input.displaySize.y});
 
-  if (impl->tree.isLayoutDirty(impl->root) ||
-      impl->tree.hasDirtyLayoutChildren(impl->root)) {
+  impl->menus.update(impl->tree, impl->root, viewport, impl->input, font);
+
+  if (impl->menus.ownsInput()) {
+    impl->interaction.suspend(impl->tree, impl->widgets, impl->events, impl->input.mouse.position);
+  } else {
+    const NodeHandle restore = impl->menuFocus;
+    impl->menuFocus = {};
+
+    bool restoreAllowed = false;
+    for (NodeHandle node = restore; impl->tree.isValid(node); node = impl->tree.parent(node)) {
+      if (!impl->tree.isVisible(node) || !impl->tree.isEnabled(node)) {
+        break;
+      }
+      if (node == impl->root) {
+        restoreAllowed = true;
+        break;
+      }
+    }
+
+    if (restoreAllowed && !impl->tree.isValid(impl->interaction.state().focused)) {
+      impl->interaction.setFocused(impl->tree, impl->widgets, impl->events, restore);
+    }
+
+    impl->interaction.update(impl->tree, impl->root, impl->input, impl->widgets, impl->events, font);
+  }
+
+  if (impl->tree.isLayoutDirty(impl->root) || impl->tree.hasDirtyLayoutChildren(impl->root)) {
     impl->layout.update(impl->tree, impl->root, impl->input, impl->text);
+  }
+
+  if (impl->menus.ownsInput()) {
+    impl->tooltips.reset();
+  } else {
+    impl->tooltips.update(impl->tree, impl->input, impl->interaction.state());
   }
 }
 
@@ -164,6 +234,11 @@ void Context::paint() {
   Font *font = impl->text.font().isLoaded() ? &impl->text.font() : nullptr;
 
   impl->paint.paint(impl->tree, impl->root, impl->interaction.state(), font, impl->icons);
+  if (impl->menus.ownsInput()) {
+    impl->menus.paint(impl->tree, impl->root, font, impl->styles.theme(), impl->paint.drawList());
+  } else {
+    impl->tooltips.paint(impl->tree, impl->root, impl->input, impl->interaction.state(), font, impl->styles.theme(), impl->paint.drawList());
+  }
 }
 
 void Context::endFrame() { impl->input.endFrame(); }
@@ -591,6 +666,11 @@ void Context::setTreeViewItemExpanded(NodeHandle treeView, TreeViewItemId item,
   impl->widgets.setTreeViewItemExpanded(impl->tree, treeView, item, expanded);
 }
 
+void Context::setTreeViewDragEnabled(NodeHandle treeView, bool enabled) {
+  impl->widgets.setTreeViewDragEnabled(
+      impl->tree, impl->events, treeView, enabled);
+}
+
 void Context::setTreeViewMaxIndentWidth(NodeHandle treeView, f32 maxIndentWidth) {
   impl->widgets.setTreeViewMaxIndentWidth(impl->tree, treeView, maxIndentWidth);
 }
@@ -771,6 +851,11 @@ void Context::setTextureBackend(TextureBackend *backend) noexcept {
 bool Context::loadDefaultFont(std::string_view path, u32 pixelSize) {
   const bool loaded = impl->text.loadDefaultFont(path, pixelSize);
 
+  if (loaded) {
+    impl->menus.close();
+    impl->tooltips.reset();
+  }
+
   if (loaded && impl->tree.isValid(impl->root)) {
     impl->tree.markLayoutDirty(impl->root);
     impl->tree.markPaintDirty(impl->root);
@@ -887,6 +972,7 @@ void Context::destroyNode(NodeHandle handle) {
   impl->interaction.onNodeDestroyed(impl->tree, impl->events, handle);
 
   impl->tree.destroy(handle);
+  impl->tooltips.pruneInvalid(impl->tree);
 }
 
 StyleProxy Context::style(NodeHandle handle) noexcept {

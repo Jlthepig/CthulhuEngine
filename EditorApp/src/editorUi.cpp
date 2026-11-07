@@ -114,6 +114,6 @@ PixelRect EditorUi::pixelRect(octogui::NodeHandle node) const
 
 bool EditorUi::wantsKeyboard() const noexcept
 {
-    return ctx.isValid(ctx.focused());
+    return ctx.contextMenuOwnsInput() || ctx.isValid(ctx.focused());
 }
 } // namespace Cthulhu::Editor

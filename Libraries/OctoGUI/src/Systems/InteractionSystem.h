@@ -22,12 +22,14 @@ struct InteractionState {
   NodeHandle scrollbarActive{};
   NodeHandle splitterHovered{};
   NodeHandle splitterActive{};
+  NodeHandle pointerHit{};
 };
 
 class InteractionSystem {
 public:
-  void update(Tree &tree, NodeHandle root, const InputState &input,
-              WidgetSystem &widgets, EventSystem &events, Font *font);
+  void update(Tree &tree, NodeHandle root, const InputState &input, WidgetSystem &widgets, EventSystem &events, Font *font);
+
+    void suspend(Tree& tree, WidgetSystem& widgets, EventSystem& events, Vec2 mousePosition);
 
   [[nodiscard]]
   const InteractionState &state() const noexcept;

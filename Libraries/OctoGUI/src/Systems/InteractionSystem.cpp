@@ -8,7 +8,44 @@ const InteractionState &InteractionSystem::state() const noexcept {
   return interaction;
 }
 
+void InteractionSystem::suspend(Tree& tree, WidgetSystem& widgets, EventSystem& events, Vec2 mousePosition) {
+    const InteractionState previous = interaction;
+
+    if (tree.isValid(previous.active)) {
+        const NodeType type = tree.type(previous.active);
+        if (type == NodeType::TreeView) {
+            widgets.cancelTreeViewPress(tree, previous.active);
+        } else if (type == NodeType::TextInput ||
+                   type == NodeType::NumericInput) {
+            widgets.endTextInputSelection(tree, previous.active);
+            if (type == NodeType::NumericInput) {
+                widgets.endNumericInputDrag(tree, previous.active);
+            }
+        }
+    }
+
+    if (tree.isValid(previous.hovered)) {
+        if (tree.type(previous.hovered) == NodeType::TreeView) {
+            widgets.clearTreeViewHover(tree, previous.hovered);
+        }
+        events.pushPointer(UIEventType::PointerLeave, previous.hovered, mousePosition);
+    }
+
+    resetTransientState();
+    interaction.hovered = {};
+    interaction.active = {};
+    interaction.scrollbarHovered = {};
+    interaction.scrollbarActive = {};
+    interaction.splitterHovered = {};
+    interaction.splitterActive = {};
+    scrollbarGrabOffsetY = 0.0f;
+    splitterGrabOffset = 0.0f;
+
+    markInteractionChanges(tree, previous);
+}
+
 void InteractionSystem::resetTransientState() noexcept {
+  interaction.pointerHit = {};
   interaction.pressed = NodeHandle{};
   interaction.released = NodeHandle{};
   interaction.clicked = NodeHandle{};
@@ -48,35 +85,17 @@ void InteractionSystem::validateTrackedNodes(Tree& tree, WidgetSystem& widgets, 
 }
 
 void InteractionSystem::markInteractionChanges(Tree& tree, const InteractionState& previous) {
-  markStateChangeDirty(
-      tree,
-      previous.hovered,
-      interaction.hovered);
+  markStateChangeDirty(tree, previous.hovered, interaction.hovered);
 
-  markStateChangeDirty(
-      tree,
-      previous.active,
-      interaction.active);
+  markStateChangeDirty(tree, previous.active,interaction.active);
 
-  markStateChangeDirty(
-      tree,
-      previous.scrollbarHovered,
-      interaction.scrollbarHovered);
+  markStateChangeDirty(tree, previous.scrollbarHovered, interaction.scrollbarHovered);
 
-  markStateChangeDirty(
-      tree,
-      previous.scrollbarActive,
-      interaction.scrollbarActive);
+  markStateChangeDirty(tree, previous.scrollbarActive, interaction.scrollbarActive);
 
-  markStateChangeDirty(
-      tree,
-      previous.splitterHovered,
-      interaction.splitterHovered);
+  markStateChangeDirty(tree, previous.splitterHovered, interaction.splitterHovered);
 
-  markStateChangeDirty(
-      tree,
-      previous.splitterActive,
-      interaction.splitterActive);
+  markStateChangeDirty(tree, previous.splitterActive, interaction.splitterActive);
 }
 
 void InteractionSystem::update(Tree& tree, NodeHandle root, const InputState& input, WidgetSystem& widgets, EventSystem& events, Font* font) {
@@ -116,10 +135,13 @@ void InteractionSystem::update(Tree& tree, NodeHandle root, const InputState& in
   markInteractionChanges(tree, previous);
 }
 
-void InteractionSystem::onNodeDestroyed(Tree &tree, EventSystem &events,
-                                        NodeHandle handle) noexcept {
+void InteractionSystem::onNodeDestroyed(Tree &tree, EventSystem &events, NodeHandle handle) noexcept {
   if (!tree.isValid(handle)) {
     return;
+  }
+
+  if (interaction.pointerHit == handle) {
+    interaction.pointerHit = {};
   }
 
   if (interaction.hovered == handle) {

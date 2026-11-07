@@ -2,6 +2,7 @@
 
 #include <memory>
 #include <string_view>
+#include <span>
 
 #include "OctoGui/DrawList.h"
 #include "OctoGui/Event.h"
@@ -13,6 +14,7 @@
 #include "OctoGui/TextureBackend.h"
 #include "OctoGui/Tree.h"
 #include "OctoGui/Types.h"
+#include "OctoGui/ContextMenu.h"
 
 namespace octogui {
 class Context {
@@ -56,6 +58,19 @@ public:
   bool isEnabled(NodeHandle handle) const noexcept;
 
   void setEnabled(NodeHandle handle, bool enabled);
+
+  void setTooltip(NodeHandle handle, std::string_view text);
+
+  [[nodiscard]]
+  bool openContextMenu(NodeHandle owner, Vec2 position, std::span<const ContextMenuItem> items);
+
+  void closeContextMenu();
+
+  [[nodiscard]]
+  bool contextMenuOwnsInput() const noexcept;
+
+  [[nodiscard]]
+  bool pollContextMenuSelection(ContextMenuSelection& selection) noexcept;
 
   [[nodiscard]]
   const Theme &theme() const noexcept;
@@ -263,6 +278,7 @@ public:
     TreeViewDropPosition pos;
   };
 
+  void setTreeViewDragEnabled(NodeHandle treeView, bool enabled);
   void setTreeViewMaxIndentWidth(NodeHandle treeView, f32 maxIndentWidth);
   [[nodiscard]]
   f32 treeViewMaxIndentWidth(NodeHandle treeView) const noexcept;

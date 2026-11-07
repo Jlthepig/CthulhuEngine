@@ -128,6 +128,7 @@ struct TreeViewState {
 
   bool pressedChevron = false;
 
+  bool dragEnabled = true;
   bool dragging = false;
   TreeViewItemId dragged{};
   Vec2 dragStart{};

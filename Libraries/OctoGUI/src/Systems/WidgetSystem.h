@@ -207,6 +207,7 @@ public:
 
   void setTreeViewItemExpanded(Tree& tree, NodeHandle handle, TreeViewItemId item, bool expanded);
 
+  void setTreeViewDragEnabled(Tree& tree, EventSystem& events, NodeHandle handle, bool enabled);
   void setTreeViewMaxIndentWidth(Tree& tree, NodeHandle handle, f32 maxIndentWidth);
 
   [[nodiscard]]

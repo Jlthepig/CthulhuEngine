@@ -25,8 +25,7 @@ void InteractionSystem::updatePointerTargets(Tree& tree, NodeHandle root, const 
 
   NodeHandle splitterHit{};
 
-  if (!tree.isValid(scrollbarHit) &&
-      !tree.isValid(interaction.scrollbarActive)) {
+  if (!tree.isValid(scrollbarHit) && !tree.isValid(interaction.scrollbarActive)) {
     zOrderScratch.clear();
     splitterHit = hitTestSplitter(tree, root, input.mouse.position,
                                    Vec2::zero());
@@ -155,6 +154,8 @@ void InteractionSystem::updatePointerTargets(Tree& tree, NodeHandle root, const 
       }
     }
   }
+
+  interaction.pointerHit = hit;
 
   if (tree.isValid(hit) && isEnabledBranch(tree, hit)) {
     interaction.hovered = findInteractive(tree, hit);

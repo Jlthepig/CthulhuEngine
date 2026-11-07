@@ -56,7 +56,7 @@ void ViewportPanel::updatePicking(octogui::Context &ctx,
                                   HierarchyPanel &hierarchy,
                                   octogui::NodeHandle sceneNode)
 {
-    if (engine.isPlaying() || (!completedClick && !completedMarquee))
+    if (ctx.contextMenuOwnsInput() ||engine.isPlaying() || (!completedClick && !completedMarquee))
     {
         return;
     }

@@ -295,7 +295,7 @@ void EditorShell::update(Context &ctx, Engine &engine, Scribe::Session &session)
     viewportPanelUI.update(ctx);
 
     const bool wasPlaying = engine.isPlaying();
-    const bool togglePlay = !ctx.isValid(ctx.focused()) && Core::Input::isKeyPressed(GLFW_KEY_F5);
+    const bool togglePlay = !ctx.contextMenuOwnsInput() && !ctx.isValid(ctx.focused()) && Core::Input::isKeyPressed(GLFW_KEY_F5);
 
     if (ctx.isClicked(saveButton.button))
     {

@@ -9,6 +9,8 @@
 #include "Systems/StyleSystem.h"
 #include "Systems/TextSystem.h"
 #include "Systems/WidgetSystem.h"
+#include "Systems/TooltipSystem.h"
+#include "Systems/ContextMenuSystem.h"
 
 #include "Internal/IconAtlas.h"
 
@@ -20,6 +22,9 @@ struct Context::Impl {
 
   LayoutSystem layout;
   InteractionSystem interaction;
+  TooltipSystem tooltips;
+  ContextMenuSystem menus;
+  NodeHandle menuFocus{};
   PaintSystem paint;
   StyleSystem styles;
   TextSystem text;
