@@ -66,6 +66,28 @@ int findChoiceIndex(Scene::FieldType type,
     return -1;
 }
 
+void assetChoices(const Assets::AssetRegistry &registry, Assets::AssetType type, const Scene::FieldValue &current, std::vector<std::string> &labels, std::vector<Scene::FieldValue> &options)
+{
+    labels.clear();
+    options.clear();
+    labels.emplace_back("<None>");
+    options.emplace_back(std::string{});
+
+    for (const Assets::AssetRecord &record : registry.getRecords())
+    {
+        if (record.type != type) continue;
+        labels.push_back(record.path + (record.missing ? " (missing)" : ""));
+        options.emplace_back(record.path);
+    }
+
+    const std::string &path = std::get<std::string>(current);
+    if (!path.empty() && findChoiceIndex(Scene::FieldType::AssetRef, options, current) < 0)
+    {
+        labels.push_back("<Missing> " + path);
+        options.emplace_back(path);
+    }
+}
+
 NodeHandle inspectorRow(Context &ctx, NodeHandle parent, std::string_view label)
 {
     const NodeHandle row = ctx.createContainer(parent);
@@ -190,14 +212,15 @@ void InspectorPanel::update(Context &ctx,
                             Scene::Scene *scene,
                             std::optional<Scene::EntityId> entityId,
                             std::span<const octogui::UIEvent> events,
-                            std::uint64_t inputGeneration)
+                            std::uint64_t inputGeneration,
+                            bool assetsChanged)
 {
     const std::uint64_t generation = engine.getSceneGeneration();
 
     if (initialized && boundGeneration == generation && inputGeneration == generation)
     {
         syncTransform(ctx, engine, session);
-        processEvents(ctx, engine, session, events);
+        processEvents(ctx, engine, session, events, assetsChanged);
     }
 
     selectedEntity = entityId;
@@ -228,6 +251,10 @@ void InspectorPanel::update(Context &ctx,
             session.endMerge();
         }
         rebuild(ctx, engine, scene);
+    }
+    else if (assetsChanged)
+    {
+        refreshAssetChoices(ctx, engine);
     }
 
     syncTransform(ctx, engine, session);
@@ -454,24 +481,8 @@ void InspectorPanel::rebuild(Context &ctx, Engine &engine, Scene::Scene *scene)
             }
             else if (field.type == Scene::FieldType::AssetRef)
             {
-                labels.emplace_back("<None>");
-                options.emplace_back(std::string{});
-                const auto &records = engine.getAssetManager().getRegistry().getRecords();
-                for (const Assets::AssetRecord &record : records)
-                {
-                    if (record.type != field.assetType)
-                    {
-                        continue;
-                    }
-                    labels.push_back(record.path + (record.missing ? " (missing)" : ""));
-                    options.emplace_back(record.path);
-                }
-                const std::string &currentPath = std::get<std::string>(*currentValue);
-                if (!currentPath.empty() && findChoiceIndex(field.type, options, *currentValue) < 0)
-                {
-                    labels.push_back("<Missing> " + currentPath);
-                    options.emplace_back(currentPath);
-                }
+                assetChoices(engine.getAssetManager().getRegistry(),
+                             field.assetType, *currentValue, labels, options);
             }
             else if (field.type == Scene::FieldType::EntityRef)
             {
@@ -564,7 +575,7 @@ void InspectorPanel::rebuild(Context &ctx, Engine &engine, Scene::Scene *scene)
     initialized = true;
 }
 
-void InspectorPanel::processEvents(Context &ctx, Engine &engine,Scribe::Session &session, std::span<const octogui::UIEvent> events)
+void InspectorPanel::processEvents(Context &ctx, Engine &engine, Scribe::Session &session, std::span<const octogui::UIEvent> events, bool assetsChanged)
 {
     for (const auto &event : events)
     {
@@ -643,6 +654,11 @@ void InspectorPanel::processEvents(Context &ctx, Engine &engine,Scribe::Session 
         {
             continue;
         }
+        // Discard choices displayed before the asset change.
+        if (assetsChanged && binding->type == Scene::FieldType::AssetRef)
+        {
+            continue;
+        }
         if (engine.isPlaying() || !selectedEntity)
         {
             continue;
@@ -713,7 +729,7 @@ void InspectorPanel::processEvents(Context &ctx, Engine &engine,Scribe::Session 
             }
         }
 
-        if (!nextValue)
+        if (!nextValue || (binding->type == Scene::FieldType::AssetRef && *nextValue == *current))
         {
             continue;
         }
@@ -800,6 +816,33 @@ void InspectorPanel::syncTransform(Context &ctx, Engine &engine, Scribe::Session
             ctx.setNumericValue(binding.control, modelValue);
             binding.shownValue = ctx.numericValue(binding.control);
         }
+    }
+}
+
+void InspectorPanel::refreshAssetChoices(Context &ctx, Engine &engine)
+{
+    Scene::Scene *scene = engine.getActiveScene();
+    if (!scene || !selectedEntity) return;
+
+    const auto entity = scene->findEntity(*selectedEntity);
+    if (!entity) return;
+
+    const auto &components = engine.getComponentRegistry();
+    const auto &assets = engine.getAssetManager().getRegistry();
+
+    for (Binding &binding : bindings)
+    {
+        if (binding.type != Scene::FieldType::AssetRef) continue;
+
+        const auto *component = components.find(binding.component);
+        const auto *field = component ? Scene::findField(*component, binding.field) : nullptr;
+        const auto current = components.getField(*entity, binding.component, binding.field);
+        if (!field || !current) continue;
+
+        std::vector<std::string> labels;
+        assetChoices(assets, field->assetType, *current, labels, binding.options);
+        ctx.setComboBoxItems(binding.control, labels);
+        ctx.setComboBoxSelectedIndex(binding.control, findChoiceIndex(binding.type, binding.options, *current));
     }
 }
 

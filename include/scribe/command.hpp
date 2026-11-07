@@ -91,6 +91,7 @@ enum class ChangeType : uint8_t
     AssetMoved,
     AssetDeleted,
     AssetSettingsChanged,
+    AssetRegistryRefreshed,
 
     PlayStarted,
     PlayStopped

@@ -10,6 +10,7 @@
 #include "hierarchyPanel.hpp"
 #include "inspectorPanel.hpp"
 #include "viewportPanel.hpp"
+#include "contentBrowserPanel.hpp"
 
 using namespace octogui;
 
@@ -89,6 +90,7 @@ class EditorShell
 
     NodeHandle inspector{};
     InspectorPanel inspectorUI;
+    ContentBrowserPanel contentBrowserUI;
 
     std::vector<octogui::UIEvent> uiEvents;
 

@@ -38,7 +38,8 @@ class InspectorPanel
                 Scene::Scene *scene,
                 std::optional<Scene::EntityId> selectedEntity,
                 std::span<const octogui::UIEvent> events,
-                std::uint64_t inputGeneration);
+                std::uint64_t inputGeneration,
+                bool assetsChanged);
 
   private:
     struct Binding
@@ -76,7 +77,8 @@ class InspectorPanel
 
     void resetContent(octogui::Context &ctx);
     void rebuild(octogui::Context &ctx, Engine &engine, Scene::Scene *scene);
-    void processEvents(octogui::Context &ctx,  Engine &engine,  Scribe::Session &session, std::span<const octogui::UIEvent> events);
+    void processEvents(octogui::Context &ctx,  Engine &engine,  Scribe::Session &session, std::span<const octogui::UIEvent> events, bool assetsChanged);
+    void refreshAssetChoices(octogui::Context &ctx, Engine &engine);
     void syncTransform(octogui::Context &ctx, Engine &engine, Scribe::Session &session);
     void refreshValues(octogui::Context &ctx, Engine &engine);
 };

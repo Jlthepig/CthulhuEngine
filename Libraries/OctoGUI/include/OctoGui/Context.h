@@ -96,6 +96,7 @@ public:
   void beginFrame(f32 deltaTime);
 
   void layout();
+  void resolvePendingLayout(); // Resolve any pending layout changes without performing a full layout pass.
 
   void paint();
 

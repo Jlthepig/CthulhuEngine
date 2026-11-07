@@ -1,6 +1,7 @@
 #include <GLFW/glfw3.h>
 
 #include <string>
+#include <algorithm>
 
 #include "editorShell.hpp"
 #include "editorUi.hpp"
@@ -235,19 +236,7 @@ void EditorShell::build(Context &ctx)
     inspector = titledPanel(ctx, ctx.splitSecondPane(workspace), "sliders", "INSPECTOR");
     inspectorUI.build(ctx, inspector);
 
-    const NodeHandle browser = titledPanel(ctx, ctx.splitSecondPane(mainContent), "folder", "CONTENT BROWSER");
-
-    const NodeHandle foldersAssets = ctx.createSplitContainer(browser, SplitOrientation::Horizontal, 0.22f);
-    ctx.setSplitMinimumSizes(foldersAssets, 160.0f, 240.0f);
-    seeThrough(ctx, foldersAssets);
-
-    const NodeHandle foldersPane = ctx.splitFirstPane(foldersAssets);
-    fillWithChild(ctx, foldersPane);
-    seeThrough(ctx, foldersPane);
-
-    const NodeHandle assetsPane = ctx.splitSecondPane(foldersAssets);
-    fillWithChild(ctx, assetsPane);
-    seeThrough(ctx, assetsPane);
+    contentBrowserUI.build(ctx, ctx.splitSecondPane(mainContent));
 
     const NodeHandle statusBar = ctx.createPanel(root);
     fixedBar(ctx, statusBar, 24.0f);
@@ -268,6 +257,7 @@ void EditorShell::frame(EditorUi &ui, Engine &engine, Scribe::Session &session, 
     }
 
     update(ui.context(), engine, session);
+    ui.context().resolvePendingLayout();
     engine.refreshSceneTransforms();
 
     const PixelRect viewport = ui.pixelRect(sceneNode);
@@ -291,6 +281,22 @@ void EditorShell::update(Context &ctx, Engine &engine, Scribe::Session &session)
     }
 
     const auto changes = session.takeEvents();
+    const bool assetsChanged = std::any_of(
+        changes.begin(), changes.end(),
+        [](const Scribe::ChangeEvent &change) {
+            switch (change.type)
+            {
+                case Scribe::ChangeType::AssetImported:
+                case Scribe::ChangeType::AssetMoved:
+                case Scribe::ChangeType::AssetDeleted:
+                case Scribe::ChangeType::AssetSettingsChanged:
+                case Scribe::ChangeType::AssetRegistryRefreshed:
+                    return true;
+                default:
+                    return false;
+            }
+        });
+    contentBrowserUI.update(ctx, engine, session, assetsChanged);
     hierarchyPanelUI.update(ctx, engine, session, changes);
     viewportPanelUI.update(ctx);
 
@@ -366,9 +372,9 @@ void EditorShell::update(Context &ctx, Engine &engine, Scribe::Session &session)
         engine.getRenderer().setOutlineTargets({});
     else
         engine.getRenderer().setOutlineTargets(hierarchyPanelUI.selection());
-    inspectorUI.update(
-        ctx, engine, session,
-     engine.getActiveScene(), hierarchyPanelUI.selectedEntity(), uiEvents, inputGeneration);
+    inspectorUI.update(ctx, engine, session, engine.getActiveScene(), 
+                        hierarchyPanelUI.selectedEntity(),
+                        uiEvents, inputGeneration, assetsChanged);
     viewportPanelUI.updateGizmo(ctx, engine, session, hierarchyPanelUI, sceneNode);
     viewportPanelUI.drawGizmoFeedback(ctx);
 

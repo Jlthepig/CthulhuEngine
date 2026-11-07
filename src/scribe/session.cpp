@@ -371,6 +371,27 @@ Result Session::setTransforms(std::span<const TransformValue> values)
     return execute(Commands::setTransforms(std::vector<TransformValue>(values.begin(), values.end())));
 }
 
+Result Session::refreshAssets()
+{
+    if (refuseEdit())
+    {
+        return Result::failed("CANNOT EDIT DURING PLAY OR A TRANSFORM PREVIEW");
+    }
+    if (!engine.getProject())
+    {
+        return Result::failed("NO OPEN PROJECT");
+    }
+
+    history.endMerge();
+    if (!engine.getAssetManager().refreshRegistry().ok)
+    {
+        return Result::failed("Could not refresh project assets. See the log.");
+    }
+
+    events.push_back({ChangeType::AssetRegistryRefreshed});
+    return Result::applied();
+}
+
 AssetResult Session::importAsset(const std::filesystem::path &sourceFile, std::string_view destination)
 {
     if (refuseEdit())

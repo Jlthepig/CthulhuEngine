@@ -95,6 +95,7 @@ class Session
     Result setTransforms(std::span<const TransformValue> values);
 
     // << assets applied immediately never undoable >>
+    Result refreshAssets();
     AssetResult importAsset(const std::filesystem::path &sourceFile, std::string_view destination);
 
     Result moveAsset(Assets::AssetId id, std::string_view destination);

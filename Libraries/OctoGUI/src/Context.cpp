@@ -226,6 +226,18 @@ void Context::layout() {
   }
 }
 
+void Context::resolvePendingLayout() {
+  if (!impl->tree.isValid(impl->root)) {
+    return;
+  }
+
+  if (impl->tree.isLayoutDirty(impl->root) ||
+      impl->tree.hasDirtyLayoutChildren(impl->root)) {
+    impl->layout.update(
+        impl->tree, impl->root, impl->input, impl->text);
+  }
+}
+
 void Context::paint() {
   if (!impl->tree.isValid(impl->root)) {
     return;
