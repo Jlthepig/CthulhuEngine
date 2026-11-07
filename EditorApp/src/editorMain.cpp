@@ -67,7 +67,9 @@ void onUpdate([[maybe_unused]] void *context, [[maybe_unused]] float deltaTime)
 
     const bool rightMouseDown = Cthulhu::Core::Input::isMouseButtonDown(GLFW_MOUSE_BUTTON_2);
 
-    const bool shouldLook = camera && rightMouseDown && (isCameraLooking || sceneHasMouse);
+    const bool rightMousePressed = Cthulhu::Core::Input::isMouseButtonPressed(GLFW_MOUSE_BUTTON_2);
+
+    const bool shouldLook = camera && rightMouseDown && (isCameraLooking || (sceneHasMouse && rightMousePressed));
 
     const int cursorModeWanted = shouldLook ? GLFW_CURSOR_DISABLED : GLFW_CURSOR_NORMAL;
 
@@ -176,25 +178,9 @@ int main(int argc, char *argv[])
 
     camera = engine.getCamera();
 
-    engine.setUpdateCallback(onUpdate, &engine);
-
     while (!engine.shouldClose())
     {
-        engine.update();
-
-        ui.beginFrame(engine.getDeltaTime());
-
-        shell.update(ui.context(), engine, session);
-
-        const Cthulhu::Editor::PixelRect viewport = ui.pixelRect(shell.sceneArea());
-
-        engine.setViewportRect(viewport.x, viewport.y, viewport.width, viewport.height);
-
-        engine.render(shell.viewport().overlayVertices());
-
-        ui.endFrame();
-
-        engine.present();
+        shell.frame(ui, engine, session, onUpdate);
     }
 
     (void)session.finishTransformEdit(false);

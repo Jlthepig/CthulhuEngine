@@ -896,6 +896,20 @@ void Engine::update()
     applyPendingTransition();
 }
 
+void Engine::refreshSceneTransforms()
+{
+    if (!activeScene || progressingSimulation)
+        return;
+
+    auto &world = activeScene->getWorld();
+    const auto system = world.lookup("TransformSystem");
+
+    if (system)
+    {
+        ecs_run(world.c_ptr(), system.id(), 0.0f, nullptr);
+    }
+}
+
 void Engine::render(std::span<const Rendering::OverlayVertex> overlayVertices)
 {
     if (state == EngineState::Uninitialized || !glfwWindow)

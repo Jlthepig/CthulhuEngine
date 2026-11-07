@@ -1,11 +1,14 @@
 #pragma once
 
 #include <cstddef>
+#include <cstdint>
 #include <optional>
+#include <span>
 #include <string>
 #include <vector>
 
 #include "OctoGui/Context.h"
+#include "OctoGui/Event.h"
 #include "componentRegistry.hpp"
 
 namespace Cthulhu
@@ -33,7 +36,9 @@ class InspectorPanel
                 Engine &engine,
                 Scribe::Session &session,
                 Scene::Scene *scene,
-                std::optional<Scene::EntityId> selectedEntity);
+                std::optional<Scene::EntityId> selectedEntity,
+                std::span<const octogui::UIEvent> events,
+                std::uint64_t inputGeneration);
 
   private:
     struct Binding
@@ -53,6 +58,8 @@ class InspectorPanel
     octogui::NodeHandle generatedContent{};
     std::vector<Binding> bindings;
     std::vector<std::string> componentNames;
+    std::vector<std::string> availableComponents;
+    std::uint64_t boundGeneration{};
     std::optional<Scene::EntityId> selectedEntity;
     std::optional<Scene::EntityId> builtEntity;
     octogui::NodeHandle addComponentCombo{};
@@ -69,7 +76,7 @@ class InspectorPanel
 
     void resetContent(octogui::Context &ctx);
     void rebuild(octogui::Context &ctx, Engine &engine, Scene::Scene *scene);
-    void processEvents(octogui::Context &ctx, Engine &engine, Scribe::Session &session);
+    void processEvents(octogui::Context &ctx,  Engine &engine,  Scribe::Session &session, std::span<const octogui::UIEvent> events);
     void syncTransform(octogui::Context &ctx, Engine &engine, Scribe::Session &session);
     void refreshValues(octogui::Context &ctx, Engine &engine);
 };

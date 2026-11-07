@@ -188,12 +188,16 @@ void InspectorPanel::update(Context &ctx,
                             Engine &engine,
                             Scribe::Session &session,
                             Scene::Scene *scene,
-                            std::optional<Scene::EntityId> entityId)
+                            std::optional<Scene::EntityId> entityId,
+                            std::span<const octogui::UIEvent> events,
+                            std::uint64_t inputGeneration)
 {
-    if (initialized)
+    const std::uint64_t generation = engine.getSceneGeneration();
+
+    if (initialized && boundGeneration == generation && inputGeneration == generation)
     {
         syncTransform(ctx, engine, session);
-        processEvents(ctx, engine, session);
+        processEvents(ctx, engine, session, events);
     }
 
     selectedEntity = entityId;
@@ -217,7 +221,7 @@ void InspectorPanel::update(Context &ctx,
         }
     }
 
-    if (!initialized || builtEntity != selectedEntity || attached != componentNames)
+    if (!initialized || boundGeneration != generation || builtEntity != selectedEntity || attached != componentNames)
     {
         if (initialized)
         {
@@ -227,13 +231,16 @@ void InspectorPanel::update(Context &ctx,
     }
 
     syncTransform(ctx, engine, session);
-    processEvents(ctx, engine, session);
     refreshValues(ctx, engine);
 }
 
 void InspectorPanel::rebuild(Context &ctx, Engine &engine, Scene::Scene *scene)
 {
     resetContent(ctx);
+    boundGeneration = engine.getSceneGeneration();
+    availableComponents.clear();
+    addComponentCombo = {};
+    addComponentButton = {};
     bindings.clear();
     removeBindings.clear();
     componentNames.clear();
@@ -497,7 +504,6 @@ void InspectorPanel::rebuild(Context &ctx, Engine &engine, Scene::Scene *scene)
 
     if (scene && selectedEntity)
     {
-        std::vector<std::string> available;
         for (const auto &descriptor : registry.getAll())
         {
             if (descriptor.core)
@@ -508,7 +514,7 @@ void InspectorPanel::rebuild(Context &ctx, Engine &engine, Scene::Scene *scene)
             {
                 continue;
             }
-            available.push_back(descriptor.name);
+            availableComponents.push_back(descriptor.name);
         }
 
         const NodeHandle separator = ctx.createSeparator(generatedContent);
@@ -523,7 +529,7 @@ void InspectorPanel::rebuild(Context &ctx, Engine &engine, Scene::Scene *scene)
         rowLayout.minSize = Vec2{0.0f, 28.0f};
         rowLayout.preferredSize = Vec2{0.0f, 28.0f};
 
-        if (available.empty())
+        if (availableComponents.empty())
         {
             addComponentCombo = ctx.createComboBox(addRow, std::vector<std::string>{"<No components to add>"}, 0);
             fitInspectorControl(ctx, addComponentCombo);
@@ -537,7 +543,7 @@ void InspectorPanel::rebuild(Context &ctx, Engine &engine, Scene::Scene *scene)
         }
         else
         {
-            addComponentCombo = ctx.createComboBox(addRow, available, 0);
+            addComponentCombo = ctx.createComboBox(addRow, availableComponents, 0);
             fitInspectorControl(ctx, addComponentCombo);
             addComponentButton = ctx.createButton(addRow, "Add");
             auto buttonLayout = ctx.layoutStyle(addComponentButton);
@@ -558,11 +564,13 @@ void InspectorPanel::rebuild(Context &ctx, Engine &engine, Scene::Scene *scene)
     initialized = true;
 }
 
-void InspectorPanel::processEvents(Context &ctx, Engine &engine, Scribe::Session &session)
+void InspectorPanel::processEvents(Context &ctx, Engine &engine,Scribe::Session &session, std::span<const octogui::UIEvent> events)
 {
-    octogui::UIEvent event;
-    while (ctx.pollEvent(event))
+    for (const auto &event : events)
     {
+        if (boundGeneration != engine.getSceneGeneration())
+            return;
+
         const auto removeBinding =
             std::find_if(removeBindings.begin(), removeBindings.end(), [&](const RemoveBinding &candidate) {
                 return candidate.button == event.target;
@@ -589,28 +597,12 @@ void InspectorPanel::processEvents(Context &ctx, Engine &engine, Scribe::Session
             if (!engine.isPlaying() && selectedEntity && ctx.isValid(addComponentCombo))
             {
                 const int index = ctx.comboBoxSelectedIndex(addComponentCombo);
-                std::vector<std::string> available;
-                Scene::Scene *scene = engine.getActiveScene();
-                if (scene)
+                if (index >= 0 && static_cast<std::size_t>(index) < availableComponents.size())
                 {
-                    if (auto entity = scene->findEntity(*selectedEntity))
-                    {
-                        for (const auto &descriptor : engine.getComponentRegistry().getAll())
-                        {
-                            if (!descriptor.core && !descriptor.has(*entity))
-                            {
-                                available.push_back(descriptor.name);
-                            }
-                        }
-                    }
-                }
-                if (index >= 0 && static_cast<std::size_t>(index) < available.size())
-                {
-                    const auto result =
-                        session.addComponent(*selectedEntity, available[static_cast<std::size_t>(index)]);
+                    const auto result = session.addComponent(*selectedEntity, availableComponents[static_cast<std::size_t>(index)]);
                     if (!result.ok())
                     {
-                        Log::Print("ADD COMPONENT FAILED: " + result.error, "Editor", LogType::LOG_ERROR);
+                        Log::Print("ADD COMPONENT FAILED: " + result.error,"Editor", LogType::LOG_ERROR);
                     }
                     else
                     {
@@ -740,6 +732,9 @@ void InspectorPanel::processEvents(Context &ctx, Engine &engine, Scribe::Session
 
 void InspectorPanel::syncTransform(Context &ctx, Engine &engine, Scribe::Session &session)
 {
+    if (boundGeneration != engine.getSceneGeneration())
+        return;
+
     if (!selectedEntity)
     {
         return;
@@ -810,6 +805,9 @@ void InspectorPanel::syncTransform(Context &ctx, Engine &engine, Scribe::Session
 
 void InspectorPanel::refreshValues(Context &ctx, Engine &engine)
 {
+    if (boundGeneration != engine.getSceneGeneration())
+        return;
+
     const bool playing = engine.isPlaying();
     for (const Binding &binding : bindings)
     {

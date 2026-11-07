@@ -2,7 +2,9 @@
 
 #include <optional>
 #include <string>
+#include <vector>
 
+#include "OctoGui/Event.h"
 #include "OctoGui/Context.h"
 #include "entityId.hpp"
 #include "hierarchyPanel.hpp"
@@ -34,12 +36,15 @@ struct IconButton
     NodeHandle icon{};
 };
 
+class EditorUi;
 class EditorShell
 {
   public:
     void build(Context &ctx);
 
     void update(Context &ctx, Engine &engine, Scribe::Session &session);
+
+    void frame(EditorUi &ui, Engine &engine, Scribe::Session &session, void (*routeInput)(void *, float));
 
     [[nodiscard]] NodeHandle hierarchyPanel() const noexcept
     {
@@ -84,6 +89,8 @@ class EditorShell
 
     NodeHandle inspector{};
     InspectorPanel inspectorUI;
+
+    std::vector<octogui::UIEvent> uiEvents;
 
     std::string lastSceneText;
     bool lastPlaying = false;

@@ -3,6 +3,7 @@
 #include <string>
 
 #include "editorShell.hpp"
+#include "editorUi.hpp"
 
 #include "engine.hpp"
 #include "input.hpp"
@@ -229,9 +230,45 @@ void EditorShell::build(Context &ctx)
     fixedBar(ctx, statusBar, 24.0f);
 }
 
+void EditorShell::frame(EditorUi &ui, Engine &engine, Scribe::Session &session, void (*routeInput)(void *, float))
+{
+    engine.update();
+
+    if (!engine.getWindow())
+        return;
+
+    ui.beginFrame(engine.getDeltaTime());
+
+    if (routeInput)
+    {
+        routeInput(&engine, engine.getDeltaTime());
+    }
+
+    update(ui.context(), engine, session);
+    engine.refreshSceneTransforms();
+
+    const PixelRect viewport = ui.pixelRect(sceneNode);
+    engine.setViewportRect(
+        viewport.x, viewport.y, viewport.width, viewport.height);
+
+    engine.render(viewportPanelUI.overlayVertices());
+    ui.endFrame();
+    engine.present();
+}
+
 void EditorShell::update(Context &ctx, Engine &engine, Scribe::Session &session)
 {
-    hierarchyPanelUI.update(ctx, engine, session);
+    const std::uint64_t inputGeneration = engine.getSceneGeneration();
+
+    uiEvents.clear();
+    octogui::UIEvent event;
+    while (ctx.pollEvent(event))
+    {
+        uiEvents.push_back(event);
+    }
+
+    const auto changes = session.takeEvents();
+    hierarchyPanelUI.update(ctx, engine, session, changes);
     viewportPanelUI.update(ctx);
 
     const bool wasPlaying = engine.isPlaying();
@@ -306,7 +343,9 @@ void EditorShell::update(Context &ctx, Engine &engine, Scribe::Session &session)
         engine.getRenderer().setOutlineTargets({});
     else
         engine.getRenderer().setOutlineTargets(hierarchyPanelUI.selection());
-    inspectorUI.update(ctx, engine, session, engine.getActiveScene(), hierarchyPanelUI.selectedEntity());
+    inspectorUI.update(
+        ctx, engine, session,
+     engine.getActiveScene(), hierarchyPanelUI.selectedEntity(), uiEvents, inputGeneration);
     viewportPanelUI.updateGizmo(ctx, engine, session, hierarchyPanelUI, sceneNode);
     viewportPanelUI.drawGizmoFeedback(ctx);
 

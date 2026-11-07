@@ -2,6 +2,7 @@
 
 #include <cstdint>
 #include <optional>
+#include <span>
 #include <utility>
 #include <vector>
 
@@ -16,6 +17,7 @@ class Engine;
 namespace Cthulhu::Scribe
 {
 class Session;
+struct ChangeEvent;
 }
 
 namespace Cthulhu::Scene
@@ -29,7 +31,7 @@ class HierarchyPanel
 {
   public:
     void build(octogui::Context &ctx, octogui::NodeHandle parent);
-    void update(octogui::Context &ctx, Engine &engine, Scribe::Session &session);
+    void update(octogui::Context &ctx, Engine &engine,Scribe::Session &session,std::span<const Scribe::ChangeEvent> changes);
 
     [[nodiscard]] octogui::NodeHandle panel() const noexcept
     {

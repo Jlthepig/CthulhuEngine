@@ -356,7 +356,7 @@ void HierarchyPanel::refreshSelectionHighlights(Context &ctx)
     }
 }
 
-void HierarchyPanel::update(Context &ctx, Engine &engine, Scribe::Session &session)
+void HierarchyPanel::update(Context &ctx, Engine &engine, Scribe::Session &session, std::span<const Scribe::ChangeEvent> changes)
 {
     auto closeHierarchyRename = [&]() {
         if (!ctx.isValid(hierarchyRenameInput))
@@ -485,7 +485,7 @@ void HierarchyPanel::update(Context &ctx, Engine &engine, Scribe::Session &sessi
     }
 
     bool hierarchyDirty = false;
-    for (const Scribe::ChangeEvent &event : session.takeEvents())
+    for (const Scribe::ChangeEvent &event : changes)
     {
         if (event.type == Scribe::ChangeType::SceneReplaced)
         {
