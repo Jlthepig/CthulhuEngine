@@ -26,6 +26,9 @@ void fillWithChild(Context &ctx, NodeHandle pane)
     layout.mode = LayoutMode::Stack;
     layout.horizontalAlignment = Alignment::Stretch;
     layout.verticalAlignment = Alignment::Stretch;
+    layout.padding = Padding{};
+    layout.gap = 0.0f;
+    layout.clip = true;
 }
 
 NodeHandle panelHeader(Context &ctx,
@@ -200,31 +203,51 @@ void EditorShell::build(Context &ctx)
     ctx.setIconColor(pauseButton.icon, ctx.theme().textDisabled);
     ctx.setIconColor(stopButton.icon, ctx.theme().textDisabled);
 
-    const NodeHandle workspace = ctx.createSplitContainer(root, SplitOrientation::Horizontal, 0.14f);
-    ctx.setSplitMinimumSizes(workspace, 180.0f, 600.0f);
+    // left >> hierarchy viewport and browser. right >> inspector.
+    const NodeHandle workspace = ctx.createSplitContainer(root, SplitOrientation::Horizontal, 0.80f);
+    ctx.setSplitMinimumSizes(workspace, 444.0f, 280.0f);
     seeThrough(ctx, workspace);
-    seeThrough(ctx, ctx.splitSecondPane(workspace));
-    hierarchyPanelUI.build(ctx, ctx.splitFirstPane(workspace));
 
-    const NodeHandle sceneInspector =
-        ctx.createSplitContainer(ctx.splitSecondPane(workspace), SplitOrientation::Horizontal, 0.78f);
-    ctx.setSplitMinimumSizes(sceneInspector, 260.0f, 280.0f);
-    seeThrough(ctx, sceneInspector);
+    const NodeHandle mainPane = ctx.splitFirstPane(workspace);
+    fillWithChild(ctx, mainPane);
+    seeThrough(ctx, mainPane);
 
-    sceneNode = ctx.splitFirstPane(sceneInspector);
+    // top >> hierarchy and viewport. bottom >> content browser
+    const NodeHandle mainContent = ctx.createSplitContainer(mainPane, SplitOrientation::Vertical, 0.72f);
+    ctx.setSplitMinimumSizes(mainContent, 260.0f, 180.0f);
+    seeThrough(ctx, mainContent);
+
+     const NodeHandle upperPane = ctx.splitFirstPane(mainContent);
+    fillWithChild(ctx, upperPane);
+    seeThrough(ctx, upperPane);
+
+    const NodeHandle hierarchyViewport = ctx.createSplitContainer(upperPane, SplitOrientation::Horizontal, 0.18f);
+    ctx.setSplitMinimumSizes(hierarchyViewport, 180.0f, 260.0f);
+    seeThrough(ctx, hierarchyViewport);
+
+    hierarchyPanelUI.build(ctx, ctx.splitFirstPane(hierarchyViewport));
+
+    sceneNode = ctx.splitSecondPane(hierarchyViewport);
+    fillWithChild(ctx, sceneNode);
     seeThrough(ctx, sceneNode);
-    ctx.style(sceneNode).all.background = Color::transparent();
-    {
-        auto layout = ctx.layoutStyle(sceneNode);
-        layout.mode = LayoutMode::Stack;
-        layout.horizontalAlignment = Alignment::Stretch;
-        layout.verticalAlignment = Alignment::Stretch;
-        layout.padding = Padding{};
-    }
     viewportPanelUI.build(ctx, sceneNode);
 
-    inspector = titledPanel(ctx, ctx.splitSecondPane(sceneInspector), "sliders", "INSPECTOR");
+    inspector = titledPanel(ctx, ctx.splitSecondPane(workspace), "sliders", "INSPECTOR");
     inspectorUI.build(ctx, inspector);
+
+    const NodeHandle browser = titledPanel(ctx, ctx.splitSecondPane(mainContent), "folder", "CONTENT BROWSER");
+
+    const NodeHandle foldersAssets = ctx.createSplitContainer(browser, SplitOrientation::Horizontal, 0.22f);
+    ctx.setSplitMinimumSizes(foldersAssets, 160.0f, 240.0f);
+    seeThrough(ctx, foldersAssets);
+
+    const NodeHandle foldersPane = ctx.splitFirstPane(foldersAssets);
+    fillWithChild(ctx, foldersPane);
+    seeThrough(ctx, foldersPane);
+
+    const NodeHandle assetsPane = ctx.splitSecondPane(foldersAssets);
+    fillWithChild(ctx, assetsPane);
+    seeThrough(ctx, assetsPane);
 
     const NodeHandle statusBar = ctx.createPanel(root);
     fixedBar(ctx, statusBar, 24.0f);

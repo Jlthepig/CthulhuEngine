@@ -70,7 +70,12 @@ void EditorUi::beginFrame(float deltaTime)
     ctx.beginFrame(deltaTime);
     ctx.layout();
 
-    mouseOverUi = ctx.isValid(ctx.hovered()) && !ctx.isHovered(ctx.root()) && !ctx.isHovered(sceneNode);
+    const bool overScene = ctx.isValid(sceneNode) && ctx.tree().rect(sceneNode).contains(ctx.input().mouse.position);
+
+    const octogui::NodeHandle hovered = ctx.hovered();
+    const bool overControl = ctx.isValid(hovered) && hovered != ctx.root() && hovered != sceneNode;
+
+    mouseOverUi = !overScene || overControl;
 }
 
 void EditorUi::endFrame()
