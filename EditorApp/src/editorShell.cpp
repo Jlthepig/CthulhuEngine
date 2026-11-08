@@ -32,79 +32,6 @@ void fillWithChild(Context &ctx, NodeHandle pane)
     layout.clip = true;
 }
 
-NodeHandle panelHeader(Context &ctx,
-                       NodeHandle panel,
-                       std::string_view icon,
-                       std::string_view title,
-                       IconButton *outLeadingAction = nullptr)
-{
-    const NodeHandle header = ctx.createContainer(panel);
-
-    auto layout = ctx.layoutStyle(header);
-    layout.mode = LayoutMode::Horizontal;
-    layout.gap = 6.0f;
-    layout.verticalAlignment = Alignment::Center;
-    layout.minSize = Vec2{0.0f, 20.0f};
-    layout.preferredSize = Vec2{0.0f, 20.0f};
-    layout.maxSize = Vec2{InfiniteLayoutSize, 20.0f};
-
-    if (outLeadingAction)
-    {
-        layout.minSize = Vec2{0.0f, 26.0f};
-        layout.preferredSize = Vec2{0.0f, 26.0f};
-        layout.maxSize = Vec2{InfiniteLayoutSize, 26.0f};
-
-        outLeadingAction->button = ctx.createButton(header, "");
-        auto actionLayout = ctx.layoutStyle(outLeadingAction->button);
-        actionLayout.mode = LayoutMode::Horizontal;
-        actionLayout.horizontalAlignment = Alignment::Center;
-        actionLayout.verticalAlignment = Alignment::Center;
-        actionLayout.padding = Padding{};
-        actionLayout.minSize = Vec2{24.0f, 24.0f};
-        actionLayout.preferredSize = Vec2{24.0f, 24.0f};
-        actionLayout.maxSize = Vec2{24.0f, 24.0f};
-
-        outLeadingAction->icon = ctx.createIcon(outLeadingAction->button, "plus");
-        ctx.setIconSize(outLeadingAction->icon, 16.0f);
-        ctx.setIconColor(outLeadingAction->icon, ctx.theme().textMuted);
-    }
-
-    const NodeHandle headerIcon = ctx.createIcon(header, icon);
-    ctx.setIconSize(headerIcon, 16.0f);
-    ctx.setIconColor(headerIcon, ctx.theme().textMuted);
-
-    const NodeHandle heading = ctx.createLabel(header, title);
-    ctx.style(heading).all.text = ctx.theme().textMuted;
-
-    return header;
-}
-
-NodeHandle titledPanel(Context &ctx,
-                       NodeHandle pane,
-                       std::string_view icon,
-                       std::string_view title,
-                       NodeHandle *outHeader = nullptr)
-{
-    fillWithChild(ctx, pane);
-
-    const NodeHandle panel = ctx.createPanel(pane);
-
-    auto layout = ctx.layoutStyle(panel);
-    layout.mode = LayoutMode::Vertical;
-    layout.horizontalAlignment = Alignment::Stretch;
-    layout.verticalAlignment = Alignment::Stretch;
-    layout.gap = 6.0f;
-    layout.padding = Padding{8.0f};
-
-    const NodeHandle header = panelHeader(ctx, panel, icon, title);
-    if (outHeader)
-    {
-        *outHeader = header;
-    }
-
-    return panel;
-}
-
 void seeThrough(Context &ctx, NodeHandle node)
 {
     ctx.style(node).all.background = Color::transparent();
@@ -233,7 +160,9 @@ void EditorShell::build(Context &ctx)
     seeThrough(ctx, sceneNode);
     viewportPanelUI.build(ctx, sceneNode);
 
-    inspector = titledPanel(ctx, ctx.splitSecondPane(workspace), "sliders", "INSPECTOR");
+    const NodeHandle inspectorPane = ctx.splitSecondPane(workspace);
+    fillWithChild(ctx, inspectorPane);
+    inspector = createTitledPanel(ctx, inspectorPane, "sliders", "INSPECTOR");
     inspectorUI.build(ctx, inspector);
 
     contentBrowserUI.build(ctx, ctx.splitSecondPane(mainContent));
@@ -273,13 +202,6 @@ void EditorShell::update(Context &ctx, Engine &engine, Scribe::Session &session)
 {
     const std::uint64_t inputGeneration = engine.getSceneGeneration();
 
-    uiEvents.clear();
-    octogui::UIEvent event;
-    while (ctx.pollEvent(event))
-    {
-        uiEvents.push_back(event);
-    }
-
     const auto changes = session.takeEvents();
     const bool assetsChanged = std::any_of(
         changes.begin(), changes.end(),
@@ -298,6 +220,14 @@ void EditorShell::update(Context &ctx, Engine &engine, Scribe::Session &session)
         });
     contentBrowserUI.update(ctx, engine, session, assetsChanged);
     hierarchyPanelUI.update(ctx, engine, session, changes);
+
+    uiEvents.clear();
+    octogui::UIEvent event;
+    while (ctx.pollEvent(event))
+    {
+        uiEvents.push_back(event);
+    }
+
     viewportPanelUI.update(ctx);
 
     const bool wasPlaying = engine.isPlaying();

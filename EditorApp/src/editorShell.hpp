@@ -6,6 +6,7 @@
 
 #include "OctoGui/Event.h"
 #include "OctoGui/Context.h"
+#include "editorPanels.hpp"
 #include "entityId.hpp"
 #include "hierarchyPanel.hpp"
 #include "inspectorPanel.hpp"
@@ -31,12 +32,6 @@ class Scene;
 
 namespace Cthulhu::Editor
 {
-struct IconButton
-{
-    NodeHandle button{};
-    NodeHandle icon{};
-};
-
 class EditorUi;
 class EditorShell
 {

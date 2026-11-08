@@ -1,4 +1,5 @@
 #include "hierarchyPanel.hpp"
+#include "editorPanels.hpp"
 
 #include "components.hpp"
 #include "engine.hpp"
@@ -20,12 +21,6 @@ namespace Cthulhu::Editor
 {
 namespace
 {
-struct IconButton
-{
-    NodeHandle button{};
-    NodeHandle icon{};
-};
-
 constexpr f32 HierarchyRowHeight = 26.0f;
 constexpr f32 HierarchyIndentWidth = 16.0f;
 constexpr f32 HierarchyChevronWidth = 16.0f;
@@ -122,85 +117,14 @@ void fillWithChild(Context &ctx, NodeHandle pane)
     layout.verticalAlignment = Alignment::Stretch;
 }
 
-NodeHandle panelHeader(Context &ctx,
-                       NodeHandle panel,
-                       std::string_view icon,
-                       std::string_view title,
-                       IconButton *outLeadingAction = nullptr)
-{
-    const NodeHandle header = ctx.createContainer(panel);
-
-    auto layout = ctx.layoutStyle(header);
-    layout.mode = LayoutMode::Horizontal;
-    layout.gap = 6.0f;
-    layout.verticalAlignment = Alignment::Center;
-    layout.minSize = Vec2{0.0f, 20.0f};
-    layout.preferredSize = Vec2{0.0f, 20.0f};
-    layout.maxSize = Vec2{InfiniteLayoutSize, 20.0f};
-
-    if (outLeadingAction)
-    {
-        layout.minSize = Vec2{0.0f, 26.0f};
-        layout.preferredSize = Vec2{0.0f, 26.0f};
-        layout.maxSize = Vec2{InfiniteLayoutSize, 26.0f};
-
-        outLeadingAction->button = ctx.createButton(header, "");
-        auto actionLayout = ctx.layoutStyle(outLeadingAction->button);
-        actionLayout.mode = LayoutMode::Horizontal;
-        actionLayout.horizontalAlignment = Alignment::Center;
-        actionLayout.verticalAlignment = Alignment::Center;
-        actionLayout.padding = Padding{};
-        actionLayout.minSize = Vec2{24.0f, 24.0f};
-        actionLayout.preferredSize = Vec2{24.0f, 24.0f};
-        actionLayout.maxSize = Vec2{24.0f, 24.0f};
-
-        outLeadingAction->icon = ctx.createIcon(outLeadingAction->button, "plus");
-        ctx.setIconSize(outLeadingAction->icon, 16.0f);
-        ctx.setIconColor(outLeadingAction->icon, ctx.theme().textMuted);
-    }
-
-    const NodeHandle headerIcon = ctx.createIcon(header, icon);
-    ctx.setIconSize(headerIcon, 16.0f);
-    ctx.setIconColor(headerIcon, ctx.theme().textMuted);
-
-    const NodeHandle heading = ctx.createLabel(header, title);
-    ctx.style(heading).all.text = ctx.theme().textMuted;
-
-    return header;
-}
-
-NodeHandle titledPanel(Context &ctx,
-                       NodeHandle pane,
-                       std::string_view icon,
-                       std::string_view title,
-                       NodeHandle *outHeader = nullptr,
-                       IconButton *outLeadingAction = nullptr)
-{
-    fillWithChild(ctx, pane);
-
-    const NodeHandle panel = ctx.createPanel(pane);
-
-    auto layout = ctx.layoutStyle(panel);
-    layout.mode = LayoutMode::Vertical;
-    layout.horizontalAlignment = Alignment::Stretch;
-    layout.verticalAlignment = Alignment::Stretch;
-    layout.gap = 6.0f;
-    layout.padding = Padding{8.0f};
-
-    const NodeHandle header = panelHeader(ctx, panel, icon, title, outLeadingAction);
-    if (outHeader)
-    {
-        *outHeader = header;
-    }
-
-    return panel;
-}
 } // namespace
 
 void HierarchyPanel::build(Context &ctx, NodeHandle parent)
 {
+    fillWithChild(ctx, parent);
+
     IconButton action{};
-    hierarchy = titledPanel(ctx, parent, "sidebar-left", "HIERARCHY", &hierarchyHeader, &action);
+    hierarchy = createTitledPanel(ctx, parent, "sidebar-left", "HIERARCHY", &action);
     createEntityButton = action.button;
     createEntityIcon = action.icon;
     hierarchyTree = ctx.createTreeView(hierarchy);

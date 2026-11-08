@@ -61,7 +61,6 @@ class HierarchyPanel
 
   private:
     octogui::NodeHandle hierarchy{};
-    octogui::NodeHandle hierarchyHeader{};
     octogui::NodeHandle hierarchyTree{};
     octogui::NodeHandle createEntityButton{};
     octogui::NodeHandle createEntityIcon{};

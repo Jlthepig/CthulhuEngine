@@ -26,6 +26,11 @@ namespace Cthulhu::Scene
 class Scene;
 }
 
+namespace Cthulhu::Assets
+{
+class AssetRegistry;
+}
+
 namespace Cthulhu::Editor
 {
 class InspectorPanel
@@ -42,6 +47,24 @@ class InspectorPanel
                 bool assetsChanged);
 
   private:
+    static double toInspectorUnits(double value, Scene::FieldHint hint);
+    static double fromInspectorUnits(double value, Scene::FieldHint hint);
+    static bool isNumericField(Scene::FieldType type);
+
+    static int findChoiceIndex(
+      Scene::FieldType type,
+      const std::vector<Scene::FieldValue> &options,
+      const Scene::FieldValue &value);
+
+    static void assetChoices(
+      const Assets::AssetRegistry &registry,
+      Assets::AssetType type,
+      const Scene::FieldValue &current,
+      std::vector<std::string> &labels,
+      std::vector<Scene::FieldValue> &options);
+
+    static float getVectorAxis(const glm::vec3 &value, std::size_t axis);
+
     struct Binding
     {
         octogui::NodeHandle control{};
