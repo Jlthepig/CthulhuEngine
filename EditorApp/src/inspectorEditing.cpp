@@ -295,7 +295,7 @@ void InspectorPanel::refreshAssetChoices(Context &ctx, Engine &engine)
         std::vector<std::string> labels;
         assetChoices(assets, field->assetType, *current, labels, binding.options);
         ctx.setComboBoxItems(binding.control, labels);
-        ctx.setComboBoxSelectedIndex(binding.control, findChoiceIndex(binding.type, binding.options, *current));
+        ctx.setComboBoxSelectedIndex(binding.control, findChoiceIndex(binding.options, *current));
     }
 }
 
@@ -383,10 +383,9 @@ void InspectorPanel::refreshValues(Context &ctx, Engine &engine)
                 ctx.setText(binding.control, value);
             }
         }
-        else if (binding.type == Scene::FieldType::Enum || binding.type == Scene::FieldType::AssetRef ||
-                 binding.type == Scene::FieldType::EntityRef)
+        else if (binding.type == Scene::FieldType::Enum || binding.type == Scene::FieldType::AssetRef || binding.type == Scene::FieldType::EntityRef)
         {
-            const int index = findChoiceIndex(binding.type, binding.options, *current);
+            const int index = findChoiceIndex(binding.options, *current);
             if (ctx.comboBoxSelectedIndex(binding.control) != index)
             {
                 ctx.setComboBoxSelectedIndex(binding.control, index);

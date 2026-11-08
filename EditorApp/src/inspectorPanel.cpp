@@ -16,22 +16,6 @@ namespace
 {
 constexpr double degreesPerRadian = 57.29577951308232;
 
-bool choiceMatches(Scene::FieldType type, const Scene::FieldValue &left, const Scene::FieldValue &right)
-{
-    switch (type)
-    {
-        case Scene::FieldType::Enum:
-            return std::get<int>(left) == std::get<int>(right);
-        case Scene::FieldType::AssetRef:
-        case Scene::FieldType::String:
-            return std::get<std::string>(left) == std::get<std::string>(right);
-        case Scene::FieldType::EntityRef:
-            return std::get<Scene::EntityId>(left) == std::get<Scene::EntityId>(right);
-        default:
-            return false;
-    }
-}
-
 NodeHandle inspectorRow(Context &ctx, NodeHandle parent, std::string_view label)
 {
     const NodeHandle row = ctx.createContainer(parent);
@@ -120,18 +104,12 @@ bool InspectorPanel::isNumericField(Scene::FieldType type)
            type == Scene::FieldType::Color;
 }
 
-int InspectorPanel::findChoiceIndex(Scene::FieldType type,
-                                    const std::vector<Scene::FieldValue> &options,
-                                    const Scene::FieldValue &value)
+int InspectorPanel::findChoiceIndex(const std::vector<Scene::FieldValue> &options, const Scene::FieldValue &value)
 {
-    for (std::size_t i = 0; i < options.size(); ++i)
-    {
-        if (choiceMatches(type, options[i], value))
-        {
-            return static_cast<int>(i);
-        }
-    }
-    return -1;
+    const auto found = std::find(options.begin(), options.end(), value);
+    return found == options.end()
+        ? -1
+        : static_cast<int>(found - options.begin());
 }
 
 void InspectorPanel::assetChoices(const Assets::AssetRegistry &registry,
@@ -153,7 +131,7 @@ void InspectorPanel::assetChoices(const Assets::AssetRegistry &registry,
     }
 
     const std::string &path = std::get<std::string>(current);
-    if (!path.empty() && findChoiceIndex(Scene::FieldType::AssetRef, options, current) < 0)
+    if (!path.empty() && findChoiceIndex(options, current) < 0)
     {
         labels.push_back("<Missing> " + path);
         options.emplace_back(path);
@@ -485,7 +463,7 @@ void InspectorPanel::rebuild(Context &ctx, Engine &engine, Scene::Scene *scene)
                     options.emplace_back(id);
                 }
                 const Scene::EntityId currentId = std::get<Scene::EntityId>(*currentValue);
-                if (currentId.isValid() && findChoiceIndex(field.type, options, *currentValue) < 0)
+                if (currentId.isValid() && findChoiceIndex(options, *currentValue) < 0)
                 {
                     labels.push_back("<Missing entity> " + Scene::entityIdToString(currentId));
                     options.emplace_back(currentId);
@@ -497,7 +475,7 @@ void InspectorPanel::rebuild(Context &ctx, Engine &engine, Scene::Scene *scene)
             }
 
             const NodeHandle row = inspectorRow(ctx, content, field.name);
-            const int selectedIndex = findChoiceIndex(field.type, options, *currentValue);
+            const int selectedIndex = findChoiceIndex(options, *currentValue);
             const NodeHandle control = ctx.createComboBox(row, labels, selectedIndex);
             fitInspectorControl(ctx, control);
             bind(control, 0, std::move(options));

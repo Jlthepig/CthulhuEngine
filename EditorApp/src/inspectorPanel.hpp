@@ -52,9 +52,8 @@ class InspectorPanel
     static bool isNumericField(Scene::FieldType type);
 
     static int findChoiceIndex(
-      Scene::FieldType type,
-      const std::vector<Scene::FieldValue> &options,
-      const Scene::FieldValue &value);
+        const std::vector<Scene::FieldValue> &options,
+        const Scene::FieldValue &value);
 
     static void assetChoices(
       const Assets::AssetRegistry &registry,

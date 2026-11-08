@@ -33,16 +33,6 @@ class HierarchyPanel
     void build(octogui::Context &ctx, octogui::NodeHandle parent);
     void update(octogui::Context &ctx, Engine &engine,Scribe::Session &session,std::span<const Scribe::ChangeEvent> changes);
 
-    [[nodiscard]] octogui::NodeHandle panel() const noexcept
-    {
-        return hierarchy;
-    }
-
-    [[nodiscard]] octogui::NodeHandle treeView() const noexcept
-    {
-        return hierarchyTree;
-    }
-
     [[nodiscard]] std::optional<Scene::EntityId> selectedEntity() const noexcept
     {
         if (selectedEntities.empty())

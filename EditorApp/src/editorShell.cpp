@@ -162,7 +162,7 @@ void EditorShell::build(Context &ctx)
 
     const NodeHandle inspectorPane = ctx.splitSecondPane(workspace);
     fillWithChild(ctx, inspectorPane);
-    inspector = createTitledPanel(ctx, inspectorPane, "sliders", "INSPECTOR");
+    const NodeHandle inspector = createTitledPanel(ctx, inspectorPane, "sliders", "INSPECTOR");
     inspectorUI.build(ctx, inspector);
 
     contentBrowserUI.build(ctx, ctx.splitSecondPane(mainContent));

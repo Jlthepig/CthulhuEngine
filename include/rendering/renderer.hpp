@@ -119,8 +119,8 @@ class Renderer
     std::vector<Scene::EntityId> outlineTargets;
     Shader outlineShader;
     Shader overlayShader;
-    GLuint overlayVAO = 0;
-    GLuint overlayVBO = 0;
+    GLuint overlayVAO{};
+    GLuint overlayVBO{};
     Cthulhu::Rendering::GridLines grid;
     Cthulhu::Rendering::Skybox skybox;
     Cthulhu::Rendering::Framebuffer sceneFramebuffer;
@@ -132,8 +132,8 @@ class Renderer
     PointLightShadowMap pointShadowMap;
     std::vector<PointLight> pointLights;
     std::vector<PointLightGPU> pointLightStorage;
-    std::size_t pointLightBufferCapacity = 0;
-    std::size_t maxPointLightCount = 0;
+    std::size_t pointLightBufferCapacity{};
+    std::size_t maxPointLightCount{};
     bool pointLightLimitWarningLogged = false;
     bool pointShadowLimitWarningLogged = false;
     std::vector<DebugVertex> debugLines;
@@ -142,15 +142,20 @@ class Renderer
     Cthulhu::Scene::Scene *scene = nullptr;
     Scene::Frustum frustum;
     Scene::AABB TransformAABB(const Scene::AABB &localBounds, const glm::mat4 &modelMatrix);
-    GLuint defaultDataTexture = 0;
-    GLuint defaultNormalTexture = 0;
-    GLuint brdfLUTTexture = 0;
-    unsigned int lineVAO = 0, lineVBO = 0;
-    unsigned int sceneUBO = 0;
-    unsigned int pointLightsSSBO = 0;
+    GLuint defaultDataTexture{};
+    GLuint defaultNormalTexture{};
+    GLuint brdfLUTTexture{};
+    unsigned int lineVAO{}, lineVBO{};
+    unsigned int sceneUBO{};
+    unsigned int pointLightsSSBO{};
 
     void bindMaterial(const Material &material, const std::vector<Texture> &modelTextures);
     void bindDefaultMaterial();
     void drawOverlayTriangles(std::span<const OverlayVertex> vertices);
+    void drawOutlines(unsigned int width, unsigned int height, const std::vector<Renderable> &renderables);
+    void drawShadows(const std::vector<Renderable> &renderables, std::size_t shadowCasters);
+    std::size_t uploadPointLights();
+    void drawSceneGeometry(const std::vector<Renderable> &renderables, std::size_t activePointLightCount, std::size_t shadowCasters);
+    void drawDebugLines(float deltaTime);
 };
 } // namespace Cthulhu::Rendering

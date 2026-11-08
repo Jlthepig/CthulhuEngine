@@ -356,87 +356,86 @@ void Renderer::drawOverlayTriangles(std::span<const OverlayVertex> vertices)
     glEnable(GL_DEPTH_TEST);
 }
 
-void Renderer::render(unsigned int width,
-                      unsigned int height,
-                      float deltaTime,
-                      const std::vector<Renderable> &renderables,
-                      int destX,
-                      int destY,
-                      std::span<const OverlayVertex> overlayVertices)
+void Renderer::drawOutlines(unsigned int width,
+                            unsigned int height,
+                            const std::vector<Renderable> &renderables)
 {
-    if (width == 0 || height == 0)
+    if (!outlineTargets.empty() && outlineShader.getId() != 0)
     {
-        return;
-    }
-    
-    if (!sceneFramebuffer.resize(width, height))
-    {
-        Log::Print("FAILED TO RESIZE SCENE FRAMEBUFFER", "Renderer", LogType::LOG_ERROR);
-        return;
-    }
+        glEnable(GL_STENCIL_TEST);
+        glStencilMask(0xFF);
+        glClearStencil(0);
+        glClear(GL_STENCIL_BUFFER_BIT);
 
-    glEnable(GL_DEPTH_TEST);
-    glDepthMask(GL_TRUE);
-    glEnable(GL_CULL_FACE);
-    glDisable(GL_BLEND);
-    glDisable(GL_SCISSOR_TEST);
+        glEnable(GL_DEPTH_TEST);
+        glDepthFunc(GL_LEQUAL);
+        glDepthMask(GL_FALSE);
+        glDisable(GL_BLEND);
 
-    if (camera != nullptr)
-    {
-        projection = glm::perspective(glm::radians(camera->getFov()),
-                                      (float)width / (float)height,
-                                      config.nearPlane,
-                                      config.farPlane);
-        view = camera->getViewMatrix();
+        outlineShader.use();
+        outlineShader.setVec3("outlineColor", glm::vec3(1.0f, 0.45f, 0.0f));
+
+        const auto drawSelected = [&]() {
+            for (const auto &renderable : renderables)
+            {
+                if (std::find(outlineTargets.begin(), outlineTargets.end(), renderable.entityId) ==
+                    outlineTargets.end())
+                    continue;
+
+                glFrontFace(glm::determinant(glm::mat3(renderable.modelMatrix)) < 0.0f
+                                ? GL_CW
+                                : GL_CCW);
+                outlineShader.setMat4("mvp", projection * view * renderable.modelMatrix);
+
+                for (auto &mesh : renderable.model->meshes)
+                    mesh.draw();
+            }
+                    glFrontFace(GL_CCW);
+        };
+
+        glStencilFunc(GL_ALWAYS, 1, 0xFF);
+        glStencilOp(GL_KEEP, GL_KEEP, GL_REPLACE);
+        glColorMask(GL_FALSE, GL_FALSE, GL_FALSE, GL_FALSE);
+
+        glDisable(GL_DEPTH_TEST);
+        outlineShader.setVec3("clipOffset", glm::vec3(0.0f));
+        drawSelected();
+        glEnable(GL_DEPTH_TEST);
+
+        glColorMask(GL_TRUE, GL_TRUE, GL_TRUE, GL_TRUE);
+        glStencilMask(0x00);
+        glStencilFunc(GL_NOTEQUAL, 1, 0xFF);
+        glStencilOp(GL_KEEP, GL_KEEP, GL_KEEP);
+
+        constexpr glm::vec2 offsets[] = {{-1.0f, -1.0f},
+                                         {0.0f, -1.0f},
+                                         {1.0f, -1.0f},
+                                         {-1.0f, 0.0f},
+                                         {1.0f, 0.0f},
+                                         {-1.0f, 1.0f},
+                                         {0.0f, 1.0f},
+                                         {1.0f, 1.0f}};
+
+        constexpr float thicknessPixels = 2.0f;
+        const glm::vec2 pixelOffset{2.0f * thicknessPixels / static_cast<float>(width),
+                                    2.0f * thicknessPixels / static_cast<float>(height)};
+
+        for (const auto &offset : offsets)
+        {
+            outlineShader.setVec3("clipOffset", glm::vec3(offset * pixelOffset, 0.0f));
+            drawSelected();
+        }
+
+        glStencilMask(0xFF);
+        glDisable(GL_STENCIL_TEST);
+        glDepthMask(GL_TRUE);
+        glDepthFunc(GL_LESS);
     }
+}
 
-    frustum.extractFromMatrix(projection * view);
-
-    const std::size_t activePointLightCount =
-        std::min(pointLights.size(),
-                 std::min(maxPointLightCount, static_cast<std::size_t>(std::numeric_limits<int>::max())));
-    if (pointLights.size() > activePointLightCount && !pointLightLimitWarningLogged)
-    {
-        Log::Print("POINT LIGHT COUNT EXCEEDS GPU STORAGE CAPACITY; EXTRA LIGHTS ARE IGNORED",
-                   "Renderer",
-                   LogType::LOG_WARNING);
-        pointLightLimitWarningLogged = true;
-    }
-
-    pointLightStorage.resize(activePointLightCount);
-    for (std::size_t i = 0; i < activePointLightCount; ++i)
-    {
-        const PointLight &light = pointLights[i];
-        pointLightStorage[i].position = glm::vec4(light.position, 0.0f);
-        pointLightStorage[i].colorIntensity = glm::vec4(light.color, light.intensity);
-        pointLightStorage[i].attenuation = glm::vec4(light.constant, light.linear, light.quadratic, 0.0f);
-    }
-
-    glBindBuffer(GL_SHADER_STORAGE_BUFFER, pointLightsSSBO);
-    if (activePointLightCount > pointLightBufferCapacity)
-    {
-        const std::size_t doubledCapacity = pointLightBufferCapacity == 0 ? 1 : pointLightBufferCapacity * 2;
-        pointLightBufferCapacity = std::min(maxPointLightCount, std::max(activePointLightCount, doubledCapacity));
-        const GLsizeiptr bufferSize = static_cast<GLsizeiptr>(pointLightBufferCapacity * sizeof(PointLightGPU));
-        glBufferData(GL_SHADER_STORAGE_BUFFER, bufferSize, nullptr, GL_DYNAMIC_DRAW);
-    }
-    if (activePointLightCount > 0)
-    {
-        const GLsizeiptr dataSize = static_cast<GLsizeiptr>(activePointLightCount * sizeof(PointLightGPU));
-        glBufferSubData(GL_SHADER_STORAGE_BUFFER, 0, dataSize, pointLightStorage.data());
-    }
-    glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 1, pointLightsSSBO);
-    glBindBuffer(GL_SHADER_STORAGE_BUFFER, 0);
-
-    const std::size_t shadowCasters = pointShadowMap.ensureCapacity(activePointLightCount);
-    if (shadowCasters < activePointLightCount && !pointShadowLimitWarningLogged)
-    {
-        Log::Print("POINT SHADOW ARRAY CAPACITY EXCEEDED; REMAINING POINT LIGHTS WILL BE UNSHADOWED",
-                   "Renderer",
-                   LogType::LOG_WARNING);
-        pointShadowLimitWarningLogged = true;
-    }
-
+void Renderer::drawShadows(const std::vector<Renderable> &renderables,
+                           std::size_t shadowCasters)
+{
     // 1. shadow pass
     shadowMap.beginPass();
     for (const auto &renderable : renderables)
@@ -478,14 +477,51 @@ void Renderer::render(unsigned int width,
         glFrontFace(GL_CCW);
         pointShadowMap.endPass();
     }
+}
 
-    // bind scene framebuffer for main pass
-    sceneFramebuffer.bind();
+std::size_t Renderer::uploadPointLights()
+{
+    const std::size_t activePointLightCount =
+        std::min(pointLights.size(),
+                 std::min(maxPointLightCount, static_cast<std::size_t>(std::numeric_limits<int>::max())));
+    if (pointLights.size() > activePointLightCount && !pointLightLimitWarningLogged)
+    {
+        Log::Print("POINT LIGHT COUNT EXCEEDS GPU STORAGE CAPACITY; EXTRA LIGHTS ARE IGNORED",
+                   "Renderer",
+                   LogType::LOG_WARNING);
+        pointLightLimitWarningLogged = true;
+    }
 
-    // main pass
-    glClearColor(config.clearColor.r, config.clearColor.g, config.clearColor.b, config.clearColor.a);
-    glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+    pointLightStorage.resize(activePointLightCount);
+    for (std::size_t i = 0; i < activePointLightCount; ++i)
+    {
+        const PointLight &light = pointLights[i];
+        pointLightStorage[i].position = glm::vec4(light.position, 0.0f);
+        pointLightStorage[i].colorIntensity = glm::vec4(light.color, light.intensity);
+        pointLightStorage[i].attenuation = glm::vec4(light.constant, light.linear, light.quadratic, 0.0f);
+    }
 
+    glBindBuffer(GL_SHADER_STORAGE_BUFFER, pointLightsSSBO);
+    if (activePointLightCount > pointLightBufferCapacity)
+    {
+        const std::size_t doubledCapacity = pointLightBufferCapacity == 0 ? 1 : pointLightBufferCapacity * 2;
+        pointLightBufferCapacity = std::min(maxPointLightCount, std::max(activePointLightCount, doubledCapacity));
+        const GLsizeiptr bufferSize = static_cast<GLsizeiptr>(pointLightBufferCapacity * sizeof(PointLightGPU));
+        glBufferData(GL_SHADER_STORAGE_BUFFER, bufferSize, nullptr, GL_DYNAMIC_DRAW);
+    }
+    if (activePointLightCount > 0)
+    {
+        const GLsizeiptr dataSize = static_cast<GLsizeiptr>(activePointLightCount * sizeof(PointLightGPU));
+        glBufferSubData(GL_SHADER_STORAGE_BUFFER, 0, dataSize, pointLightStorage.data());
+    }
+    glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 1, pointLightsSSBO);
+    glBindBuffer(GL_SHADER_STORAGE_BUFFER, 0);
+
+    return activePointLightCount;
+}
+
+void Renderer::drawSceneGeometry(const std::vector<Renderable> &renderables, std::size_t activePointLightCount, std::size_t shadowCasters)
+{
     basicShader.use();
 
     SceneUniforms uboData{};
@@ -564,27 +600,10 @@ void Renderer::render(unsigned int width,
     }
 
     glFrontFace(GL_CCW);
-    // skybox
-    skybox.draw(view, projection);
+}
 
-    // grid
-    glEnable(GL_DEPTH_TEST);
-    glDepthFunc(GL_LESS);
-    glDepthMask(GL_FALSE);
-    glDisable(GL_CULL_FACE);
-    glEnable(GL_BLEND);
-    glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
-
-    gridShader.use();
-    gridShader.setMat4("inverseViewProjection", glm::inverse(projection * view));
-    gridShader.setFloat("baseSpacing", std::max(config.gridSpacing, 0.0001f));
-    gridShader.setFloat("farDistance", config.farPlane);
-    grid.draw();
-
-    glDisable(GL_BLEND);
-    glEnable(GL_CULL_FACE);
-    glDepthMask(GL_TRUE);
-
+void Renderer::drawDebugLines(float deltaTime)
+{
     for (size_t i = 0; i < persistentLines.size();)
     {
         persistentLines[i].lifetime -= deltaTime;
@@ -624,79 +643,88 @@ void Renderer::render(unsigned int width,
         glEnable(GL_DEPTH_TEST);
         debugLines.clear();
     }
+}
 
-    if (!outlineTargets.empty() && outlineShader.getId() != 0)
+void Renderer::render(unsigned int width,
+                      unsigned int height,
+                      float deltaTime,
+                      const std::vector<Renderable> &renderables,
+                      int destX,
+                      int destY,
+                      std::span<const OverlayVertex> overlayVertices)
+{
+    if (width == 0 || height == 0)
     {
-        glEnable(GL_STENCIL_TEST);
-        glStencilMask(0xFF);
-        glClearStencil(0);
-        glClear(GL_STENCIL_BUFFER_BIT);
-
-        glEnable(GL_DEPTH_TEST);
-        glDepthFunc(GL_LEQUAL);
-        glDepthMask(GL_FALSE);
-        glDisable(GL_BLEND);
-
-        outlineShader.use();
-        outlineShader.setVec3("outlineColor", glm::vec3(1.0f, 0.45f, 0.0f));
-
-        const auto drawSelected = [&]() {
-            for (const auto &renderable : renderables)
-            {
-                if (std::find(outlineTargets.begin(), outlineTargets.end(), renderable.entityId) ==
-                    outlineTargets.end())
-                    continue;
-
-                glFrontFace(glm::determinant(glm::mat3(renderable.modelMatrix)) < 0.0f
-                                ? GL_CW
-                                : GL_CCW);
-                outlineShader.setMat4("mvp", projection * view * renderable.modelMatrix);
-
-                for (auto &mesh : renderable.model->meshes)
-                    mesh.draw();
-            }
-                    glFrontFace(GL_CCW);
-        };
-
-        glStencilFunc(GL_ALWAYS, 1, 0xFF);
-        glStencilOp(GL_KEEP, GL_KEEP, GL_REPLACE);
-        glColorMask(GL_FALSE, GL_FALSE, GL_FALSE, GL_FALSE);
-
-        glDisable(GL_DEPTH_TEST);
-        outlineShader.setVec3("clipOffset", glm::vec3(0.0f));
-        drawSelected();
-        glEnable(GL_DEPTH_TEST);
-
-        glColorMask(GL_TRUE, GL_TRUE, GL_TRUE, GL_TRUE);
-        glStencilMask(0x00);
-        glStencilFunc(GL_NOTEQUAL, 1, 0xFF);
-        glStencilOp(GL_KEEP, GL_KEEP, GL_KEEP);
-
-        constexpr glm::vec2 offsets[] = {{-1.0f, -1.0f},
-                                         {0.0f, -1.0f},
-                                         {1.0f, -1.0f},
-                                         {-1.0f, 0.0f},
-                                         {1.0f, 0.0f},
-                                         {-1.0f, 1.0f},
-                                         {0.0f, 1.0f},
-                                         {1.0f, 1.0f}};
-
-        constexpr float thicknessPixels = 2.0f;
-        const glm::vec2 pixelOffset{2.0f * thicknessPixels / static_cast<float>(width),
-                                    2.0f * thicknessPixels / static_cast<float>(height)};
-
-        for (const auto &offset : offsets)
-        {
-            outlineShader.setVec3("clipOffset", glm::vec3(offset * pixelOffset, 0.0f));
-            drawSelected();
-        }
-
-        glStencilMask(0xFF);
-        glDisable(GL_STENCIL_TEST);
-        glDepthMask(GL_TRUE);
-        glDepthFunc(GL_LESS);
+        return;
+    }
+    
+    if (!sceneFramebuffer.resize(width, height))
+    {
+        Log::Print("FAILED TO RESIZE SCENE FRAMEBUFFER", "Renderer", LogType::LOG_ERROR);
+        return;
     }
 
+    glEnable(GL_DEPTH_TEST);
+    glDepthMask(GL_TRUE);
+    glEnable(GL_CULL_FACE);
+    glDisable(GL_BLEND);
+    glDisable(GL_SCISSOR_TEST);
+
+    if (camera != nullptr)
+    {
+        projection = glm::perspective(glm::radians(camera->getFov()),
+                                      (float)width / (float)height,
+                                      config.nearPlane,
+                                      config.farPlane);
+        view = camera->getViewMatrix();
+    }
+
+    frustum.extractFromMatrix(projection * view);
+
+    const std::size_t activePointLightCount = uploadPointLights();
+
+    const std::size_t shadowCasters = pointShadowMap.ensureCapacity(activePointLightCount);
+    if (shadowCasters < activePointLightCount && !pointShadowLimitWarningLogged)
+    {
+        Log::Print("POINT SHADOW ARRAY CAPACITY EXCEEDED; REMAINING POINT LIGHTS WILL BE UNSHADOWED",
+                   "Renderer",
+                   LogType::LOG_WARNING);
+        pointShadowLimitWarningLogged = true;
+    }
+
+    drawShadows(renderables, shadowCasters);
+
+    // bind scene framebuffer for main pass
+    sceneFramebuffer.bind();
+
+    // main pass
+    glClearColor(config.clearColor.r, config.clearColor.g, config.clearColor.b, config.clearColor.a);
+    glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+
+    drawSceneGeometry(renderables, activePointLightCount, shadowCasters);
+    // skybox
+    skybox.draw(view, projection);
+
+    // grid
+    glEnable(GL_DEPTH_TEST);
+    glDepthFunc(GL_LESS);
+    glDepthMask(GL_FALSE);
+    glDisable(GL_CULL_FACE); 
+    glEnable(GL_BLEND);
+    glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+
+    gridShader.use();
+    gridShader.setMat4("inverseViewProjection", glm::inverse(projection * view));
+    gridShader.setFloat("baseSpacing", std::max(config.gridSpacing, 0.0001f));
+    gridShader.setFloat("farDistance", config.farPlane);
+    grid.draw();
+
+    glDisable(GL_BLEND);
+    glEnable(GL_CULL_FACE);
+    glDepthMask(GL_TRUE);
+
+    drawDebugLines(deltaTime);
+    drawOutlines(width, height, renderables);
     drawOverlayTriangles(overlayVertices);
     sceneFramebuffer.unbind();
 

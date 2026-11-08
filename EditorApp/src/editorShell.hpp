@@ -1,13 +1,11 @@
 #pragma once
 
-#include <optional>
 #include <string>
 #include <vector>
 
 #include "OctoGui/Event.h"
 #include "OctoGui/Context.h"
 #include "editorPanels.hpp"
-#include "entityId.hpp"
 #include "hierarchyPanel.hpp"
 #include "inspectorPanel.hpp"
 #include "viewportPanel.hpp"
@@ -42,11 +40,6 @@ class EditorShell
 
     void frame(EditorUi &ui, Engine &engine, Scribe::Session &session, void (*routeInput)(void *, float));
 
-    [[nodiscard]] NodeHandle hierarchyPanel() const noexcept
-    {
-        return hierarchyPanelUI.panel();
-    }
-
     [[nodiscard]] const ViewportPanel &viewport() const noexcept
     {
         return viewportPanelUI;
@@ -55,21 +48,6 @@ class EditorShell
     [[nodiscard]] NodeHandle sceneArea() const noexcept
     {
         return sceneNode;
-    }
-
-    [[nodiscard]] NodeHandle inspectorPanel() const noexcept
-    {
-        return inspector;
-    }
-
-    [[nodiscard]] NodeHandle sceneTree() const noexcept
-    {
-        return hierarchyPanelUI.treeView();
-    }
-
-    [[nodiscard]] std::optional<Scene::EntityId> selectedEntity() const noexcept
-    {
-        return hierarchyPanelUI.selectedEntity();
     }
 
   private:
@@ -83,7 +61,6 @@ class EditorShell
     ViewportPanel viewportPanelUI;
     NodeHandle sceneNode{};
 
-    NodeHandle inspector{};
     InspectorPanel inspectorUI;
     ContentBrowserPanel contentBrowserUI;
 
