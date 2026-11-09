@@ -24,6 +24,7 @@
 #include "renderer.hpp"
 #include "scene.hpp"
 #include "sceneLoader.hpp"
+#include "scopedFlag.hpp"
 #include "systemRegistry.hpp"
 #include "transformUtils.hpp"
 #include "window.hpp"
@@ -39,35 +40,11 @@ static void physicsFixedUpdateCallback(void *context, float fixedDt)
 namespace Cthulhu
 {
 
-namespace
-{
-class ScopedFlag
-{
-  public:
-    explicit ScopedFlag(bool &flag)
-        : flag(flag),
-          previous(flag)
-    {
-        flag = true;
-    }
-
-    ~ScopedFlag()
-    {
-        flag = previous;
-    }
-
-    ScopedFlag(const ScopedFlag &) = delete;
-    ScopedFlag &operator=(const ScopedFlag &) = delete;
-
-  private:
-    bool &flag;
-    bool previous;
-};
-} // namespace
+using Core::ScopedFlag;
 
 bool Engine::transitionBlocked() const
 {
-    return progressingSimulation || dispatchingRegistrations ||
+    return progressingSimulation || dispatchingRegistrations || dispatchingEdits ||
            state == EngineState::ShuttingDown ||
            (activeScene && ecs_stage_is_readonly(activeScene->getWorld().c_ptr())) ||
            (activeScene && ecs_is_deferred(activeScene->getWorld().c_ptr()));
@@ -257,7 +234,6 @@ bool Engine::init(const std::filesystem::path &projectFilePath)
     }
     physicsInitialized = true;
 
-    activeScene = createSceneInstance();
     camera = Scene::Camera::init();
 
     Core::Input::init(glfwWindow, resolution);

@@ -13,12 +13,14 @@
 #include "testsEditorDay.hpp"
 #include "testsWorldModes.hpp"
 #include "testsUserSystems.hpp"
+#include "testsAuditRegressions.hpp"
 
 namespace Cthulhu::Validation
 {
 inline int run(Engine& engine)
 {
 	Results r;
+	check(r, startupRegistrations == 2, "Audit: initialization creates one world before the main scene loads");
 	Log::Print("==== STEP 5.5 COMPONENT VALIDATION ====", "Validation", LogType::LOG_INFO);
 	if (!engine.hasActiveScene())
 	{
@@ -78,6 +80,11 @@ inline int run(Engine& engine)
 	validateUserSystems(engine, r);
 	validateRuntimeApi(engine, r);
 	validateSceneFormat(engine, r);
+	validateDuplicationGrowth(engine, r);
+	validateOrderedDeleteUndo(engine, r);
+	validateCommandTransitions(engine, r);
+	validateSnapshotTraversal(engine, r);
+	validateClampedMerge(engine, r);
 	checkRefInvariant(engine, r, "after play/stop");
 	validateUnload(engine, r);
 	validateShutdown(engine, r);

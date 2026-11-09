@@ -5,6 +5,7 @@
 #include "components.hpp"
 #include "engine.hpp"
 #include "session.hpp"
+#include "scopedFlag.hpp"
 
 namespace Cthulhu::Scribe
 {
@@ -76,6 +77,7 @@ Result Session::beginTransformEdit(std::span<const Scene::EntityId> selection)
 
 Result Session::previewTransforms(std::span<const TransformValue> values)
 {
+    const Core::ScopedFlag dispatch(engine.dispatchingEdits);
     auto *scene = syncScene();
     if (!transformActive || !scene)
     {
@@ -116,6 +118,7 @@ Result Session::previewTransforms(std::span<const TransformValue> values)
 
 Result Session::finishTransformEdit(bool commit)
 {
+    const Core::ScopedFlag dispatch(engine.dispatchingEdits);
     if (!transformActive)
     {
         return Result::noChange();

@@ -239,6 +239,8 @@ class Engine
     }
 
   private:
+    friend class Scribe::Session;
+
     std::optional<Cthulhu::Project::Project> project;
     std::filesystem::path engineResourceRoot;
 
@@ -292,6 +294,7 @@ class Engine
     std::optional<TransitionRequest> pendingTransition;
     bool progressingSimulation = false;
     bool dispatchingRegistrations = false;
+    bool dispatchingEdits = false;
 
     [[nodiscard]] bool transitionBlocked() const;
     void applyPendingTransition();

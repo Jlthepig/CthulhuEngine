@@ -196,7 +196,6 @@ class Scene
     std::string name;
     std::optional<std::string> resourcePath;
     bool dirty = false;
-    uint32_t nextId{};
 
     std::unordered_map<EntityId, flecs::entity, EntityIdHash> entityLookup;
     std::unordered_map<EntityId, std::vector<EntityId>, EntityIdHash> customSiblingOrders;
@@ -210,7 +209,7 @@ class Scene
     [[nodiscard]] std::optional<EntityId> duplicateEntityRecursive(flecs::entity sourceEntity,
                                                                    std::optional<EntityId> parentId);
 
-    void captureRecursive(flecs::entity entity, std::vector<EntitySnapshot> &out) const;
+    void captureRecursive(flecs::entity entity, std::size_t siblingOrder, std::vector<EntitySnapshot> &out) const;
 
     [[nodiscard]]
     EntityId generateUniqueEntityId() const;

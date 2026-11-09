@@ -191,12 +191,18 @@ class SetFieldCommand final : public Command
             return Result::failed("INVALID VALUE FOR " + component + "." + field);
         }
 
-        if (registry.getField(target.entity, component, field) == current)
+        auto applied = registry.getField(target.entity, component, field);
+        if (!applied)
+        {
+            return Result::failed("FIELD LOST DURING EDIT: " + component + "." + field);
+        }
+        if (applied == current)
         {
             return Result::noChange();
         }
 
         oldValue = std::move(*current);
+        requested = std::move(*applied);
         context.emit(ChangeType::ComponentChanged, id, component);
         return Result::applied();
     }

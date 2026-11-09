@@ -163,11 +163,18 @@ inline void validateScribeMove(Engine& engine, Results& r)
 	}
 	check(r, sawMoved && sawChanged, "M4 move emits AssetMoved and ComponentChanged");
 	check(r, scene->isDirty(), "M5 move marks the scene dirty");
+	check(r, !session.canUndo() && !session.canRedo() && !session.undo() && !session.redo() &&
+				 meshPath() == movedPath,
+		  "M5 move clears stale asset paths from undo and redo");
+	session.renameScene("V_MoveHistoryBarrier");
+	check(r, session.undo() && scene->isDirty() && meshPath() == movedPath,
+		  "M5 undo after a move preserves the dirty state");
 
 	check(r, !session.moveAsset(imported.id, floorPath).ok(), "M6 move never overwrites");
 	check(r, !session.moveAsset(imported.id, "res://validation_import/V_Move.wav").ok(),
 		  "M6 move cannot change the asset type");
 	check(r, session.moveAsset(imported.id, movedPath).status == Status::NoChange, "M6 move to the same path is NoChange");
+	check(r, session.canRedo(), "M6 failed and unchanged moves preserve history");
 
 	session.endMerge();
 	const bool replaced = session.replaceReferences(movedPath, floorPath).status == Status::Applied && meshPath() == floorPath;
@@ -186,6 +193,21 @@ inline void validateScribeMove(Engine& engine, Results& r)
 
 	check(r, session.replaceReferences("res://validation_import/nothing.glb", floorPath).status == Status::NoChange,
 		  "R4 no references is NoChange");
+
+	session.endMerge();
+	const bool empty = session.setField(created.id, "Mesh", "modelPath", std::string{}).ok();
+	session.endMerge();
+	const bool referenced = session.setField(created.id, "Mesh", "modelPath", std::string(movedPath)).ok();
+	const bool undone = session.undo();
+	const bool movedWithoutReferences = session.moveAsset(imported.id, startPath).status == Status::Applied;
+	check(r, empty && referenced && undone && movedWithoutReferences && meshPath().empty() &&
+				 !session.canUndo() && !session.canRedo(),
+		  "M7 move clears paths held only in redo history");
+	const bool saved = session.saveAs("res://.cthulhu/validation_asset_history.scene").ok();
+	const bool movedClean = session.moveAsset(imported.id, movedPath).status == Status::Applied;
+	session.renameScene("V_CleanMoveBarrier");
+	check(r, saved && movedClean && session.undo() && !scene->isDirty(),
+		  "M7 move without scene references preserves the clean save point");
 
 	session.deleteEntity(created.id);
 	assets.collectUnusedModels();
@@ -228,12 +250,15 @@ inline void validateScribeDelete(Engine& engine, Results& r)
 	check(r, !session.deleteAsset(imported.id).ok(), "D1 delete refused while the open scene uses the asset");
 	check(r, std::filesystem::exists(*file) && assets.getRegistry().findById(imported.id),
 		  "D1 refused delete changes nothing");
+	check(r, session.canUndo(), "D1 refused delete preserves history");
 
 	session.deleteEntity(created.id);
 	(void) session.takeEvents();
 
 	const bool deleted = session.deleteAsset(imported.id).status == Status::Applied;
 	check(r, deleted && !std::filesystem::exists(*file), "D2 delete moves the file out of the project");
+	check(r, deleted && !session.canUndo() && !session.canRedo() && !session.undo() && !session.redo(),
+		  "D2 delete clears commands that could resurrect a deleted asset reference");
 
 	Assets::AssetRegistry reloaded;
 	const bool onDisk = reloaded.load(project->getRootPath() / ".cthulhu" / "assets.json") &&

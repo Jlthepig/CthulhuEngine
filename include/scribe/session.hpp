@@ -98,6 +98,7 @@ class Session
     Result refreshAssets();
     AssetResult importAsset(const std::filesystem::path &sourceFile, std::string_view destination);
 
+    // << successful moves and deletes clear undo/redo because stored asset paths can become invalid >>
     Result moveAsset(Assets::AssetId id, std::string_view destination);
 
     Result replaceReferences(std::string_view from, std::string_view to);
@@ -131,5 +132,6 @@ class Session
     bool refuseEdit();
 
     void rewriteReferences(Scene::Scene &scene, std::string_view from, std::string_view to);
+    void resetHistoryAfterAssetChange();
 };
 } // namespace Cthulhu::Scribe

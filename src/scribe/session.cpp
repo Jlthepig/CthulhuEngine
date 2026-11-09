@@ -6,6 +6,7 @@
 #include "entityCommands.hpp"
 #include "log_utils.hpp"
 #include "scene.hpp"
+#include "scopedFlag.hpp"
 #include "session.hpp"
 
 using KalaHeaders::KalaLog::Log;
@@ -151,6 +152,7 @@ void Session::refreshDirty(Scene::Scene &scene)
 
 Result Session::execute(std::unique_ptr<Command> command)
 {
+    const Core::ScopedFlag dispatch(engine.dispatchingEdits);
     if (refuseEdit())
     {
         return Result::failed("CANNOT EDIT DURING PLAY OR A TRANSFORM PREVIEW");
@@ -192,6 +194,7 @@ Result Session::execute(std::unique_ptr<Command> command)
 
 bool Session::undo()
 {
+    const Core::ScopedFlag dispatch(engine.dispatchingEdits);
     if (refuseEdit())
     {
         return false;
@@ -215,6 +218,7 @@ bool Session::undo()
 
 bool Session::redo()
 {
+    const Core::ScopedFlag dispatch(engine.dispatchingEdits);
     if (refuseEdit())
     {
         return false;
@@ -453,6 +457,8 @@ Result Session::moveAsset(Assets::AssetId id, std::string_view destination)
         rewriteReferences(*scene, oldPath, *newPath);
     }
 
+    resetHistoryAfterAssetChange();
+
     return Result::applied();
 }
 
@@ -491,6 +497,8 @@ Result Session::deleteAsset(Assets::AssetId id)
     {
         return Result::failed("DELETE FAILED");
     }
+
+    resetHistoryAfterAssetChange();
 
     ChangeEvent event;
     event.type = ChangeType::AssetDeleted;
@@ -538,6 +546,7 @@ std::vector<MissingAsset> Session::findMissingAssets()
 // not undoable on purpose <<the file already moved>> <<going back would break the reference>>
 void Session::rewriteReferences(Scene::Scene &scene, std::string_view from, std::string_view to)
 {
+    const Core::ScopedFlag dispatch(engine.dispatchingEdits);
     const auto references = scene.findAssetReferences(from);
     if (references.empty())
     {
@@ -555,7 +564,15 @@ void Session::rewriteReferences(Scene::Scene &scene, std::string_view from, std:
     }
 
     scene.markDirty();
-    history.invalidateSavePoint();
+}
+
+void Session::resetHistoryAfterAssetChange()
+{
+    history.clear();
+    if (const auto *scene = engine.getActiveScene(); scene && scene->isDirty())
+    {
+        history.invalidateSavePoint();
+    }
 }
 
 Result Session::setAudioImportSettings(Assets::AssetId id, const Assets::AudioImportSettings &settings)

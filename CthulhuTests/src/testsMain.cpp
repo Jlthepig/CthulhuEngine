@@ -14,6 +14,9 @@ int main(int argc, char* argv[])
 	}
 
 	Cthulhu::Engine engine;
+	engine.addSystemRegistration([](void *, flecs::world &, Cthulhu::Engine &) {
+		++Cthulhu::Validation::startupRegistrations;
+	});
 
 	if (!engine.init(argv[1]))
 	{

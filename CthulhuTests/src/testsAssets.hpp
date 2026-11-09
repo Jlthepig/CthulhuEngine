@@ -426,12 +426,30 @@ inline void validateUnusedCollection(Engine& engine, Results& r)
 	const bool back = engine.loadScene(SAVE_PATH);
 	const Assets::ModelHandle helmetAfter = assets.loadModel("res://assets/models/DamagedHelmet.glb");
 	check(r, back && assets.getModel(helmetAfter) != nullptr, "D2 unloaded model reloads when needed again");
-	check(r, helmetAfter.index == helmetBefore.index && helmetAfter.generation != helmetBefore.generation,
-		  "E1 freed slot is reused with a new generation");
+	check(r, helmetAfter.isValid() && !(helmetAfter == helmetBefore),
+		  "E1 reloaded model gets a fresh handle");
 	check(r, !assets.getModel(helmetBefore), "E2 old handle does not resolve to the slot's new occupant");
 	const uint32_t refs = assets.getModelRefCount(helmetAfter);
 	assets.releaseModel(helmetBefore);
 	check(r, assets.getModelRefCount(helmetAfter) == refs, "E3 releasing a stale handle cannot affect the new occupant");
+
+	// One free slot makes reuse deterministic, regardless of the project's other models.
+	Assets::AssetManager isolated;
+	const bool bound = isolated.setProject(engine.getProject());
+	const auto old = isolated.acquireModel("res://assets/models/DamagedHelmet.glb");
+	isolated.releaseModel(old);
+	const auto collected = isolated.collectUnusedModels();
+	const auto reused = isolated.acquireModel("res://assets/models/Floor.glb");
+	check(r, bound && old.isValid() && collected == 1 && reused.isValid() &&
+				 reused.index == old.index && reused.generation != old.generation,
+		  "E1 isolated freed slot is reused with a new generation");
+	check(r, isolated.getModel(reused) && !isolated.getModel(old),
+		  "E2 stale handle cannot resolve a different model in the reused slot");
+	const auto reusedRefs = isolated.getModelRefCount(reused);
+	isolated.releaseModel(old);
+	check(r, reusedRefs == 1 && isolated.getModelRefCount(reused) == reusedRefs,
+		  "E3 stale release cannot change the reused slot's reference count");
+	isolated.shutdown();
 	const Assets::AudioClipHandle clipAfter = assets.loadAudioClip(TEST_AUDIO);
 	check(r, assets.getAudioClip(clipAfter) && !assets.getAudioClip(clipBefore) &&
 			 clipAfter.index == clipBefore.index && clipAfter.generation != clipBefore.generation,

@@ -508,6 +508,7 @@ std::optional<EntityId> Scene::duplicateEntityRecursive(flecs::entity source, st
     {
         return std::nullopt;
     }
+    const EntityId sourceId = sourceIdentity->id;
 
     const auto *sourceName = source.try_get<NameComponent>();
     const std::string name = sourceName ? sourceName->name : "Entity";
@@ -544,7 +545,7 @@ std::optional<EntityId> Scene::duplicateEntityRecursive(flecs::entity source, st
     }
 
     std::vector<EntityId> duplicatedChildren;
-    const std::vector<EntityId> sourceChildren = getChildren(sourceIdentity->id);
+    const std::vector<EntityId> sourceChildren = getChildren(sourceId);
     for (const EntityId sourceChildId : sourceChildren)
     {
         auto sourceChild = findEntity(sourceChildId);
@@ -564,7 +565,7 @@ std::optional<EntityId> Scene::duplicateEntityRecursive(flecs::entity source, st
         duplicatedChildren.push_back(*childDuplicate);
     }
 
-    if (hasCustomSiblingOrder(sourceIdentity->id))
+    if (hasCustomSiblingOrder(sourceId))
     {
         for (std::size_t index = 0; index < duplicatedChildren.size(); ++index)
         {
@@ -623,11 +624,11 @@ std::optional<std::vector<EntitySnapshot>> Scene::captureSubtree(EntityId rootId
     }
 
     std::vector<EntitySnapshot> snapshots;
-    captureRecursive(*root, snapshots);
+    captureRecursive(*root, getSiblingOrder(rootId).value_or(0), snapshots);
     return snapshots;
 }
 
-void Scene::captureRecursive(flecs::entity entity, std::vector<EntitySnapshot> &out) const
+void Scene::captureRecursive(flecs::entity entity, std::size_t siblingOrder, std::vector<EntitySnapshot> &out) const
 {
     const auto *identity = entity.try_get<EntityIdentityComponent>();
     if (!identity)
@@ -639,7 +640,7 @@ void Scene::captureRecursive(flecs::entity entity, std::vector<EntitySnapshot> &
     snapshot.id = identity->id;
     snapshot.parentId = getParent(identity->id);
     snapshot.hasCustomSiblingOrder = hasCustomSiblingOrder(snapshot.parentId);
-    snapshot.siblingOrder = getSiblingOrder(snapshot.id).value_or(0);
+    snapshot.siblingOrder = siblingOrder;
 
     if (const auto *name = entity.try_get<NameComponent>())
     {
@@ -650,11 +651,12 @@ void Scene::captureRecursive(flecs::entity entity, std::vector<EntitySnapshot> &
 
     out.push_back(std::move(snapshot));
 
-    for (const EntityId childId : getChildren(identity->id))
+    const auto children = getChildren(identity->id);
+    for (std::size_t index = 0; index < children.size(); ++index)
     {
-        if (auto child = findEntity(childId))
+        if (auto child = findEntity(children[index]))
         {
-            captureRecursive(*child, out);
+            captureRecursive(*child, index, out);
         }
     }
 }
@@ -714,6 +716,7 @@ std::vector<AssetReference> Scene::findAssetReferences(std::string_view resource
 bool Scene::restoreSubtree(const std::vector<EntitySnapshot> &snapshots)
 {
     std::vector<EntityId> created;
+    std::unordered_map<EntityId, std::vector<EntityId>, EntityIdHash> restoredOrders;
     const auto savedOrders = customSiblingOrders;
     const bool savedDirty = dirty;
 
@@ -746,7 +749,7 @@ bool Scene::restoreSubtree(const std::vector<EntitySnapshot> &snapshots)
         }
     }
 
-    // validate the  sibling groups before we are  changing them
+    // Reserve restored positions, keeping unaffected siblings in their current order.
     {
         std::unordered_map<EntityId, std::vector<const EntitySnapshot *>, EntityIdHash> groups;
         for (const auto &snapshot : snapshots)
@@ -759,20 +762,36 @@ bool Scene::restoreSubtree(const std::vector<EntitySnapshot> &snapshots)
         for (const auto &[parentId, ordered] : groups)
         {
             const std::vector<EntityId> siblings = parentId.isValid() ? getChildren(parentId) : getRootEntities();
-            if (ordered.size() != siblings.size())
-            {
-                rollback();
-                return false;
-            }
-            std::vector<bool> assigned(siblings.size(), false);
+            auto &desired = restoredOrders[parentId];
+            desired.resize(siblings.size());
+            std::unordered_set<EntityId, EntityIdHash> positioned;
             for (const EntitySnapshot *snapshot : ordered)
             {
-                if (snapshot->siblingOrder >= siblings.size() || assigned[snapshot->siblingOrder])
+                if (snapshot->siblingOrder >= desired.size() || desired[snapshot->siblingOrder].isValid())
                 {
                     rollback();
                     return false;
                 }
-                assigned[snapshot->siblingOrder] = true;
+                desired[snapshot->siblingOrder] = snapshot->id;
+                positioned.insert(snapshot->id);
+            }
+            std::size_t next = 0;
+            for (const EntityId sibling : siblings)
+            {
+                if (positioned.contains(sibling))
+                {
+                    continue;
+                }
+                while (next < desired.size() && desired[next].isValid())
+                {
+                    ++next;
+                }
+                if (next == desired.size())
+                {
+                    rollback();
+                    return false;
+                }
+                desired[next++] = sibling;
             }
         }
     }
@@ -814,13 +833,10 @@ bool Scene::restoreSubtree(const std::vector<EntitySnapshot> &snapshots)
         }
     }
 
-    for (const auto &snapshot : snapshots)
+    for (auto &[parentId, order] : restoredOrders)
     {
-        if (snapshot.hasCustomSiblingOrder && !setSiblingOrder(snapshot.id, snapshot.siblingOrder))
-        {
-            rollback();
-            return false;
-        }
+        customSiblingOrders[parentId] = std::move(order);
+        markDirty();
     }
 
     return true;
@@ -835,14 +851,13 @@ SceneSnapshot Scene::captureScene() const
     snapshot.directionalLight = directionalLight;
     snapshot.pointLights = pointLights;
 
-    for (const EntityId id : getRootEntities())
+    snapshot.entities.reserve(entityLookup.size());
+    const auto roots = getRootEntities();
+    for (std::size_t index = 0; index < roots.size(); ++index)
     {
-        if (auto subtree = captureSubtree(id))
+        if (auto root = findEntity(roots[index]))
         {
-            for (auto &entitySnapshot : *subtree)
-            {
-                snapshot.entities.push_back(std::move(entitySnapshot));
-            }
+            captureRecursive(*root, index, snapshot.entities);
         }
     }
 
@@ -875,8 +890,6 @@ void Scene::clear()
     world.delete_with<TransformComponent>();
     entityLookup.clear();
     customSiblingOrders.clear();
-
-    nextId = 0;
 
     directionalLight = Rendering::DirectionalLight{};
     pointLights.clear();
