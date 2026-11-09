@@ -6,6 +6,10 @@
 
 namespace Cthulhu::Validation
 {
+static_assert(CS::EntityId{1, 9} < CS::EntityId{2, 0});
+static_assert(CS::EntityId{1, 2} < CS::EntityId{1, 3});
+static_assert(!(CS::EntityId{1, 2} < CS::EntityId{1, 2}));
+
 inline void validateHierarchyOrdering(CS::Scene& scene, Results& r)
 {
     const CS::EntityId rootAlphaId = idOf(scene.createEntity("V_OrderRoot_A"));
@@ -20,8 +24,13 @@ inline void validateHierarchyOrdering(CS::Scene& scene, Results& r)
     const CS::EntityId parentId = idOf(parent);
     const CS::EntityId alphaId = idOf(scene.createEntity("V_Order_A"));
     const CS::EntityId zuluId = idOf(scene.createEntity("V_Order_Z"));
-    scene.setParent(alphaId, parentId);
-    scene.setParent(zuluId, parentId);
+	    check(r, scene.setParent(alphaId, parentId),
+		    "H1 parenting beneath a root succeeds");
+	    check(r, scene.setParent(zuluId, parentId),
+		    "H1 parenting a second child succeeds");
+	    check(r, !scene.setParent(parentId, alphaId) &&
+			     !scene.getParent(parentId),
+		    "H1 a hierarchy cycle is rejected");
 
     auto children = scene.getChildren(parentId);
     check(r, children.size() == 2 && children[0] == alphaId && children[1] == zuluId,

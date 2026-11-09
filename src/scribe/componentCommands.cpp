@@ -249,7 +249,7 @@ class SetTransformsCommand final : public Command
     explicit SetTransformsCommand(std::vector<TransformValue> values) : requested(std::move(values))
     {
         std::sort(requested.begin(), requested.end(), [](const TransformValue &a, const TransformValue &b) {
-            return a.id.high < b.id.high || (a.id.high == b.id.high && a.id.low < b.id.low);
+            return a.id < b.id;
         });
     }
 

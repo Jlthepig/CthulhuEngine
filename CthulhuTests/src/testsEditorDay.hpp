@@ -38,7 +38,7 @@ inline ScenePrint fingerprint(CS::Scene& scene)
 	});
 
 	std::sort(print.entities.begin(), print.entities.end(), [](const EntityPrint& a, const EntityPrint& b) {
-		return a.id.high != b.id.high ? a.id.high < b.id.high : a.id.low < b.id.low;
+		return a.id < b.id;
 	});
 
 	return print;

@@ -203,7 +203,7 @@ bool Scene::shouldCreateHierarchyCycle(flecs::entity child, flecs::entity newPar
     }
 
     auto current = newParent;
-    while (current.is_alive())
+    while (current && current.is_alive())
     {
         if (current == child)
         {
@@ -321,11 +321,7 @@ void Scene::sortSiblings(std::vector<EntityId> &siblings, EntityId parentKey) co
         {
             return leftText < rightText;
         }
-        if (left.high != right.high)
-        {
-            return left.high < right.high;
-        }
-        return left.low < right.low;
+        return left < right;
     };
 
     const auto customOrder = customSiblingOrders.find(parentKey);

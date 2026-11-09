@@ -1,6 +1,7 @@
 #pragma once
 
 #include <cstddef>
+#include <compare>
 #include <cstdint>
 #include <functional>
 #include <optional>
@@ -20,6 +21,7 @@ struct EntityId
     }
 
     friend constexpr bool operator==(const EntityId &, const EntityId &) noexcept = default;
+    friend constexpr auto operator<=>(const EntityId &, const EntityId &) noexcept = default;
 };
 
 struct EntityIdHash

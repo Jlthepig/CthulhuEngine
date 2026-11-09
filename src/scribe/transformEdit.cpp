@@ -52,7 +52,7 @@ Result Session::beginTransformEdit(std::span<const Scene::EntityId> selection)
     }
 
     std::sort(transformBefore.begin(), transformBefore.end(), [](const TransformValue &a, const TransformValue &b) {
-        return a.id.high < b.id.high || (a.id.high == b.id.high && a.id.low < b.id.low);
+        return a.id < b.id;
     });
 
     const auto duplicate = std::adjacent_find(

@@ -34,8 +34,7 @@ bool ViewportPanel::prepareDragParents(Engine &engine)
                                                 drag.values.end(),
                                                 *ancestor,
                                                 [](const Scribe::TransformValue &value, Scene::EntityId id) {
-                                                    return value.id.high < id.high ||
-                                                           (value.id.high == id.high && value.id.low < id.low);
+                                                       return value.id < id;
                                                 });
 
             if (found != drag.values.end() && found->id == *ancestor)
