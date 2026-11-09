@@ -6,7 +6,6 @@
 #include "components.hpp"
 #include "jsonParser.hpp"
 #include "log_utils.hpp"
-#include "project.hpp"
 #include "sceneLoader.hpp"
 
 using KalaHeaders::KalaLog::Log;
@@ -237,7 +236,6 @@ bool restoreSiblingOrders(const std::vector<ParsedEntity> &entities, Scene &scen
 
 bool SceneLoader::load(const std::string &path,
                        Scene &scene,
-                       [[maybe_unused]] const Cthulhu::Project::Project &project,
                        const Assets::AssetRegistry &registry)
 {
     auto parsed = JsonParser::parseScene(path); // the parsed information provided by the json parser

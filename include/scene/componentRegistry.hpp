@@ -5,6 +5,7 @@
 #include <string>
 #include <string_view>
 #include <type_traits>
+#include <utility>
 #include <variant>
 #include <vector>
 
@@ -125,6 +126,29 @@ class ComponentRegistry
                                         float min = 0.0f,
                                         float max = 0.0f,
                                         float step = 0.0f);
+
+template <typename T, auto Member>
+[[nodiscard]] FieldDescriptor makeField(
+    std::string name,
+    FieldType type,
+    float min = 0.0f,
+    float max = 0.0f,
+    float step = 0.0f)
+{
+    return makeField(
+        std::move(name),
+        type,
+        [](flecs::entity entity) -> FieldValue {
+            return entity.get<T>().*Member;
+        },
+        [](flecs::entity entity, const FieldValue &value) {
+            auto &component = entity.get_mut<T>();
+            using Value = std::remove_cvref_t<decltype(component.*Member)>;
+            component.*Member = std::get<Value>(value);
+            entity.modified<T>();
+        },
+        min, max, step);
+}
 
 template <typename T> [[nodiscard]] ComponentDescriptor makeComponentDescriptor(std::string name)
 {

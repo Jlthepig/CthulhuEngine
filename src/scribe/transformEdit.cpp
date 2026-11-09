@@ -138,22 +138,21 @@ Result Session::finishTransformEdit(bool commit)
     const Result result = Commands::writeTransforms(context, survivors);
     const bool lostTarget = survivors.size() != targets.size();
     const bool changed = commit && !lostTarget && transformBefore != transformAfter;
-    const auto beforeCopy = transformBefore;
-    const auto afterCopy = transformAfter;
     transformActive = false;
-    transformBefore.clear();
-    transformAfter.clear();
     if (engine.getTransformOwner() == this)
     {
         engine.setTransformOwner(nullptr);
     }
     history.endMerge();
     if (!result.ok() || lostTarget) {
+        transformBefore.clear();
+        transformAfter.clear();
         return Result::failed("TRANSFORM TARGET LOST DURING PREVIEW");
     }
     if (changed)
     {
-        history.record(Commands::completedTransformEdit(std::move(beforeCopy), std::move(afterCopy)));
+        history.record(Commands::completedTransformEdit(
+            std::move(transformBefore), std::move(transformAfter)));
         refreshDirty(*scene);
     }
     else if (transformWasDirty)
@@ -164,6 +163,9 @@ Result Session::finishTransformEdit(bool commit)
     {
         scene->markClean();
     }
+
+    transformBefore.clear();
+    transformAfter.clear();
 
     return changed ? Result::applied() : Result::noChange();
 }

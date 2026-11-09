@@ -24,6 +24,28 @@ inline void validateComponentDescriptors(Engine& engine, CS::Scene& scene, Resul
 {
 	auto& registry = engine.getComponentRegistry();
 
+	{
+		int writes = 0;
+		flecs::world world;
+		auto entity = world.entity().set(ValidationHealth{12.5f, true});
+
+		auto observer = world.observer<ValidationHealth>()
+			.event(flecs::OnSet)
+			.each([&](ValidationHealth &) { ++writes; });
+
+		auto field =
+			CS::makeField<ValidationHealth, &ValidationHealth::health>(
+				"health", CS::FieldType::Float);
+
+		field.set(entity, CS::FieldValue{25.0f});
+
+		check(r, std::get<float>(field.get(entity)) == 25.0f &&
+					 entity.get<ValidationHealth>().armored && writes == 1,
+			  "Member field updates one member and emits OnSet");
+
+		observer.destruct();
+	}
+
 	check(r, scene.getComponentRegistry() == &registry, "D1 scene uses the engine registry");
 
 	bool allBuiltins = true;
@@ -88,6 +110,15 @@ inline void validateComponentDescriptors(Engine& engine, CS::Scene& scene, Resul
 	check(r, rt && rt->bodyId.has_value() && rt->bodyId != oldBody && bodies(engine) == base + 1,
 		  "D8 setField fires OnSet (body rebuilt)");
 	check(r, !registry.setField(w, "Physics", "type", 7), "D8 enum index out of range rejected");
+
+	const auto bodyBeforeMassEdit = rt ? rt->bodyId : std::nullopt;
+	const bool massEdited = registry.setField(w, "Physics", "mass", 4.0f);
+	rt = w.try_get<CS::PhysicsRuntimeComponent>();
+
+	check(r, massEdited && w.get<CS::PhysicsComponent>().mass == 4.0f &&
+				 rt && rt->bodyId.has_value() &&
+				 rt->bodyId != bodyBeforeMassEdit && bodies(engine) == base + 1,
+		  "Member field mass edit rebuilds one physics body");
 
 	physics->remove(w);
 	check(r, !w.has<CS::PhysicsRuntimeComponent>() && bodies(engine) == base, "D8 descriptor remove destroys runtime");

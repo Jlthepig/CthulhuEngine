@@ -105,7 +105,7 @@ std::string_view entryIcon(const ContentBrowserEntry &entry)
 void ContentBrowserPanel::build(Context &ctx, NodeHandle parent)
 {
     fillPane(ctx, parent);
-    panel = ctx.createPanel(parent);
+    const NodeHandle panel = ctx.createPanel(parent);
 
     auto layout = ctx.layoutStyle(panel);
     layout.mode = LayoutMode::Vertical;
@@ -126,7 +126,7 @@ void ContentBrowserPanel::build(Context &ctx, NodeHandle parent)
     fixed(ctx, title, titleWidth, 24.0f);
     ctx.style(title).all.text = ctx.theme().textMuted;
 
-    importButton = ctx.createButton(toolbar, "Import");
+    const NodeHandle importButton = ctx.createButton(toolbar, "Import");
     fixed(ctx, importButton, 60.0f, 26.0f);
     ctx.setEnabled(importButton, false);
     ctx.setTooltip(importButton, "Import is not available yet.");

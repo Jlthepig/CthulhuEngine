@@ -420,7 +420,7 @@ bool Engine::loadScene(std::string_view resourcePath)
     }
 
     auto newScene = createSceneInstance();
-    if (!Scene::SceneLoader::load(resolvedPath->string(), *newScene, *project, assetManager.getRegistry()))
+    if (!Scene::SceneLoader::load(resolvedPath->string(), *newScene, assetManager.getRegistry()))
     {
         Log::Print("FAILED TO LOAD SCENE: " + std::string(resourcePath), "ENGINE", LogType::LOG_ERROR);
 

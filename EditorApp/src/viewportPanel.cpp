@@ -100,7 +100,7 @@ void ViewportPanel::build(Context &ctx, NodeHandle viewportRoot)
     headerLayout.preferredSize = Vec2{0.0f, 36.0f};
     headerLayout.maxSize = Vec2{InfiniteLayoutSize, 36.0f};
 
-    pill = ctx.createContainer(header);
+    const NodeHandle pill = ctx.createContainer(header);
     auto pillLayout = ctx.layoutStyle(pill);
     pillLayout.mode = LayoutMode::Horizontal;
     pillLayout.horizontalAlignment = Alignment::Start;

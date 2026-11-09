@@ -149,8 +149,7 @@ float InspectorPanel::getVectorAxis(const glm::vec3 &value, std::size_t axis)
 
 void InspectorPanel::build(Context &ctx, NodeHandle panelNode)
 {
-    panel = panelNode;
-    content = ctx.createContainer(panel);
+    content = ctx.createContainer(panelNode);
     auto layout = ctx.layoutStyle(content);
     layout.mode = LayoutMode::Vertical;
     layout.horizontalAlignment = Alignment::Stretch;

@@ -76,7 +76,6 @@ class InspectorPanel
         std::vector<Scene::FieldValue> options;
     };
 
-    octogui::NodeHandle panel{};
     octogui::NodeHandle content{};
     octogui::NodeHandle generatedContent{};
     std::vector<Binding> bindings;

@@ -30,36 +30,6 @@ class ViewportPanel
     void build(octogui::Context &ctx, octogui::NodeHandle viewportRoot);
     void update(octogui::Context &ctx);
 
-    [[nodiscard]] GizmoMode mode() const noexcept
-    {
-        return currentMode;
-    }
-
-    [[nodiscard]] GizmoSpace space() const noexcept
-    {
-        return currentSpace;
-    }
-
-    [[nodiscard]] float snapMove() const noexcept
-    {
-        return snapMoveValue;
-    }
-
-    [[nodiscard]] float snapRotate() const noexcept
-    {
-        return snapRotateValue;
-    }
-
-    [[nodiscard]] float snapScale() const noexcept
-    {
-        return snapScaleValue;
-    }
-
-    [[nodiscard]] bool snapEnabled() const noexcept
-    {
-        return snapActive;
-    }
-
     [[nodiscard]] bool gizmoDragActive() const noexcept
     {
         return drag.handle != GizmoHandle::None;
@@ -67,11 +37,6 @@ class ViewportPanel
 
     bool finishGizmoDrag(Scribe::Session &session, bool commit);
     void drawGizmoFeedback(octogui::Context &ctx) const;
-
-    [[nodiscard]] octogui::NodeHandle overlay() const noexcept
-    {
-        return overlayNode;
-    }
 
     [[nodiscard]] std::span<const Rendering::OverlayVertex> overlayVertices() const noexcept
     {
@@ -92,7 +57,6 @@ class ViewportPanel
   private:
     octogui::NodeHandle overlayNode{};
     octogui::NodeHandle header{};
-    octogui::NodeHandle pill{};
 
     octogui::NodeHandle selectButton{};
     octogui::NodeHandle moveButton{};

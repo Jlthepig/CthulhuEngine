@@ -54,8 +54,8 @@ class ContentBrowserPanel
 
     void reloadCatalog(octogui::Context &ctx, const Project::Project &project, const Assets::AssetRegistry &registry);
 
-    octogui::NodeHandle panel{}, toolbar{}, title{};
-    octogui::NodeHandle importButton{}, searchInput{}, typeFilter{}, refreshButton{};
+    octogui::NodeHandle toolbar{}, title{};
+    octogui::NodeHandle searchInput{}, typeFilter{}, refreshButton{};
     octogui::NodeHandle backButton{}, forwardButton{}, upButton{};
     octogui::NodeHandle breadcrumbs{}, breadcrumbLabel{}, errorLabel{};
     octogui::NodeHandle folderTree{}, assetScroll{}, grid{}, emptyLabel{};

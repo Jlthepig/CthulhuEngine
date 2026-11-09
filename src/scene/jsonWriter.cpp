@@ -71,18 +71,11 @@ struct JsonWriter
 {
     std::ostringstream oss;
     int depth = 0;
-    int indentWidth = 4;
     std::vector<bool> firstStack;
-    bool pretty = true;
 
-    int writeIndent()
+    void writeIndent()
     {
-        if (pretty)
-        {
-            oss << "\n" << std::string(depth * indentWidth, ' ');
-            return depth * indentWidth + 1;
-        }
-        return 0;
+        oss << "\n" << std::string(depth * 4, ' ');
     }
 
     void beginObject()
@@ -120,10 +113,8 @@ struct JsonWriter
         if (!firstStack.back())
         {
             oss << ",";
-            writeIndent();
         }
-        else
-            writeIndent();
+        writeIndent();
         firstStack.back() = false;
         oss << "\"" << escapeJson(k) << "\": ";
     }
