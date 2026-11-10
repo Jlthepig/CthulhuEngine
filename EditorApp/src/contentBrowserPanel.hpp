@@ -59,8 +59,10 @@ class ContentBrowserPanel
     Scribe::Result finishMove(octogui::Context &ctx, const Project::Project *project, const Assets::AssetRegistry &registry, Scribe::Session &session);
     void cancelAction(octogui::Context &ctx);
 
+    void importAsset(octogui::Context &ctx, Engine &engine, Scribe::Session &session);
+
     octogui::NodeHandle toolbar{}, title{};
-    octogui::NodeHandle searchInput{}, typeFilter{}, refreshButton{};
+    octogui::NodeHandle importButton{}, searchInput{}, typeFilter{}, refreshButton{};
     octogui::NodeHandle backButton{}, forwardButton{}, upButton{};
     octogui::NodeHandle breadcrumbs{}, breadcrumbLabel{}, errorLabel{};
     octogui::NodeHandle folderTree{}, assetScroll{}, grid{}, emptyLabel{};

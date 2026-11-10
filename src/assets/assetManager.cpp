@@ -8,6 +8,7 @@
 #include "modelLoader.hpp"
 #include "platform.hpp"
 #include "project.hpp"
+#include "pathEncoding.hpp"
 
 using KalaHeaders::KalaLog::Log;
 using KalaHeaders::KalaLog::LogType;
@@ -17,11 +18,12 @@ namespace
 
 bool isInHiddenFolder(std::string_view key)
 {
-    const std::filesystem::path relative(std::string(key.substr(std::string_view("res://").size())));
+    const auto relative = Cthulhu::Utils::pathFromUtf8(key.substr(std::string_view("res://").size()));
+    if (!relative) return true;
 
-    for (const auto &part : relative.parent_path())
+    for (const auto &part : relative->parent_path())
     {
-        const std::string name = part.string();
+        const std::string name = Cthulhu::Utils::pathToUtf8(part);
         if (!name.empty() && name.front() == '.')
         {
             return true;
@@ -70,14 +72,17 @@ std::optional<std::string> normaliseResourcePath(std::string_view resourcePath)
     std::string relative(resourcePath.substr(prefix.size()));
     std::replace(relative.begin(), relative.end(), '\\', '/');
 
-    const std::filesystem::path path = std::filesystem::path(relative).lexically_normal();
+   const auto decoded = Utils::pathFromUtf8(relative);
+    if (!decoded) return std::nullopt;
+
+    const std::filesystem::path path = decoded->lexically_normal();
 
     if (path.is_absolute() || path.has_root_name() || path.has_root_directory())
     {
         return std::nullopt;
     }
 
-    std::string normalized = path.generic_string();
+    std::string normalized = Utils::pathToUtf8(path);
 
     if (normalized == ".")
     {
@@ -166,7 +171,7 @@ ModelHandle AssetManager::loadModel(std::string_view resourcePath)
         return {};
     }
 
-    auto loaded = Rendering::ModelLoader::loadGltf(filePath->string());
+    auto loaded = Rendering::ModelLoader::loadGltf(Utils::pathToUtf8(*filePath));
     if (!loaded)
     {
         Log::Print("FAILED TO LOAD MODEL: " + *key, "AssetManager", LogType::LOG_ERROR);
@@ -293,7 +298,7 @@ AudioClipHandle AssetManager::loadAudioClip(std::string_view resourcePath)
         settings = record->audio;
     }
 
-    Core::AudioClipData *clip = Core::Audio::loadClip(filePath->string(), settings.stream);
+    Core::AudioClipData *clip = Core::Audio::loadClip(*filePath, settings.stream);
     if (!clip)
     {
         Log::Print("FAILED TO LOAD AUDIO CLIP: " + *key, "AssetManager", LogType::LOG_ERROR);
@@ -416,7 +421,7 @@ std::optional<AssetId> AssetManager::importFile(const std::filesystem::path &sou
         return importFailed("UNKNOWN ASSET TYPE: " + *key);
     }
 
-    if (getAssetType(sourceFile.generic_string()) != type)
+    if (getAssetType(Utils::pathToUtf8(sourceFile.extension())) != type)
     {
         return importFailed("SOURCE AND DESTINATION TYPES DIFFER: " + *key);
     }
@@ -429,7 +434,7 @@ std::optional<AssetId> AssetManager::importFile(const std::filesystem::path &sou
     std::error_code error;
     if (!std::filesystem::is_regular_file(sourceFile, error))
     {
-        return importFailed("SOURCE IS NOT A FILE: " + sourceFile.string());
+        return importFailed("SOURCE IS NOT A FILE: " + Utils::pathToUtf8(sourceFile));
     }
 
     auto target = project->resolveResourcePath(*key);
@@ -532,7 +537,8 @@ bool AssetManager::moveFile(AssetId id, std::string_view destination)
     }
 
     const auto audioSlot = audioClipTable.find(oldKey);
-    std::string audioPath = audioSlot ? to->string() : std::string{};
+    std::filesystem::path audioPath =
+        audioSlot ? *to : std::filesystem::path{};
 
     std::filesystem::create_directories(to->parent_path(), error);
     if (error)
@@ -630,7 +636,7 @@ bool AssetManager::setAudioImportSettings(AssetId id, const AudioImportSettings 
     if (slot)
     {
         auto file = project ? project->resolveResourcePath(key) : std::nullopt;
-        rebuilt = file ? Core::Audio::loadClip(file->string(), settings.stream) : nullptr;
+        rebuilt = file ? Core::Audio::loadClip(*file, settings.stream) : nullptr;
         if (!rebuilt)
         {
             return settingsFailed("COULD NOT REIMPORT: " + key);

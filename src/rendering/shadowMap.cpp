@@ -1,6 +1,7 @@
 #include <ext/matrix_clip_space.hpp>
 #include <ext/matrix_transform.hpp>
 
+#include "pathEncoding.hpp"
 #include "shadowMap.hpp"
 
 namespace Cthulhu::Rendering
@@ -31,8 +32,8 @@ void ShadowMap::init(unsigned int width, unsigned int height, const std::filesys
     glBindFramebuffer(GL_FRAMEBUFFER, 0);
 
     // load depth shader
-    depthShader.load((engineResourceRoot / "shaders/depth.vertex").string(),
-                     (engineResourceRoot / "shaders/depth.fragment").string());
+    depthShader.load(Utils::pathToUtf8(engineResourceRoot / "shaders/depth.vertex"),
+                     Utils::pathToUtf8(engineResourceRoot / "shaders/depth.fragment"));
 }
 
 void ShadowMap::setLightDir(const glm::vec3 &direction)

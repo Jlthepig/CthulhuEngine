@@ -11,6 +11,7 @@
 #include "project.hpp"
 #include "projectParser.hpp"
 #include "projectWriter.hpp"
+#include "pathEncoding.hpp"
 #include "log_utils.hpp"
 
 using namespace KalaHeaders::KalaLog;
@@ -79,7 +80,10 @@ std::optional<std::filesystem::path> Project::resolveResourcePath(std::string_vi
 
     std::string_view relativePart = resourcePath.substr(prefix.size());
 
-    std::filesystem::path relativePath{std::string(relativePart)};
+    const auto decoded = Utils::pathFromUtf8(relativePart);
+    if (!decoded) return std::nullopt;
+
+    const std::filesystem::path &relativePath = *decoded;
 
     if (relativePath.is_absolute() || relativePath.has_root_name() || relativePath.has_root_directory())
     {
@@ -251,7 +255,7 @@ std::optional<Project> Project::open(const std::filesystem::path &projectFilePat
         return std::nullopt;
     }
 
-    auto parsedConfig = ProjectParser::parse(absolutePath.string());
+    auto parsedConfig = ProjectParser::parse(Utils::pathToUtf8(absolutePath));
 
     if (!parsedConfig)
     {

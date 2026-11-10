@@ -4,6 +4,7 @@
 #include <stb_image.h>
 
 #include "log_utils.hpp"
+#include "pathEncoding.hpp"
 #include "skybox.hpp"
 
 using KalaHeaders::KalaLog::Log;
@@ -136,12 +137,12 @@ void Skybox::load(const std::filesystem::path &engineRoot, const std::filesystem
 
     engineResourceRoot = engineRoot;
 
-    equirectShader.load((engineResourceRoot / "shaders/equirect.vertex").string(),
-                        (engineResourceRoot / "shaders/equirect.fragment").string());
-    skyboxShader.load((engineResourceRoot / "shaders/skybox.vertex").string(),
-                      (engineResourceRoot / "shaders/skybox.fragment").string());
+    equirectShader.load(Utils::pathToUtf8(engineResourceRoot / "shaders/equirect.vertex"),
+                        Utils::pathToUtf8(engineResourceRoot / "shaders/equirect.fragment"));
+    skyboxShader.load(Utils::pathToUtf8(engineResourceRoot / "shaders/skybox.vertex"),
+                      Utils::pathToUtf8(engineResourceRoot / "shaders/skybox.fragment"));
 
-    loadHDR(hdrPath.string());
+    loadHDR(Utils::pathToUtf8(hdrPath));
     convertToCubemap();
 
     isLoaded = true;
@@ -150,8 +151,8 @@ void Skybox::load(const std::filesystem::path &engineRoot, const std::filesystem
 void Skybox::generateIrradianceMap()
 {
     Shader irradianceShader;
-    irradianceShader.load((engineResourceRoot / "shaders/irradiance.vertex").string(),
-                          (engineResourceRoot / "shaders/irradiance.fragment").string());
+    irradianceShader.load(Utils::pathToUtf8(engineResourceRoot / "shaders/irradiance.vertex"),
+                          Utils::pathToUtf8(engineResourceRoot / "shaders/irradiance.fragment"));
 
     // create irradiance map 32x32
     glGenTextures(1, &irradianceMap);
@@ -365,8 +366,8 @@ void Skybox::generatePrefilterMap()
     glGenerateMipmap(GL_TEXTURE_CUBE_MAP);
 
     Shader prefilterShader;
-    prefilterShader.load((engineResourceRoot / "shaders/prefilter.vertex").string(),
-                         (engineResourceRoot / "shaders/prefilter.fragment").string());
+    prefilterShader.load(Utils::pathToUtf8(engineResourceRoot / "shaders/prefilter.vertex"),
+                         Utils::pathToUtf8(engineResourceRoot / "shaders/prefilter.fragment"));
     prefilterShader.use();
     prefilterShader.setInt("environmentMap", 0);
     prefilterShader.setMat4("projection", captureProjection); // Reuse your existing captureProjection

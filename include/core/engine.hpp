@@ -233,6 +233,8 @@ class Engine
         return engineResourceRoot;
     }
 
+    void resetFrameTiming() noexcept;
+
     float getDeltaTime() const
     {
         return deltaTime;

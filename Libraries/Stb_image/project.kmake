@@ -1,21 +1,21 @@
-#version 1.0
+#version 2.0
 #global
-compilerlauncher: ccache
-compiler: clang-cl
-standard: c++20
-binarytype: static
-binaryname: stbimage
+compilerlauncher: "ccache"
+compiler: "clang-cl"
+standard: "c++20"
+binarytype: "static"
+binaryname: "stbimage"
 sources: "."
 headers: "."
 
-warninglevel: normal
-compileflags: FS
+warninglevel: "normal"
+compileflags: "FS"
 #profile release-windows
-    buildtype: release
+    buildtype: "release"
     buildpath: "build/release-windows"
     
     
 #profile debug-windows
-    buildtype: debug
+    buildtype: "debug"
     buildpath: "build/debug-windows"
     

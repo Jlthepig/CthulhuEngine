@@ -1,7 +1,7 @@
 #pragma once
 #include <cstddef>
 #include <cstdint>
-#include <string>
+#include <filesystem>
 
 namespace Cthulhu::Core
 {
@@ -18,8 +18,8 @@ class Audio
     static bool setSoundSettings(uint32_t soundId, float volume, bool loop);
     static std::size_t stopClipSounds(const AudioClipData *clip);
 
-    static AudioClipData *loadClip(const std::string &filePath, bool stream = false);
-    static void setClipSourcePath(AudioClipData *clip, std::string path) noexcept;
+    static AudioClipData *loadClip(const std::filesystem::path &filePath, bool stream = false);
+    static void setClipSourcePath(AudioClipData *clip, std::filesystem::path path) noexcept;
     static void destroyClip(AudioClipData *clip);
     static uint32_t playClip(const AudioClipData *clip, float volume = 1.0f, bool loop = false);
 

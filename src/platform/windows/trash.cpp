@@ -12,6 +12,7 @@
 #pragma comment(lib, "ole32.lib")
 #pragma comment(lib, "shell32.lib")
 
+// <<<< Cthulhus WINDOWS trash or recyclebin implementation >>>>
 namespace
 {
 class RecycleOnlySink final : public IFileOperationProgressSink

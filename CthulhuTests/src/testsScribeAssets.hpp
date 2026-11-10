@@ -8,7 +8,8 @@
 namespace Cthulhu::Validation
 {
 inline constexpr std::string_view IMPORT_DIR = "res://validation_import";
-inline constexpr std::string_view IMPORT_PATH = "res://validation_import/V_Imported.wav";
+inline constexpr std::string_view IMPORT_PATH =
+	"res://validation_import/caf\xC3\xA9/\xE9\x9F\xB3.wav";
 
 // deletes the import test folder and forgets its records so runs have nothing left behind
 inline void cleanImportFolder(Engine& engine)
@@ -57,11 +58,29 @@ inline void validateScribeImport(Engine& engine, Results& r)
 	(void) session.takeEvents();
 	auto& assets = engine.getAssetManager();
 
+	const auto staged = project->getRootPath() / "validation_import" /
+		std::filesystem::path(u8"source_caf\u00E9/\u97F3.wav");
+
+	std::error_code copyError;
+	std::filesystem::create_directories(staged.parent_path(), copyError);
+	const bool copied = !copyError && std::filesystem::copy_file(
+		*source, staged, std::filesystem::copy_options::none, copyError);
+
+	check(r, copied && !copyError, "I0 Unicode source fixture");
+	if (!copied || copyError)
+	{
+		cleanImportFolder(engine);
+		return;
+	}
+	source = staged;
+
 	auto imported = session.importAsset(*source, IMPORT_PATH);
 	const auto* record = imported.ok() ? assets.getRegistry().findById(imported.id) : nullptr;
 	auto target = project->resolveResourcePath(IMPORT_PATH);
 	check(r, imported.ok() && imported.id.isValid() && target && std::filesystem::exists(*target),
 		  "I1 import copies the file into the project");
+	check(r, std::filesystem::is_regular_file(*source),
+		  "I1 import preserves its source");
 	check(r, record && record->path == IMPORT_PATH && record->type == Assets::AssetType::Audio && !record->missing,
 		  "I1 import registers the asset");
 
@@ -79,6 +98,16 @@ inline void validateScribeImport(Engine& engine, Results& r)
 	const auto* onDisk = reloaded.load(project->getRootPath() / ".cthulhu" / "assets.json")
 							 ? reloaded.findById(imported.id) : nullptr;
 	check(r, onDisk && onDisk->path == IMPORT_PATH, "I2 import is saved to the registry file");
+
+	check(r, assets.refreshRegistry().ok &&
+			 assets.getRegistry().findByPath(IMPORT_PATH) &&
+			 assets.getRegistry().findByPath(IMPORT_PATH)->id == imported.id,
+		  "I2 Unicode scan preserves the asset ID");
+
+	check(r, !Assets::normaliseResourcePath("res://bad_\xC0\xAF.wav") &&
+			 !Assets::normaliseResourcePath(
+				 std::string_view("res://bad\0.wav", 14)),
+		  "I2 malformed UTF-8 and embedded NUL paths are rejected");
 
 	auto clip = assets.acquireAudioClip(IMPORT_PATH);
 	check(r, clip.isValid(), "I3 imported clip loads");
@@ -102,8 +131,10 @@ inline void validateScribeMove(Engine& engine, Results& r)
 {
 	using Status = Scribe::Result::Status;
 	constexpr std::string_view floorPath = "res://assets/models/Floor.glb";
-	constexpr std::string_view startPath = "res://validation_import/V_Move.glb";
-	constexpr std::string_view movedPath = "res://validation_import/moved/V_Moved.glb";
+	constexpr std::string_view startPath =
+		"res://validation_import/caf\xC3\xA9/V_Move.glb";
+	constexpr std::string_view movedPath =
+		"res://validation_import/moved_caf\xC3\xA9/V_Moved.glb";
 
 	const auto* project = engine.getProject();
 	auto* scene = engine.getActiveScene();
@@ -448,7 +479,8 @@ inline void validateMissingAssets(Engine& engine, Results& r)
 inline void validateReimport(Engine& engine, Results& r)
 {
 	using Status = Scribe::Result::Status;
-	constexpr std::string_view clipPath = "res://validation_import/V_Reimport.wav";
+	constexpr std::string_view clipPath =
+		"res://validation_import/caf\xC3\xA9/V_Reimport.wav";
 
 	const auto* project = engine.getProject();
 	auto* scene = engine.getActiveScene();
@@ -516,7 +548,7 @@ inline void validateReimport(Engine& engine, Results& r)
 
 	Core::Audio::stopClipSounds(assets.getAudioClip(handle));
 	constexpr std::string_view movedClip =
-		"res://validation_import/moved/V_Reimport.wav";
+		"res://validation_import/moved_caf\xC3\xA9/V_Reimport.wav";
 	const auto moved = session.moveAsset(imported.id, movedClip);
 	check(r, moved.status == Status::Applied &&
 				 e.get<CS::AudioSourceComponent>().filePath == movedClip &&

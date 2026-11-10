@@ -5,6 +5,7 @@
 
 #include "project.hpp"
 #include "engine.hpp"
+#include "input.hpp"
 #include "session.hpp"
 
 using namespace octogui;
@@ -64,10 +65,7 @@ void ContentBrowserPanel::applyFilter(Context &ctx)
     for (std::size_t entry : visible)
     {
         const auto &value = entries[entry];
-        if ((value.folder && !selectedFolder.empty() &&
-             value.path == selectedFolder) ||
-            (!value.folder && selectedAsset.isValid() &&
-             value.assetId == selectedAsset))
+        if ((value.folder && !selectedFolder.empty() && value.path == selectedFolder) || (!value.folder && selectedAsset.isValid() && value.assetId == selectedAsset))
         {
             selected = entry;
             break;
@@ -262,6 +260,15 @@ void ContentBrowserPanel::update(Context &ctx, Engine &engine, Scribe::Session &
     }
     else if (!actionHandled && !ctx.contextMenuOwnsInput())
     {
+        const auto destination = index.findFolder(currentFolder);
+        if (canEditAssets && destination && !index.entries()[*destination].missing && ctx.isClicked(importButton))
+        {
+            importAsset(ctx, engine, session);
+            engine.resetFrameTiming();
+            Core::Input::resetMouseTracking();
+            return;
+        }
+
         if (canEditAssets && ctx.isClicked(refreshButton))
         {
             const auto result = session.refreshAssets();
@@ -350,6 +357,9 @@ void ContentBrowserPanel::update(Context &ctx, Engine &engine, Scribe::Session &
     }
 
     const bool ready = project && index.findFolder(currentFolder).has_value() && !pendingAsset.isValid();
+    const auto destination = index.findFolder(currentFolder);
+
+    ctx.setEnabled(importButton, ready && canEditAssets && !catalogPending && destination && !index.entries()[*destination].missing);
     ctx.setEnabled(folderTree, ready);
     ctx.setEnabled(assetScroll, ready);
     ctx.setEnabled(breadcrumbs, ready);

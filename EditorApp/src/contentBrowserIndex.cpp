@@ -6,6 +6,7 @@
 
 #include "assetRegistry.hpp"
 #include "project.hpp"
+#include "pathEncoding.hpp"
 
 namespace Cthulhu::Editor
 {
@@ -113,7 +114,7 @@ bool ContentBrowserIndex::rebuild(const Project::Project &project, const Assets:
         while (!scanError && iterator != end)
         {
             const std::filesystem::directory_entry &entry = *iterator;
-            const std::string filename = entry.path().filename().generic_string();
+            const std::string filename = Utils::pathToUtf8(entry.path().filename());
             const auto status = entry.symlink_status(scanError);
             if (scanError)
             {
@@ -126,7 +127,7 @@ bool ContentBrowserIndex::rebuild(const Project::Project &project, const Assets:
             }
             else if (std::filesystem::is_directory(status))
             {
-                std::string path = std::string(ResourceRoot) + entry.path().lexically_relative(root).generic_string() + "/";
+                std::string path = std::string(ResourceRoot) + Utils::pathToUtf8(entry.path().lexically_relative(root)) + "/";
 
                 // Uses the project's existing containment and file link policy
                 if (visibleResourcePath(path) &&

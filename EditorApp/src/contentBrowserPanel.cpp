@@ -126,10 +126,10 @@ void ContentBrowserPanel::build(Context &ctx, NodeHandle parent)
     fixed(ctx, title, titleWidth, 24.0f);
     ctx.style(title).all.text = ctx.theme().textMuted;
 
-    const NodeHandle importButton = ctx.createButton(toolbar, "Import");
+    importButton = ctx.createButton(toolbar, "Import");
     fixed(ctx, importButton, 60.0f, 26.0f);
     ctx.setEnabled(importButton, false);
-    ctx.setTooltip(importButton, "Import is not available yet.");
+    ctx.setTooltip(importButton, "Import one asset into the current folder.");
 
     searchInput = ctx.createTextInput(toolbar, "", "Search assets...");
     auto searchLayout = ctx.layoutStyle(searchInput);

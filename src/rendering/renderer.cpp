@@ -9,6 +9,7 @@
 #include "log_utils.hpp"
 #include "mesh.hpp"
 #include "model.hpp"
+#include "pathEncoding.hpp"
 #include "renderer.hpp"
 #include "sceneUniforms.hpp"
 #include "shader.hpp"
@@ -37,7 +38,7 @@ bool Renderer::init(GLFWwindow *window, Scene::Camera *camera, const RenderConfi
     this->config = config;
 
     auto enginePath = [&config](const std::filesystem::path &relative) {
-        return (config.engineResourceRoot / relative).lexically_normal().string();
+        return Utils::pathToUtf8((config.engineResourceRoot / relative).lexically_normal());
     };
 
     if (!basicShader.load(enginePath("shaders/basic.vertex"), enginePath("shaders/basic.fragment")))

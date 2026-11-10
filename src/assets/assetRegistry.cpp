@@ -6,8 +6,10 @@
 
 #include "assetManager.hpp"
 #include "assetRegistry.hpp"
-#include "log_utils.hpp"
+#include "fileReader.hpp"
+#include "pathEncoding.hpp"
 #include "project.hpp"
+#include "log_utils.hpp"
 
 using KalaHeaders::KalaLog::Log;
 using KalaHeaders::KalaLog::LogType;
@@ -70,11 +72,13 @@ bool AssetRegistry::load(const std::filesystem::path &registryFile)
     }
 
     simdjson::ondemand::parser parser;
-    auto json = simdjson::padded_string::load(file.string());
-    if (json.error())
+    const std::string text = Utils::FileReader::readFile(Utils::pathToUtf8(file));
+    if (text.empty())
     {
         return fail("FAILED TO READ ASSET REGISTRY");
     }
+
+    simdjson::padded_string json(text);
 
     auto doc = parser.iterate(json);
 
@@ -158,7 +162,8 @@ bool AssetRegistry::save() const
     });
 
     // preventing a mid write crash to corrupt registry
-    const auto temp = file.parent_path() / (file.filename().string() + ".tmp");
+    auto temp = file;
+    temp += ".tmp";
     {
         std::ofstream out(temp, std::ios::trunc);
         if (!out.is_open())
@@ -245,9 +250,20 @@ AssetRegistry::ScanResult AssetRegistry::scan(const Project::Project &project)
         }
 
         const auto &entry = *it;
-        const std::string name = entry.path().filename().string();
+        const auto name = entry.path().filename().native();
 
-        auto key = normaliseResourcePath("res://" + entry.path().lexically_relative(root).generic_string());
+        std::optional<std::string> key;
+        try
+        {
+            key = normaliseResourcePath(
+                "res://" +
+                Utils::pathToUtf8(entry.path().lexically_relative(root)));
+        }
+        catch (const std::filesystem::filesystem_error &conversion)
+        {
+            error = conversion.code();
+            break;
+        }
 
         if (!key || !project.resolveResourcePath(*key))
         {

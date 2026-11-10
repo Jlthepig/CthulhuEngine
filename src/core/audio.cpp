@@ -1,11 +1,13 @@
 #include <unordered_map>
 #include <cmath>
+#include <filesystem>
 
 #define MINIAUDIO_IMPLEMENTATION
 #include <miniaudio.h>
 
 #include "audio.hpp"
 #include "log_utils.hpp"
+#include "pathEncoding.hpp"
 
 namespace Cthulhu::Core
 {
@@ -15,7 +17,7 @@ static bool g_audioReady = false;
 
 struct AudioClipData
 {
-    std::string filePath;
+    std::filesystem::path filePath;
     bool stream = false;
     bool hasTemplate = false;
     ma_sound sound;
@@ -30,6 +32,18 @@ struct AudioVoice
 using VoiceMap = std::unordered_map<uint32_t, AudioVoice>;
 
 static VoiceMap activeSounds;
+
+static ma_result initFileSound(
+    const std::filesystem::path &path, ma_uint32 flags, ma_sound *sound)
+{
+#ifdef _WIN32
+    return ma_sound_init_from_file_w(
+        &g_audioEngine, path.c_str(), flags, nullptr, nullptr, sound);
+#else
+    return ma_sound_init_from_file(
+        &g_audioEngine, path.c_str(), flags, nullptr, nullptr, sound);
+#endif
+}
 
 uint32_t Audio::nextInstanceId = 1;
 static VoiceMap::iterator destroyVoice(VoiceMap::iterator voice)
@@ -133,7 +147,7 @@ std::size_t Audio::stopClipSounds(const AudioClipData *clip)
     return stopped;
 }
 
-AudioClipData *Audio::loadClip(const std::string &filePath, bool stream)
+AudioClipData *Audio::loadClip(const std::filesystem::path &filePath, bool stream)
 {
     if (!g_audioReady)
     {
@@ -147,10 +161,9 @@ AudioClipData *Audio::loadClip(const std::string &filePath, bool stream)
     if (stream)
     {
         ma_sound probe;
-        if (ma_sound_init_from_file(&g_audioEngine, filePath.c_str(), MA_SOUND_FLAG_STREAM, NULL, NULL, &probe) !=
-            MA_SUCCESS)
+        if (initFileSound(filePath, MA_SOUND_FLAG_STREAM, &probe) != MA_SUCCESS)
         {
-            KalaHeaders::KalaLog::Log::Print("Failed to open audio stream: " + filePath, "Audio", KalaHeaders::KalaLog::LogType::LOG_ERROR);
+            KalaHeaders::KalaLog::Log::Print("Failed to open audio stream: " + Utils::pathToUtf8(filePath), "Audio", KalaHeaders::KalaLog::LogType::LOG_ERROR);
             delete clip;
             return nullptr;
         }
@@ -158,12 +171,11 @@ AudioClipData *Audio::loadClip(const std::string &filePath, bool stream)
         return clip;
     }
 
-    const ma_result result =
-        ma_sound_init_from_file(&g_audioEngine, filePath.c_str(), MA_SOUND_FLAG_DECODE, NULL, NULL, &clip->sound);
+    const ma_result result = initFileSound(filePath, MA_SOUND_FLAG_DECODE, &clip->sound);
 
     if (result != MA_SUCCESS)
     {
-        KalaHeaders::KalaLog::Log::Print("Failed to load audio clip: " + filePath, "Audio", KalaHeaders::KalaLog::LogType::LOG_ERROR);
+        KalaHeaders::KalaLog::Log::Print("Failed to load audio clip: " + Utils::pathToUtf8(filePath), "Audio", KalaHeaders::KalaLog::LogType::LOG_ERROR);
         delete clip;
         return nullptr;
     }
@@ -172,7 +184,7 @@ AudioClipData *Audio::loadClip(const std::string &filePath, bool stream)
     return clip;
 }
 
-void Audio::setClipSourcePath(AudioClipData *clip, std::string path) noexcept
+void Audio::setClipSourcePath(AudioClipData *clip, std::filesystem::path path) noexcept
 {
     if (clip) clip->filePath.swap(path);
 }
@@ -201,12 +213,9 @@ uint32_t Audio::playClip(const AudioClipData *clip, float volume, bool loop)
 
     ma_sound *sound = new ma_sound();
 
-    const ma_result initResult =
-        clip->stream
-            ? ma_sound_init_from_file(
-                  &g_audioEngine, clip->filePath.c_str(),
-                  MA_SOUND_FLAG_STREAM, nullptr, nullptr, sound)
-            : ma_sound_init_copy(&g_audioEngine, &clip->sound, 0, nullptr, sound);
+    const ma_result initResult = clip->stream
+                                     ? initFileSound(clip->filePath, MA_SOUND_FLAG_STREAM, sound)
+                                     : ma_sound_init_copy(&g_audioEngine, &clip->sound, 0, nullptr, sound);
 
     if (initResult != MA_SUCCESS)
     {

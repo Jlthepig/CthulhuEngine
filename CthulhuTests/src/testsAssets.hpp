@@ -3,6 +3,8 @@
 #include <chrono>
 
 #include "testCommon.hpp"
+#include "pathEncoding.hpp"
+#include "fileReader.hpp"
 
 namespace Cthulhu::Validation
 {
@@ -20,7 +22,7 @@ inline void validateModelBounds(Engine& engine, Results& r)
     constexpr std::string_view path = "res://.cthulhu/validation_bounds.scene";
 	const bool saved = engine.saveActiveSceneAs(path);
     auto resolved = engine.getProject()->resolveResourcePath(path);
-    const std::string text = resolved ? Utils::FileReader::readFile(resolved->string()) : "";
+	const std::string text = resolved ? Utils::FileReader::readFile(Utils::pathToUtf8(*resolved)) : "";
 	check(r, saved && text.find("\"Mesh\"") != std::string::npos && text.find("\"bounds\"") == std::string::npos,
           "M2 scenes no longer store hand-typed bounds");
 }
@@ -128,7 +130,7 @@ inline void validateAssetReferences(Engine& engine, Results& r)
     constexpr std::string_view savedPath = "res://.cthulhu/validation_refs_saved.scene";
     const bool saved = engine.saveActiveSceneAs(savedPath);
     auto resolvedSaved = engine.getProject()->resolveResourcePath(savedPath);
-    const std::string text = resolvedSaved ? Utils::FileReader::readFile(resolvedSaved->string()) : "";
+	const std::string text = resolvedSaved ? Utils::FileReader::readFile(Utils::pathToUtf8(*resolvedSaved)) : "";
 	check(r, saved && text.find("\"id\": \"" + floorId + "\"") != std::string::npos &&
 			 text.find("\"id\": \"" + clipId + "\"") != std::string::npos &&
              text.find("OldFloorName") == std::string::npos,
@@ -181,7 +183,7 @@ inline void validateAssetRegistry(Engine& engine, Results& r)
     }
     const Assets::AssetId floorId = floor->id; 
 
-    check(r, registry.findByPath("res://.cthulhu/validation.scene") == nullptr,
+	check(r, registry.findByPath(SAVE_PATH) == nullptr,
           "J5 .cthulhu contents are never registered");
 
     Assets::AssetRegistry reloaded;
@@ -261,7 +263,7 @@ inline void validateAssetRegistry(Engine& engine, Results& r)
     const bool loadedBad = corrupt.load(badFile);
     const auto badScan = corrupt.scan(*project);
     const bool savedBad = corrupt.save();
-    const std::string content = Utils::FileReader::readFile(badFile.string());
+	const std::string content = Utils::FileReader::readFile(Utils::pathToUtf8(badFile));
     check(r, !loadedBad && !badScan.ok && !savedBad && content == "{ this is not json",
           "J6 corrupt registry is never overwritten");
 }

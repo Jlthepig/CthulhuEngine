@@ -1,18 +1,13 @@
 #pragma once
 
 #include <cstdint>
-#include <filesystem>
-#include <fstream>
-#include <optional>
 #include <string>
 #include <string_view>
 
-#include "assetType.hpp"
 #include "audio.hpp"
 #include "characterController.hpp"
 #include "components.hpp"
 #include "engine.hpp"
-#include "fileReader.hpp"
 #include "scene.hpp"
 #include "log_utils.hpp"
 
@@ -24,7 +19,8 @@ using KalaHeaders::KalaLog::LogType;
 
 inline constexpr std::string_view TEST_AUDIO = "res://assets/audio/gunshot.wav";
 
-inline constexpr std::string_view SAVE_PATH = "res://.cthulhu/validation.scene";
+inline constexpr std::string_view SAVE_PATH =
+	"res://.cthulhu/validation_caf\xC3\xA9.scene";
 inline constexpr std::string_view BROKEN_PATH = "res://.cthulhu/validation_broken.scene";
 
 struct Results

@@ -5,8 +5,10 @@
 #include <string>
 #include <string_view>
 
-#include "log_utils.hpp"
+#include "pathEncoding.hpp"
 #include "projectParser.hpp"
+#include "log_utils.hpp"
+
 
 using KalaHeaders::KalaLog::Log;
 using KalaHeaders::KalaLog::LogType;
@@ -210,7 +212,10 @@ static bool parseWindowDimension(std::string_view keyName,
 
 std::optional<ProjectConfig> ProjectParser::parse(const std::string &path)
 {
-    std::ifstream file(path);
+    const auto native = Utils::pathFromUtf8(path);
+    std::ifstream file;
+    
+    if (native) file.open(*native, std::ios::binary);
 
     if (!file.is_open())
     {

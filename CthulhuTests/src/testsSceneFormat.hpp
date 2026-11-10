@@ -8,6 +8,8 @@
 #include "testCommon.hpp"
 #include "testsDescriptors.hpp"
 #include "testsEditorDay.hpp"
+#include "pathEncoding.hpp"
+#include "fileReader.hpp"
 
 namespace Cthulhu::Validation
 {
@@ -57,7 +59,7 @@ inline void validateSceneFormat(Engine& engine, Results& r)
     const ScenePrint before = fingerprint(*scene);
     const bool saved = engine.saveActiveSceneAs(FORMAT_PATH);
     auto resolved = engine.getProject()->resolveResourcePath(FORMAT_PATH);
-    const std::string text = resolved ? Utils::FileReader::readFile(resolved->string()) : "";
+    const std::string text = resolved ? Utils::FileReader::readFile(Utils::pathToUtf8(*resolved)) : "";
     check(r, customOrderSet && saved && text.find("\"format_version\": 5") != std::string::npos &&
                  text.find("\"sibling_order\": 0") != std::string::npos,
           "F1 format 5 saves custom sibling order");

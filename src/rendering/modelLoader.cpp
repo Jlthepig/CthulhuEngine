@@ -20,10 +20,11 @@
 #include <fastgltf/glm_element_traits.hpp>
 #include <fastgltf/types.hpp>
 
-#include "log_utils.hpp"
 #include "material.hpp"
 #include "mesh.hpp"
 #include "modelLoader.hpp"
+#include "pathEncoding.hpp"
+#include "log_utils.hpp"
 
 using KalaHeaders::KalaLog::Log;
 using KalaHeaders::KalaLog::LogType;
@@ -353,7 +354,10 @@ std::optional<Model> ModelLoader::loadGltf(const std::string &path)
     Model model;
 
     // recieve raw data from file and place it into a data buffer
-    auto data = fastgltf::GltfDataBuffer::FromPath(path);
+    const auto native = Utils::pathFromUtf8(path);
+    if (!native) return std::nullopt;
+
+    auto data = fastgltf::GltfDataBuffer::FromPath(*native);
     if (data.error() != fastgltf::Error::None)
     {
         Log::Print("FAILED TO LOAD GLTF FILE " + path, "ModelLoader", LogType::LOG_ERROR);
@@ -367,7 +371,7 @@ std::optional<Model> ModelLoader::loadGltf(const std::string &path)
                             fastgltf::Extensions::KHR_materials_sheen |
                             fastgltf::Extensions::KHR_materials_transmission |
                             fastgltf::Extensions::KHR_materials_volume | fastgltf::Extensions::KHR_materials_clearcoat);
-    auto asset = parser.loadGltfBinary(data.get(), path);
+    auto asset = parser.loadGltfBinary(data.get(), native->parent_path());
     if (asset.error() != fastgltf::Error::None)
     {
         Log::Print("FAILED TO PARSE GLTF " + path + " Error: " + std::string(fastgltf::getErrorMessage(asset.error())),

@@ -5,6 +5,7 @@
 #include <vec3.hpp>
 
 #include "log_utils.hpp"
+#include "pathEncoding.hpp"
 #include "pointShadowMap.hpp"
 
 namespace Cthulhu::Rendering
@@ -38,8 +39,8 @@ void PointLightShadowMap::init(unsigned int width, unsigned int height, const st
     glReadBuffer(GL_NONE);
     glBindFramebuffer(GL_FRAMEBUFFER, 0);
 
-    depthShader.load((engineResourceRoot / "shaders/point_depth.vertex").string(),
-                     (engineResourceRoot / "shaders/point_depth.fragment").string());
+    depthShader.load(Utils::pathToUtf8(engineResourceRoot / "shaders/point_depth.vertex"),
+                     Utils::pathToUtf8(engineResourceRoot / "shaders/point_depth.fragment"));
 }
 
 std::size_t PointLightShadowMap::ensureCapacity(std::size_t requestedCubeCount)

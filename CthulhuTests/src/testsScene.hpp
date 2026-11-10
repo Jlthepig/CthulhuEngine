@@ -3,6 +3,8 @@
 #include <algorithm>
 
 #include "testCommon.hpp"
+#include "pathEncoding.hpp"
+#include "fileReader.hpp"
 
 namespace Cthulhu::Validation
 {
@@ -71,7 +73,7 @@ inline void validateSave(Engine& engine, Results& r)
 	check(r, saved, "12 save scene");
 	check(r, !scene.isDirty(), "12 successful save marks scene clean");
 	auto resolved = engine.getProject()->resolveResourcePath(SAVE_PATH);
-	const std::string text = resolved ? Utils::FileReader::readFile(resolved->string()) : "";
+	const std::string text = resolved ? Utils::FileReader::readFile(Utils::pathToUtf8(*resolved)) : "";
 	bool runtimeLeaked = false;
 	for (std::string_view key : {"bodyId", "soundInstanceId", "timeSinceLastShot", "wantsToFire",
 								 "verticalVelocity", "pendingMove", "pendingJump", "isPlaying", "playRequested"})

@@ -158,8 +158,8 @@ inline void validateAudio(Engine& engine, CS::Scene& scene, Results& r)
 	check(r, sounds() == base, "09 delete audio entity -> sound stopped");
 	scene.destroyEntity(idOf(a));
 
-	auto *directClip = Core::Audio::loadClip(resolved->string());
-    auto *otherClip = Core::Audio::loadClip(resolved->string());
+	auto *directClip = Core::Audio::loadClip(*resolved);
+    auto *otherClip = Core::Audio::loadClip(*resolved);
 
     const uint32_t firstVoice =
         Core::Audio::playClip(directClip, 0.0f, true);

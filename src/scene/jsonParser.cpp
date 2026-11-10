@@ -7,6 +7,7 @@
 #include <simdjson.h>
 
 #include "jsonParser.hpp"
+#include "fileReader.hpp"
 #include "log_utils.hpp"
 
 using KalaHeaders::KalaLog::Log;
@@ -422,12 +423,14 @@ static bool readLegacyComponents(EntityJson &entityJson, ParsedEntity &entity)
 std::optional<ParsedScene> JsonParser::parseScene(const std::string &path)
 {
     simdjson::ondemand::parser parser;
-    auto json = simdjson::padded_string::load(path);
-    if (json.error())
+    const std::string text = Utils::FileReader::readFile(path);
+    if (text.empty())
     {
         Log::Print("FAILED TO OPEN SCENE FILE: " + path, "JsonParser", LogType::LOG_ERROR);
         return std::nullopt;
     }
+
+    simdjson::padded_string json(text);
 
     auto doc = parser.iterate(json);
     ParsedScene result;

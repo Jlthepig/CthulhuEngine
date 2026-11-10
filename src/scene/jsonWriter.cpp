@@ -11,9 +11,10 @@
 #include "components.hpp"
 #include "jsonParser.hpp"
 #include "jsonWriter.hpp"
+#include "pathEncoding.hpp"
 #include "light.hpp"
-#include "log_utils.hpp"
 #include "scene.hpp"
+#include "log_utils.hpp"
 
 using KalaHeaders::KalaLog::Log;
 using KalaHeaders::KalaLog::LogType;
@@ -374,7 +375,15 @@ bool SceneWriter::writeScene(const Scene &scene, const std::string &path, const 
         return false;
     }
 
-    std::filesystem::path tempPath{path};
+    const auto native = Utils::pathFromUtf8(path);
+    if (!native)
+    {
+        Log::Print("INVALID UTF-8 SCENE PATH",
+                "SceneWriter", LogType::LOG_ERROR);
+        return false;
+    }
+
+    std::filesystem::path tempPath = *native;
     tempPath += ".tmp";
 
     std::ofstream out(tempPath, std::ios::trunc);
@@ -398,7 +407,7 @@ bool SceneWriter::writeScene(const Scene &scene, const std::string &path, const 
     }
 
     std::error_code error;
-    std::filesystem::rename(tempPath, std::filesystem::path{path}, error);
+    std::filesystem::rename(tempPath, *native, error);
     if (error)
     {
         Log::Print("FAILED TO REPLACE SCENE FILE: " + path, "SceneWriter", LogType::LOG_ERROR);

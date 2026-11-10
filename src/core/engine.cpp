@@ -1,6 +1,7 @@
 #include <algorithm>
 #include <cstdlib>
 
+#define STBI_WINDOWS_UTF8
 #define STB_IMAGE_IMPLEMENTATION
 #include <GLFW/glfw3.h>
 #include <glad.h>
@@ -21,6 +22,7 @@
 #include "jsonWriter.hpp"
 #include "log_utils.hpp"
 #include "physics.hpp"
+#include "pathEncoding.hpp"
 #include "renderer.hpp"
 #include "scene.hpp"
 #include "sceneLoader.hpp"
@@ -396,7 +398,7 @@ bool Engine::loadScene(std::string_view resourcePath)
     }
 
     auto newScene = createSceneInstance();
-    if (!Scene::SceneLoader::load(resolvedPath->string(), *newScene, assetManager.getRegistry()))
+    if (!Scene::SceneLoader::load(Utils::pathToUtf8(*resolvedPath), *newScene, assetManager.getRegistry()))
     {
         Log::Print("FAILED TO LOAD SCENE: " + std::string(resourcePath), "ENGINE", LogType::LOG_ERROR);
 
@@ -554,7 +556,7 @@ bool Engine::saveActiveSceneAs(std::string_view resourcePath)
         return false;
     }
 
-    if (!Scene::SceneWriter::writeScene(*activeScene, resolvedPath->string(), assetManager.getRegistry()))
+    if (!Scene::SceneWriter::writeScene(*activeScene, Utils::pathToUtf8(*resolvedPath), assetManager.getRegistry()))
     {
         return false;
     }
@@ -870,6 +872,12 @@ void Engine::update()
     }
 
     applyPendingTransition();
+}
+
+void Engine::resetFrameTiming() noexcept
+{
+    deltaTime = 0.0f;
+    lastFrame = glfwInitialized ? glfwGetTime() : 0.0;
 }
 
 void Engine::refreshSceneTransforms()
