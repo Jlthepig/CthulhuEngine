@@ -1,5 +1,6 @@
 #include <algorithm>
 #include <filesystem>
+#include <utility>
 
 #include "assetManager.hpp"
 #include "audio.hpp"
@@ -519,10 +520,19 @@ bool AssetManager::moveFile(AssetId id, std::string_view destination)
     }
 
     std::error_code error;
+
+    if (!std::filesystem::is_regular_file(*from, error) || error)
+    {
+        return moveFailed("SOURCE IS NOT A REGULAR FILE: " + oldKey);
+    }
+
     if (std::filesystem::exists(*to, error))
     {
         return moveFailed("DESTINATION ALREADY EXISTS: " + *key);
     }
+
+    const auto audioSlot = audioClipTable.find(oldKey);
+    std::string audioPath = audioSlot ? to->string() : std::string{};
 
     std::filesystem::create_directories(to->parent_path(), error);
     if (error)
@@ -540,6 +550,11 @@ bool AssetManager::moveFile(AssetId id, std::string_view destination)
     {
         std::filesystem::rename(*to, *from, error);
         return moveFailed("COULD NOT UPDATE REGISTRY: " + *key);
+    }
+
+    if (audioSlot)
+    {
+        Core::Audio::setClipSourcePath(audioClips[audioSlot->index], std::move(audioPath));
     }
 
     modelTable.renameKey(oldKey, *key);

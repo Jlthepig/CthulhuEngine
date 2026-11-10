@@ -240,7 +240,7 @@ void ContentBrowserPanel::update(Context &ctx, Engine &engine, Scribe::Session &
     catalogPending = catalogPending || assetsChanged;
 
     const bool changed = !bound || (project ? boundProject != project->getProjectFilePath() : !boundProject.empty());
-    const bool actionHandled = !changed && updateActions(ctx, registry, session, canEditAssets);
+    const bool actionHandled = !changed && updateActions(ctx, project, registry, session, canEditAssets);
 
     if (changed)
     {
@@ -349,13 +349,13 @@ void ContentBrowserPanel::update(Context &ctx, Engine &engine, Scribe::Session &
         }
     }
 
-    const bool ready = project && index.findFolder(currentFolder).has_value() && !pendingDelete.isValid();
+    const bool ready = project && index.findFolder(currentFolder).has_value() && !pendingAsset.isValid();
     ctx.setEnabled(folderTree, ready);
     ctx.setEnabled(assetScroll, ready);
     ctx.setEnabled(breadcrumbs, ready);
     ctx.setEnabled(searchInput, ready);
     ctx.setEnabled(typeFilter, ready);
-    ctx.setEnabled(refreshButton, canEditAssets && !catalogPending && !pendingDelete.isValid());
+    ctx.setEnabled(refreshButton, canEditAssets && !catalogPending && !pendingAsset.isValid());
     ctx.setEnabled(backButton, ready && historyCursor > 0);
     ctx.setEnabled(forwardButton, ready && historyCursor + 1 < history.size());
     ctx.setEnabled(upButton, ready && currentFolder != "res://");

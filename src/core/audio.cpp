@@ -172,6 +172,11 @@ AudioClipData *Audio::loadClip(const std::string &filePath, bool stream)
     return clip;
 }
 
+void Audio::setClipSourcePath(AudioClipData *clip, std::string path) noexcept
+{
+    if (clip) clip->filePath.swap(path);
+}
+
 void Audio::destroyClip(AudioClipData *clip)
 {
     if (!clip)

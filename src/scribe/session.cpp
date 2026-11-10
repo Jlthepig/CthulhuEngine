@@ -442,6 +442,29 @@ Result Session::moveAsset(Assets::AssetId id, std::string_view destination)
         return Result::noChange();
     }
 
+    bool movesOpenScene = false;
+    if (record->type == Assets::AssetType::Scene)
+    {
+        if (const auto *project = engine.getProject())
+        {
+            const auto originalFile = project->resolveResourcePath(oldPath);
+            const auto sameFile = [&](std::string_view path) {const auto key = Assets::normaliseResourcePath(path);
+            if (key && *key == oldPath) return true;
+
+                const auto file = project->resolveResourcePath(path);
+                std::error_code error;
+                return originalFile && file && std::filesystem::equivalent(*originalFile, *file, error) && !error;
+            };
+
+            if (project->getMainScene() && sameFile(*project->getMainScene()))
+            {
+                return Result::failed("MOVING THE MAIN SCENE REQUIRES UPDATING PROJECT SETTINGS");
+            }
+
+            movesOpenScene = scene && scene->getResourcePath() && sameFile(*scene->getResourcePath());
+        }
+    }
+
     if (!newPath || !assets.moveFile(id, destination))
     {
         return Result::failed("MOVE FAILED: " + oldPath);
@@ -455,6 +478,7 @@ Result Session::moveAsset(Assets::AssetId id, std::string_view destination)
     if (scene)
     {
         rewriteReferences(*scene, oldPath, *newPath);
+        if (movesOpenScene) scene->setResourcePath(*newPath);
     }
 
     resetHistoryAfterAssetChange();

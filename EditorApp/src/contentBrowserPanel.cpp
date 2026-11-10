@@ -176,43 +176,58 @@ void ContentBrowserPanel::build(Context &ctx, NodeHandle parent)
     errorLayout.clip = true;
     ctx.setVisible(errorLabel, false);
 
-    deleteBar = ctx.createContainer(panel);
-    auto deleteLayout = ctx.layoutStyle(deleteBar);
-    deleteLayout.mode = LayoutMode::Vertical;
-    deleteLayout.horizontalAlignment = Alignment::Stretch;
-    deleteLayout.padding = Padding{8.0f, 2.0f};
-    deleteLayout.gap = 2.0f;
-    deleteLayout.minSize = Vec2{0.0f, 56.0f};
-    deleteLayout.preferredSize = Vec2{0.0f, 56.0f};
-    deleteLayout.maxSize = Vec2{InfiniteLayoutSize, 56.0f};
-    deleteLayout.clip = true;
+    actionBar = ctx.createContainer(panel);
+    auto actionLayout = ctx.layoutStyle(actionBar);
+    actionLayout.mode = LayoutMode::Vertical;
+    actionLayout.horizontalAlignment = Alignment::Stretch;
+    actionLayout.padding = Padding{8.0f, 2.0f};
+    actionLayout.gap = 2.0f;
+    actionLayout.minSize = Vec2{0.0f, 56.0f};
+    actionLayout.preferredSize = Vec2{0.0f, 56.0f};
+    actionLayout.maxSize = Vec2{InfiniteLayoutSize, 56.0f};
+    actionLayout.clip = true;
 
-    deleteLabel = ctx.createLabel(deleteBar, "");
-    auto labelLayout = ctx.layoutStyle(deleteLabel);
+    actionLabel = ctx.createLabel(actionBar, "");
+    auto labelLayout = ctx.layoutStyle(actionLabel);
     labelLayout.minSize = Vec2{0.0f, 22.0f};
     labelLayout.preferredSize = Vec2{0.0f, 22.0f};
     labelLayout.maxSize = Vec2{InfiniteLayoutSize, 22.0f};
     labelLayout.clip = true;
 
-    const NodeHandle deleteButtons = bar(ctx, deleteBar, 26.0f);;
-    ctx.layoutStyle(deleteButtons).padding = Padding{};
-    const NodeHandle warning = flexibleLabel(ctx, deleteButtons);
+    moveRow = bar(ctx, actionBar, 26.0f);
+    ctx.layoutStyle(moveRow).padding = Padding{};
+    const NodeHandle moveLabel = ctx.createLabel(moveRow, "Move to");
+    fixed(ctx, moveLabel, 72.0f, 26.0f);
+
+    moveDestination = ctx.createComboBox(moveRow, {}, -1);
+    auto moveLayout = ctx.layoutStyle(moveDestination);
+    moveLayout.minSize = Vec2{0.0f, 26.0f};
+    moveLayout.preferredSize = Vec2{0.0f, 26.0f};
+    moveLayout.maxSize = Vec2{InfiniteLayoutSize, 26.0f};
+    moveLayout.padding = Padding{8.0f, 2.0f};
+    ctx.style(moveDestination).focusRing = FocusRingStyle{};
+    ctx.style(moveDestination).focused.border = ctx.theme().accent;
+    ctx.setVisible(moveRow, false);
+
+    const NodeHandle actionButtons = bar(ctx, actionBar, 26.0f);
+    ctx.layoutStyle(actionButtons).padding = Padding{};
+    const NodeHandle warning = flexibleLabel(ctx, actionButtons);
     ctx.setText(warning, "Clears scene Undo/Redo.");
 
-    deleteCancel = ctx.createButton(deleteButtons, "Cancel");
-    fixed(ctx, deleteCancel, 68.0f, 26.0f);
+    actionCancel = ctx.createButton(actionButtons, "Cancel");
+    fixed(ctx, actionCancel, 68.0f, 26.0f);
 
-    deleteConfirm = ctx.createButton(deleteButtons, "Recycle");
-    fixed(ctx, deleteConfirm, 76.0f, 26.0f);
+    actionConfirm = ctx.createButton(actionButtons, "Recycle");
+    fixed(ctx, actionConfirm, 76.0f, 26.0f);
 
-    for (NodeHandle button : {deleteCancel, deleteConfirm})
+    for (NodeHandle button : {actionCancel, actionConfirm})
     {
         ctx.layoutStyle(button).padding = Padding{8.0f, 2.0f};
         ctx.style(button).focusRing = FocusRingStyle{};
         ctx.style(button).focused.border = ctx.theme().accent;
     }
-    ctx.setTooltip(deleteConfirm, "Other saved scenes may still reference this asset.");
-    ctx.setVisible(deleteBar, false);
+    ctx.setTooltip(actionConfirm, "Other saved scenes may still reference this asset.");
+    ctx.setVisible(actionBar, false);
 
     const NodeHandle split = ctx.createSplitContainer(panel, SplitOrientation::Horizontal, 0.22f);
     ctx.setSplitMinimumSizes(split, 160.0f, 240.0f);
@@ -276,7 +291,7 @@ void ContentBrowserPanel::clearTiles(Context &ctx)
 
 void ContentBrowserPanel::bindProject(Context &ctx, const Project::Project *project, const Assets::AssetRegistry &registry)
 {
-    cancelDelete(ctx);
+    cancelAction(ctx);
     actionError.clear();
 
     bound = true;

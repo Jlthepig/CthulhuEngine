@@ -15,6 +15,7 @@ class Engine;
 namespace Cthulhu::Scribe
 {
 class Session;
+struct Result;
 }
 
 namespace Cthulhu::Editor
@@ -26,7 +27,7 @@ class ContentBrowserPanel
     void update(octogui::Context &ctx, Engine &engine, Scribe::Session &session, bool assetsChanged);
 
   private:
-
+    enum class PendingAction { Delete, Move };
     struct Crumb
     {
         octogui::NodeHandle button{};
@@ -53,8 +54,10 @@ class ContentBrowserPanel
     void styleSelection(octogui::Context &ctx);
 
     void reloadCatalog(octogui::Context &ctx, const Project::Project &project, const Assets::AssetRegistry &registry);
-    bool updateActions(octogui::Context &ctx, const Assets::AssetRegistry &registry, Scribe::Session &session, bool canEdit);
-    void cancelDelete(octogui::Context &ctx);
+    bool updateActions(octogui::Context &ctx, const Project::Project *project, const Assets::AssetRegistry &registry, Scribe::Session &session, bool canEdit);
+    bool beginMove(octogui::Context &ctx, const ContentBrowserEntry &entry);
+    Scribe::Result finishMove(octogui::Context &ctx, const Project::Project *project, const Assets::AssetRegistry &registry, Scribe::Session &session);
+    void cancelAction(octogui::Context &ctx);
 
     octogui::NodeHandle toolbar{}, title{};
     octogui::NodeHandle searchInput{}, typeFilter{}, refreshButton{};
@@ -62,9 +65,13 @@ class ContentBrowserPanel
     octogui::NodeHandle breadcrumbs{}, breadcrumbLabel{}, errorLabel{};
     octogui::NodeHandle folderTree{}, assetScroll{}, grid{}, emptyLabel{};
     octogui::NodeHandle selectionLabel{}, countLabel{};
-    octogui::NodeHandle deleteBar{}, deleteLabel{}, deleteConfirm{}, deleteCancel{};
-    Assets::AssetId pendingDelete{};
-    std::string deletePath;
+    octogui::NodeHandle actionBar{}, actionLabel{}, actionConfirm{}, actionCancel{};
+    octogui::NodeHandle moveRow{}, moveDestination{};
+
+    PendingAction pendingAction = PendingAction::Delete;
+
+    Assets::AssetId pendingAsset{};
+    std::string sourcePath;
     std::string actionError;
 
     ContentBrowserIndex index;

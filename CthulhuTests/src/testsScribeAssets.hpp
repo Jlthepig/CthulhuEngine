@@ -211,6 +211,39 @@ inline void validateScribeMove(Engine& engine, Results& r)
 
 	session.deleteEntity(created.id);
 	assets.collectUnusedModels();
+
+	const auto* mainRecord = project->getMainScene()
+		? assets.getRegistry().findByPath(*project->getMainScene()) : nullptr;
+	const Assets::AssetId mainId = mainRecord ? mainRecord->id : Assets::AssetId{};
+	const auto mainMove = session.moveAsset(
+		mainId, "res://validation_import/V_MainScene.scene");
+	if (mainMove.status == Status::Applied)
+	{
+		check(r, session.moveAsset(mainId, *project->getMainScene()).ok(),
+			  "M8 restore main scene after an unguarded move");
+	}
+	check(r, mainId.isValid() && mainMove.status == Status::Failed,
+		  "M8 main scene cannot move without updating project settings");
+
+	constexpr std::string_view sceneStart = "res://validation_import/V_Open.scene";
+	constexpr std::string_view sceneMoved = "res://validation_import/moved/V_Open.scene";
+	const bool sceneSaved = session.saveAs(sceneStart).ok();
+	const bool scanned = assets.refreshRegistry().ok;
+	const auto* document = assets.getRegistry().findByPath(sceneStart);
+	const Assets::AssetId documentId =
+		document ? document->id : Assets::AssetId{};
+	const bool documentMoved = sceneSaved && scanned && documentId.isValid() &&
+		session.moveAsset(documentId, sceneMoved).status == Status::Applied;
+
+	const auto oldScene = project->resolveResourcePath(sceneStart);
+	const auto newScene = project->resolveResourcePath(sceneMoved);
+	check(r, documentMoved && scene->getResourcePath() &&
+				 *scene->getResourcePath() == sceneMoved && session.save().ok() &&
+				 oldScene && newScene && !std::filesystem::exists(*oldScene) &&
+				 std::filesystem::exists(*newScene),
+		  "M8 Save follows a moved open scene without recreating the old path");
+	check(r, session.saveAs("res://.cthulhu/validation_asset_history.scene").ok(),
+		  "M8 restore the validation document path");
 	cleanImportFolder(engine);
 }
 
@@ -480,6 +513,22 @@ inline void validateReimport(Engine& engine, Results& r)
 
 	play();
 	check(r, sounds() == base + 1, "E7 the rebuilt clip plays");
+
+	Core::Audio::stopClipSounds(assets.getAudioClip(handle));
+	constexpr std::string_view movedClip =
+		"res://validation_import/moved/V_Reimport.wav";
+	const auto moved = session.moveAsset(imported.id, movedClip);
+	check(r, moved.status == Status::Applied &&
+				 e.get<CS::AudioSourceComponent>().filePath == movedClip &&
+				 e.get<CS::AudioSourceRuntimeComponent>().clip == handle &&
+				 assets.getAudioClipRefCount(handle) == refsBefore,
+		  "E8 streamed clip move preserves its handle and scene reference");
+
+	play();
+	check(r, sounds() == base + 1 &&
+				 Core::Audio::isSoundActive(
+					 e.get<CS::AudioSourceRuntimeComponent>().soundInstanceId),
+		  "E8 moved streamed clip opens its new source path");
 
 	scene->destroyEntity(idOf(e));
 	assets.collectUnusedAudioClips();
