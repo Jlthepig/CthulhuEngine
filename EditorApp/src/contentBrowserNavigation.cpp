@@ -22,8 +22,7 @@ std::string_view breadcrumbName(std::string_view path)
 }
 } // namespace
 
-std::string ContentBrowserPanel::caption(
-    Context &ctx, std::string_view text, float width)
+std::string ContentBrowserPanel::caption(Context &ctx, std::string_view text, float width)
 {
     Font &font = ctx.font();
     if (font.measureText(text).x <= width) return std::string(text);
@@ -236,11 +235,12 @@ void ContentBrowserPanel::update(Context &ctx, Engine &engine, Scribe::Session &
 {
     const auto *project = engine.getProject();
     const auto &registry = engine.getAssetManager().getRegistry();
-    const bool canRefresh = project && !engine.isPlaying() && !session.transformEditActive();
+    const bool canEditAssets = project && !engine.isPlaying() && !session.transformEditActive();
 
     catalogPending = catalogPending || assetsChanged;
 
     const bool changed = !bound || (project ? boundProject != project->getProjectFilePath() : !boundProject.empty());
+    const bool actionHandled = !changed && updateActions(ctx, registry, session, canEditAssets);
 
     if (changed)
     {
@@ -260,11 +260,12 @@ void ContentBrowserPanel::update(Context &ctx, Engine &engine, Scribe::Session &
             if (project) reloadCatalog(ctx, *project, registry);
         }
     }
-    else if (!ctx.contextMenuOwnsInput())
+    else if (!actionHandled && !ctx.contextMenuOwnsInput())
     {
-        if (canRefresh && ctx.isClicked(refreshButton))
+        if (canEditAssets && ctx.isClicked(refreshButton))
         {
             const auto result = session.refreshAssets();
+            actionError = result.error;
             ctx.setText(errorLabel, result.error);
             ctx.setTooltip(errorLabel, result.error);
             ctx.setVisible(errorLabel, !result.ok());
@@ -348,10 +349,13 @@ void ContentBrowserPanel::update(Context &ctx, Engine &engine, Scribe::Session &
         }
     }
 
-    const bool ready = project && index.findFolder(currentFolder).has_value();
+    const bool ready = project && index.findFolder(currentFolder).has_value() && !pendingDelete.isValid();
+    ctx.setEnabled(folderTree, ready);
+    ctx.setEnabled(assetScroll, ready);
+    ctx.setEnabled(breadcrumbs, ready);
     ctx.setEnabled(searchInput, ready);
     ctx.setEnabled(typeFilter, ready);
-    ctx.setEnabled(refreshButton, canRefresh && !catalogPending);
+    ctx.setEnabled(refreshButton, canEditAssets && !catalogPending && !pendingDelete.isValid());
     ctx.setEnabled(backButton, ready && historyCursor > 0);
     ctx.setEnabled(forwardButton, ready && historyCursor + 1 < history.size());
     ctx.setEnabled(upButton, ready && currentFolder != "res://");

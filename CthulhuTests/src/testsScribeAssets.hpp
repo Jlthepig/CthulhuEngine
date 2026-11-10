@@ -292,6 +292,76 @@ inline void validateScribeDelete(Engine& engine, Results& r)
 	assets.releaseModel(handle);
 	assets.collectUnusedModels();
 
+    constexpr std::string_view failurePath =
+        "res://validation_import/V_DeleteRegistryFailure.glb";
+    const auto failureAsset = session.importAsset(*source, failurePath);
+    const auto failureUser = session.createEntity("V_DeleteRegistryFailure");
+    const bool historyReady =
+        failureAsset.ok() && failureUser.ok() &&
+        session.addComponent(failureUser.id, "Mesh").ok() &&
+        session.setField(failureUser.id, "Mesh", "modelPath",
+                         std::string(failurePath)).ok() &&
+        session.deleteEntity(failureUser.id).ok() &&
+        session.renameScene(scene->getName() + "_DeleteRegistryFailure").status ==
+            Status::Applied &&
+        session.undo() && session.canUndo() && session.canRedo();
+
+    const auto realRegistry = project->getRootPath() / ".cthulhu" / "assets.json";
+    const auto blockedRegistry = realRegistry.parent_path() /
+        ("validation_delete_" + Assets::assetIdToString(failureAsset.id) + ".json");
+
+    // Block replacement of a copied registry, leaving the real file intact.
+    std::error_code failureError;
+    const bool copied = historyReady &&
+        std::filesystem::copy_file(realRegistry, blockedRegistry, failureError);
+    bool blocked = false;
+    if (copied && assets.getRegistry().load(blockedRegistry))
+    {
+        blocked = std::filesystem::remove(blockedRegistry, failureError) &&
+                  std::filesystem::create_directory(blockedRegistry, failureError);
+    }
+    check(r, blocked, "D6 registry save-failure setup");
+
+    if (blocked)
+    {
+        (void)session.takeEvents();
+        const auto result = session.deleteAsset(failureAsset.id);
+        const auto *remaining = assets.getRegistry().findById(failureAsset.id);
+        const auto deletedFile = project->resolveResourcePath(failurePath);
+        const bool fileGone = deletedFile &&
+            !std::filesystem::exists(*deletedFile, failureError) && !failureError;
+
+        check(r, !result.ok() && fileGone && remaining && remaining->missing,
+              "D6 failed registry save retains the trashed asset as missing");
+        check(r, !session.canUndo() && !session.canRedo() &&
+                     !session.undo() && !session.redo(),
+              "D6 partial delete clears stale undo and redo paths");
+
+        bool notified = false;
+        for (const auto &change : session.takeEvents())
+        {
+            notified = notified ||
+                (change.type == Scribe::ChangeType::AssetRegistryRefreshed &&
+                 change.assetId == failureAsset.id);
+        }
+        check(r, notified, "D6 partial delete notifies asset views");
+    }
+
+    if (copied)
+    {
+        check(r, assets.getRegistry().load(realRegistry),
+              "D6 restores the real registry binding");
+        std::filesystem::remove(blockedRegistry, failureError);
+        check(r, !failureError, "D6 removes the registry blocker");
+        std::filesystem::remove(blockedRegistry.string() + ".tmp", failureError);
+        check(r, !failureError, "D6 removes the registry temporary file");
+    }
+
+    if (failureUser.ok() && scene->isEntityAlive(failureUser.id))
+    {
+        session.deleteEntity(failureUser.id);
+    }
+
 	cleanImportFolder(engine);
 }
 

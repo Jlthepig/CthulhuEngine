@@ -53,6 +53,8 @@ class ContentBrowserPanel
     void styleSelection(octogui::Context &ctx);
 
     void reloadCatalog(octogui::Context &ctx, const Project::Project &project, const Assets::AssetRegistry &registry);
+    bool updateActions(octogui::Context &ctx, const Assets::AssetRegistry &registry, Scribe::Session &session, bool canEdit);
+    void cancelDelete(octogui::Context &ctx);
 
     octogui::NodeHandle toolbar{}, title{};
     octogui::NodeHandle searchInput{}, typeFilter{}, refreshButton{};
@@ -60,6 +62,10 @@ class ContentBrowserPanel
     octogui::NodeHandle breadcrumbs{}, breadcrumbLabel{}, errorLabel{};
     octogui::NodeHandle folderTree{}, assetScroll{}, grid{}, emptyLabel{};
     octogui::NodeHandle selectionLabel{}, countLabel{};
+    octogui::NodeHandle deleteBar{}, deleteLabel{}, deleteConfirm{}, deleteCancel{};
+    Assets::AssetId pendingDelete{};
+    std::string deletePath;
+    std::string actionError;
 
     ContentBrowserIndex index;
     std::filesystem::path boundProject;

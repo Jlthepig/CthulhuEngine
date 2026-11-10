@@ -139,8 +139,7 @@ void ContentBrowserPanel::build(Context &ctx, NodeHandle parent)
     searchLayout.maxSize = Vec2{InfiniteLayoutSize, 26.0f};
     ctx.setEnabled(searchInput, false);
 
-    typeFilter = ctx.createComboBox(
-        toolbar, {"All types", "Models", "Audio", "Scenes"}, 0);
+    typeFilter = ctx.createComboBox(toolbar, {"All types", "Models", "Audio", "Scenes"}, 0);
     fixed(ctx, typeFilter, 120.0f, 26.0f);
     ctx.layoutStyle(typeFilter).padding = Padding{8.0f, 2.0f};
     ctx.setEnabled(typeFilter, false);
@@ -177,8 +176,45 @@ void ContentBrowserPanel::build(Context &ctx, NodeHandle parent)
     errorLayout.clip = true;
     ctx.setVisible(errorLabel, false);
 
-    const NodeHandle split =
-        ctx.createSplitContainer(panel, SplitOrientation::Horizontal, 0.22f);
+    deleteBar = ctx.createContainer(panel);
+    auto deleteLayout = ctx.layoutStyle(deleteBar);
+    deleteLayout.mode = LayoutMode::Vertical;
+    deleteLayout.horizontalAlignment = Alignment::Stretch;
+    deleteLayout.padding = Padding{8.0f, 2.0f};
+    deleteLayout.gap = 2.0f;
+    deleteLayout.minSize = Vec2{0.0f, 56.0f};
+    deleteLayout.preferredSize = Vec2{0.0f, 56.0f};
+    deleteLayout.maxSize = Vec2{InfiniteLayoutSize, 56.0f};
+    deleteLayout.clip = true;
+
+    deleteLabel = ctx.createLabel(deleteBar, "");
+    auto labelLayout = ctx.layoutStyle(deleteLabel);
+    labelLayout.minSize = Vec2{0.0f, 22.0f};
+    labelLayout.preferredSize = Vec2{0.0f, 22.0f};
+    labelLayout.maxSize = Vec2{InfiniteLayoutSize, 22.0f};
+    labelLayout.clip = true;
+
+    const NodeHandle deleteButtons = bar(ctx, deleteBar, 26.0f);;
+    ctx.layoutStyle(deleteButtons).padding = Padding{};
+    const NodeHandle warning = flexibleLabel(ctx, deleteButtons);
+    ctx.setText(warning, "Clears scene Undo/Redo.");
+
+    deleteCancel = ctx.createButton(deleteButtons, "Cancel");
+    fixed(ctx, deleteCancel, 68.0f, 26.0f);
+
+    deleteConfirm = ctx.createButton(deleteButtons, "Recycle");
+    fixed(ctx, deleteConfirm, 76.0f, 26.0f);
+
+    for (NodeHandle button : {deleteCancel, deleteConfirm})
+    {
+        ctx.layoutStyle(button).padding = Padding{8.0f, 2.0f};
+        ctx.style(button).focusRing = FocusRingStyle{};
+        ctx.style(button).focused.border = ctx.theme().accent;
+    }
+    ctx.setTooltip(deleteConfirm, "Other saved scenes may still reference this asset.");
+    ctx.setVisible(deleteBar, false);
+
+    const NodeHandle split = ctx.createSplitContainer(panel, SplitOrientation::Horizontal, 0.22f);
     ctx.setSplitMinimumSizes(split, 160.0f, 240.0f);
     ctx.style(split).all.background = Color::transparent();
     ctx.style(split).shadow = ShadowStyle{};
@@ -240,6 +276,9 @@ void ContentBrowserPanel::clearTiles(Context &ctx)
 
 void ContentBrowserPanel::bindProject(Context &ctx, const Project::Project *project, const Assets::AssetRegistry &registry)
 {
+    cancelDelete(ctx);
+    actionError.clear();
+
     bound = true;
     catalogPending = false;
     history.clear();

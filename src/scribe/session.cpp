@@ -493,8 +493,16 @@ Result Session::deleteAsset(Assets::AssetId id)
         }
     }
 
+    const bool wasMissing = record->missing;
     if (!assets.deleteFile(id))
     {
+        const auto *remaining = assets.getRegistry().findById(id);
+        if (!wasMissing && remaining && remaining->missing)
+        {
+            resetHistoryAfterAssetChange();
+            events.push_back({ChangeType::AssetRegistryRefreshed, {}, {}, id});
+            return Result::failed("FILE MOVED TO THE RECYCLE BIN, BUT THE ASSET REGISTRY COULD NOT BE SAVED");
+        }
         return Result::failed("DELETE FAILED");
     }
 

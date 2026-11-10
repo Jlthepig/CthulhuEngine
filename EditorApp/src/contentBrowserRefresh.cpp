@@ -91,8 +91,8 @@ void ContentBrowserPanel::reloadCatalog(Context &ctx, const Project::Project &pr
         }
     }
 
-    ctx.setText(errorLabel, "");
-    ctx.setTooltip(errorLabel, "");
-    ctx.setVisible(errorLabel, false);
+    ctx.setText(errorLabel, actionError);
+    ctx.setTooltip(errorLabel, actionError);
+    ctx.setVisible(errorLabel, !actionError.empty());
 }
 } // namespace Cthulhu::Editor

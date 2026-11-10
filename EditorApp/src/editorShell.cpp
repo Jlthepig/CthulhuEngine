@@ -218,7 +218,6 @@ void EditorShell::update(Context &ctx, Engine &engine, Scribe::Session &session)
                     return false;
             }
         });
-    contentBrowserUI.update(ctx, engine, session, assetsChanged);
     hierarchyPanelUI.update(ctx, engine, session, changes);
 
     uiEvents.clear();
@@ -298,13 +297,18 @@ void EditorShell::update(Context &ctx, Engine &engine, Scribe::Session &session)
                                   !engine.isPlaying() && engine.hasActiveScene(),
                                   engine.getSceneGeneration());
     viewportPanelUI.updatePicking(ctx, engine, hierarchyPanelUI, sceneNode);
+
     if (engine.isPlaying())
         engine.getRenderer().setOutlineTargets({});
     else
         engine.getRenderer().setOutlineTargets(hierarchyPanelUI.selection());
+
     inspectorUI.update(ctx, engine, session, engine.getActiveScene(), 
                         hierarchyPanelUI.selectedEntity(),
                         uiEvents, inputGeneration, assetsChanged);
+    // commit Inspector edits before asset operations can clear history
+    contentBrowserUI.update(ctx, engine, session, assetsChanged);
+
     viewportPanelUI.updateGizmo(ctx, engine, session, hierarchyPanelUI, sceneNode);
     viewportPanelUI.drawGizmoFeedback(ctx);
 
