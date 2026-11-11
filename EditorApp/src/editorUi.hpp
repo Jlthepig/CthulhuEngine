@@ -24,7 +24,7 @@ class EditorUi
     void shutdown();
 
     void beginFrame(float deltaTime);
-    void endFrame();
+    void endFrame(std::span<const octogui::DrawCommand> overlay = {});
 
     [[nodiscard]] octogui::Context &context() noexcept
     {

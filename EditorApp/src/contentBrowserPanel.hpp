@@ -24,7 +24,10 @@ class ContentBrowserPanel
 {
   public:
     void build(octogui::Context &ctx, octogui::NodeHandle parent);
-    void update(octogui::Context &ctx, Engine &engine, Scribe::Session &session, bool assetsChanged);
+    void update(octogui::Context &ctx, Engine &engine, Scribe::Session &session, bool assetsChanged, bool dragOwnsInput);
+
+    Assets::AssetId beginAssetDrag(octogui::Context &ctx, const Project::Project &project);
+    void reportError(octogui::Context &ctx, std::string_view message);
 
   private:
     enum class PendingAction { Delete, Move };

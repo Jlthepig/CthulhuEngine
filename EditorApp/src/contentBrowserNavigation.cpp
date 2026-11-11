@@ -229,13 +229,43 @@ void ContentBrowserPanel::rebuildBreadcrumbs(Context &ctx)
     }
 }
 
-void ContentBrowserPanel::update(Context &ctx, Engine &engine, Scribe::Session &session, bool assetsChanged)
+void ContentBrowserPanel::reportError(Context &ctx, std::string_view message)
 {
+    actionError.assign(message);
+    ctx.setText(errorLabel, actionError);
+    ctx.setTooltip(errorLabel, actionError);
+    ctx.setVisible(errorLabel, !actionError.empty());
+}
+
+Assets::AssetId ContentBrowserPanel::beginAssetDrag(Context &ctx, const Project::Project &project)
+{
+    if (!bound || boundProject != project.getProjectFilePath() || catalogPending || pendingAsset.isValid() || ctx.contextMenuOwnsInput())
+        return {};
+
+    const auto entries = index.entries();
+    for (const Tile &tile : tiles)
+    {
+        if (!ctx.isPressed(tile.button) || !ctx.isEnabled(tile.button) ||tile.entry >= entries.size())
+            continue;
+
+        const auto &entry = entries[tile.entry];
+        if (entry.folder || entry.missing || !entry.assetId.isValid())
+            return {};
+
+        select(ctx, tile.entry);
+        return entry.assetId;
+    }
+    return {};
+}
+
+void ContentBrowserPanel::update(Context &ctx, Engine &engine, Scribe::Session &session, bool assetsChanged, bool dragOwnsInput)
+{
+    catalogPending = catalogPending || assetsChanged;
+    if (dragOwnsInput) return;
+
     const auto *project = engine.getProject();
     const auto &registry = engine.getAssetManager().getRegistry();
     const bool canEditAssets = project && !engine.isPlaying() && !session.transformEditActive();
-
-    catalogPending = catalogPending || assetsChanged;
 
     const bool changed = !bound || (project ? boundProject != project->getProjectFilePath() : !boundProject.empty());
     const bool actionHandled = !changed && updateActions(ctx, project, registry, session, canEditAssets);

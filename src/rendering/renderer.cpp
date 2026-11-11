@@ -652,7 +652,8 @@ void Renderer::render(unsigned int width,
                       const std::vector<Renderable> &renderables,
                       int destX,
                       int destY,
-                      std::span<const OverlayVertex> overlayVertices)
+                      std::span<const OverlayVertex> overlayVertices,
+                      const ModelPreview &preview)
 {
     if (width == 0 || height == 0)
     {
@@ -723,6 +724,36 @@ void Renderer::render(unsigned int width,
     glDisable(GL_BLEND);
     glEnable(GL_CULL_FACE);
     glDepthMask(GL_TRUE);
+
+    if (preview.model && outlineShader.getId() != 0)
+    {
+        // Blend each pixel once, even where the preview's surfaces overlap.
+        glEnable(GL_STENCIL_TEST);
+        glStencilMask(0xFF);
+        glClearStencil(0);
+        glClear(GL_STENCIL_BUFFER_BIT);
+        glStencilFunc(GL_EQUAL, 0, 0xFF);
+        glStencilOp(GL_KEEP, GL_KEEP, GL_INCR);
+
+        glDepthMask(GL_FALSE);
+        glEnable(GL_BLEND);
+        glBlendEquation(GL_FUNC_ADD);
+        glBlendColor(0.0f, 0.0f, 0.0f, 0.38f);
+        glBlendFuncSeparate(GL_CONSTANT_ALPHA, GL_ONE_MINUS_CONSTANT_ALPHA, GL_ZERO, GL_ONE);
+
+        outlineShader.use();
+        outlineShader.setVec3("outlineColor", glm::vec3(0.25f, 0.72f, 1.0f));
+        outlineShader.setVec3("clipOffset", glm::vec3(0.0f));
+        outlineShader.setMat4("mvp", glm::translate(projection * view, preview.position));
+        for (auto &mesh : preview.model->meshes)
+            mesh.draw();
+
+        glBlendColor(0.0f, 0.0f, 0.0f, 0.0f);
+        glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+        glDisable(GL_BLEND);
+        glDepthMask(GL_TRUE);
+        glDisable(GL_STENCIL_TEST);
+    }
 
     drawDebugLines(deltaTime);
     drawOutlines(width, height, renderables);

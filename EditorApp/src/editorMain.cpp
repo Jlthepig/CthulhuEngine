@@ -184,6 +184,7 @@ int main(int argc, char *argv[])
         shell.frame(ui, engine, session, onUpdate);
     }
 
+    shell.clearAssetDrag(engine);
     (void)session.finishTransformEdit(false);
     viewportPanel = nullptr;
     editorUi = nullptr;

@@ -61,6 +61,12 @@ struct DebugVertex
     glm::vec3 color{};
 };
 
+struct ModelPreview
+{
+    Model *model = nullptr;
+    glm::vec3 position{0.0f};
+};
+
 struct RenderConfig
 {
     // Camera
@@ -102,7 +108,8 @@ class Renderer
                 const std::vector<Renderable> &renderables,
                 int destX = 0,
                 int destY = 0,
-                std::span<const OverlayVertex> overlayVertices = {});
+                std::span<const OverlayVertex> overlayVertices = {},
+                const ModelPreview &preview = {});
     void addDebugLine(const glm::vec3 &start, const glm::vec3 &end, const glm::vec3 &color, float duration = 0.0f);
     void shutdown();
 

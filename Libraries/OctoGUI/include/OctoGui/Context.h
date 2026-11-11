@@ -52,6 +52,9 @@ public:
   [[nodiscard]]
   bool isVisible(NodeHandle handle) const noexcept;
 
+  [[nodiscard]]
+  Rect visibleRect(NodeHandle handle) const noexcept;
+
   void setVisible(NodeHandle handle, bool visible);
 
   [[nodiscard]]

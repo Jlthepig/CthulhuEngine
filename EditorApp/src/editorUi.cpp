@@ -78,9 +78,10 @@ void EditorUi::beginFrame(float deltaTime)
     mouseOverUi = !overScene || overControl;
 }
 
-void EditorUi::endFrame()
+void EditorUi::endFrame(std::span<const octogui::DrawCommand> overlay)
 {
     ctx.paint();
+    ctx.drawList().append(overlay);
 
     int framebufferWidth = 0;
     int framebufferHeight = 0;

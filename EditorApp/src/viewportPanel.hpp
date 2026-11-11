@@ -14,6 +14,10 @@ namespace Cthulhu
 class Engine;
 }
 
+namespace Cthulhu::Rendering
+{
+struct Model;
+}
 namespace Cthulhu::Scribe
 {
 class Session;
@@ -44,15 +48,11 @@ class ViewportPanel
     }
 
     void updatePicking(octogui::Context &ctx, Engine &engine, HierarchyPanel &hierarchy, octogui::NodeHandle sceneNode);
-    void updateMarquee(octogui::Context &ctx,
-                       octogui::NodeHandle sceneNode,
-                       bool enabled,
-                       std::uint64_t sceneGeneration);
-    void updateGizmo(octogui::Context &ctx,
-                     Engine &engine,
-                     Scribe::Session &session,
-                     const HierarchyPanel &hierarchy,
-                     octogui::NodeHandle sceneNode);
+    [[nodiscard]] bool isAssetDropTarget(const octogui::Context &ctx, octogui::NodeHandle sceneNode) const;
+    [[nodiscard]] std::optional<glm::vec3> modelDropPosition(const octogui::Context &ctx, Engine &engine, octogui::NodeHandle sceneNode,const Rendering::Model &model) const;
+
+    void updateMarquee(octogui::Context &ctx, octogui::NodeHandle sceneNode, bool enabled, std::uint64_t sceneGeneration);
+    void updateGizmo(octogui::Context &ctx, Engine &engine, Scribe::Session &session, const HierarchyPanel &hierarchy, octogui::NodeHandle sceneNode);
 
   private:
     octogui::NodeHandle overlayNode{};

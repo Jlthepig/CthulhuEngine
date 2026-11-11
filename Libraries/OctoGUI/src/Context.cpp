@@ -2,6 +2,7 @@
 
 #include "OctoGui/Context.h"
 #include "Internal/ContextImpl.h"
+#include "Internal/LayoutGeometry.h"
 namespace octogui {
 namespace {
 
@@ -90,6 +91,24 @@ bool Context::isValid(NodeHandle handle) const noexcept {
 
 bool Context::isVisible(NodeHandle handle) const noexcept {
   return impl->tree.isVisible(handle);
+}
+
+Rect Context::visibleRect(NodeHandle handle) const noexcept {
+  const Tree &tree = impl->tree;
+  if (!tree.isValid(handle)) return {};
+
+  Rect rect = detail::visualRect(tree, handle).intersection(Rect{0.0f, 0.0f, impl->input.displaySize.x, impl->input.displaySize.y});
+
+  for (NodeHandle node = handle; tree.isValid(node); node = tree.parent(node)) {
+    if (!tree.isVisible(node)) return {};
+
+    const LayoutStyle *layout = tree.layoutStyle(node);
+    if (node != handle && layout && (layout->clip || layout->scrollY)) {
+      const Rect clip = layout->scrollY ? detail::visualContentRect(tree, node) : detail::visualRect(tree, node);
+      rect = rect.intersection(clip);
+    }
+  }
+  return rect;
 }
 
 void Context::setVisible(NodeHandle handle, bool visible) {

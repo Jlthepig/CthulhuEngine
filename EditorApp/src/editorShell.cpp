@@ -180,7 +180,10 @@ void EditorShell::frame(EditorUi &ui, Engine &engine, Scribe::Session &session, 
 
     ui.beginFrame(engine.getDeltaTime());
 
-    if (routeInput)
+    if (!ui.context().input().mouse.wasDown(MouseButton::Left))
+        assetDrag.ownsInput = false;
+
+    if (routeInput && !assetDrag.asset.isValid() && !assetDrag.ownsInput)
     {
         routeInput(&engine, engine.getDeltaTime());
     }
@@ -190,16 +193,23 @@ void EditorShell::frame(EditorUi &ui, Engine &engine, Scribe::Session &session, 
     engine.refreshSceneTransforms();
 
     const PixelRect viewport = ui.pixelRect(sceneNode);
-    engine.setViewportRect(
-        viewport.x, viewport.y, viewport.width, viewport.height);
+    engine.setViewportRect(viewport.x, viewport.y, viewport.width, viewport.height);
 
-    engine.render(viewportPanelUI.overlayVertices());
-    ui.endFrame();
+    Rendering::ModelPreview preview;
+    if (assetPreviewPosition)
+        preview = {engine.getAssetManager().getModel(assetDrag.previewModel), *assetPreviewPosition};
+
+    const auto overlay = assetDrag.ownsInput ? std::span<const Rendering::OverlayVertex>{} : viewportPanelUI.overlayVertices();
+    engine.render(overlay, preview);
+    ui.endFrame(assetFeedback.span());
     engine.present();
 }
 
 void EditorShell::update(Context &ctx, Engine &engine, Scribe::Session &session)
 {
+    assetFeedback.clear();
+    assetPreviewPosition.reset();
+
     const std::uint64_t inputGeneration = engine.getSceneGeneration();
 
     const auto changes = session.takeEvents();
@@ -220,6 +230,17 @@ void EditorShell::update(Context &ctx, Engine &engine, Scribe::Session &session)
         });
     hierarchyPanelUI.update(ctx, engine, session, changes);
 
+    if (pendingAssetSelection.isValid())
+    {
+        const auto *scene = engine.getActiveScene();
+        if (pendingAssetSelectionGeneration == engine.getSceneGeneration() &&
+            !engine.isPlaying() && scene && scene->isEntityAlive(pendingAssetSelection))
+        {
+            hierarchyPanelUI.selectEntity(ctx, pendingAssetSelection);
+        }
+        pendingAssetSelection = {};
+    }
+
     uiEvents.clear();
     octogui::UIEvent event;
     while (ctx.pollEvent(event))
@@ -227,10 +248,12 @@ void EditorShell::update(Context &ctx, Engine &engine, Scribe::Session &session)
         uiEvents.push_back(event);
     }
 
-    viewportPanelUI.update(ctx);
+    if (!assetDrag.asset.isValid() && !assetDrag.ownsInput)
+        viewportPanelUI.update(ctx);
 
     const bool wasPlaying = engine.isPlaying();
-    const bool togglePlay = !ctx.contextMenuOwnsInput() && !ctx.isValid(ctx.focused()) && Core::Input::isKeyPressed(GLFW_KEY_F5);
+    const bool togglePlay = !assetDrag.asset.isValid() && !assetDrag.ownsInput && !ctx.contextMenuOwnsInput() && !ctx.isValid(ctx.focused()) && 
+                            Core::Input::isKeyPressed(GLFW_KEY_F5);
 
     if (ctx.isClicked(saveButton.button))
     {
@@ -287,16 +310,22 @@ void EditorShell::update(Context &ctx, Engine &engine, Scribe::Session &session)
         lastPlaying = playing;
     }
 
-    if (ctx.input().mouse.pressed(MouseButton::Left))
+    if (!assetDrag.asset.isValid() && !assetDrag.ownsInput)
     {
-        viewportPanelUI.updateGizmo(ctx, engine, session, hierarchyPanelUI, sceneNode);
-    }
+        if (ctx.input().mouse.pressed(MouseButton::Left))
+        {
+            viewportPanelUI.updateGizmo(
+                ctx, engine, session, hierarchyPanelUI, sceneNode);
+        }
 
-    viewportPanelUI.updateMarquee(ctx,
-                                  sceneNode,
-                                  !engine.isPlaying() && engine.hasActiveScene(),
-                                  engine.getSceneGeneration());
-    viewportPanelUI.updatePicking(ctx, engine, hierarchyPanelUI, sceneNode);
+        viewportPanelUI.updateMarquee(
+            ctx, sceneNode,
+            !engine.isPlaying() && engine.hasActiveScene(),
+            engine.getSceneGeneration());
+
+        viewportPanelUI.updatePicking(
+            ctx, engine, hierarchyPanelUI, sceneNode);
+    }
 
     if (engine.isPlaying())
         engine.getRenderer().setOutlineTargets({});
@@ -307,10 +336,17 @@ void EditorShell::update(Context &ctx, Engine &engine, Scribe::Session &session)
                         hierarchyPanelUI.selectedEntity(),
                         uiEvents, inputGeneration, assetsChanged);
     // commit Inspector edits before asset operations can clear history
-    contentBrowserUI.update(ctx, engine, session, assetsChanged);
+    updateAssetDrag(ctx, engine, session);
 
-    viewportPanelUI.updateGizmo(ctx, engine, session, hierarchyPanelUI, sceneNode);
-    viewportPanelUI.drawGizmoFeedback(ctx);
+    contentBrowserUI.update(
+        ctx, engine, session, assetsChanged, assetDrag.ownsInput);
+
+    if (!assetDrag.asset.isValid() && !assetDrag.ownsInput)
+    {
+        viewportPanelUI.updateGizmo(
+            ctx, engine, session, hierarchyPanelUI, sceneNode);
+        viewportPanelUI.drawGizmoFeedback(ctx);
+    }
 
     std::string sceneText = "No scene";
     if (const auto *activeScene = engine.getActiveScene())

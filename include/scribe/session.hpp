@@ -82,6 +82,7 @@ class Session
     Result renameScene(std::string_view newName);
 
     EntityResult createEntity(std::string_view name, std::optional<Scene::EntityId> parent = std::nullopt);
+    EntityResult placeModel(Assets::AssetId asset, glm::vec3 position);
     Result deleteEntity(Scene::EntityId id);
     EntityResult duplicateEntity(Scene::EntityId id);
     Result renameEntity(Scene::EntityId id, std::string_view newName);

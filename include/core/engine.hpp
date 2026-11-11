@@ -86,7 +86,7 @@ class Engine
     bool shouldClose() const;
     void update();
     void refreshSceneTransforms();
-    void render(std::span<const Rendering::OverlayVertex> overlayVertices = {}); // 3d
+    void render(std::span<const Rendering::OverlayVertex> overlayVertices = {}, const Rendering::ModelPreview &preview = {}); // 3d
     void present(); // swap bufferes and poll window events
     void setViewportRect(int x, int y, int width, int height);
 

@@ -42,6 +42,66 @@ inline void cleanImportFolder(Engine& engine)
 	}
 }
 
+inline void validateScribeModelPlacement(Engine &engine, Results &r)
+{
+	constexpr std::string_view path = "res://assets/models/DamagedHelmet.glb";
+	auto *scene = engine.getActiveScene();
+	const auto &assets = engine.getAssetManager();
+	const auto *record = assets.getRegistry().findByPath(path);
+	if (!scene || !record)
+	{
+		check(r, false, "Placement needs the DamagedHelmet.glb fixture");
+		return;
+	}
+
+	Scribe::Session session(engine);
+	const bool wasDirty = scene->isDirty();
+	const auto refs = assets.getTotalModelRefCount();
+	const auto entityCount = scene->getWorld().count<CS::EntityIdentityComponent>();
+	const glm::vec3 position{1.25f, 2.5f, -3.0f};
+	const auto rejected = session.placeModel({}, position);
+	check(r, !rejected.ok() && !rejected.id.isValid() && !session.canUndo() &&
+			 session.takeEvents().empty() && scene->isDirty() == wasDirty &&
+			 assets.getTotalModelRefCount() == refs &&
+			 scene->getWorld().count<CS::EntityIdentityComponent>() == entityCount,
+		  "Placement rejects an unknown asset without changing the scene");
+
+	const auto placed = session.placeModel(record->id, position);
+	const auto matchesPlacement = [&]() {
+		const auto entity = scene->findEntity(placed.id);
+		if (!entity || scene->getParent(placed.id))
+			return false;
+
+		const auto *name = entity->try_get<CS::NameComponent>();
+		const auto *transform = entity->try_get<CS::TransformComponent>();
+		const auto *mesh = entity->try_get<CS::MeshComponent>();
+		const auto *runtime = entity->try_get<CS::MeshRuntimeComponent>();
+		return name && name->name == "DamagedHelmet" &&
+			   transform && transform->position == position &&
+			   mesh && mesh->modelPath == path &&
+			   runtime && assets.getModel(runtime->model) &&
+			   assets.getTotalModelRefCount() == refs + 1;
+	};
+
+	const auto events = session.takeEvents();
+	check(r, placed.ok() && matchesPlacement() && scene->isDirty() &&
+			 events.size() == 1 && events.front().type == Scribe::ChangeType::EntityCreated &&
+			 events.front().entityId == placed.id,
+		  "Placement publishes one complete root entity");
+
+	const bool undone = session.undo();
+	check(r, undone && !scene->isEntityAlive(placed.id) && !session.canUndo() &&
+			 assets.getTotalModelRefCount() == refs,
+		  "Placement undoes in one step and releases its model reference");
+
+	const bool redone = session.redo();
+	check(r, redone && matchesPlacement(), "Placement redo restores the same entity and position");
+	if (redone)
+		(void)session.undo();
+	if (wasDirty)
+		scene->markDirty();
+}
+
 inline void validateScribeImport(Engine& engine, Results& r)
 {
 	const auto* project = engine.getProject();

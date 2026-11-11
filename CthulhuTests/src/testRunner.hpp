@@ -64,6 +64,7 @@ inline int run(Engine& engine)
 	validateScribeEntities(engine, r);
 	validateScribeTransforms(engine, r);
 	validateScribeComponents(engine, r);
+	validateScribeModelPlacement(engine, r);
 	validateScribeImport(engine, r);
 	validateScribeMove(engine, r);
 	validateScribeDelete(engine, r);

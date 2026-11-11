@@ -894,7 +894,7 @@ void Engine::refreshSceneTransforms()
     }
 }
 
-void Engine::render(std::span<const Rendering::OverlayVertex> overlayVertices)
+void Engine::render(std::span<const Rendering::OverlayVertex> overlayVertices, const Rendering::ModelPreview &preview)
 {
     if (state == EngineState::Uninitialized || !glfwWindow)
     {
@@ -957,7 +957,8 @@ void Engine::render(std::span<const Rendering::OverlayVertex> overlayVertices)
                     frameRenderables,
                     x,
                     fbh - (y + h),
-                    overlayVertices);
+                    overlayVertices,
+                    preview);
 }
 
 void Engine::setViewportRect(int x, int y, int width, int height)

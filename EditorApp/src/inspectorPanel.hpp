@@ -10,6 +10,7 @@
 #include "OctoGui/Context.h"
 #include "OctoGui/Event.h"
 #include "componentRegistry.hpp"
+#include "assetDrag.hpp"
 
 namespace Cthulhu
 {
@@ -29,6 +30,7 @@ class Scene;
 namespace Cthulhu::Assets
 {
 class AssetRegistry;
+struct AssetRecord;
 }
 
 namespace Cthulhu::Editor
@@ -45,6 +47,8 @@ class InspectorPanel
                 std::span<const octogui::UIEvent> events,
                 std::uint64_t inputGeneration,
                 bool assetsChanged);
+    
+    AssetDropFeedback assetDrop(octogui::Context &ctx, Engine &engine, Scribe::Session &session, const Assets::AssetRecord &asset, bool commit, octogui::DrawList &feedback);
 
   private:
     static double toInspectorUnits(double value, Scene::FieldHint hint);

@@ -2,6 +2,7 @@
 
 #include <string>
 #include <vector>
+#include <optional>
 
 #include "OctoGui/Event.h"
 #include "OctoGui/Context.h"
@@ -10,6 +11,7 @@
 #include "inspectorPanel.hpp"
 #include "viewportPanel.hpp"
 #include "contentBrowserPanel.hpp"
+#include "assetDrag.hpp"
 
 using namespace octogui;
 
@@ -40,6 +42,8 @@ class EditorShell
 
     void frame(EditorUi &ui, Engine &engine, Scribe::Session &session, void (*routeInput)(void *, float));
 
+    void clearAssetDrag(Engine &engine);
+
     [[nodiscard]] const ViewportPanel &viewport() const noexcept
     {
         return viewportPanelUI;
@@ -63,6 +67,16 @@ class EditorShell
 
     InspectorPanel inspectorUI;
     ContentBrowserPanel contentBrowserUI;
+
+    AssetDragState assetDrag;
+    DrawList assetFeedback;
+
+    std::optional<glm::vec3> assetPreviewPosition;
+    Scene::EntityId pendingAssetSelection{};
+    std::uint64_t pendingAssetSelectionGeneration{};
+
+    void updateAssetDrag(Context &ctx, Engine &engine, Scribe::Session &session);
+    AssetDropFeedback dropInViewport(Context &ctx, Engine &engine, Scribe::Session &session, const Assets::AssetRecord &asset, bool released);
 
     std::vector<octogui::UIEvent> uiEvents;
 
