@@ -3,15 +3,21 @@
 #include <filesystem>
 #include <string>
 #include <vector>
+#include <optional>
 
 #include "OctoGui/Context.h"
 #include "contentBrowserIndex.hpp"
+#include "assetDrag.hpp"
 
 namespace Cthulhu
 {
 class Engine;
 }
 
+namespace Cthulhu::Assets
+{
+struct AssetRecord;
+}
 namespace Cthulhu::Scribe
 {
 class Session;
@@ -28,6 +34,11 @@ class ContentBrowserPanel
 
     Assets::AssetId beginAssetDrag(octogui::Context &ctx, const Project::Project &project);
     void reportError(octogui::Context &ctx, std::string_view message);
+
+    void clearFolderDropHighlight(octogui::Context &ctx);
+    std::optional<AssetDropFeedback> folderDrop(octogui::Context &ctx, Engine &engine, Scribe::Session &session, const Assets::AssetRecord &asset, 
+                                                bool released,
+                                                octogui::DrawList &feedback);
 
   private:
     enum class PendingAction { Delete, Move };
@@ -59,7 +70,9 @@ class ContentBrowserPanel
     void reloadCatalog(octogui::Context &ctx, const Project::Project &project, const Assets::AssetRegistry &registry);
     bool updateActions(octogui::Context &ctx, const Project::Project *project, const Assets::AssetRegistry &registry, Scribe::Session &session, bool canEdit);
     bool beginMove(octogui::Context &ctx, const ContentBrowserEntry &entry);
-    Scribe::Result finishMove(octogui::Context &ctx, const Project::Project *project, const Assets::AssetRegistry &registry, Scribe::Session &session);
+    Scribe::Result moveAssetToFolder(octogui::Context &ctx, const Project::Project &project, const Assets::AssetRegistry &registry, Scribe::Session &session,
+                                    const Assets::AssetRecord &asset,
+                                    std::string_view folder);
     void cancelAction(octogui::Context &ctx);
 
     void importAsset(octogui::Context &ctx, Engine &engine, Scribe::Session &session);
@@ -82,6 +95,7 @@ class ContentBrowserPanel
     ContentBrowserIndex index;
     std::filesystem::path boundProject;
     std::vector<octogui::TreeViewItemId> folderItems;
+    octogui::TreeViewItemId highlightedDropFolder{};
     std::vector<std::size_t> visible;
     std::vector<octogui::NodeHandle> rows;
     std::vector<Tile> tiles;

@@ -98,7 +98,7 @@ void EditorShell::updateAssetDrag(Context &ctx, Engine &engine, Scribe::Session 
         return event.type == InputEventType::Key && event.action == KeyAction::Press && event.key == Key::Escape;
     });
 
-    const bool cancelled = !project || !focused || !engine.hasActiveScene() ||
+    const bool cancelled = !project || !focused ||
         engine.isPlaying() || session.transformEditActive() ||
         ctx.contextMenuOwnsInput() || escape ||
         mouse.isDown(MouseButton::Right) ||
@@ -150,15 +150,19 @@ void EditorShell::updateAssetDrag(Context &ctx, Engine &engine, Scribe::Session 
         ctx.resolvePendingLayout();
 
         const bool released = mouse.released(MouseButton::Left);
-        const auto feedback = viewportPanelUI.isAssetDropTarget(ctx, sceneNode)
-                      ? dropInViewport(ctx, engine, session, *asset, released)
-                      : inspectorUI.assetDrop(ctx, engine, session, *asset, released, assetFeedback);
+        auto feedback = contentBrowserUI.folderDrop(ctx, engine, session, *asset, released, assetFeedback);
+        if (!feedback)
+        {
+            feedback = engine.hasActiveScene() && viewportPanelUI.isAssetDropTarget(ctx, sceneNode)
+                           ? dropInViewport(ctx, engine, session, *asset, released)
+                           : inspectorUI.assetDrop(ctx, engine, session, *asset, released, assetFeedback);
+        }
 
-        drawAssetBadge(ctx, assetFeedback, assetDrag.name, feedback);
+        drawAssetBadge(ctx, assetFeedback, assetDrag.name, *feedback);
 
-        if (feedback.failed)
-            contentBrowserUI.reportError(ctx, feedback.message);
-        else if (released && feedback.accepted)
+        if (feedback->failed)
+            contentBrowserUI.reportError(ctx, feedback->message);
+        else if (released && feedback->accepted)
             contentBrowserUI.reportError(ctx, {});
     }
 

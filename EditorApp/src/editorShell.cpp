@@ -209,6 +209,7 @@ void EditorShell::update(Context &ctx, Engine &engine, Scribe::Session &session)
 {
     assetFeedback.clear();
     assetPreviewPosition.reset();
+    contentBrowserUI.clearFolderDropHighlight(ctx);
 
     const std::uint64_t inputGeneration = engine.getSceneGeneration();
 

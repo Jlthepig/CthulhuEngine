@@ -195,7 +195,8 @@ bool ContentBrowserPanel::updateActions(Context &ctx,
         {
             Scribe::Result result;
             if (moving)
-                result = project ? finishMove(ctx, project, registry, session)
+                result = project ? moveAssetToFolder(ctx, *project, registry, session, *record,
+                                                     ctx.comboBoxSelectedText(moveDestination))
                                  : Scribe::Result::failed("No project is open.");
             else
                 result = session.deleteAsset(pendingAsset);
