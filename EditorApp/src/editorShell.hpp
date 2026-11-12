@@ -12,6 +12,7 @@
 #include "viewportPanel.hpp"
 #include "contentBrowserPanel.hpp"
 #include "assetDrag.hpp"
+#include "editorDialog.hpp"
 
 using namespace octogui;
 
@@ -40,7 +41,7 @@ class EditorShell
 
     void update(Context &ctx, Engine &engine, Scribe::Session &session);
 
-    void frame(EditorUi &ui, Engine &engine, Scribe::Session &session, void (*routeInput)(void *, float));
+    [[nodiscard]] bool frame(EditorUi &ui, Engine &engine, Scribe::Session &session, void (*routeInput)(void *, float));
 
     void clearAssetDrag(Engine &engine);
 
@@ -83,5 +84,9 @@ class EditorShell
     std::string lastSceneText;
     bool lastPlaying = false;
     bool lastPaused = false;
+
+    bool handleExit(Context &ctx, Engine &engine, Scribe::Session &session);
+    EditorDialog exitDialog;
+    bool resumePlayOnCancel = false;
 };
 } // namespace Cthulhu::Editor

@@ -492,6 +492,22 @@ void Engine::releaseActiveScene()
     frameRenderables.clear();
 }
 
+std::optional<std::string_view> Engine::unsavedEditSceneName() const noexcept
+{
+    if (editSnapshot)
+    {
+        if (editSnapshot->dirty || !editSnapshot->resourcePath)
+            return editSnapshot->name;
+
+        return std::nullopt;
+    }
+
+    if (activeScene && activeScene->needsSave())
+        return activeScene->getName();
+
+    return std::nullopt;
+}
+
 bool Engine::saveActiveScene()
 {
     if (!activeScene)

@@ -53,7 +53,7 @@ NodeHandle InteractionSystem::hitTest(const Tree &tree, NodeHandle node,
 NodeHandle InteractionSystem::hitTestScrollbar(const Tree &tree,
                                                NodeHandle node, Vec2 point,
                                                Vec2 offset) {
-  if (!tree.isValid(node) || !tree.isVisible(node)) {
+  if (!tree.isValid(node) || !tree.isVisible(node) || !tree.isEnabled(node)) {
     return NodeHandle{};
   }
 
@@ -107,7 +107,7 @@ NodeHandle InteractionSystem::hitTestScrollbar(const Tree &tree,
 NodeHandle InteractionSystem::hitTestSplitter(const Tree &tree,
                                               NodeHandle node, Vec2 point,
                                               Vec2 offset) {
-  if (!tree.isValid(node) || !tree.isVisible(node)) {
+  if (!tree.isValid(node) || !tree.isVisible(node) || !tree.isEnabled(node)) {
     return {};
   }
 

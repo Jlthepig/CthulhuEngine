@@ -58,7 +58,9 @@ inline void validatePlayStop(Engine& engine, Results& r)
 	}
 	engine.setWorldMode(WorldMode::Edit);
 
+	check(r, !engine.unsavedEditSceneName(), "T0 saved edit scene has no unsaved changes");
 	auto* editScene = engine.getActiveScene();
+	
 	editScene->addPointLight(Rendering::PointLight{}); 
 
 	
@@ -124,6 +126,8 @@ inline void validatePlayStop(Engine& engine, Results& r)
 
 	engine.play();
 	engine.createEmptyScene("V_Level2"); 
+	check(r, engine.unsavedEditSceneName() == before.name,
+		  "T12 quit checks the unsaved edit scene after a Play level switch");
 	engine.stop();
 	expectSame(r, fingerprint(*engine.getActiveScene()), before,
 			   "T12 stop after a level switch still returns to the edit scene");

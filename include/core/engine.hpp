@@ -94,6 +94,8 @@ class Engine
     bool createEmptyScene(const std::string &name = "Untitled");
     void unloadScene();
 
+    [[nodiscard]] std::optional<std::string_view> unsavedEditSceneName() const noexcept;
+
     bool saveActiveScene();
     bool saveActiveSceneAs(std::string_view resourcePath);
 

@@ -179,10 +179,8 @@ int main(int argc, char *argv[])
 
     camera = engine.getCamera();
 
-    while (!engine.shouldClose())
-    {
-        shell.frame(ui, engine, session, onUpdate);
-    }
+    while (shell.frame(ui, engine, session, onUpdate))
+    {}
 
     shell.clearAssetDrag(engine);
     (void)session.finishTransformEdit(false);

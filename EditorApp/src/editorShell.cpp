@@ -11,6 +11,7 @@
 #include "log_utils.hpp"
 #include "scene.hpp"
 #include "session.hpp"
+#include "window.hpp"
 
 using namespace octogui;
 
@@ -94,11 +95,14 @@ void EditorShell::build(Context &ctx)
 {
     const NodeHandle root = ctx.ensureRoot();
     seeThrough(ctx, root);
-    auto rootLayout = ctx.layoutStyle(root);
-    rootLayout.mode = LayoutMode::Vertical;
-    rootLayout.horizontalAlignment = Alignment::Stretch;
+    fillWithChild(ctx, root);
 
-    const NodeHandle topBar = ctx.createPanel(root);
+    const NodeHandle editorContent = ctx.createContainer(root);
+    auto editorLayout = ctx.layoutStyle(editorContent);
+    editorLayout.mode = LayoutMode::Vertical;
+    editorLayout.horizontalAlignment = Alignment::Stretch;
+
+    const NodeHandle topBar = ctx.createPanel(editorContent);
     fixedBar(ctx, topBar, 50.0f);
     auto topLayout = ctx.layoutStyle(topBar);
     topLayout.gap = 8.0f;
@@ -115,11 +119,11 @@ void EditorShell::build(Context &ctx)
 
     saveButton = iconButton(ctx, topBar, "save");
     ctx.layoutStyle(saveButton.button).gap = 6.0f;
-    [[maybe_unused]] const NodeHandle saveLabel = ctx.createLabel(saveButton.button, "Save Scene");
+    const NodeHandle saveLabel = ctx.createLabel(saveButton.button, "Save Scene");
     fixedSize(ctx, saveButton.button, 120.0f, 26.0f);
     verticalSeparator(ctx, topBar, 24.0f);
 
-    [[maybe_unused]] const NodeHandle controlsSpacer = ctx.createContainer(topBar);
+    const NodeHandle controlsSpacer = ctx.createContainer(topBar);
 
     playButton = iconButton(ctx, topBar, "play");
     pauseButton = iconButton(ctx, topBar, "pause");
@@ -132,7 +136,7 @@ void EditorShell::build(Context &ctx)
     ctx.setIconColor(stopButton.icon, ctx.theme().textDisabled);
 
     // left >> hierarchy viewport and browser. right >> inspector.
-    const NodeHandle workspace = ctx.createSplitContainer(root, SplitOrientation::Horizontal, 0.80f);
+    const NodeHandle workspace = ctx.createSplitContainer(editorContent, SplitOrientation::Horizontal, 0.80f);
     ctx.setSplitMinimumSizes(workspace, 444.0f, 280.0f);
     seeThrough(ctx, workspace);
 
@@ -167,42 +171,61 @@ void EditorShell::build(Context &ctx)
 
     contentBrowserUI.build(ctx, ctx.splitSecondPane(mainContent));
 
-    const NodeHandle statusBar = ctx.createPanel(root);
+    const NodeHandle statusBar = ctx.createPanel(editorContent);
     fixedBar(ctx, statusBar, 24.0f);
+    exitDialog.build(ctx, root, editorContent);
 }
 
-void EditorShell::frame(EditorUi &ui, Engine &engine, Scribe::Session &session, void (*routeInput)(void *, float))
+bool EditorShell::frame(EditorUi &ui, Engine &engine, Scribe::Session &session, void (*routeInput)(void *, float))
 {
     engine.update();
 
-    if (!engine.getWindow())
-        return;
+    const auto *window = engine.getWindow();
+    if (!window || !window->getWindow())
+        return false;
+
+    const bool closeRequested = engine.shouldClose();
+    if (closeRequested)
+        glfwSetWindowShouldClose(window->getWindow(), GLFW_FALSE);
 
     ui.beginFrame(engine.getDeltaTime());
+    auto &ctx = ui.context();
 
-    if (!ui.context().input().mouse.wasDown(MouseButton::Left))
+    if (!ctx.input().mouse.wasDown(MouseButton::Left))
         assetDrag.ownsInput = false;
 
-    if (routeInput && !assetDrag.asset.isValid() && !assetDrag.ownsInput)
+    const bool handlingExit = closeRequested || exitDialog.isOpen(ctx);
+    if (handlingExit)
     {
-        routeInput(&engine, engine.getDeltaTime());
+        if (handleExit(ctx, engine, session))
+        {
+            ctx.endFrame();
+            return false;
+        }
+    }
+    else
+    {
+        if (routeInput && !assetDrag.asset.isValid() && !assetDrag.ownsInput)
+            routeInput(&engine, engine.getDeltaTime());
+
+        update(ctx, engine, session);
     }
 
-    update(ui.context(), engine, session);
-    ui.context().resolvePendingLayout();
+    ctx.resolvePendingLayout();
     engine.refreshSceneTransforms();
 
     const PixelRect viewport = ui.pixelRect(sceneNode);
     engine.setViewportRect(viewport.x, viewport.y, viewport.width, viewport.height);
-
     Rendering::ModelPreview preview;
     if (assetPreviewPosition)
         preview = {engine.getAssetManager().getModel(assetDrag.previewModel), *assetPreviewPosition};
 
-    const auto overlay = assetDrag.ownsInput ? std::span<const Rendering::OverlayVertex>{} : viewportPanelUI.overlayVertices();
+    const auto overlay = handlingExit || assetDrag.ownsInput ? std::span<const Rendering::OverlayVertex>{}
+                                                            : viewportPanelUI.overlayVertices();
     engine.render(overlay, preview);
     ui.endFrame(assetFeedback.span());
     engine.present();
+    return true;
 }
 
 void EditorShell::update(Context &ctx, Engine &engine, Scribe::Session &session)

@@ -66,12 +66,16 @@ void InteractionSystem::validateTrackedNodes(Tree& tree, WidgetSystem& widgets, 
   }
 
   if (!tree.isValid(interaction.splitterActive) ||
+      !tree.isVisibleBranch(interaction.splitterActive) ||
+      !isEnabledBranch(tree, interaction.splitterActive) ||
       tree.type(interaction.splitterActive) != NodeType::SplitContainer) {
     interaction.splitterActive = NodeHandle{};
     splitterGrabOffset = 0.0f;
   }
 
-  if (!tree.isValid(interaction.scrollbarActive)) {
+  if (!tree.isValid(interaction.scrollbarActive) ||
+      !tree.isVisibleBranch(interaction.scrollbarActive) ||
+      !isEnabledBranch(tree, interaction.scrollbarActive)) {
     interaction.scrollbarActive = NodeHandle{};
   } else {
     const LayoutStyle* style =
