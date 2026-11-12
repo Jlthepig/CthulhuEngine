@@ -113,10 +113,9 @@ void ViewportPanel::build(Context &ctx, NodeHandle viewportRoot)
     {
         auto pillStyle = ctx.style(pill);
         pillStyle.all.background = ctx.theme().surface;
-        pillStyle.all.border = ctx.theme().border;
         pillStyle.cornerRadius = 0.0f;
-        pillStyle.borderWidth = 1.0f;
-        pillStyle.shadow = ctx.theme().elevationLow;
+        pillStyle.borderWidth = 0.0f;
+        pillStyle.shadow = ShadowStyle{};
     }
 
     const IconButton select = makeToolButton(ctx, pill, "cursor");

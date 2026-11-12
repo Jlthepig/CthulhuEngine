@@ -8,6 +8,7 @@
 #include <string_view>
 #include <vector>
 #include <span>
+#include <list>
 
 #include "assetRegistry.hpp"
 #include "command.hpp"
@@ -29,13 +30,12 @@ struct SceneDocument
 {
     Scene::SceneSnapshot snapshot;
     History history;
-    const Engine *owner = nullptr;
 };
 
 struct DocumentSwitchResult
 {
     Result result;
-    std::optional<SceneDocument> previous;
+    SceneDocument *previous = nullptr;
 };
 
 // << shalll not be used by runtime code! >>
@@ -88,7 +88,9 @@ class Session
     }
 
     [[nodiscard]] DocumentSwitchResult openSceneDocument(std::string_view resourcePath);
-    [[nodiscard]] DocumentSwitchResult activateSceneDocument(std::optional<SceneDocument> &target);
+    [[nodiscard]] DocumentSwitchResult activateSceneDocument(SceneDocument *&target, bool keepCurrent = true);
+    [[nodiscard]] Result closeActiveSceneDocument();
+    [[nodiscard]] Result closeInactiveSceneDocument(SceneDocument *&target);
 
     Result save();
     Result saveAs(std::string_view resourcePath);
@@ -142,7 +144,8 @@ class Session
     bool transformWasDirty = false;
 
     [[nodiscard]] bool canSwitchDocument();
-    std::optional<SceneDocument> finishDocumentSwitch(std::optional<Scene::SceneSnapshot> previous);
+    SceneDocument *finishDocumentSwitch(std::optional<Scene::SceneSnapshot> previous);
+    std::list<SceneDocument> inactiveDocuments;
 
     Scene::Scene *syncScene();
     void refreshDirty(Scene::Scene &scene);

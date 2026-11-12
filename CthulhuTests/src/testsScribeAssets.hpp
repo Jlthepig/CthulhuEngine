@@ -335,6 +335,24 @@ inline void validateScribeMove(Engine& engine, Results& r)
 		  "M8 Save follows a moved open scene without recreating the old path");
 	check(r, session.saveAs("res://.cthulhu/validation_asset_history.scene").ok(),
 		  "M8 restore the validation document path");
+
+	const auto previousMode = engine.getWorldMode();
+	engine.setWorldMode(WorldMode::Edit);
+	const auto parkedEntity = session.placeModel(imported.id, glm::vec3(0.0f));
+	auto opened = session.openSceneDocument(SAVE_PATH);
+	const bool blocked = opened.result.ok() && !session.deleteAsset(imported.id).ok();
+	const bool movedWhileParked = opened.result.ok() && session.moveAsset(imported.id, startPath).status == Status::Applied;
+	const bool resumed = opened.previous && session.activateSceneDocument(opened.previous).result.ok();
+	const auto *restored = engine.getActiveScene();
+	const auto parkedMesh = resumed && restored ? restored->findEntity(parkedEntity.id) : std::nullopt;
+	const auto *restoredMesh = parkedMesh ? parkedMesh->try_get<CS::MeshComponent>() : nullptr;
+	check(r, parkedEntity.ok() && blocked && movedWhileParked && restoredMesh &&
+				 restoredMesh->modelPath == startPath && restored->isDirty() && !session.canUndo(),
+		  "Inactive scene protects its asset and follows a move");
+	if (!opened.result.ok() || resumed)
+		(void)session.deleteEntity(parkedEntity.id);
+	engine.setWorldMode(previousMode);
+
 	cleanImportFolder(engine);
 }
 

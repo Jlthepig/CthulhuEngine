@@ -81,10 +81,29 @@ inline void validateScribeDocumentSwitch(Engine &engine, Results &r)
                  session.canUndo() && session.redo(),
           "Scene tabs restore the entity ID, dirty state, undo and redo");
 
-    const auto switchedBack = session.activateSceneDocument(switched.previous);
+    auto switchedBack = session.activateSceneDocument(switched.previous);
     check(r, editedB && switchedBack.result.ok() && session.undo() &&
                  engine.getActiveScene()->getName() == originalNameB && !engine.getActiveScene()->isDirty(),
           "Scene tabs restore the second document's history and save point");
+
+    if (!switchedBack.result.ok() || !switchedBack.previous)
+        return;
+
+    auto &inactive = switchedBack.previous;
+    const auto generation = engine.getSceneGeneration();
+    const auto closedInactive = session.closeInactiveSceneDocument(inactive);
+    check(r, closedInactive.ok() && !inactive && engine.getSceneGeneration() == generation &&
+                 engine.getActiveScene()->getName() == originalNameB && session.canRedo(),
+          "Closing an inactive tab preserves the active scene and history");
+
+    if (!closedInactive.ok())
+        return;
+
+    const auto closedActive = session.closeActiveSceneDocument();
+    const auto closeEvents = session.takeEvents();
+    check(r, closedActive.ok() && !engine.hasActiveScene() && !session.canRedo() &&
+                 closeEvents.size() == 1 && closeEvents.front().type == Scribe::ChangeType::SceneReplaced,
+          "Closing the final tab unloads the scene and clears history");
 }
 
 inline void validateScribeEntities(Engine& engine, Results& r)

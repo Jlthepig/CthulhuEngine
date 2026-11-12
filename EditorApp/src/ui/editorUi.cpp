@@ -1,5 +1,7 @@
 #include "editorUi.hpp"
 
+#include <cmath>
+
 #include "OctoGui_GLFW.h"
 #include "log_utils.hpp"
 
@@ -106,11 +108,12 @@ PixelRect EditorUi::pixelRect(octogui::NodeHandle node) const
     const octogui::Vec2 display = ctx.input().displaySize;
     const float scaleX = display.x > 0.0f ? static_cast<float>(framebufferWidth) / display.x : 1.0f;
     const float scaleY = display.y > 0.0f ? static_cast<float>(framebufferHeight) / display.y : 1.0f;
-
-    return {static_cast<int>(rect.x * scaleX),
-            static_cast<int>(rect.y * scaleY),
-            static_cast<int>(rect.w * scaleX),
-            static_cast<int>(rect.h * scaleY)};
+    
+    const int left = static_cast<int>(std::round(rect.x * scaleX));
+    const int top = static_cast<int>(std::round(rect.y * scaleY));
+    const int right = static_cast<int>(std::round((rect.x + rect.w) * scaleX));
+    const int bottom = static_cast<int>(std::round((rect.y + rect.h) * scaleY));
+    return {left, top, right - left, bottom - top};
 }
 
 bool EditorUi::wantsKeyboard() const noexcept

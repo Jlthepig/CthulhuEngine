@@ -7,8 +7,6 @@
 #include "OctoGui/Vec2.h"
 #include "assetHandle.hpp"
 #include "assetId.hpp"
-
-
 namespace Cthulhu::Editor
 {
     struct AssetDragState

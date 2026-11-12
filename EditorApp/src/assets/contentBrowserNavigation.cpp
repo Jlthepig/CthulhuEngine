@@ -258,6 +258,13 @@ Assets::AssetId ContentBrowserPanel::beginAssetDrag(Context &ctx, const Project:
     return {};
 }
 
+Assets::AssetId ContentBrowserPanel::takeSceneOpenRequest()
+{
+    const auto request = sceneOpenRequest;
+    sceneOpenRequest = {};
+    return request;
+}
+
 void ContentBrowserPanel::update(Context &ctx, Engine &engine, Scribe::Session &session, bool assetsChanged, bool dragOwnsInput)
 {
     catalogPending = catalogPending || assetsChanged;
@@ -364,14 +371,19 @@ void ContentBrowserPanel::update(Context &ctx, Engine &engine, Scribe::Session &
             if (tile.entry >= entries.size()) break;
             const auto &entry = entries[tile.entry];
 
-            if (entry.folder && lastFolderClick == entry.path && folderClickAge <= 0.35f)
+            const bool canOpen = entry.folder || (canEditAssets && entry.type == Assets::AssetType::Scene && !entry.missing);
+            if (canOpen && lastFolderClick == entry.path && folderClickAge <= 0.35f)
             {
-                showFolder(ctx, entry.path);
+                lastFolderClick.clear();
+                if (entry.folder)
+                    showFolder(ctx, entry.path);
+                else
+                    sceneOpenRequest = entry.assetId;
             }
             else
             {
                 select(ctx, tile.entry);
-                lastFolderClick = entry.folder ? entry.path : std::string{};
+                lastFolderClick = canOpen ? entry.path : std::string{};
                 folderClickAge = 0.0f;
             }
             break;

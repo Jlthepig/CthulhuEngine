@@ -159,7 +159,14 @@ void EditorShell::build(Context &ctx)
 
     hierarchyPanelUI.build(ctx, ctx.splitFirstPane(hierarchyViewport));
 
-    sceneNode = ctx.splitSecondPane(hierarchyViewport);
+    const auto viewportPane = ctx.splitSecondPane(hierarchyViewport);
+    ctx.layoutStyle(viewportPane).mode = LayoutMode::Vertical;
+    ctx.layoutStyle(viewportPane).gap = 0.0f;
+    ctx.layoutStyle(viewportPane).clip = true;
+    seeThrough(ctx, viewportPane);
+
+    buildSceneTabBar(ctx, viewportPane);
+    sceneNode = ctx.createContainer(viewportPane);
     fillWithChild(ctx, sceneNode);
     seeThrough(ctx, sceneNode);
     viewportPanelUI.build(ctx, sceneNode);
@@ -220,8 +227,10 @@ bool EditorShell::frame(EditorUi &ui, Engine &engine, Scribe::Session &session, 
     if (assetPreviewPosition)
         preview = {engine.getAssetManager().getModel(assetDrag.previewModel), *assetPreviewPosition};
 
-    const auto overlay = handlingExit || assetDrag.ownsInput ? std::span<const Rendering::OverlayVertex>{}
-                                                            : viewportPanelUI.overlayVertices();
+    const auto overlay = handlingExit || exitDialog.isOpen(ctx) || !engine.hasActiveScene() ||
+                                 restoreTabSelection || assetDrag.ownsInput
+                             ? std::span<const Rendering::OverlayVertex>{}
+                             : viewportPanelUI.overlayVertices();
     engine.render(overlay, preview);
     ui.endFrame(assetFeedback.span());
     engine.present();
@@ -234,11 +243,20 @@ void EditorShell::update(Context &ctx, Engine &engine, Scribe::Session &session)
     assetPreviewPosition.reset();
     contentBrowserUI.clearFolderDropHighlight(ctx);
 
+    if (sceneTabs.empty() && engine.hasActiveScene())
+        addSceneTab(ctx);
+
     const std::uint64_t inputGeneration = engine.getSceneGeneration();
 
     const auto changes = session.takeEvents();
     
     hierarchyPanelUI.update(ctx, engine, session, changes);
+
+    if (restoreTabSelection)
+    {
+        hierarchyPanelUI.selectEntities(ctx, sceneTabs[activeTab].selection);
+        restoreTabSelection = false;
+    }
     
     const bool assetsChanged = std::any_of(changes.begin(), changes.end(), [](const Scribe::ChangeEvent &event) {
         return Scribe::isAssetChange(event.type);
@@ -269,7 +287,7 @@ void EditorShell::update(Context &ctx, Engine &engine, Scribe::Session &session)
     const bool togglePlay = !assetDrag.asset.isValid() && !assetDrag.ownsInput && !ctx.contextMenuOwnsInput() && !ctx.isValid(ctx.focused()) && 
                             Core::Input::isKeyPressed(GLFW_KEY_F5);
 
-    if (ctx.isClicked(saveButton.button))
+    if (ctx.isClicked(saveButton.button) && engine.hasActiveScene())
     {
         const auto result = session.save();
         if (!result.ok())
@@ -278,7 +296,7 @@ void EditorShell::update(Context &ctx, Engine &engine, Scribe::Session &session)
         }
     }
 
-    if ((ctx.isClicked(playButton.button) || togglePlay) && !wasPlaying)
+    if ((ctx.isClicked(playButton.button) || togglePlay) && !wasPlaying && engine.hasActiveScene())
     {
         if (!viewportPanelUI.finishGizmoDrag(session, false))
         {
@@ -312,8 +330,6 @@ void EditorShell::update(Context &ctx, Engine &engine, Scribe::Session &session)
 
     if (playing != lastPlaying)
     {
-        ctx.setEnabled(saveButton.button, !playing);
-        ctx.setEnabled(playButton.button, !playing);
         ctx.setEnabled(pauseButton.button, playing);
         ctx.setEnabled(stopButton.button, playing);
 
@@ -361,6 +377,12 @@ void EditorShell::update(Context &ctx, Engine &engine, Scribe::Session &session)
             ctx, engine, session, hierarchyPanelUI, sceneNode);
         viewportPanelUI.drawGizmoFeedback(ctx);
     }
+
+    updateSceneTabs(ctx, engine, session);
+
+    const bool canSaveOrPlay = !playing && engine.hasActiveScene();
+    ctx.setEnabled(saveButton.button, canSaveOrPlay);
+    ctx.setEnabled(playButton.button, canSaveOrPlay);
 
     std::string sceneText = "No scene";
     if (const auto *activeScene = engine.getActiveScene())

@@ -17,6 +17,7 @@ namespace
 constexpr u64 OpenLocation = 1;
 constexpr u64 DeleteAsset = 2;
 constexpr u64 MoveAsset = 3;
+constexpr u64 OpenScene = 4;
 }
 
 void ContentBrowserPanel::cancelAction(Context &ctx)
@@ -63,7 +64,12 @@ bool ContentBrowserPanel::updateActions(Context &ctx,
             return true;
 
         const auto &entry = entries[tile->entry];
-        if (choice.action == OpenLocation)
+        if (choice.action == OpenScene)
+        {
+            if (canEdit && entry.type == Assets::AssetType::Scene && !entry.missing)
+                sceneOpenRequest = entry.assetId;
+        }
+        else if (choice.action == OpenLocation)
         {
             showFolder(ctx, entry.folder ? std::string_view(entry.path) : entry.parent());
             if (!entry.folder)
@@ -227,7 +233,10 @@ bool ContentBrowserPanel::updateActions(Context &ctx,
         if (tile.entry >= entries.size()) break;
 
         const auto &entry = entries[tile.entry];
+        const bool scene = !entry.folder && entry.type == Assets::AssetType::Scene;
+
         const ContextMenuItem items[] = {
+            {OpenScene, "Open Scene", canEdit && !entry.missing},
             {OpenLocation, entry.folder ? "Open" : "Show in folder", true},
             {MoveAsset, "Move to...", canEdit && !entry.missing},
             {DeleteAsset, entry.missing ? "Forget missing asset..." : "Delete...", canEdit}
@@ -240,7 +249,13 @@ bool ContentBrowserPanel::updateActions(Context &ctx,
             position = Vec2{rect.x, rect.maxY() - ctx.scrollOffsetY(assetScroll)};
         }
 
-        if (ctx.openContextMenu(tile.button, position, std::span<const ContextMenuItem>{items}.first(entry.folder ? 1u : 3u)))
+        auto menu = std::span<const ContextMenuItem>{items};
+        if (!scene)
+            menu = menu.subspan(1);
+        if (entry.folder)
+            menu = menu.first(1);
+
+        if (ctx.openContextMenu(tile.button, position, menu))
         {
             select(ctx, tile.entry);
             lastFolderClick.clear();

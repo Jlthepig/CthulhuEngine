@@ -1003,10 +1003,15 @@ namespace octogui
                 return;
             }
 
-            const GLint scissorX = static_cast<GLint>(x);
-            const GLint scissorY = static_cast<GLint>(framebufferHeight - y2);
-            const GLsizei scissorWidth = static_cast<GLsizei>(clippedWidth);
-            const GLsizei scissorHeight = static_cast<GLsizei>(clippedHeight);
+            // Round the edges outward before deriving extents to retain boundary pixels.
+            const GLint left = static_cast<GLint>(std::floor(x));
+            const GLint top = static_cast<GLint>(std::floor(y));
+            const GLint right = static_cast<GLint>(std::ceil(x2));
+            const GLint bottom = static_cast<GLint>(std::ceil(y2));
+            const GLint scissorX = left;
+            const GLint scissorY = static_cast<GLint>(framebufferHeight) - bottom;
+            const GLsizei scissorWidth = right - left;
+            const GLsizei scissorHeight = bottom - top;
 
             glEnable(GL_SCISSOR_TEST);
             glScissor(scissorX, scissorY, scissorWidth, scissorHeight);

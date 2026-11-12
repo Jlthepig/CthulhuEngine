@@ -2,6 +2,10 @@
 
 #include <GLFW/glfw3.h>
 
+#include <cstddef>
+#include <string>
+#include <string_view>
+
 #include "engine.hpp"
 #include "input.hpp"
 #include "session.hpp"
@@ -15,6 +19,11 @@ bool EditorShell::handleExit(Context &ctx, Engine &engine, Scribe::Session &sess
     {
         const auto choice = exitDialog.pollChoice(ctx);
         ctx.clearEvents();
+        if (closingTab)
+        {
+            handleSceneTabClose(ctx, engine, session, choice);
+            return false;
+        }
         switch (choice)
         {
             case DialogChoice::None:
@@ -34,7 +43,7 @@ bool EditorShell::handleExit(Context &ctx, Engine &engine, Scribe::Session &sess
                     return false;
                 }
 
-                if (const auto saved = session.save(); !saved.ok())
+                if (const auto saved = saveSceneTabs(engine, session); !saved.ok())
                 {
                     exitDialog.setError(ctx, saved.error);
                     return false;
@@ -74,8 +83,22 @@ bool EditorShell::handleExit(Context &ctx, Engine &engine, Scribe::Session &sess
                        uiEvents, generation, false);
     session.endMerge();
 
-    const auto name = engine.unsavedEditSceneName();
-    if (!name)
+    std::string dirtyNames;
+    std::size_t dirtyCount = 0;
+    const auto addDirty = [&](std::string_view name) {
+        if (dirtyCount++ != 0)
+            dirtyNames += ", ";
+        dirtyNames += name.empty() ? "Untitled" : name;
+    };
+
+    if (const auto name = engine.unsavedEditSceneName())
+        addDirty(*name);
+    for (const auto &tab : sceneTabs)
+    {
+        if (tab.document && (tab.document->snapshot.dirty || !tab.document->snapshot.resourcePath))
+            addDirty(tab.document->snapshot.name);
+    }
+    if (dirtyCount == 0)
         return true;
 
     resumePlayOnCancel = engine.isPlaying() && engine.getSimulationState() == SimulationState::Running;
@@ -84,7 +107,8 @@ bool EditorShell::handleExit(Context &ctx, Engine &engine, Scribe::Session &sess
 
     glfwSetInputMode(engine.getWindow()->getWindow(), GLFW_CURSOR, GLFW_CURSOR_NORMAL);
     Core::Input::resetMouseTracking();
-    exitDialog.show(ctx, "Save changes before exiting?", name->empty() ? "Untitled" : *name, "Save", "Discard Changes");
+    exitDialog.show(ctx, "Save changes before exiting?", dirtyNames,
+                    dirtyCount == 1 ? "Save" : "Save All", "Discard Changes");
     return false;
 }
 } // namespace Cthulhu::Editor

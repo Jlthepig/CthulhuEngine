@@ -13,6 +13,7 @@
 #include "contentBrowserPanel.hpp"
 #include "assetDrag.hpp"
 #include "editorDialog.hpp"
+#include "camera.hpp"
 
 using namespace octogui;
 
@@ -24,6 +25,8 @@ class Engine;
 namespace Cthulhu::Scribe
 {
 class Session;
+struct SceneDocument;
+struct Result;
 }
 
 namespace Cthulhu::Scene
@@ -56,6 +59,32 @@ class EditorShell
     }
 
   private:
+    struct SceneTab
+    {
+        NodeHandle root{}, button{}, close{};
+        Scribe::SceneDocument *document = nullptr;
+        std::vector<Scene::EntityId> selection;
+        std::optional<Scene::Camera> camera;
+    };
+
+    void buildSceneTabBar(Context &ctx, NodeHandle parent);
+    void addSceneTab(Context &ctx);
+    void rememberSceneView(Engine &engine);
+    void updateSceneTabs(Context &ctx, Engine &engine, Scribe::Session &session);
+    Scribe::Result selectSceneTab(Engine &engine, Scribe::Session &session, std::size_t index, bool keepCurrent = true);
+    Scribe::Result closeSceneTab(Context &ctx, Engine &engine, Scribe::Session &session,
+                                 std::size_t index, std::size_t returnTab);
+    void handleSceneTabClose(Context &ctx, Engine &engine, Scribe::Session &session, DialogChoice choice);
+    Scribe::Result saveSceneTabs(Engine &engine, Scribe::Session &session);
+
+    std::vector<SceneTab> sceneTabs;
+    NodeHandle tabBar{}, tabRow{}, previousTabs{}, nextTabs{};
+    std::size_t activeTab{};
+    std::size_t firstVisibleTab{};
+    std::optional<std::size_t> closingTab;
+    std::size_t closeReturnTab{};
+    bool restoreTabSelection = false;
+
     NodeHandle sceneLabel{};
     IconButton saveButton{};
     IconButton playButton{};

@@ -16,6 +16,43 @@ namespace Cthulhu::Scribe
 {
 namespace
 {
+
+bool usesResourcePath(std::string_view path, std::string_view key)
+{
+    return path == key || Assets::normaliseResourcePath(path) == key;
+}
+
+bool updateSnapshotReferences(Scene::SceneSnapshot &snapshot, const Scene::ComponentRegistry &registry, std::string_view from,
+                              std::optional<std::string_view> replacement = std::nullopt)
+{
+    bool found = false;
+    for (auto &entity : snapshot.entities)
+    {
+        for (auto &component : entity.components)
+        {
+            const auto *descriptor = registry.find(component.component);
+            if (!descriptor)
+                continue;
+
+            for (auto &field : component.fields)
+            {
+                auto *path = std::get_if<std::string>(&field.value);
+                const auto *definition = Scene::findField(*descriptor, field.field);
+                if (!path || !definition || definition->type != Scene::FieldType::AssetRef ||
+                    !usesResourcePath(*path, from))
+                    continue;
+
+                if (!replacement)
+                    return true;
+
+                *path = *replacement;
+                found = true;
+            }
+        }
+    }
+
+    return found;
+}
 class RenameSceneCommand final : public Command
 {
   public:
@@ -443,6 +480,7 @@ Result Session::moveAsset(Assets::AssetId id, std::string_view destination)
     }
 
     bool movesOpenScene = false;
+    std::vector<Scene::SceneSnapshot *> movedDocuments;
     if (record->type == Assets::AssetType::Scene)
     {
         if (const auto *project = engine.getProject())
@@ -462,6 +500,12 @@ Result Session::moveAsset(Assets::AssetId id, std::string_view destination)
             }
 
             movesOpenScene = scene && scene->getResourcePath() && sameFile(*scene->getResourcePath());
+
+            for (auto &doc : inactiveDocuments)
+            {
+                if (doc.snapshot.resourcePath && sameFile(*doc.snapshot.resourcePath))
+                    movedDocuments.push_back(&doc.snapshot);
+            }
         }
     }
 
@@ -479,6 +523,15 @@ Result Session::moveAsset(Assets::AssetId id, std::string_view destination)
     {
         rewriteReferences(*scene, oldPath, *newPath);
         if (movesOpenScene) scene->setResourcePath(*newPath);
+    }
+
+    for (auto *snapshot : movedDocuments)
+        snapshot->resourcePath = *newPath;
+
+    for (auto &doc : inactiveDocuments)
+    {
+        if (updateSnapshotReferences(doc.snapshot, engine.getComponentRegistry(), oldPath, *newPath))
+            doc.snapshot.dirty = true;
     }
 
     resetHistoryAfterAssetChange();
@@ -515,6 +568,30 @@ Result Session::deleteAsset(Assets::AssetId id)
             return Result::failed("ASSET IS USED BY " + std::to_string(references.size()) +
                                   " REFERENCE(S) IN THE OPEN SCENE: " + record->path);
         }
+    }
+
+    const auto isBackingFile = [&](const std::optional<std::string> &path) {
+        if (!path || record->type != Assets::AssetType::Scene)
+            return false;
+
+        if (usesResourcePath(*path, record->path))
+            return true;
+
+        const auto *project = engine.getProject();
+        const auto source = project ? project->resolveResourcePath(record->path) : std::nullopt;
+        const auto backing = project ? project->resolveResourcePath(*path) : std::nullopt;
+        std::error_code error;
+        return source && backing && std::filesystem::equivalent(*source, *backing, error) && !error;
+    };
+
+    if (scene && isBackingFile(scene->getResourcePath()))
+        return Result::failed("THIS SCENE FILE IS OPEN");
+
+    for (auto &doc : inactiveDocuments)
+    {
+        if (isBackingFile(doc.snapshot.resourcePath) ||
+            updateSnapshotReferences(doc.snapshot, engine.getComponentRegistry(), record->path))
+            return Result::failed("ASSET IS USED BY OPEN SCENE: " + doc.snapshot.name);
     }
 
     const bool wasMissing = record->missing;
@@ -600,6 +677,13 @@ void Session::rewriteReferences(Scene::Scene &scene, std::string_view from, std:
 
 void Session::resetHistoryAfterAssetChange()
 {
+    for (auto &doc : inactiveDocuments)
+    {
+        doc.history.clear();
+        if (doc.snapshot.dirty)
+            doc.history.invalidateSavePoint();
+    }
+
     history.clear();
     if (const auto *scene = engine.getActiveScene(); scene && scene->isDirty())
     {

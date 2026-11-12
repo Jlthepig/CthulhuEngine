@@ -39,6 +39,8 @@ class ContentBrowserPanel
     std::optional<AssetDropFeedback> folderDrop(octogui::Context &ctx, Engine &engine, Scribe::Session &session, const Assets::AssetRecord &asset, 
                                                 bool released,
                                                 octogui::DrawList &feedback);
+    
+    Assets::AssetId takeSceneOpenRequest();
 
   private:
     enum class PendingAction { Delete, Move };
@@ -114,6 +116,7 @@ class ContentBrowserPanel
 
     std::string currentFolder = "res://";
     Assets::AssetId selectedAsset{};
+    Assets::AssetId sceneOpenRequest{};
     std::string selectedFolder;
     std::string lastFolderClick;
     float folderClickAge = 1.0f;
