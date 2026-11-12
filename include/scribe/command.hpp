@@ -77,7 +77,7 @@ struct AssetResult
 
 enum class ChangeType : uint8_t
 {
-    SceneReplaced, // active scene switched history cleared rebuild all ui
+    SceneReplaced, // active scene changed, rebuild scene UI
     SceneRenamed,
     EntityCreated,
     EntityDestroyed,
@@ -97,6 +97,20 @@ enum class ChangeType : uint8_t
     PlayStopped
 };
 
+[[nodiscard]] constexpr bool isAssetChange(ChangeType type) noexcept
+{
+    switch (type)
+    {
+        case ChangeType::AssetImported:
+        case ChangeType::AssetMoved:
+        case ChangeType::AssetDeleted:
+        case ChangeType::AssetSettingsChanged:
+        case ChangeType::AssetRegistryRefreshed:
+            return true;
+        default:
+            return false;
+    }
+}
 struct ChangeEvent
 {
     ChangeType type = ChangeType::SceneReplaced;

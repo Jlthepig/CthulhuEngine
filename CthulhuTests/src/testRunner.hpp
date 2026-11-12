@@ -61,6 +61,7 @@ inline int run(Engine& engine)
     checkRefInvariant(engine, r, "after import settings");
 
 	validateScribeCore(engine, r);
+    validateScribeDocumentSwitch(engine, r);
 	validateScribeEntities(engine, r);
 	validateScribeTransforms(engine, r);
 	validateScribeComponents(engine, r);

@@ -8,6 +8,85 @@
 namespace Cthulhu::Validation
 {
 
+inline void validateScribeDocumentSwitch(Engine &engine, Results &r)
+{
+    struct RestoreWorldMode
+    {
+        Engine &engine;
+        WorldMode previous;
+
+        ~RestoreWorldMode()
+        {
+            engine.setWorldMode(previous);
+        }
+    } restoreMode{engine, engine.getWorldMode()};
+
+    engine.setWorldMode(WorldMode::Edit);
+    if (!engine.createEmptyScene("Tab A"))
+    {
+        check(r, false, "Scene tabs can create the test document");
+        return;
+    }
+
+    Scribe::Session session(engine);
+    const auto entity = session.createEntity("Tab A root");
+    const bool renamed = entity.ok() && session.renameEntity(entity.id, "Renamed root").ok();
+    const bool canRestoreRedo = renamed && session.undo() && session.canRedo();
+    check(r, canRestoreRedo, "Scene tabs have a dirty document with undo and redo");
+
+    const auto generationA = engine.getSceneGeneration();
+    const auto rejectedOpen = session.openSceneDocument(TEST_AUDIO);
+    check(r, !rejectedOpen.result.ok() && !rejectedOpen.previous &&
+                 engine.getSceneGeneration() == generationA &&
+                 engine.getActiveScene()->isEntityAlive(entity.id) && session.canUndo() && session.canRedo(),
+          "Scene tabs preserve the active document after an invalid open");
+
+    auto opened = session.openSceneDocument(SAVE_PATH);
+    if (!opened.result.ok() || !opened.previous)
+    {
+        check(r, false, "Scene tabs open the saved fixture and capture the outgoing document");
+        return;
+    }
+
+    const auto changes = session.takeEvents();
+    check(r, !session.canUndo() && !session.canRedo() && !engine.getActiveScene()->isDirty() &&
+                 changes.size() == 1 && changes.front().type == Scribe::ChangeType::SceneReplaced,
+          "Opening a scene starts its own history and emits one scene replacement");
+
+    const auto originalNameB = engine.getActiveScene()->getName();
+    const bool editedB = session.renameScene("Tab B").ok();
+    const auto generationB = engine.getSceneGeneration();
+
+    auto &tabA = opened.previous;
+    tabA->snapshot.entities.push_back({});
+    const auto rejectedRestore = session.activateSceneDocument(tabA);
+    check(r, !rejectedRestore.result.ok() && tabA && !rejectedRestore.previous &&
+                 engine.getSceneGeneration() == generationB &&
+                 engine.getActiveScene()->getName() == "Tab B" && session.canUndo(),
+          "Scene tabs preserve both documents after a failed restore");
+
+    if (!tabA)
+        return;
+
+    tabA->snapshot.entities.pop_back();
+    auto switched = session.activateSceneDocument(tabA);
+    if (!switched.result.ok() || !switched.previous)
+    {
+        check(r, false, "Scene tabs restore the inactive document");
+        return;
+    }
+
+    check(r, !tabA && engine.getActiveScene()->getName() == "Tab A" &&
+                 engine.getActiveScene()->isDirty() && engine.getActiveScene()->isEntityAlive(entity.id) &&
+                 session.canUndo() && session.redo(),
+          "Scene tabs restore the entity ID, dirty state, undo and redo");
+
+    const auto switchedBack = session.activateSceneDocument(switched.previous);
+    check(r, editedB && switchedBack.result.ok() && session.undo() &&
+                 engine.getActiveScene()->getName() == originalNameB && !engine.getActiveScene()->isDirty(),
+          "Scene tabs restore the second document's history and save point");
+}
+
 inline void validateScribeEntities(Engine& engine, Results& r)
 {
     using Scribe::ChangeType;

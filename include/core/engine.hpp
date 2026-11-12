@@ -261,6 +261,7 @@ class Engine
 
     std::unique_ptr<Scene::Scene> createSceneInstance();
 
+    bool restoreEditScene(const Scene::SceneSnapshot &snapshot);
     void activateScene(std::unique_ptr<Scene::Scene> newScene, bool newDocument = true);
     void releaseActiveScene();
 

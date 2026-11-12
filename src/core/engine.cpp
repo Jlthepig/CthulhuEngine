@@ -440,6 +440,20 @@ bool Engine::createEmptyScene(const std::string &name)
     return true;
 }
 
+bool Engine::restoreEditScene(const Scene::SceneSnapshot &snapshot)
+{
+    auto restored = createSceneInstance();
+    if (!restored->restoreScene(snapshot))
+    {
+        restored.reset();
+        assetManager.collectUnusedAssets();
+        return false;
+    }
+
+    activateScene(std::move(restored));
+    return true;
+}
+
 void Engine::activateScene(std::unique_ptr<Scene::Scene> newScene, bool newDocument)
 {
     releaseActiveScene();

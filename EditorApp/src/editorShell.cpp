@@ -237,22 +237,12 @@ void EditorShell::update(Context &ctx, Engine &engine, Scribe::Session &session)
     const std::uint64_t inputGeneration = engine.getSceneGeneration();
 
     const auto changes = session.takeEvents();
-    const bool assetsChanged = std::any_of(
-        changes.begin(), changes.end(),
-        [](const Scribe::ChangeEvent &change) {
-            switch (change.type)
-            {
-                case Scribe::ChangeType::AssetImported:
-                case Scribe::ChangeType::AssetMoved:
-                case Scribe::ChangeType::AssetDeleted:
-                case Scribe::ChangeType::AssetSettingsChanged:
-                case Scribe::ChangeType::AssetRegistryRefreshed:
-                    return true;
-                default:
-                    return false;
-            }
-        });
+    
     hierarchyPanelUI.update(ctx, engine, session, changes);
+    
+    const bool assetsChanged = std::any_of(changes.begin(), changes.end(), [](const Scribe::ChangeEvent &event) {
+        return Scribe::isAssetChange(event.type);
+    });
 
     if (pendingAssetSelection.isValid())
     {

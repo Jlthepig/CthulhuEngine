@@ -25,6 +25,19 @@ struct MissingAsset
     std::vector<Scene::AssetReference> references;
 };
 
+struct SceneDocument
+{
+    Scene::SceneSnapshot snapshot;
+    History history;
+    const Engine *owner = nullptr;
+};
+
+struct DocumentSwitchResult
+{
+    Result result;
+    std::optional<SceneDocument> previous;
+};
+
 // << shalll not be used by runtime code! >>
 class Session
 {
@@ -73,6 +86,9 @@ class Session
     {
         history.endMerge();
     }
+
+    [[nodiscard]] DocumentSwitchResult openSceneDocument(std::string_view resourcePath);
+    [[nodiscard]] DocumentSwitchResult activateSceneDocument(std::optional<SceneDocument> &target);
 
     Result save();
     Result saveAs(std::string_view resourcePath);
@@ -124,6 +140,9 @@ class Session
     std::uint64_t transformGeneration = 0;
     bool transformActive = false;
     bool transformWasDirty = false;
+
+    [[nodiscard]] bool canSwitchDocument();
+    std::optional<SceneDocument> finishDocumentSwitch(std::optional<Scene::SceneSnapshot> previous);
 
     Scene::Scene *syncScene();
     void refreshDirty(Scene::Scene &scene);
