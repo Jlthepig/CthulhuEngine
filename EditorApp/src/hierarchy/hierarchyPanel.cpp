@@ -398,16 +398,6 @@ void HierarchyPanel::update(Context &ctx, Engine &engine, Scribe::Session &sessi
         }
     }
 
-    if (!activeScene)
-    {
-        if (!engine.createEmptyScene("Untitled"))
-        {
-            Log::Print("FAILED TO CREATE FALLBACK SCENE", "Editor", LogType::LOG_ERROR);
-            return;
-        }
-        activeScene = engine.getActiveScene();
-    }
-
     bool hierarchyDirty = false;
     for (const Scribe::ChangeEvent &event : changes)
     {
@@ -693,9 +683,9 @@ void HierarchyPanel::update(Context &ctx, Engine &engine, Scribe::Session &sessi
         }
     }
 
-    const bool playing = engine.isPlaying();
+    const bool canCreate = activeScene && !engine.isPlaying();
     refreshSelectionHighlights(ctx);
-    ctx.setEnabled(createEntityButton, !playing);
-    ctx.setIconColor(createEntityIcon, playing ? ctx.theme().textDisabled : ctx.theme().textMuted);
+    ctx.setEnabled(createEntityButton, canCreate);
+    ctx.setIconColor(createEntityIcon, canCreate ? ctx.theme().textMuted : ctx.theme().textDisabled);
 }
 } // namespace Cthulhu::Editor

@@ -72,7 +72,7 @@ class Scene
 
     [[nodiscard]] bool needsSave() const noexcept
     {
-        return dirty || !resourcePath.has_value();
+        return dirty;
     }
 
     void markDirty() noexcept

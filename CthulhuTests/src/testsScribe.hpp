@@ -29,7 +29,11 @@ inline void validateScribeDocumentSwitch(Engine &engine, Results &r)
     }
 
     Scribe::Session session(engine);
+    check(r, !engine.getActiveScene()->needsSave() && !engine.unsavedEditSceneName(),
+          "An untouched untitled scene does not prompt to save");
     const auto entity = session.createEntity("Tab A root");
+    check(r, entity.ok() && engine.getActiveScene()->needsSave() && engine.unsavedEditSceneName().has_value(),
+          "Editing an untitled scene prompts to save");
     const bool renamed = entity.ok() && session.renameEntity(entity.id, "Renamed root").ok();
     const bool canRestoreRedo = renamed && session.undo() && session.canRedo();
     check(r, canRestoreRedo, "Scene tabs have a dirty document with undo and redo");

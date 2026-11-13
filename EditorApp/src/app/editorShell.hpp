@@ -85,7 +85,6 @@ class EditorShell
     std::size_t closeReturnTab{};
     bool restoreTabSelection = false;
 
-    NodeHandle sceneLabel{};
     IconButton saveButton{};
     IconButton playButton{};
     IconButton pauseButton{};
@@ -110,7 +109,6 @@ class EditorShell
 
     std::vector<octogui::UIEvent> uiEvents;
 
-    std::string lastSceneText;
     bool lastPlaying = false;
     bool lastPaused = false;
 

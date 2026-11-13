@@ -23,6 +23,7 @@ void styleTabButton(Context &ctx, NodeHandle button)
     style.all.background = Color::transparent();
     style.all.gradient = LinearGradient{};
     style.borderWidth = 0.0f;
+    style.focusRing = FocusRingStyle{};
     style.pressedOffsetY = 0.0f;
     style.hovered.background = ctx.theme().surfaceHovered;
     style.active.background = ctx.theme().surfaceActive;
@@ -81,6 +82,8 @@ void EditorShell::addSceneTab(Context &ctx)
     tab.button = ctx.createButton(tab.root, "");
     ctx.setTextAlign(tab.button, TextAlign::Start, TextAlign::Center);
     auto title = ctx.layoutStyle(tab.button);
+    title.minSize = {TabWidth - ArrowWidth, TabHeight};
+    title.maxSize = {TabWidth - ArrowWidth, TabHeight};
     title.padding = Padding{10.0f, 0.0f, 2.0f, 0.0f};
     title.clip = true;
     styleTabButton(ctx, tab.button);
@@ -129,6 +132,12 @@ Scribe::Result EditorShell::closeSceneTab(Context &ctx, Engine &engine, Scribe::
 {
     assert(index < sceneTabs.size() && returnTab < sceneTabs.size());
     const bool closingActive = index == activeTab;
+    const auto *scene = engine.getActiveScene();
+    // Keep the final untouched placeholder instead of destroying and recreating it.
+    if (closingActive && sceneTabs.size() == 1 && scene && !scene->hasResourcePath() &&
+        !scene->isDirty() && scene->getEntityCount() == 0)
+        return Scribe::Result::noChange();
+
     if (closingActive && sceneTabs.size() > 1)
     {
         const auto neighbor = index + 1 < sceneTabs.size() ? index + 1 : index - 1;
@@ -264,7 +273,7 @@ void EditorShell::updateSceneTabs(Context &ctx, Engine &engine, Scribe::Session 
                 if (const auto *doc = sceneTabs[i].document)
                 {
                     dirtyName.reset();
-                    if (doc->snapshot.dirty || !doc->snapshot.resourcePath)
+                    if (doc->snapshot.dirty)
                         dirtyName = doc->snapshot.name;
                 }
 
@@ -331,7 +340,7 @@ void EditorShell::updateSceneTabs(Context &ctx, Engine &engine, Scribe::Session 
 
         const auto &name = tab.document ? tab.document->snapshot.name : scene->getName();
         const auto &path = tab.document ? tab.document->snapshot.resourcePath : scene->getResourcePath();
-        const bool dirty = tab.document ? tab.document->snapshot.dirty || !path : scene->needsSave();
+        const bool dirty = tab.document ? tab.document->snapshot.dirty : scene->needsSave();
         const std::string_view label = name.empty() ? "Untitled" : std::string_view{name};
         const auto current = ctx.text(tab.button);
         const bool labelMatches = current.starts_with(label) && current.substr(label.size()) == (dirty ? " *" : "");
@@ -353,7 +362,7 @@ Scribe::Result EditorShell::saveSceneTabs(Engine &engine, Scribe::Session &sessi
     for (std::size_t i = 0; i < sceneTabs.size(); ++i)
     {
         const auto *document = sceneTabs[i].document;
-        if (!document || (!document->snapshot.dirty && document->snapshot.resourcePath))
+        if (!document || !document->snapshot.dirty)
             continue;
 
         const auto switched = selectSceneTab(engine, session, i);

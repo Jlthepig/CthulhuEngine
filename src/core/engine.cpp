@@ -510,7 +510,7 @@ std::optional<std::string_view> Engine::unsavedEditSceneName() const noexcept
 {
     if (editSnapshot)
     {
-        if (editSnapshot->dirty || !editSnapshot->resourcePath)
+        if (editSnapshot->dirty)
             return editSnapshot->name;
 
         return std::nullopt;

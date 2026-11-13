@@ -95,7 +95,7 @@ bool EditorShell::handleExit(Context &ctx, Engine &engine, Scribe::Session &sess
         addDirty(*name);
     for (const auto &tab : sceneTabs)
     {
-        if (tab.document && (tab.document->snapshot.dirty || !tab.document->snapshot.resourcePath))
+        if (tab.document && tab.document->snapshot.dirty)
             addDirty(tab.document->snapshot.name);
     }
     if (dirtyCount == 0)

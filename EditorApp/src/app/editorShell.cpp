@@ -112,9 +112,6 @@ void EditorShell::build(Context &ctx)
     const NodeHandle logo = ctx.createIcon(topBar, "Cthulhu");
     ctx.setIconSize(logo, 46.0f);
 
-    sceneLabel = ctx.createLabel(topBar, "");
-    ctx.style(sceneLabel).all.text = ctx.theme().textMuted;
-    fixedSize(ctx, sceneLabel, 150.0f, 28.0f);
     verticalSeparator(ctx, topBar, 24.0f);
 
     saveButton = iconButton(ctx, topBar, "save");
@@ -242,6 +239,12 @@ void EditorShell::update(Context &ctx, Engine &engine, Scribe::Session &session)
     assetFeedback.clear();
     assetPreviewPosition.reset();
     contentBrowserUI.clearFolderDropHighlight(ctx);
+
+    if (!engine.hasActiveScene() && !engine.createEmptyScene("Untitled"))
+    {
+        contentBrowserUI.reportError(ctx, "Could not create the empty scene.");
+        return;
+    }
 
     if (sceneTabs.empty() && engine.hasActiveScene())
         addSceneTab(ctx);
@@ -384,16 +387,5 @@ void EditorShell::update(Context &ctx, Engine &engine, Scribe::Session &session)
     ctx.setEnabled(saveButton.button, canSaveOrPlay);
     ctx.setEnabled(playButton.button, canSaveOrPlay);
 
-    std::string sceneText = "No scene";
-    if (const auto *activeScene = engine.getActiveScene())
-    {
-        sceneText = activeScene->getName() + (activeScene->isDirty() ? " *" : "");
-    }
-
-    if (sceneText != lastSceneText)
-    {
-        ctx.setText(sceneLabel, sceneText);
-        lastSceneText = sceneText;
-    }
 }
 } // namespace Cthulhu::Editor
