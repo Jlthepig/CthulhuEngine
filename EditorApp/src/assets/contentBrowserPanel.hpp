@@ -41,9 +41,9 @@ class ContentBrowserPanel
                                                 octogui::DrawList &feedback);
     
     Assets::AssetId takeSceneOpenRequest();
+    Assets::AssetId takeDeleteRequest();
 
   private:
-    enum class PendingAction { Delete, Move };
     struct Crumb
     {
         octogui::NodeHandle button{};
@@ -85,10 +85,8 @@ class ContentBrowserPanel
     octogui::NodeHandle breadcrumbs{}, breadcrumbLabel{}, errorLabel{};
     octogui::NodeHandle folderTree{}, assetScroll{}, grid{}, emptyLabel{};
     octogui::NodeHandle selectionLabel{}, countLabel{};
-    octogui::NodeHandle actionBar{}, actionLabel{}, actionConfirm{}, actionCancel{};
+    octogui::NodeHandle actionBar{}, actionConfirm{}, actionCancel{};
     octogui::NodeHandle moveRow{}, moveDestination{};
-
-    PendingAction pendingAction = PendingAction::Delete;
 
     Assets::AssetId pendingAsset{};
     std::string sourcePath;
@@ -117,6 +115,7 @@ class ContentBrowserPanel
     std::string currentFolder = "res://";
     Assets::AssetId selectedAsset{};
     Assets::AssetId sceneOpenRequest{};
+    Assets::AssetId deleteRequest{};
     std::string selectedFolder;
     std::string lastFolderClick;
     float folderClickAge = 1.0f;

@@ -1,8 +1,9 @@
 #pragma once
 
-#include <string>
 #include <vector>
 #include <optional>
+#include <filesystem>
+#include <cstdint>
 
 #include "OctoGui/Event.h"
 #include "OctoGui/Context.h"
@@ -113,6 +114,16 @@ class EditorShell
     bool lastPaused = false;
 
     bool handleExit(Context &ctx, Engine &engine, Scribe::Session &session);
+    bool beginAssetDelete(Context &ctx, Engine &engine, Scribe::Session &session);
+    void showAssetDelete(Context &ctx, Engine &engine, Scribe::Session &session);
+    void handleAssetDelete(Context &ctx, Engine &engine, Scribe::Session &session);
+
+    Assets::AssetId deletingAsset{};
+    std::string deletingPath;
+    std::filesystem::path deletingProject;
+    std::uint64_t deletingGeneration{};
+    bool deletingMissing = false;
+
     EditorDialog exitDialog;
     bool resumePlayOnCancel = false;
 };

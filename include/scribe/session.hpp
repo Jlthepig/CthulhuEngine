@@ -9,6 +9,7 @@
 #include <vector>
 #include <span>
 #include <list>
+#include <string>
 
 #include "assetRegistry.hpp"
 #include "command.hpp"
@@ -26,6 +27,14 @@ struct MissingAsset
     std::vector<Scene::AssetReference> references;
 };
 
+struct SceneAssetUsage
+{
+    std::string sceneName;
+    std::optional<std::string> scenePath;
+    bool backingFile = false;
+    std::vector<Scene::AssetReference> references;
+};
+
 struct SceneDocument
 {
     Scene::SceneSnapshot snapshot;
@@ -38,7 +47,17 @@ struct DocumentSwitchResult
     SceneDocument *previous = nullptr;
 };
 
-// << shalll not be used by runtime code! >>
+// clang-format off
+// ╔═══════════════════════════════════════════════════════════════════════════════╗
+// ║ ▄▀▀▀ █  █ ▄▀▀▄ █    █      █▄  █ ▄▀▀▄ ▀▀█▀▀   █▀▀▄ █▀▀▀   █  █ ▄▀▀▀ █▀▀▀ █▀▀▄ ║
+// ║ ▀▀▀▄ █▀▀█ █▀▀█ █    █      █ █ █ █  █   █     █▀▀▄ █▀▀    █  █ ▀▀▀▄ █▀▀  █  █ ║
+// ║ ▀▀▀  █  █ █  █ ▀▀▀▀ ▀▀▀▀   █  ▀█ ▀▄▄▀   █     █▄▄▀ ▀▀▀▀   ▀▄▄▀ ▀▀▀  ▀▀▀▀ ▀▀▀  ║
+// ║                                                                               ║
+// ║ █▀▀▄ █  █   █▀▀▄ █  █ █▄  █ ▀▀█▀▀ ▀█▀ █▄ ▄█ █▀▀▀   ▄▀▀▀ ▄▀▀▄ █▀▀▄ █▀▀▀ █      ║
+// ║ █▀▀▄ ▀▄▄█   █▀▀▄ █  █ █ █ █   █    █  █ ▀ █ █▀▀    █    █  █ █  █ █▀▀  █      ║
+// ║ █▄▄▀ ▄▄▄▀   █  █ ▀▄▄▀ █  ▀█   █   ▀▀▀ █   █ ▀▀▀▀   ▀▄▄▄ ▀▄▄▀ ▀▀▀  ▀▀▀▀ ▄      ║
+// ╚═══════════════════════════════════════════════════════════════════════════════╝
+// clang-format on
 class Session
 {
   public:
@@ -122,6 +141,8 @@ class Session
 
     Result replaceReferences(std::string_view from, std::string_view to);
 
+    [[nodiscard]] std::vector<SceneAssetUsage> findAssetUsage(Assets::AssetId id);
+
     Result deleteAsset(Assets::AssetId id);
 
     // gets fixed with replace ref
@@ -139,7 +160,7 @@ class Session
 
     std::vector<TransformValue> transformBefore;
     std::vector<TransformValue> transformAfter;
-    std::uint64_t transformGeneration = 0;
+    std::uint64_t transformGeneration{};
     bool transformActive = false;
     bool transformWasDirty = false;
 

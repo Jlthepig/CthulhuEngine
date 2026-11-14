@@ -265,6 +265,13 @@ Assets::AssetId ContentBrowserPanel::takeSceneOpenRequest()
     return request;
 }
 
+Assets::AssetId ContentBrowserPanel::takeDeleteRequest()
+{
+    const auto request = deleteRequest;
+    deleteRequest = {};
+    return request;
+}
+
 void ContentBrowserPanel::update(Context &ctx, Engine &engine, Scribe::Session &session, bool assetsChanged, bool dragOwnsInput)
 {
     catalogPending = catalogPending || assetsChanged;

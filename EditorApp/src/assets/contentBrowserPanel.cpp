@@ -56,8 +56,7 @@ NodeHandle bar(Context &ctx, NodeHandle parent, float height)
     return node;
 }
 
-NodeHandle disabledIconButton(
-    Context &ctx, NodeHandle parent, std::string_view name)
+NodeHandle disabledIconButton(Context &ctx, NodeHandle parent, std::string_view name)
 {
     const NodeHandle button = ctx.createButton(parent, "");
     fixed(ctx, button, 24.0f, 24.0f);
@@ -187,13 +186,6 @@ void ContentBrowserPanel::build(Context &ctx, NodeHandle parent)
     actionLayout.maxSize = Vec2{InfiniteLayoutSize, 56.0f};
     actionLayout.clip = true;
 
-    actionLabel = ctx.createLabel(actionBar, "");
-    auto labelLayout = ctx.layoutStyle(actionLabel);
-    labelLayout.minSize = Vec2{0.0f, 22.0f};
-    labelLayout.preferredSize = Vec2{0.0f, 22.0f};
-    labelLayout.maxSize = Vec2{InfiniteLayoutSize, 22.0f};
-    labelLayout.clip = true;
-
     moveRow = bar(ctx, actionBar, 26.0f);
     ctx.layoutStyle(moveRow).padding = Padding{};
     const NodeHandle moveLabel = ctx.createLabel(moveRow, "Move to");
@@ -217,7 +209,7 @@ void ContentBrowserPanel::build(Context &ctx, NodeHandle parent)
     actionCancel = ctx.createButton(actionButtons, "Cancel");
     fixed(ctx, actionCancel, 68.0f, 26.0f);
 
-    actionConfirm = ctx.createButton(actionButtons, "Recycle");
+    actionConfirm = ctx.createButton(actionButtons, "Move");
     fixed(ctx, actionConfirm, 76.0f, 26.0f);
 
     for (NodeHandle button : {actionCancel, actionConfirm})
@@ -226,7 +218,6 @@ void ContentBrowserPanel::build(Context &ctx, NodeHandle parent)
         ctx.style(button).focusRing = FocusRingStyle{};
         ctx.style(button).focused.border = ctx.theme().accent;
     }
-    ctx.setTooltip(actionConfirm, "Other saved scenes may still reference this asset.");
     ctx.setVisible(actionBar, false);
 
     const NodeHandle split = ctx.createSplitContainer(panel, SplitOrientation::Horizontal, 0.22f);
@@ -292,6 +283,7 @@ void ContentBrowserPanel::clearTiles(Context &ctx)
 void ContentBrowserPanel::bindProject(Context &ctx, const Project::Project *project, const Assets::AssetRegistry &registry)
 {
     cancelAction(ctx);
+    deleteRequest = {};
     actionError.clear();
 
     bound = true;

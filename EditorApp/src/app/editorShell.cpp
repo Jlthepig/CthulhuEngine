@@ -198,10 +198,18 @@ bool EditorShell::frame(EditorUi &ui, Engine &engine, Scribe::Session &session, 
     if (!ctx.input().mouse.wasDown(MouseButton::Left))
         assetDrag.ownsInput = false;
 
+    if (closeRequested && deletingAsset.isValid())
+    {
+        exitDialog.hide(ctx);
+        deletingAsset = {};
+    }
+
     const bool handlingExit = closeRequested || exitDialog.isOpen(ctx);
     if (handlingExit)
     {
-        if (handleExit(ctx, engine, session))
+        if (deletingAsset.isValid())
+            handleAssetDelete(ctx, engine, session);
+        else if (handleExit(ctx, engine, session))
         {
             ctx.endFrame();
             return false;
@@ -371,8 +379,10 @@ void EditorShell::update(Context &ctx, Engine &engine, Scribe::Session &session)
     // commit Inspector edits before asset operations can clear history
     updateAssetDrag(ctx, engine, session);
 
-    contentBrowserUI.update(
-        ctx, engine, session, assetsChanged, assetDrag.ownsInput);
+    contentBrowserUI.update(ctx, engine, session, assetsChanged, assetDrag.ownsInput);
+
+    if (beginAssetDelete(ctx, engine, session))
+        return;
 
     if (!assetDrag.asset.isValid() && !assetDrag.ownsInput)
     {

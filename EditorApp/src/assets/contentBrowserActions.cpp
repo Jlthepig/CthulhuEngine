@@ -22,26 +22,17 @@ constexpr u64 OpenScene = 4;
 
 void ContentBrowserPanel::cancelAction(Context &ctx)
 {
-    if (ctx.isFocused(actionConfirm) || ctx.isFocused(actionCancel) || ctx.isFocused(moveDestination)) ctx.clearFocus();
+    if (ctx.isFocused(actionConfirm) || ctx.isFocused(actionCancel) ||
+        ctx.isFocused(moveDestination))
+        ctx.clearFocus();
 
     pendingAsset = {};
     sourcePath.clear();
     ctx.setVisible(actionBar, false);
     ctx.setVisible(moveRow, false);
-    ctx.setVisible(actionLabel, true);
-    pendingAction = PendingAction::Delete;
-
-    auto layout = ctx.layoutStyle(actionBar);
-    layout.minSize = Vec2{0.0f, 56.0f};
-    layout.preferredSize = Vec2{0.0f, 56.0f};
-    layout.maxSize = Vec2{InfiniteLayoutSize, 56.0f};
 }
 
-bool ContentBrowserPanel::updateActions(Context &ctx,
-                                       const Project::Project *project,
-                                       const Assets::AssetRegistry &registry,
-                                       Scribe::Session &session,
-                                       bool canEdit)
+bool ContentBrowserPanel::updateActions(Context &ctx, const Project::Project *project, const Assets::AssetRegistry &registry, Scribe::Session &session, bool canEdit)
 {
     assert(pendingAsset.isValid() == !sourcePath.empty());
 
@@ -104,18 +95,7 @@ bool ContentBrowserPanel::updateActions(Context &ctx,
                 return true;
             }
 
-            pendingAction = PendingAction::Delete;
-
-            sourcePath = record->path;
-            pendingAsset = record->id;
-            const std::string question = std::string(record->missing ? "Forget missing asset: " : "Recycle asset: ") + sourcePath;
-
-            ctx.setText(actionLabel, question);
-            ctx.setTooltip(actionLabel, question);
-            ctx.setText(actionConfirm, record->missing ? "Forget" : "Recycle");
-            ctx.setTooltip(actionConfirm, "Other saved scenes may still reference this asset.");
-            ctx.setVisible(actionBar, true);
-            ctx.setFocused(actionCancel);
+            deleteRequest = record->id;
             showError("");
         }
         return true;
@@ -133,8 +113,7 @@ bool ContentBrowserPanel::updateActions(Context &ctx,
             return true;
         }
 
-        const bool moving = pendingAction == PendingAction::Move;
-        if (moving && record->missing)
+        if (record->missing)
         {
             cancelAction(ctx);
             showError("The source asset is missing. Refresh and select it again.");
@@ -151,36 +130,31 @@ bool ContentBrowserPanel::updateActions(Context &ctx,
 
             const bool onCancel = ctx.isFocused(actionCancel);
             const bool onConfirm = ctx.isFocused(actionConfirm);
-            const bool onFolder = moving && ctx.isFocused(moveDestination);
+            const bool onFolder = ctx.isFocused(moveDestination);
 
             if (event.key == Key::Escape) cancel = true;
             else if (event.key == Key::Tab)
             {
-                const NodeHandle controls[] = {
-                    moveDestination, actionCancel, actionConfirm};
-                const std::size_t first = moving ? 0u : 1u;
+                const NodeHandle controls[] = {moveDestination, actionCancel, actionConfirm};
 
-                for (std::size_t i = first; i < 3; ++i)
+                for (std::size_t i = 0; i < 3; ++i)
                 {
-                    if (!ctx.isFocused(controls[i])) continue;
-                    const std::size_t next = event.modifiers.shift
-                        ? (i == first ? 2 : i - 1)
-                        : (i == 2 ? first : i + 1);
+                    if (!ctx.isFocused(controls[i]))
+                        continue;
+
+                    const std::size_t next = event.modifiers.shift ? (i == 0 ? 2 : i - 1) : (i == 2 ? 0 : i + 1);
                     ctx.setFocused(controls[next]);
                     break;
                 }
             }
-            else if (onFolder &&
-                     (event.key == Key::Up || event.key == Key::Down ||
-                      event.key == Key::Home || event.key == Key::End))
+            else if (onFolder && (event.key == Key::Up || event.key == Key::Down || event.key == Key::Home || event.key == Key::End))
             {
                 i32 selected = ctx.comboBoxSelectedIndex(moveDestination);
                 if (event.key == Key::Home) selected = 0;
                 else if (event.key == Key::End)
                     selected = std::numeric_limits<i32>::max();
                 else if (event.key == Key::Up && selected > 0) --selected;
-                else if (event.key == Key::Down &&
-                         selected < std::numeric_limits<i32>::max())
+                else if (event.key == Key::Down && selected < std::numeric_limits<i32>::max())
                     ++selected;
                 ctx.setComboBoxSelectedIndex(moveDestination, selected);
             }
@@ -192,20 +166,14 @@ bool ContentBrowserPanel::updateActions(Context &ctx,
             }
         }
 
-        if (moving)
-            ctx.setTooltip(
-                moveDestination, ctx.comboBoxSelectedText(moveDestination));
+        ctx.setTooltip(moveDestination, ctx.comboBoxSelectedText(moveDestination));
 
         if (cancel) cancelAction(ctx);
         else if (confirm)
         {
-            Scribe::Result result;
-            if (moving)
-                result = project ? moveAssetToFolder(ctx, *project, registry, session, *record,
-                                                     ctx.comboBoxSelectedText(moveDestination))
-                                 : Scribe::Result::failed("No project is open.");
-            else
-                result = session.deleteAsset(pendingAsset);
+            const auto result = project ? moveAssetToFolder(ctx, *project, registry, session, *record,
+                                    ctx.comboBoxSelectedText(moveDestination))
+                : Scribe::Result::failed("No project is open.");
 
             cancelAction(ctx);
             showError(result.error);

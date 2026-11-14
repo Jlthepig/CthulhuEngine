@@ -1,5 +1,6 @@
 #include <algorithm>
 #include <string>
+#include <utility>
 
 #include "componentCommands.hpp"
 #include "engine.hpp"
@@ -544,31 +545,13 @@ Result Session::replaceReferences(std::string_view from, std::string_view to)
     return execute(Commands::replaceReferences(std::string(from), std::string(to)));
 }
 
-Result Session::deleteAsset(Assets::AssetId id)
+std::vector<SceneAssetUsage> Session::findAssetUsage(Assets::AssetId id)
 {
-    if (refuseEdit())
-    {
-        return Result::failed("CANNOT EDIT DURING PLAY OR A TRANSFORM PREVIEW");
-    }
-
-    Scene::Scene *scene = syncScene();
-    auto &assets = engine.getAssetManager();
-
-    const auto *record = assets.getRegistry().findById(id);
+    std::vector<SceneAssetUsage> out;
+    const auto *scene = syncScene();
+    const auto *record = engine.getAssetManager().getRegistry().findById(id);
     if (!record)
-    {
-        return Result::failed("UNKNOWN ASSET");
-    }
-
-    if (scene)
-    {
-        const auto references = scene->findAssetReferences(record->path);
-        if (!references.empty())
-        {
-            return Result::failed("ASSET IS USED BY " + std::to_string(references.size()) +
-                                  " REFERENCE(S) IN THE OPEN SCENE: " + record->path);
-        }
-    }
+        return out;
 
     const auto isBackingFile = [&](const std::optional<std::string> &path) {
         if (!path || record->type != Assets::AssetType::Scene)
@@ -584,14 +567,70 @@ Result Session::deleteAsset(Assets::AssetId id)
         return source && backing && std::filesystem::equivalent(*source, *backing, error) && !error;
     };
 
-    if (scene && isBackingFile(scene->getResourcePath()))
-        return Result::failed("THIS SCENE FILE IS OPEN");
-
-    for (auto &doc : inactiveDocuments)
+    if (scene)
     {
-        if (isBackingFile(doc.snapshot.resourcePath) ||
-            updateSnapshotReferences(doc.snapshot, engine.getComponentRegistry(), record->path))
-            return Result::failed("ASSET IS USED BY OPEN SCENE: " + doc.snapshot.name);
+        SceneAssetUsage usage{scene->getName(),
+            scene->getResourcePath(),isBackingFile(scene->getResourcePath()),scene->findAssetReferences(record->path)};
+
+        if (usage.backingFile || !usage.references.empty())
+            out.push_back(std::move(usage));
+    }
+
+    const auto &registry = engine.getComponentRegistry();
+    for (const auto &document : inactiveDocuments)
+    {
+        const auto &snapshot = document.snapshot;
+        SceneAssetUsage usage{snapshot.name,snapshot.resourcePath,isBackingFile(snapshot.resourcePath), {}};
+
+        for (const auto &entity : snapshot.entities)
+        {
+            for (const auto &component : entity.components)
+            {
+                const auto *descriptor = registry.find(component.component);
+                if (!descriptor)
+                    continue;
+
+                for (const auto &field : component.fields)
+                {
+                    const auto *path = std::get_if<std::string>(&field.value);
+                    const auto *definition = Scene::findField(*descriptor, field.field);
+
+                    if (!path || !definition || definition->type != Scene::FieldType::AssetRef || !usesResourcePath(*path, record->path))
+                        continue;
+
+                    usage.references.push_back({entity.id, component.component, field.field, *path});
+                }
+            }
+        }
+
+        if (usage.backingFile || !usage.references.empty())
+            out.push_back(std::move(usage));
+    }
+
+    return out;
+}
+
+Result Session::deleteAsset(Assets::AssetId id)
+{
+    if (refuseEdit())
+    {
+        return Result::failed("CANNOT EDIT DURING PLAY OR A TRANSFORM PREVIEW");
+    }
+
+    syncScene();
+    auto &assets = engine.getAssetManager();
+
+    const auto *record = assets.getRegistry().findById(id);
+    if (!record)
+        return Result::failed("UNKNOWN ASSET");
+
+    const auto usage = findAssetUsage(id);
+    if (!usage.empty())
+    {
+        const auto &first = usage.front();
+        const std::string name = first.sceneName.empty() ? "Untitled" : first.sceneName;
+
+        return Result::failed(first.backingFile ? "THIS SCENE FILE IS OPEN: " + name : "ASSET IS USED BY OPEN SCENE: " + name);
     }
 
     const bool wasMissing = record->missing;

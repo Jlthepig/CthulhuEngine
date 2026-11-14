@@ -31,13 +31,11 @@ bool ContentBrowserPanel::beginMove(Context &ctx, const ContentBrowserEntry &ent
     ctx.setComboBoxSelectedIndex(moveDestination, 0);
     sourcePath = entry.path;
     pendingAsset = entry.assetId;
-    pendingAction = PendingAction::Move;
 
     auto layout = ctx.layoutStyle(actionBar);
     layout.minSize = Vec2{0.0f, 60.0f};
     layout.preferredSize = Vec2{0.0f, 60.0f};
     layout.maxSize = Vec2{InfiniteLayoutSize, 60.0f};
-    ctx.setVisible(actionLabel, false);
     ctx.setVisible(moveRow, true);
     ctx.setText(actionConfirm, "Move");
     ctx.setTooltip(actionConfirm,"Asset IDs are preserved. Path-only references in other scenes may need repair.");

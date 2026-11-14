@@ -1,5 +1,6 @@
 #pragma once
 
+#include <algorithm>
 #include <vector>
 
 #include "session.hpp"
@@ -323,6 +324,18 @@ inline void validateScribeMove(Engine& engine, Results& r)
 	const auto* document = assets.getRegistry().findByPath(sceneStart);
 	const Assets::AssetId documentId =
 		document ? document->id : Assets::AssetId{};
+	const auto backingUsage = session.findAssetUsage(documentId);
+	check(r, documentId.isValid() &&
+				 std::any_of(
+					 backingUsage.begin(), backingUsage.end(),
+					 [&](const Scribe::SceneAssetUsage &entry) {
+						 return entry.backingFile && entry.scenePath &&
+								*entry.scenePath == sceneStart;
+					 }),
+		  "M8 usage identifies an open scene's backing file");
+
+	check(r, documentId.isValid() && !session.deleteAsset(documentId).ok(),
+		  "M8 an open scene's backing file cannot be deleted");
 	const bool documentMoved = sceneSaved && scanned && documentId.isValid() &&
 		session.moveAsset(documentId, sceneMoved).status == Status::Applied;
 
@@ -340,6 +353,24 @@ inline void validateScribeMove(Engine& engine, Results& r)
 	engine.setWorldMode(WorldMode::Edit);
 	const auto parkedEntity = session.placeModel(imported.id, glm::vec3(0.0f));
 	auto opened = session.openSceneDocument(SAVE_PATH);
+	const auto parkedUsage = session.findAssetUsage(imported.id);
+	check(r, opened.result.ok() && opened.previous &&
+				 std::any_of(
+					 parkedUsage.begin(), parkedUsage.end(),
+					 [&](const Scribe::SceneAssetUsage &entry) {
+						 return entry.scenePath ==
+									opened.previous->snapshot.resourcePath &&
+								std::any_of(
+									entry.references.begin(),
+									entry.references.end(),
+									[&](const Scene::AssetReference &reference) {
+										return reference.entity == parkedEntity.id &&
+											   reference.component == "Mesh" &&
+											   reference.field == "modelPath" &&
+											   reference.path == movedPath;
+									});
+					 }),
+		  "Inactive scene usage identifies the parked entity and field");
 	const bool blocked = opened.result.ok() && !session.deleteAsset(imported.id).ok();
 	const bool movedWhileParked = opened.result.ok() && session.moveAsset(imported.id, startPath).status == Status::Applied;
 	const bool resumed = opened.previous && session.activateSceneDocument(opened.previous).result.ok();
@@ -389,6 +420,25 @@ inline void validateScribeDelete(Engine& engine, Results& r)
 		return;
 	}
 
+	const auto usage = session.findAssetUsage(imported.id);
+	const bool listed = std::any_of(
+		usage.begin(), usage.end(),
+		[&](const Scribe::SceneAssetUsage &entry) {
+			return entry.sceneName == scene->getName() &&
+				   entry.scenePath == scene->getResourcePath() &&
+				   std::any_of(
+					   entry.references.begin(), entry.references.end(),
+					   [&](const Scene::AssetReference &reference) {
+						   return reference.entity == created.id &&
+								  reference.component == "Mesh" &&
+								  reference.field == "modelPath" &&
+								  reference.path == deletePath;
+					   });
+		});
+
+	check(r, listed, "D1 usage identifies the scene, entity and field");
+	check(r, session.findAssetUsage({}).empty(),
+		  "D1 unknown asset has no usage entries");
 	check(r, !session.deleteAsset(imported.id).ok(), "D1 delete refused while the open scene uses the asset");
 	check(r, std::filesystem::exists(*file) && assets.getRegistry().findById(imported.id),
 		  "D1 refused delete changes nothing");
