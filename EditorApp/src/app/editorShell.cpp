@@ -8,15 +8,11 @@
 
 #include "engine.hpp"
 #include "input.hpp"
-#include "log_utils.hpp"
 #include "scene.hpp"
 #include "session.hpp"
 #include "window.hpp"
 
 using namespace octogui;
-
-using KalaHeaders::KalaLog::Log;
-using KalaHeaders::KalaLog::LogType;
 
 namespace Cthulhu::Editor
 {
@@ -114,11 +110,17 @@ void EditorShell::build(Context &ctx)
 
     verticalSeparator(ctx, topBar, 24.0f);
 
-    saveButton = iconButton(ctx, topBar, "save");
-    ctx.layoutStyle(saveButton.button).gap = 6.0f;
-    const NodeHandle saveLabel = ctx.createLabel(saveButton.button, "Save Scene");
-    fixedSize(ctx, saveButton.button, 120.0f, 26.0f);
-    verticalSeparator(ctx, topBar, 24.0f);
+    fileButton = ctx.createButton(topBar, "File");
+    fixedSize(ctx, fileButton, 52.0f, 28.0f);
+
+    auto fileStyle = ctx.style(fileButton);
+    fileStyle.all.background = Color::transparent();
+    fileStyle.all.gradient = LinearGradient{};
+    fileStyle.borderWidth = 0.0f;
+    fileStyle.pressedOffsetY = 0.0f;
+    fileStyle.shadow = ShadowStyle{};
+    fileStyle.hovered.background = ctx.theme().surfaceHovered;
+    fileStyle.active.background = ctx.theme().surfaceActive;
 
     const NodeHandle controlsSpacer = ctx.createContainer(topBar);
 
@@ -198,13 +200,20 @@ bool EditorShell::frame(EditorUi &ui, Engine &engine, Scribe::Session &session, 
     if (!ctx.input().mouse.wasDown(MouseButton::Left))
         assetDrag.ownsInput = false;
 
+    if (closeRequested && closingAllScenes)
+    {
+        closingAllScenes = false;
+        exitDialog.hide(ctx);
+    }
+
     if (closeRequested && deletingAsset.isValid())
     {
         exitDialog.hide(ctx);
         deletingAsset = {};
     }
 
-    const bool handlingExit = closeRequested || exitDialog.isOpen(ctx);
+    const bool handlingExit =
+        closeRequested || closingAllScenes || exitDialog.isOpen(ctx);
     if (handlingExit)
     {
         if (deletingAsset.isValid())
@@ -298,15 +307,6 @@ void EditorShell::update(Context &ctx, Engine &engine, Scribe::Session &session)
     const bool togglePlay = !assetDrag.asset.isValid() && !assetDrag.ownsInput && !ctx.contextMenuOwnsInput() && !ctx.isValid(ctx.focused()) && 
                             Core::Input::isKeyPressed(GLFW_KEY_F5);
 
-    if (ctx.isClicked(saveButton.button) && engine.hasActiveScene())
-    {
-        const auto result = session.save();
-        if (!result.ok())
-        {
-            Log::Print("SAVE FAILED: " + result.error, "Editor", LogType::LOG_ERROR);
-        }
-    }
-
     if ((ctx.isClicked(playButton.button) || togglePlay) && !wasPlaying && engine.hasActiveScene())
     {
         if (!viewportPanelUI.finishGizmoDrag(session, false))
@@ -376,6 +376,9 @@ void EditorShell::update(Context &ctx, Engine &engine, Scribe::Session &session)
     inspectorUI.update(ctx, engine, session, engine.getActiveScene(), 
                         hierarchyPanelUI.selectedEntity(),
                         uiEvents, inputGeneration, assetsChanged);
+    if (updateFileMenu(ctx, engine, session))
+        return;
+
     // commit Inspector edits before asset operations can clear history
     updateAssetDrag(ctx, engine, session);
 
@@ -386,15 +389,13 @@ void EditorShell::update(Context &ctx, Engine &engine, Scribe::Session &session)
 
     if (!assetDrag.asset.isValid() && !assetDrag.ownsInput)
     {
-        viewportPanelUI.updateGizmo(
-            ctx, engine, session, hierarchyPanelUI, sceneNode);
+        viewportPanelUI.updateGizmo(ctx, engine, session, hierarchyPanelUI, sceneNode);
         viewportPanelUI.drawGizmoFeedback(ctx);
     }
 
     updateSceneTabs(ctx, engine, session);
 
     const bool canSaveOrPlay = !playing && engine.hasActiveScene();
-    ctx.setEnabled(saveButton.button, canSaveOrPlay);
     ctx.setEnabled(playButton.button, canSaveOrPlay);
 
 }

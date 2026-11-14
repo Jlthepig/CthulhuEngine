@@ -3,6 +3,7 @@
 #include <limits>
 #include <span>
 #include <string>
+#include <memory>
 #include <vector>
 
 #include "OctoGui/ContextMenu.h"
@@ -28,7 +29,7 @@ public:
 
     void update(const Tree& tree, NodeHandle currentRoot, Rect viewport, const InputState& input, Font* font);
 
-    bool poll(const Tree& tree, NodeHandle currentRoot, ContextMenuSelection& out) noexcept;
+    bool poll(const Tree& tree, NodeHandle currentRoot, ContextMenuSelection& out, NodeHandle filter = {}) noexcept;
 
     void paint(const Tree& tree, NodeHandle currentRoot, Font* font, const Theme& theme, DrawList& list) const;
 
@@ -37,6 +38,7 @@ private:
         u64 action{};
         std::string label;
         bool enabled = true;
+        std::unique_ptr<ContextMenuSystem> submenu;
     };
 
     static constexpr usize NoItem = std::numeric_limits<usize>::max();
@@ -47,6 +49,10 @@ private:
     void moveSelection(int direction);
     void revealSelection();
     void activate(usize index);
+
+    void hideSubmenu();
+    void showSubmenu(usize index, bool keyboard);
+    void placeSubmenu();
 
     std::vector<Item> items;
 
@@ -64,7 +70,9 @@ private:
 
     usize active = NoItem;
     usize pressed = NoItem;
+    usize expanded = NoItem;
 
+    bool submenuKeyboard = false;
     bool opened = false;
     bool captured = false;
     bool draining = false;

@@ -32,8 +32,17 @@
 #include "log_utils.hpp"
 
 #pragma comment(lib, "ole32.lib")
+#pragma comment(lib, "shell32.lib")
 
-// <<<< Cthulhus WINDOWS file dialog implementation >>>>
+//* clang-format off
+//* ╔═══════════════════════════════════════════════════════════════════════════════╗
+//* ║                                                                               ║
+//* ║             C T H U L H U ' S   W I N D O W S   F I L E   D I A l O G         ║
+//* ║                                                                               ║
+//* ║                 WINDOWS FILE DIALOG IMPLEMENTATION                            ║
+//* ║                                                                               ║
+//* ╚═══════════════════════════════════════════════════════════════════════════════╝
+//* clang-format on
 
 namespace
 {
@@ -73,7 +82,9 @@ std::optional<std::wstring> toWide(std::string_view text)
     return wide;
 }
 FileDialogResult showFileDialog(
-    HWND parent, std::span<const FileDialogFilter> filters)
+    HWND parent, std::span<const FileDialogFilter> filters, bool saving,
+    const std::filesystem::path &initialPath,
+    std::string_view defaultExtension)
 {
     assert(GetCurrentThreadId() !=
            GetWindowThreadProcessId(parent, nullptr));
@@ -102,19 +113,22 @@ FileDialogResult showFileDialog(
     ComScope com;
     if (FAILED(com.status)) return failed(com.status);
 
-    Microsoft::WRL::ComPtr<IFileOpenDialog> dialog;
-    HRESULT result = CoCreateInstance(__uuidof(FileOpenDialog), nullptr, 
-                                      CLSCTX_INPROC_SERVER,
-                                      IID_PPV_ARGS(dialog.GetAddressOf()));
-                                      
+    Microsoft::WRL::ComPtr<IFileDialog> dialog;
+    HRESULT result = CoCreateInstance(
+        saving ? __uuidof(FileSaveDialog) : __uuidof(FileOpenDialog),
+        nullptr, CLSCTX_INPROC_SERVER, IID_PPV_ARGS(dialog.GetAddressOf()));
+
     if (FAILED(result)) return failed(result);
 
     DWORD options{};
     result = dialog->GetOptions(&options);
     if (FAILED(result)) return failed(result);
 
-    options |= FOS_FORCEFILESYSTEM | FOS_FILEMUSTEXIST | FOS_PATHMUSTEXIST | FOS_NOCHANGEDIR;
-    options &= ~static_cast<DWORD>(FOS_ALLOWMULTISELECT);
+    options |= FOS_FORCEFILESYSTEM | FOS_PATHMUSTEXIST | FOS_NOCHANGEDIR;
+    options &= ~static_cast<DWORD>(FOS_ALLOWMULTISELECT | FOS_FILEMUSTEXIST);
+    options |= saving
+                   ? FOS_OVERWRITEPROMPT | FOS_STRICTFILETYPES | FOS_NOREADONLYRETURN
+                   : FOS_FILEMUSTEXIST;
 
     result = dialog->SetOptions(options);
     if (FAILED(result)) return failed(result);
@@ -126,6 +140,38 @@ FileDialogResult showFileDialog(
 
         result = dialog->SetFileTypeIndex(1);
         if (FAILED(result)) return failed(result);
+    }
+
+    if (!initialPath.empty())
+    {
+        if (!initialPath.is_absolute())
+            return failed(E_INVALIDARG);
+
+        const auto folder = saving ? initialPath.parent_path() : initialPath;
+        Microsoft::WRL::ComPtr<IShellItem> item;
+        result = SHCreateItemFromParsingName(
+            folder.c_str(), nullptr, IID_PPV_ARGS(item.GetAddressOf()));
+        if (FAILED(result))
+            return failed(result);
+
+        result = dialog->SetFolder(item.Get());
+        if (FAILED(result))
+            return failed(result);
+    }
+
+    if (saving)
+    {
+        const auto extension = toWide(defaultExtension);
+        if (!extension || initialPath.filename().empty())
+            return failed(E_INVALIDARG);
+
+        result = dialog->SetDefaultExtension(extension->c_str());
+        if (FAILED(result))
+            return failed(result);
+
+        result = dialog->SetFileName(initialPath.filename().c_str());
+        if (FAILED(result))
+            return failed(result);
     }
 
     result = dialog->Show(parent);
@@ -152,8 +198,10 @@ FileDialogResult showFileDialog(
 
 namespace Cthulhu::Core::Platform
 {
-FileDialogResult openFileDialog(
-    const Window &owner, std::span<const FileDialogFilter> filters)
+static FileDialogResult runFileDialog(
+    const Window &owner, std::span<const FileDialogFilter> filters, bool saving,
+    const std::filesystem::path &initialPath,
+    std::string_view defaultExtension)
 {
     if (!owner.getWindow()) return failed(E_INVALIDARG);
 
@@ -169,10 +217,12 @@ FileDialogResult openFileDialog(
 
     try
     {
-        worker = std::jthread([parent, filters, &completion] {
+        worker = std::jthread(
+            [parent, filters, saving, initialPath, defaultExtension, &completion] {
             try
             {
-                completion.set_value(showFileDialog(parent, filters));
+                completion.set_value(showFileDialog(
+                    parent, filters, saving, initialPath, defaultExtension));
             }
             catch (...)
             {
@@ -211,7 +261,30 @@ FileDialogResult openFileDialog(
     worker.join();
     if (quit) PostQuitMessage(quitCode);
 
-    return outcome.get();
+    try
+    {
+        return outcome.get();
+    }
+    catch (const std::exception &)
+    {
+        return failed(E_FAIL);
+    }
+}
+
+FileDialogResult openFileDialog(
+    const Window &owner, std::span<const FileDialogFilter> filters,
+    const std::filesystem::path &initialFolder)
+{
+    return runFileDialog(owner, filters, false, initialFolder, {});
+}
+
+FileDialogResult saveFileDialog(
+    const Window &owner, std::span<const FileDialogFilter> filters,
+    std::string_view defaultExtension,
+    const std::filesystem::path &suggestedFile)
+{
+    return runFileDialog(
+        owner, filters, true, suggestedFile, defaultExtension);
 }
 } // namespace Cthulhu::Core::Platform
 

@@ -73,7 +73,7 @@ public:
   bool contextMenuOwnsInput() const noexcept;
 
   [[nodiscard]]
-  bool pollContextMenuSelection(ContextMenuSelection& selection) noexcept;
+  bool pollContextMenuSelection(ContextMenuSelection& selection, NodeHandle owner = {}) noexcept;
 
   [[nodiscard]]
   const Theme &theme() const noexcept;

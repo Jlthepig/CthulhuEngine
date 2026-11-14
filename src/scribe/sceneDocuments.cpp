@@ -29,6 +29,20 @@ SceneDocument *Session::finishDocumentSwitch(std::optional<Scene::SceneSnapshot>
     return document;
 }
 
+DocumentSwitchResult Session::newSceneDocument()
+{
+    if (!canSwitchDocument())
+        return {Result::failed("Scene creation requires Edit mode at a frame boundary."), {}};
+
+    const auto *active = engine.getActiveScene();
+    auto previous = active ? std::optional{active->captureScene()} : std::nullopt;
+
+    if (!engine.createEmptyScene("Untitled"))
+        return {Result::failed("Could not create an empty scene."), {}};
+
+    return {Result::applied(),finishDocumentSwitch(std::move(previous))};
+}
+
 DocumentSwitchResult Session::openSceneDocument(std::string_view resourcePath)
 {
     if (!canSwitchDocument())

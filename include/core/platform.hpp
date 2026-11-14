@@ -28,7 +28,9 @@ struct FileDialogResult
     std::string error;
 };
 
-[[nodiscard]] FileDialogResult openFileDialog(const Window &owner, std::span<const FileDialogFilter> filters);
+[[nodiscard]] FileDialogResult openFileDialog(const Window &owner, std::span<const FileDialogFilter> filters, const std::filesystem::path &initialFolder = {});
+[[nodiscard]] FileDialogResult saveFileDialog(const Window &owner, std::span<const FileDialogFilter> filters, std::string_view defaultExtension, 
+                                              const std::filesystem::path &suggestedFile);
 [[nodiscard]] bool moveToTrash(const std::filesystem::path &file);
 
 } // namespace Cthulhu::Core::Platform

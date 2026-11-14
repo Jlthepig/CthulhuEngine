@@ -4,6 +4,7 @@
 #include <optional>
 #include <filesystem>
 #include <cstdint>
+#include <string>
 
 #include "OctoGui/Event.h"
 #include "OctoGui/Context.h"
@@ -15,6 +16,7 @@
 #include "assetDrag.hpp"
 #include "editorDialog.hpp"
 #include "camera.hpp"
+#include "platform.hpp"
 
 using namespace octogui;
 
@@ -76,7 +78,18 @@ class EditorShell
     Scribe::Result closeSceneTab(Context &ctx, Engine &engine, Scribe::Session &session,
                                  std::size_t index, std::size_t returnTab);
     void handleSceneTabClose(Context &ctx, Engine &engine, Scribe::Session &session, DialogChoice choice);
-    Scribe::Result saveSceneTabs(Engine &engine, Scribe::Session &session);
+
+    Core::Platform::FileDialogResult pickSceneFile(Context &ctx, Engine &engine, Scribe::Session &session, bool saving);
+
+    std::optional<std::size_t> findSceneTab(Engine &engine, std::string_view path, std::optional<std::size_t> skip = std::nullopt) const;
+
+    Scribe::Result openSceneTab(Context &ctx, Engine &engine, Scribe::Session &session, std::string_view path);
+
+    void openSceneFile(Context &ctx, Engine &engine, Scribe::Session &session);
+
+    Scribe::Result saveScene(Context &ctx, Engine &engine, Scribe::Session &session, bool saveAs = false);
+
+    Scribe::Result saveSceneTabs(Context &ctx, Engine &engine, Scribe::Session &session);
 
     std::vector<SceneTab> sceneTabs;
     NodeHandle tabBar{}, tabRow{}, previousTabs{}, nextTabs{};
@@ -86,7 +99,18 @@ class EditorShell
     std::size_t closeReturnTab{};
     bool restoreTabSelection = false;
 
-    IconButton saveButton{};
+    bool updateFileMenu(Context &ctx, Engine &engine, Scribe::Session &session);
+    Scribe::Result newSceneTab(Context &ctx, Engine &engine, Scribe::Session &session);
+    void requestSceneTabClose(Context &ctx, Engine &engine, Scribe::Session &session, std::size_t index);
+    Scribe::Result closeAllSceneTabs(Context &ctx, Engine &engine, Scribe::Session &session);
+    void rememberSceneFile(Engine &engine, std::string_view path);
+
+    NodeHandle fileButton{};
+    std::vector<std::string> recentScenes;
+    std::filesystem::path recentProject;
+    std::uint64_t fileMenuGeneration{};
+    bool closingAllScenes = false;
+
     IconButton playButton{};
     IconButton pauseButton{};
     IconButton stopButton{};

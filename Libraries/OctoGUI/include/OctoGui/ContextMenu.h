@@ -1,6 +1,7 @@
 #pragma once
 
 #include <string_view>
+#include <span>
 
 #include "OctoGui/Node.h"
 
@@ -10,6 +11,7 @@ struct ContextMenuItem {
     u64 action{};
     std::string_view label;
     bool enabled = true;
+    std::span<const ContextMenuItem> children{};
 };
 
 struct ContextMenuSelection {

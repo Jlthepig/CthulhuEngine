@@ -1,6 +1,7 @@
 #include "Systems/ContextMenuSystem.h"
 
 #include <algorithm>
+#include <cassert>
 #include <cmath>
 #include <utility>
 
@@ -81,10 +82,25 @@ bool ContextMenuSystem::open(const Tree& tree, NodeHandle newRoot, NodeHandle ne
             return false;
         }
 
-        newWidth = std::max(newWidth, textWidth + 24.0f);
-        replacement.push_back(Item{item.action, std::string(item.label), item.enabled});
+        Item copy{item.action, std::string(item.label), item.enabled, {}};
+        if (!item.children.empty()) {
+            // shortcut >> one submenu level extend when a nested menu is needed.
+            for (const auto& child : item.children) {
+                if (!child.children.empty()) return false;
+            }
+
+            copy.submenu = std::make_unique<ContextMenuSystem>();
+            if (!copy.submenu->open(tree, newRoot, newOwner, viewport, position, item.children, font)) {
+                return false;
+            }
+            copy.submenu->close();
+        }
+
+        newWidth = std::max(newWidth, textWidth + (copy.submenu ? 44.0f : 24.0f));
+        replacement.push_back(std::move(copy));
     }
 
+    hideSubmenu();
     items = std::move(replacement);
     root = newRoot;
     owner = newOwner;
@@ -111,6 +127,7 @@ void ContextMenuSystem::close() noexcept {
         return;
     }
 
+    hideSubmenu();
     opened = false;
     pending = false;
     selection = {};
@@ -212,30 +229,77 @@ void ContextMenuSystem::activate(usize index) {
         return;
     }
 
+    if (items[index].submenu) {
+        showSubmenu(index, true);
+        return;
+    }
+
     const ContextMenuSelection result{owner, items[index].action};
     close();
     selection = result;
     pending = true;
 }
 
-void ContextMenuSystem::update(const Tree& tree, NodeHandle currentRoot, Rect viewport, const InputState& input, Font* font) {
+void ContextMenuSystem::hideSubmenu() {
+    if (expanded != NoItem) {
+        items[expanded].submenu->close();
+        expanded = NoItem;
+    }
+    submenuKeyboard = false;
+}
+
+void ContextMenuSystem::placeSubmenu() {
+    if (expanded == NoItem) return;
+
+    assert(expanded < items.size() && items[expanded].submenu);
+    auto& child = *items[expanded].submenu;
+
+    const Rect bounds = viewportRect.shrink(4.0f);
+    const f32 width = std::min(child.preferredWidth, bounds.w);
+    const f32 x = box.maxX() + width <= bounds.maxX() ? box.maxX() : box.x - width;
+
+    child.requestedPosition = {x, rowRect(expanded).y - 4.0f};
+    (void)child.reflow(viewportRect);
+}
+
+void ContextMenuSystem::showSubmenu(usize index, bool keyboard) {
+    if (index >= items.size() || !items[index].enabled || !items[index].submenu) {
+        return;
+    }
+
+    if (expanded != index) {
+        hideSubmenu();
+        expanded = index;
+
+        auto& child = *items[index].submenu;
+        child.opened = child.captured = true;
+        child.draining = child.pending = false;
+        child.selection = {};
+        child.active = child.pressed = NoItem;
+        child.scrollY = 0.0f;
+    }
+
+    submenuKeyboard = keyboard;
+    placeSubmenu();
+
+    auto& child = *items[index].submenu;
+    if (keyboard && child.active == NoItem)
+        child.moveSelection(1);
+}
+
+void ContextMenuSystem::update(const Tree& tree, NodeHandle currentRoot, Rect viewport, const InputState& input, Font* font)
+{
     if ((opened || pending) && (currentRoot != root || !usableOwner(tree, root, owner))) {
-        if (opened) {
-            close();
-        }
+        close();
         pending = false;
         selection = {};
     }
 
     captured = opened || draining;
-    if (!captured) {
-        return;
-    }
+    if (!captured) return;
 
     if (!opened) {
-        if (!mouseHeld(input)) {
-            draining = false;
-        }
+        if (!mouseHeld(input)) draining = false;
         return;
     }
 
@@ -245,87 +309,136 @@ void ContextMenuSystem::update(const Tree& tree, NodeHandle currentRoot, Rect vi
         return;
     }
 
-    const MouseState& mouse = input.mouse;
+    placeSubmenu();
 
-    if (mouse.pressed(MouseButton::Right) ||
-        mouse.pressed(MouseButton::Middle) ||
-        (mouse.pressed(MouseButton::Left) &&
-         !box.contains(mouse.position))) {
+    const auto& mouse = input.mouse;
+    const bool overChild = expanded != NoItem && items[expanded].submenu->box.contains(mouse.position);
+
+    if (mouse.pressed(MouseButton::Right) || mouse.pressed(MouseButton::Middle) || (mouse.pressed(MouseButton::Left) &&
+         !box.contains(mouse.position) && !overChild)) {
         close();
         draining = mouseHeld(input);
         return;
     }
 
-    if (box.contains(mouse.position) &&
-        std::isfinite(mouse.wheel.y) && mouse.wheel.y != 0.0f) {
-        scrollY = std::clamp(
-            scrollY - mouse.wheel.y * rowHeight * 3.0f,
-            0.0f, maxScroll);
+    for (const auto& event : input.events) {
+        if (event.type != InputEventType::Key ||
+            event.action != KeyAction::Press) {
+            continue;
+        }
+
+        if (event.key == Key::Tab || event.key == Key::Escape) {
+            if (event.key == Key::Escape && expanded != NoItem)
+                hideSubmenu();
+            else
+                close();
+
+            draining = !opened && mouseHeld(input);
+            return;
+        }
+
+        if (event.key == Key::Left && expanded != NoItem) {
+            hideSubmenu();
+            return;
+        }
     }
 
-    if (mouse.moved() || mouse.wheel.y != 0.0f) {
-        active = itemAt(mouse.position);
+    const bool parentPointer = !overChild && box.contains(mouse.position) && (mouse.moved() || mouse.pressed(MouseButton::Left) ||
+         mouse.released(MouseButton::Left) || mouse.wheel.y != 0.0f);
+
+    if (expanded != NoItem && (overChild || (submenuKeyboard && !parentPointer))) {
+        submenuKeyboard = true;
+
+        auto& child = *items[expanded].submenu;
+        child.update(tree, currentRoot, viewport, input, font);
+
+        ContextMenuSelection result;
+        if (child.poll(tree, currentRoot, result)) {
+            close();
+            selection = result;
+            pending = true;
+        } else if (!child.opened) {
+            hideSubmenu();
+        }
+        return;
+    }
+
+    if (parentPointer)
+        submenuKeyboard = false;
+
+    if (box.contains(mouse.position) &&
+        std::isfinite(mouse.wheel.y) && mouse.wheel.y != 0.0f) {
+        hideSubmenu();
+        scrollY = std::clamp(scrollY - mouse.wheel.y * rowHeight * 3.0f,0.0f, maxScroll);
+    }
+
+    if ((mouse.moved() || mouse.wheel.y != 0.0f) && (box.contains(mouse.position) || expanded == NoItem)) {
+        const usize hovered = itemAt(mouse.position);
+        if (hovered != active)
+            hideSubmenu();
+
+        active = hovered;
+        showSubmenu(active, false);
     }
 
     if (mouse.pressed(MouseButton::Left)) {
         pressed = itemAt(mouse.position);
+        if (pressed != active)
+            hideSubmenu();
         active = pressed;
     }
 
     if (mouse.released(MouseButton::Left)) {
         const usize released = itemAt(mouse.position);
-        if (pressed != NoItem && pressed == released) {
+        if (pressed != NoItem && pressed == released)
             activate(released);
-        }
         pressed = NoItem;
     }
 
-    for (const InputEvent& event : input.events) {
-        if (!opened) {
+    for (const auto& event : input.events) {
+        if (!opened || submenuKeyboard)
             break;
-        }
+
         if (event.type != InputEventType::Key ||
             event.action == KeyAction::Release) {
             continue;
         }
 
         switch (event.key) {
-        case Key::Escape:
-        case Key::Tab:
-            close();
-            break;
         case Key::Down:
-            moveSelection(1);
-            break;
         case Key::Up:
-            moveSelection(-1);
+            hideSubmenu();
+            moveSelection(event.key == Key::Down ? 1 : -1);
             break;
+
         case Key::Home:
-            active = NoItem;
-            moveSelection(1);
-            break;
         case Key::End:
+            hideSubmenu();
             active = NoItem;
-            moveSelection(-1);
+            moveSelection(event.key == Key::Home ? 1 : -1);
             break;
+
+        case Key::Right:
+            showSubmenu(active, true);
+            break;
+
         case Key::Enter:
         case Key::Space:
-            if (event.action == KeyAction::Press) {
+            if (event.action == KeyAction::Press)
                 activate(active);
-            }
             break;
+
         default:
             break;
         }
     }
 
-    if (!opened) {
+    if (!opened)
         draining = mouseHeld(input);
-    }
 }
 
-bool ContextMenuSystem::poll(const Tree& tree, NodeHandle currentRoot, ContextMenuSelection& out) noexcept {
-    if (!pending) {
+bool ContextMenuSystem::poll(const Tree& tree, NodeHandle currentRoot, ContextMenuSelection& out, NodeHandle filter) noexcept {
+    if (!pending || (filter.isValid() && selection.owner != filter)) {
         return false;
     }
 
@@ -366,10 +479,19 @@ void ContextMenuSystem::paint(const Tree& tree, NodeHandle currentRoot, Font* fo
                 row, theme.surfaceHovered, theme.smallRadius);
         }
 
-        const Rect textClip{row.x + 8.0f, row.y, row.w - 16.0f, row.h};
+        const Rect textClip{row.x + 8.0f, row.y, std::max(0.0f, row.w - (item.submenu ? 36.0f : 16.0f)),row.h};
         const Vec2 position{textClip.x, row.y + (rowHeight - font->metrics().lineHeight) * 0.5f};
 
         font->drawTextClipped(list, item.label, position, item.enabled ? theme.text : theme.textDisabled, textClip.intersection(content));
+
+        if (item.submenu) {
+            const f32 x = row.maxX() - 14.0f;
+            const f32 y = row.y + row.h * 0.5f;
+            const Color color = item.enabled ? theme.text : theme.textDisabled;
+
+            list.addLine({x, y - 4.0f}, {x + 4.0f, y}, color, 1.5f);
+            list.addLine({x + 4.0f, y}, {x, y + 4.0f}, color, 1.5f);
+        }
     }
 
     list.popClip();
@@ -384,6 +506,9 @@ void ContextMenuSystem::paint(const Tree& tree, NodeHandle currentRoot, Font* fo
     }
 
     list.popClip();
+
+    if (expanded != NoItem)
+        items[expanded].submenu->paint(tree, currentRoot, font, theme, list);
 }
 
 } // namespace octogui

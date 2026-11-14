@@ -106,6 +106,7 @@ class Session
         history.endMerge();
     }
 
+    [[nodiscard]] DocumentSwitchResult newSceneDocument();
     [[nodiscard]] DocumentSwitchResult openSceneDocument(std::string_view resourcePath);
     [[nodiscard]] DocumentSwitchResult activateSceneDocument(SceneDocument *&target, bool keepCurrent = true);
     [[nodiscard]] Result closeActiveSceneDocument();

@@ -45,6 +45,49 @@ inline void validateScribeDocumentSwitch(Engine &engine, Results &r)
                  engine.getActiveScene()->isEntityAlive(entity.id) && session.canUndo() && session.canRedo(),
           "Scene tabs preserve the active document after an invalid open");
 
+    auto created = session.newSceneDocument();
+    if (!created.result.ok() || !created.previous)
+    {
+        check(r, false, "New Scene parks the outgoing document");
+        return;
+    }
+
+    const auto *blank = engine.getActiveScene();
+    check(r, blank && blank->getName() == "Untitled" &&
+                 !blank->hasResourcePath() && !blank->isDirty() &&
+                 blank->getEntityCount() == 0 &&
+                 !session.canUndo() && !session.canRedo(),
+          "New Scene starts with an empty, clean document and separate history");
+
+    auto restored = session.activateSceneDocument(created.previous);
+    if (!restored.result.ok() || !restored.previous)
+    {
+        check(r, false, "New Scene allows returning to the previous document");
+        return;
+    }
+
+    check(r, engine.getActiveScene()->isEntityAlive(entity.id) &&
+                 engine.getActiveScene()->isDirty() &&
+                 session.canUndo() && session.canRedo(),
+          "New Scene preserves the previous document and its undo/redo history");
+
+    const auto removedBlank =
+        session.closeInactiveSceneDocument(restored.previous);
+    check(r, removedBlank.ok() && !restored.previous,
+          "The unused new scene can be closed independently");
+    if (!removedBlank.ok())
+        return;
+
+    const auto beforeRejectedNew = engine.getSceneGeneration();
+    engine.setWorldMode(WorldMode::Play);
+    const auto rejectedNew = session.newSceneDocument();
+    engine.setWorldMode(WorldMode::Edit);
+
+    check(r, !rejectedNew.result.ok() && !rejectedNew.previous &&
+                 engine.getSceneGeneration() == beforeRejectedNew &&
+                 session.canRedo(),
+          "New Scene refuses Play mode without replacing the document or history");
+
     auto opened = session.openSceneDocument(SAVE_PATH);
     if (!opened.result.ok() || !opened.previous)
     {

@@ -173,6 +173,31 @@ Scribe::Result EditorShell::closeSceneTab(Context &ctx, Engine &engine, Scribe::
     return Scribe::Result::applied();
 }
 
+void EditorShell::requestSceneTabClose(Context &ctx, Engine &engine, Scribe::Session &session, std::size_t index)
+{
+    assert(index < sceneTabs.size());
+
+    auto dirtyName = engine.unsavedEditSceneName();
+    if (const auto *doc = sceneTabs[index].document)
+    {
+        dirtyName.reset();
+        if (doc->snapshot.dirty)
+            dirtyName = doc->snapshot.name;
+    }
+
+    if (dirtyName)
+    {
+        closingTab = index;
+        closeReturnTab = activeTab;
+        exitDialog.show(ctx, "Save changes before closing?", dirtyName->empty() ? "Untitled" : *dirtyName, "Save", "Discard Changes");
+    }
+    else
+    {
+        const auto result = closeSceneTab(ctx, engine, session, index, activeTab);
+        contentBrowserUI.reportError(ctx, result.error);
+    }
+}
+
 void EditorShell::handleSceneTabClose(Context &ctx, Engine &engine, Scribe::Session &session, DialogChoice choice)
 {
     if (choice == DialogChoice::None)
@@ -183,8 +208,8 @@ void EditorShell::handleSceneTabClose(Context &ctx, Engine &engine, Scribe::Sess
     {
         auto result = selectSceneTab(engine, session, index);
         if (result.ok())
-            result = session.save();
-        if (!result.ok())
+            result = saveScene(ctx, engine, session);
+        if (result.status != Scribe::Result::Status::Applied)
         {
             const auto restored = selectSceneTab(engine, session, closeReturnTab);
             exitDialog.setError(ctx, restored.ok() ? result.error : result.error + " " + restored.error);
@@ -209,7 +234,7 @@ void EditorShell::handleSceneTabClose(Context &ctx, Engine &engine, Scribe::Sess
 void EditorShell::updateSceneTabs(Context &ctx, Engine &engine, Scribe::Session &session)
 {
     const auto request = contentBrowserUI.takeSceneOpenRequest();
-    const bool canSwitch = !engine.isPlaying() && !assetDrag.asset.isValid() && !assetDrag.ownsInput;
+    const bool canSwitch = !engine.isPlaying() && !session.transformEditActive() && !assetDrag.asset.isValid() && !assetDrag.ownsInput && !ctx.contextMenuOwnsInput();
     const auto previousActive = activeTab;
     if (canSwitch && request.isValid())
     {
@@ -222,45 +247,8 @@ void EditorShell::updateSceneTabs(Context &ctx, Engine &engine, Scribe::Session 
         else
         {
             const std::string path = record->path;
-            const auto file = project->resolveResourcePath(path);
-            const auto *scene = engine.getActiveScene();
-            const auto matches = [&](const SceneTab &tab) {
-                const auto *current = tab.document ? &tab.document->snapshot.resourcePath
-                                                    : scene ? &scene->getResourcePath() : nullptr;
-                if (!current || !*current)
-                    return false;
-                if (**current == path)
-                    return true;
-
-                const auto openFile = project->resolveResourcePath(**current);
-                std::error_code error;
-                return file && openFile && std::filesystem::equivalent(*file, *openFile, error) && !error;
-            };
-
-            const auto existing = std::find_if(sceneTabs.begin(), sceneTabs.end(), matches);
-            if (existing != sceneTabs.end())
-            {
-                const auto result = selectSceneTab(engine, session, static_cast<std::size_t>(existing - sceneTabs.begin()));
-                contentBrowserUI.reportError(ctx, result.error);
-            }
-            else
-            {
-                rememberSceneView(engine);
-                auto opened = session.openSceneDocument(path);
-                if (opened.result.ok())
-                {
-                    if (opened.previous)
-                    {
-                        assert(!sceneTabs.empty());
-                        sceneTabs[activeTab].document = opened.previous;
-                    }
-
-                    activeTab = sceneTabs.size();
-                    addSceneTab(ctx);
-                    restoreTabSelection = true;
-                }
-                contentBrowserUI.reportError(ctx, opened.result.error);
-            }
+            const auto result = openSceneTab(ctx, engine, session, path);
+            contentBrowserUI.reportError(ctx, result.error);
         }
     }
     else if (canSwitch)
@@ -269,27 +257,7 @@ void EditorShell::updateSceneTabs(Context &ctx, Engine &engine, Scribe::Session 
         {
             if (ctx.isClicked(sceneTabs[i].close))
             {
-                auto dirtyName = engine.unsavedEditSceneName();
-                if (const auto *doc = sceneTabs[i].document)
-                {
-                    dirtyName.reset();
-                    if (doc->snapshot.dirty)
-                        dirtyName = doc->snapshot.name;
-                }
-
-                if (dirtyName)
-                {
-                    closingTab = i;
-                    closeReturnTab = activeTab;
-                    exitDialog.show(ctx, "Save changes before closing?",
-                                    dirtyName->empty() ? "Untitled" : *dirtyName,
-                                    "Save", "Discard Changes");
-                }
-                else
-                {
-                    const auto result = closeSceneTab(ctx, engine, session, i, activeTab);
-                    contentBrowserUI.reportError(ctx, result.error);
-                }
+                requestSceneTabClose(ctx, engine, session, i);
                 break;
             }
 
@@ -350,30 +318,45 @@ void EditorShell::updateSceneTabs(Context &ctx, Engine &engine, Scribe::Session 
     }
 }
 
-Scribe::Result EditorShell::saveSceneTabs(Engine &engine, Scribe::Session &session)
+Scribe::Result EditorShell::saveSceneTabs(
+    Context &ctx, Engine &engine, Scribe::Session &session)
 {
-    if (engine.unsavedEditSceneName())
-    {
-        const auto saved = session.save();
-        if (!saved.ok())
-            return Scribe::Result::failed(engine.getActiveScene()->getName() + ": " + saved.error);
-    }
+    const auto returnTab = activeTab;
+    Scribe::Result result = Scribe::Result::applied();
 
     for (std::size_t i = 0; i < sceneTabs.size(); ++i)
     {
         const auto *document = sceneTabs[i].document;
-        if (!document || !document->snapshot.dirty)
+        const bool dirty = document
+            ? document->snapshot.dirty
+            : engine.unsavedEditSceneName().has_value();
+
+        if (!dirty)
             continue;
 
-        const auto switched = selectSceneTab(engine, session, i);
-        if (!switched.ok())
-            return switched;
+        result = selectSceneTab(engine, session, i);
+        if (!result.ok())
+            break;
 
-        const auto saved = session.save();
-        if (!saved.ok())
-            return Scribe::Result::failed(engine.getActiveScene()->getName() + ": " + saved.error);
+        result = saveScene(ctx, engine, session);
+        if (result.status != Scribe::Result::Status::Applied)
+            break;
     }
 
-    return Scribe::Result::applied();
+    if (!sceneTabs.empty())
+    {
+        const auto restored =
+            selectSceneTab(engine, session, returnTab);
+
+        if (!restored.ok())
+        {
+            return Scribe::Result::failed(
+                result.error.empty()
+                    ? restored.error
+                    : result.error + " " + restored.error);
+        }
+    }
+
+    return result;
 }
 } // namespace Cthulhu::Editor

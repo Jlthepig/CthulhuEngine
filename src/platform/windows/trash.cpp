@@ -12,7 +12,15 @@
 #pragma comment(lib, "ole32.lib")
 #pragma comment(lib, "shell32.lib")
 
-// <<<< Cthulhus WINDOWS trash or recyclebin implementation >>>>
+//* clang-format off
+//* ╔═══════════════════════════════════════════════════════════════════════════════╗
+//* ║                                                                               ║
+//* ║          C T H U L H U ' S   W I N D O W S   R E C Y C L E   B I N           ║
+//* ║                                                                               ║
+//* ║                WINDOWS TRASH / RECYCLE BIN IMPLEMENTATION                     ║
+//* ║                                                                               ║
+//* ╚═══════════════════════════════════════════════════════════════════════════════╝
+//* clang-format on
 namespace
 {
 class RecycleOnlySink final : public IFileOperationProgressSink

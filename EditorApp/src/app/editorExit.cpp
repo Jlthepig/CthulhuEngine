@@ -15,6 +15,17 @@ namespace Cthulhu::Editor
 {
 bool EditorShell::handleExit(Context &ctx, Engine &engine, Scribe::Session &session)
 {
+    const auto finish = [&]() {
+        if (!closingAllScenes)
+            return true;
+
+        const auto result = closeAllSceneTabs(ctx, engine, session);
+        closingAllScenes = false;
+        exitDialog.hide(ctx);
+        contentBrowserUI.reportError(ctx, result.error);
+        return false;
+    };
+
     if (exitDialog.isOpen(ctx))
     {
         const auto choice = exitDialog.pollChoice(ctx);
@@ -29,13 +40,14 @@ bool EditorShell::handleExit(Context &ctx, Engine &engine, Scribe::Session &sess
             case DialogChoice::None:
                 return false;
             case DialogChoice::Cancel:
+                closingAllScenes = false;
                 exitDialog.hide(ctx);
                 if (resumePlayOnCancel && engine.isPlaying())
                     engine.setSimulationState(SimulationState::Running);
                 Core::Input::resetMouseTracking();
                 return false;
             case DialogChoice::Secondary:
-                return true;
+                return finish();
             case DialogChoice::Primary:
                 if (engine.isPlaying() && !engine.stop())
                 {
@@ -43,12 +55,13 @@ bool EditorShell::handleExit(Context &ctx, Engine &engine, Scribe::Session &sess
                     return false;
                 }
 
-                if (const auto saved = saveSceneTabs(engine, session); !saved.ok())
+                if (const auto saved = saveSceneTabs(ctx, engine, session);
+                    saved.status != Scribe::Result::Status::Applied)
                 {
                     exitDialog.setError(ctx, saved.error);
                     return false;
                 }
-                return true;
+                return finish();
         }
     }
 
@@ -62,6 +75,7 @@ bool EditorShell::handleExit(Context &ctx, Engine &engine, Scribe::Session &sess
     viewportPanelUI.updateMarquee(ctx, sceneNode, false, generation);
     if (!viewportPanelUI.finishGizmoDrag(session, false))
     {
+        closingAllScenes = false;
         contentBrowserUI.reportError(ctx, "Could not finish the transform preview. Try closing again.");
         ctx.clearEvents();
         return false;
@@ -99,7 +113,7 @@ bool EditorShell::handleExit(Context &ctx, Engine &engine, Scribe::Session &sess
             addDirty(tab.document->snapshot.name);
     }
     if (dirtyCount == 0)
-        return true;
+        return finish();
 
     resumePlayOnCancel = engine.isPlaying() && engine.getSimulationState() == SimulationState::Running;
     if (resumePlayOnCancel)
@@ -107,8 +121,14 @@ bool EditorShell::handleExit(Context &ctx, Engine &engine, Scribe::Session &sess
 
     glfwSetInputMode(engine.getWindow()->getWindow(), GLFW_CURSOR, GLFW_CURSOR_NORMAL);
     Core::Input::resetMouseTracking();
-    exitDialog.show(ctx, "Save changes before exiting?", dirtyNames,
-                    dirtyCount == 1 ? "Save" : "Save All", "Discard Changes");
+    exitDialog.show(
+        ctx,
+        closingAllScenes
+            ? "Save changes before closing all scenes?"
+            : "Save changes before exiting?",
+        dirtyNames,
+        dirtyCount == 1 ? "Save" : "Save All",
+        "Discard Changes");
     return false;
 }
 } // namespace Cthulhu::Editor

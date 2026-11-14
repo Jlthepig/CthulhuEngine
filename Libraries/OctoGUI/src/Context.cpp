@@ -131,7 +131,7 @@ bool Context::openContextMenu(NodeHandle owner, Vec2 position, std::span<const C
     const MouseState& mouse = impl->input.mouse;
     if (impl->menus.ownsInput() ||
         mouse.isDown(MouseButton::Left) ||
-        mouse.wasDown(MouseButton::Left) ||
+        (mouse.wasDown(MouseButton::Left) && !isClicked(owner)) ||
         mouse.isDown(MouseButton::Middle) ||
         mouse.wasDown(MouseButton::Middle)) {
         return false;
@@ -159,8 +159,8 @@ bool Context::contextMenuOwnsInput() const noexcept {
     return impl->menus.ownsInput();
 }
 
-bool Context::pollContextMenuSelection(ContextMenuSelection& selection) noexcept {
-    return impl->menus.poll(impl->tree, impl->root, selection);
+bool Context::pollContextMenuSelection(ContextMenuSelection& selection, NodeHandle owner) noexcept {
+    return impl->menus.poll(impl->tree, impl->root, selection, owner);
 }
 
 const Theme &Context::theme() const noexcept { return impl->styles.theme(); }
