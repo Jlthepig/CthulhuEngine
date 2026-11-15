@@ -112,56 +112,82 @@ class Renderer
         camera = &value;
     }
 
+    void setGridVisible(bool visible) noexcept
+    {
+        gridVisible = visible;
+    }
+
     [[nodiscard]] const RenderConfig &getConfig() const noexcept
     {
         return config;
     }
 
   private:
+    GLFWwindow *window = nullptr;
+    Cthulhu::Scene::Scene *scene = nullptr;
+    Scene::Camera *camera = nullptr;
+
+    glm::mat4 projection;
+    glm::mat4 view;
+    Scene::Frustum frustum;
+
     RenderConfig config;
+
     Cthulhu::Rendering::Shader basicShader;
     Cthulhu::Rendering::Shader gridShader;
     Cthulhu::Rendering::Shader lineShader;
-    std::vector<Scene::EntityId> outlineTargets;
     Shader outlineShader;
     Shader overlayShader;
-    GLuint overlayVAO{};
-    GLuint overlayVBO{};
-    Cthulhu::Rendering::GridLines grid;
-    Cthulhu::Rendering::Skybox skybox;
-    Cthulhu::Rendering::Framebuffer sceneFramebuffer;
-    glm::mat4 projection;
-    glm::mat4 view;
-    Scene::Camera *camera = nullptr;
-    GLFWwindow *window = nullptr;
-    DirectionalLight sunLight;
-    PointLightShadowMap pointShadowMap;
-    std::vector<PointLight> pointLights;
-    std::vector<PointLightGPU> pointLightStorage;
-    std::size_t pointLightBufferCapacity{};
-    std::size_t maxPointLightCount{};
-    bool pointLightLimitWarningLogged = false;
-    bool pointShadowLimitWarningLogged = false;
-    std::vector<DebugVertex> debugLines;
-    std::vector<PersistentLine> persistentLines;
-    ShadowMap shadowMap;
-    Cthulhu::Scene::Scene *scene = nullptr;
-    Scene::Frustum frustum;
-    Scene::AABB TransformAABB(const Scene::AABB &localBounds, const glm::mat4 &modelMatrix);
-    GLuint defaultDataTexture{};
-    GLuint defaultNormalTexture{};
-    GLuint brdfLUTTexture{};
-    unsigned int lineVAO{}, lineVBO{};
+
     unsigned int sceneUBO{};
     unsigned int pointLightsSSBO{};
 
+    GLuint overlayVAO{};
+    GLuint overlayVBO{};
+
+    unsigned int lineVAO{};
+    unsigned int lineVBO{};
+
+    GLuint defaultDataTexture{};
+    GLuint defaultNormalTexture{};
+    GLuint brdfLUTTexture{};
+
+    Cthulhu::Rendering::Framebuffer sceneFramebuffer;
+    std::vector<Scene::EntityId> outlineTargets;
+
+    Cthulhu::Rendering::GridLines grid;
+    Cthulhu::Rendering::Skybox skybox;
+
+    DirectionalLight sunLight;
+    ShadowMap shadowMap;
+
+    std::vector<PointLight> pointLights;
+    std::vector<PointLightGPU> pointLightStorage;
+    PointLightShadowMap pointShadowMap;
+
+    std::size_t pointLightBufferCapacity{};
+    std::size_t maxPointLightCount{};
+
+    bool pointLightLimitWarningLogged = false;
+    bool pointShadowLimitWarningLogged = false;
+
+    bool gridVisible = false;
+
+    std::vector<DebugVertex> debugLines;
+    std::vector<PersistentLine> persistentLines;
+
+    static Scene::AABB TransformAABB(const Scene::AABB &localBounds, const glm::mat4 &modelMatrix);
+
     void bindMaterial(const Material &material, const std::vector<Texture> &modelTextures);
     void bindDefaultMaterial();
-    void drawOverlayTriangles(std::span<const OverlayVertex> vertices);
-    void drawOutlines(unsigned int width, unsigned int height, const std::vector<Renderable> &renderables);
-    void drawShadows(const std::vector<Renderable> &renderables, std::size_t shadowCasters);
+
     std::size_t uploadPointLights();
+
     void drawSceneGeometry(const std::vector<Renderable> &renderables, std::size_t activePointLightCount, std::size_t shadowCasters);
+    void drawShadows(const std::vector<Renderable> &renderables, std::size_t shadowCasters);
+    void drawOutlines(unsigned int width, unsigned int height, const std::vector<Renderable> &renderables);
+    void drawOverlayTriangles(std::span<const OverlayVertex> vertices);
+
     void drawDebugLines(float deltaTime);
 };
 } // namespace Cthulhu::Rendering

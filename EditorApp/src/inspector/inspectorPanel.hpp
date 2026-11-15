@@ -86,6 +86,7 @@ class InspectorPanel
     std::vector<std::string> componentNames;
     std::vector<std::string> availableComponents;
     std::uint64_t boundGeneration{};
+    bool boundPlaying = false;
     std::optional<Scene::EntityId> selectedEntity;
     std::optional<Scene::EntityId> builtEntity;
     octogui::NodeHandle addComponentCombo{};

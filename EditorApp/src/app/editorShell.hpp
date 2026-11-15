@@ -74,6 +74,7 @@ class EditorShell
     void buildSceneTabBar(Context &ctx, NodeHandle parent);
     void addSceneTab(Context &ctx);
     void rememberSceneView(Engine &engine);
+    void restoreSceneView(Engine &engine);
     void updateSceneTabs(Context &ctx, Engine &engine, Scribe::Session &session);
     Scribe::Result selectSceneTab(Engine &engine, Scribe::Session &session, std::size_t index, bool keepCurrent = true);
     Scribe::Result closeSceneTab(Context &ctx, Engine &engine, Scribe::Session &session,
@@ -105,6 +106,7 @@ class EditorShell
     void requestSceneTabClose(Context &ctx, Engine &engine, Scribe::Session &session, std::size_t index);
     Scribe::Result closeAllSceneTabs(Context &ctx, Engine &engine, Scribe::Session &session);
     void rememberSceneFile(Engine &engine, std::string_view path);
+    
 
     NodeHandle fileButton{};
     std::vector<std::string> recentScenes;

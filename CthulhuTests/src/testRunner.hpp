@@ -79,6 +79,7 @@ inline int run(Engine& engine)
 	validateWorldModes(engine, r);
 	validateSceneSnapshot(engine, r);
 	validatePlayStop(engine, r);
+	validatePlayCameraRendering(engine, r);
 	validateSessionDuringPlay(engine, r);
 	validateUserSystems(engine, r);
 	validateRuntimeApi(engine, r);

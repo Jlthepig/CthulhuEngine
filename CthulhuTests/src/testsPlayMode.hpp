@@ -9,6 +9,91 @@
 namespace Cthulhu::Validation
 {
 
+inline void validatePlayCameraRendering(Engine &engine, Results &r)
+{
+    using Status = CS::GameCameraStatus;
+
+    engine.setWorldMode(WorldMode::Edit);
+    if (!engine.createEmptyScene("V_PlayCamera"))
+    {
+        check(r, false, "PC0 camera scene setup");
+        return;
+    }
+
+    const CS::Camera editorCamera = *engine.getCamera();
+    auto *scene = engine.getActiveScene();
+    auto cameraEntity = scene->createEntity("V_GameCamera");
+    cameraEntity.set(CS::CameraComponent{
+        glm::vec3(0.0f, 0.0f, -1.0f), true, 65.0f});
+
+    const auto cameraId = idOf(cameraEntity);
+    const auto before = fingerprint(*scene);
+    const auto generation = engine.getSceneGeneration();
+
+    const auto editorViewUnchanged = [&]() {
+        const auto *camera = engine.getCamera();
+        return camera &&
+               camera->getPosition() == editorCamera.getPosition() &&
+               camera->getFront() == editorCamera.getFront() &&
+               camera->getFov() == editorCamera.getFov() &&
+               camera->getViewMatrix() == editorCamera.getViewMatrix();
+    };
+
+    for (int pass = 0; pass < 2; ++pass)
+    {
+        const bool started = engine.play();
+        check(r, started, "PC1 repeated Play starts");
+        if (!started)
+            break;
+
+        engine.refreshSceneTransforms();
+        engine.render();
+        check(r, engine.getGameCameraStatus() == Status::Ready &&
+                     editorViewUnchanged(),
+              "PC2 game rendering preserves the editor camera");
+
+        engine.getActiveScene()->destroyEntity(cameraId);
+        engine.render();
+        check(r, engine.getGameCameraStatus() == Status::Missing &&
+                     editorViewUnchanged(),
+              "PC3 destroyed game camera uses the preserved fallback");
+
+        const bool switched = engine.createEmptyScene("V_PlayCameraLevel2");
+        check(r, switched, "PC4 runtime level switch succeeds");
+        if (switched)
+        {
+            auto replacement =
+                engine.getActiveScene()->createEntity("V_ReplacementCamera");
+            replacement.set(CS::CameraComponent{
+                glm::vec3(1.0f, 0.0f, 0.0f), true, 75.0f});
+
+            engine.refreshSceneTransforms();
+            engine.render();
+            check(r, engine.getGameCameraStatus() == Status::Ready &&
+                         editorViewUnchanged(),
+                  "PC5 replacement level resolves its own camera");
+        }
+
+        const bool stopped = engine.stop();
+        check(r, stopped, "PC6 Stop restores the edit scene");
+        if (!stopped)
+            return;
+
+        engine.refreshSceneTransforms();
+        engine.render();
+        check(r, engine.getGameCameraStatus() == Status::Editor &&
+                     editorViewUnchanged() &&
+                     engine.getSceneGeneration() == generation,
+              "PC7 Stop restores editor rendering and document identity");
+
+        expectSame(r, fingerprint(*engine.getActiveScene()), before,
+                   "PC8 Play leaves the authored scene unchanged");
+    }
+
+    engine.setWorldMode(WorldMode::Play);
+    check(r, engine.loadScene(SAVE_PATH), "PC9 restore validation scene");
+}
+
 inline void validateSceneSnapshot(Engine& engine, Results& r)
 {
 	if (!engine.loadScene(SAVE_PATH))

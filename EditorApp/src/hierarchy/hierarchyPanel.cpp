@@ -407,6 +407,10 @@ void HierarchyPanel::update(Context &ctx, Engine &engine, Scribe::Session &sessi
             hierarchyDirty = true;
             resetHierarchyExpansion = true;
         }
+        else if (event.type == Scribe::ChangeType::PlayStarted || event.type == Scribe::ChangeType::PlayStopped)
+        {
+            hierarchyDirty = true;
+        }
         else if (event.type == Scribe::ChangeType::EntityDestroyed)
         {
             std::erase(selectedEntities, event.entityId);

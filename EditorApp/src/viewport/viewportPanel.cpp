@@ -185,8 +185,25 @@ void ViewportPanel::build(Context &ctx, NodeHandle viewportRoot)
     refreshToggles(ctx);
 }
 
-void ViewportPanel::update(Context &ctx)
+void ViewportPanel::update(Context &ctx, bool editing)
 {
+    ctx.setVisible(header, editing);
+
+    if (!editing)
+    {
+        gizmoSystem.vertices.clear();
+        gizmoSystem.parts.clear();
+        gizmoSystem.hovered = GizmoHandle::None;
+        gizmoSystem.frame = {};
+
+        gizmoCaptured = false;
+        marqueePending = false;
+        marqueeActive = false;
+        completedMarquee.reset();
+        completedClick.reset();
+        return;
+    }
+
     const bool canShortcut =
         !ctx.isValid(ctx.focused()) ||
         (!ctx.isFocused(snapMoveInput) && !ctx.isFocused(snapRotateInput) && !ctx.isFocused(snapScaleInput));

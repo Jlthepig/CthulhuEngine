@@ -103,6 +103,20 @@ void EditorShell::rememberSceneView(Engine &engine)
         tab.camera = *camera;
 }
 
+void EditorShell::restoreSceneView(Engine &engine)
+{
+    if (sceneTabs.empty())
+        return;
+
+    const auto &tab = sceneTabs[activeTab];
+    if (auto *camera = engine.getCamera(); camera && tab.camera)
+        *camera = *tab.camera;
+
+    restoreTabSelection = true;
+    Core::Input::resetMouseTracking();
+    (void)Core::Input::getScrollDeltaY();
+}
+
 Scribe::Result EditorShell::selectSceneTab(Engine &engine, Scribe::Session &session, std::size_t index, bool keepCurrent)
 {
     assert(index < sceneTabs.size());

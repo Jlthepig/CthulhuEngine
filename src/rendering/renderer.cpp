@@ -708,22 +708,25 @@ void Renderer::render(unsigned int width,
     skybox.draw(view, projection);
 
     // grid
-    glEnable(GL_DEPTH_TEST);
-    glDepthFunc(GL_LESS);
-    glDepthMask(GL_FALSE);
-    glDisable(GL_CULL_FACE); 
-    glEnable(GL_BLEND);
-    glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+    if (gridVisible)
+    {
+        glEnable(GL_DEPTH_TEST);
+        glDepthFunc(GL_LESS);
+        glDepthMask(GL_FALSE);
+        glDisable(GL_CULL_FACE); 
+        glEnable(GL_BLEND);
+        glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
 
-    gridShader.use();
-    gridShader.setMat4("inverseViewProjection", glm::inverse(projection * view));
-    gridShader.setFloat("baseSpacing", std::max(config.gridSpacing, 0.0001f));
-    gridShader.setFloat("farDistance", config.farPlane);
-    grid.draw();
+        gridShader.use();
+        gridShader.setMat4("inverseViewProjection", glm::inverse(projection * view));
+        gridShader.setFloat("baseSpacing", std::max(config.gridSpacing, 0.0001f));
+        gridShader.setFloat("farDistance", config.farPlane);
+        grid.draw();
 
-    glDisable(GL_BLEND);
-    glEnable(GL_CULL_FACE);
-    glDepthMask(GL_TRUE);
+        glDisable(GL_BLEND);
+        glEnable(GL_CULL_FACE);
+        glDepthMask(GL_TRUE);
+    }
 
     if (preview.model && outlineShader.getId() != 0)
     {

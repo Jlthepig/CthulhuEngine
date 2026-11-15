@@ -32,7 +32,7 @@ class ViewportPanel
 {
   public:
     void build(octogui::Context &ctx, octogui::NodeHandle viewportRoot);
-    void update(octogui::Context &ctx);
+    void update(octogui::Context &ctx, bool editing);
 
     [[nodiscard]] bool gizmoDragActive() const noexcept
     {

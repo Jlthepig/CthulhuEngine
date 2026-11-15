@@ -246,6 +246,7 @@ bool EditorShell::frame(EditorUi &ui, Engine &engine, Scribe::Session &session, 
 
     ctx.resolvePendingLayout();
     engine.refreshSceneTransforms();
+    engine.getRenderer().setGridVisible(engine.getWorldMode() == WorldMode::Edit);
 
     const PixelRect viewport = ui.pixelRect(sceneNode);
     engine.setViewportRect(viewport.x, viewport.y, viewport.width, viewport.height);
@@ -253,10 +254,9 @@ bool EditorShell::frame(EditorUi &ui, Engine &engine, Scribe::Session &session, 
     if (assetPreviewPosition)
         preview = {engine.getAssetManager().getModel(assetDrag.previewModel), *assetPreviewPosition};
 
-    const auto overlay = handlingExit || exitDialog.isOpen(ctx) || !engine.hasActiveScene() ||
-                                 restoreTabSelection || assetDrag.ownsInput
-                             ? std::span<const Rendering::OverlayVertex>{}
-                             : viewportPanelUI.overlayVertices();
+    const auto overlay = handlingExit || exitDialog.isOpen(ctx) || !engine.hasActiveScene() || engine.isPlaying() || restoreTabSelection || assetDrag.ownsInput
+                         ? std::span<const Rendering::OverlayVertex>{}
+                         : viewportPanelUI.overlayVertices();
     engine.render(overlay, preview);
 
     const auto cameraStatus = engine.getGameCameraStatus();
@@ -292,6 +292,14 @@ void EditorShell::update(Context &ctx, Engine &engine, Scribe::Session &session)
     const std::uint64_t inputGeneration = engine.getSceneGeneration();
 
     const auto changes = session.takeEvents();
+
+    const bool playStopped = std::any_of(changes.begin(), changes.end(),
+    [](const Scribe::ChangeEvent &event) {
+            return event.type == Scribe::ChangeType::PlayStopped;
+    });
+
+    if (playStopped)
+        restoreSceneView(engine);
 
     missingCheckPending =
     missingCheckPending || checkedMissingGeneration != inputGeneration ||
@@ -332,22 +340,38 @@ void EditorShell::update(Context &ctx, Engine &engine, Scribe::Session &session)
         uiEvents.push_back(event);
     }
 
-    if (!assetDrag.asset.isValid() && !assetDrag.ownsInput)
-        viewportPanelUI.update(ctx);
-
     const bool wasPlaying = engine.isPlaying();
     const bool togglePlay = !assetDrag.asset.isValid() && !assetDrag.ownsInput && !ctx.contextMenuOwnsInput() && !ctx.isValid(ctx.focused()) && 
                             Core::Input::isKeyPressed(GLFW_KEY_F5);
 
-    if ((ctx.isClicked(playButton.button) || togglePlay) && !wasPlaying && engine.hasActiveScene())
+    if ((ctx.isClicked(playButton.button) || togglePlay) && !wasPlaying && engine.hasActiveScene() && !assetDrag.asset.isValid() && !assetDrag.ownsInput &&
+        !restoreTabSelection)
     {
         if (!viewportPanelUI.finishGizmoDrag(session, false))
-        {
             return;
-        }
 
-        const bool ok = engine.play();
-        (void)ok;
+        ctx.clearFocus();
+        while (ctx.pollEvent(event))
+            uiEvents.push_back(event);
+
+        // commit pending Inspector values before capturing the Play scene
+        inspectorUI.update(ctx, engine, session, engine.getActiveScene(), hierarchyPanelUI.selectedEntity(),
+                    uiEvents, inputGeneration, assetsChanged);
+
+        uiEvents.clear();
+        session.endMerge();
+        rememberSceneView(engine);
+
+        if (!engine.play())
+        {
+            contentBrowserUI.reportError(ctx, "Could not start Play. The edit scene is still active.");
+        }
+        else
+        {
+            ctx.clearEvents();
+            Core::Input::resetMouseTracking();
+            (void)Core::Input::getScrollDeltaY();
+        }
     }
 
     if (ctx.isClicked(pauseButton.button) && engine.isPlaying())
@@ -358,12 +382,24 @@ void EditorShell::update(Context &ctx, Engine &engine, Scribe::Session &session)
 
     if ((ctx.isClicked(stopButton.button) || togglePlay) && wasPlaying)
     {
-        const bool ok = engine.stop();
-        (void)ok;
+        if (!engine.stop())
+        {
+            contentBrowserUI.reportError(ctx, "Could not restore the edit scene. Play is still active.");
+        }
+        else
+        {
+            restoreSceneView(engine);
+            ctx.clearFocus();
+            ctx.clearEvents();
+            uiEvents.clear();
+        }
     }
 
     const bool playing = engine.isPlaying();
     const bool paused = playing && engine.getSimulationState() != SimulationState::Running;
+
+    if (!assetDrag.asset.isValid() && !assetDrag.ownsInput)
+        viewportPanelUI.update(ctx, !playing && !restoreTabSelection);
 
     if (paused != lastPaused)
     {
@@ -383,7 +419,7 @@ void EditorShell::update(Context &ctx, Engine &engine, Scribe::Session &session)
         lastPlaying = playing;
     }
 
-    if (!assetDrag.asset.isValid() && !assetDrag.ownsInput)
+    if (!playing && !restoreTabSelection && !assetDrag.asset.isValid() && !assetDrag.ownsInput)
     {
         if (ctx.input().mouse.pressed(MouseButton::Left))
         {
@@ -419,7 +455,7 @@ void EditorShell::update(Context &ctx, Engine &engine, Scribe::Session &session)
     if (beginAssetDelete(ctx, engine, session))
         return;
 
-    if (!assetDrag.asset.isValid() && !assetDrag.ownsInput)
+   if (!playing && !restoreTabSelection && !assetDrag.asset.isValid() && !assetDrag.ownsInput)
     {
         viewportPanelUI.updateGizmo(ctx, engine, session, hierarchyPanelUI, sceneNode);
         viewportPanelUI.drawGizmoFeedback(ctx);
@@ -427,7 +463,7 @@ void EditorShell::update(Context &ctx, Engine &engine, Scribe::Session &session)
 
     updateSceneTabs(ctx, engine, session);
 
-    const bool canSaveOrPlay = !playing && engine.hasActiveScene();
+    const bool canSaveOrPlay = !playing && engine.hasActiveScene() && !restoreTabSelection && !assetDrag.asset.isValid() && !assetDrag.ownsInput;
     ctx.setEnabled(playButton.button, canSaveOrPlay);
 
     const bool canRepair =

@@ -184,8 +184,9 @@ void InspectorPanel::update(Context &ctx,
                             bool assetsChanged)
 {
     const std::uint64_t generation = engine.getSceneGeneration();
+    const bool playing = engine.isPlaying();
 
-    if (initialized && boundGeneration == generation && inputGeneration == generation)
+    if (initialized && boundGeneration == generation && inputGeneration == generation && boundPlaying == playing)
     {
         syncTransform(ctx, engine, session);
         processEvents(ctx, engine, session, events, assetsChanged);
@@ -212,7 +213,7 @@ void InspectorPanel::update(Context &ctx,
         }
     }
 
-    if (!initialized || boundGeneration != generation || builtEntity != selectedEntity || attached != componentNames)
+    if (!initialized || boundGeneration != generation || boundPlaying != playing || builtEntity != selectedEntity || attached != componentNames)
     {
         if (initialized)
         {
@@ -233,6 +234,7 @@ void InspectorPanel::rebuild(Context &ctx, Engine &engine, Scene::Scene *scene)
 {
     resetContent(ctx);
     boundGeneration = engine.getSceneGeneration();
+    boundPlaying = engine.isPlaying();
     availableComponents.clear();
     addComponentCombo = {};
     addComponentButton = {};

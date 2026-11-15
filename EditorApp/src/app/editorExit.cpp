@@ -49,10 +49,15 @@ bool EditorShell::handleExit(Context &ctx, Engine &engine, Scribe::Session &sess
             case DialogChoice::Secondary:
                 return finish();
             case DialogChoice::Primary:
-                if (engine.isPlaying() && !engine.stop())
+                if (engine.isPlaying())
                 {
-                    exitDialog.setError(ctx, "Could not return to the edit scene.");
-                    return false;
+                    if (!engine.stop())
+                    {
+                        exitDialog.setError(ctx, "Could not return to the edit scene.");
+                        return false;
+                    }
+
+                    restoreSceneView(engine);
                 }
 
                 if (const auto saved = saveSceneTabs(ctx, engine, session);
