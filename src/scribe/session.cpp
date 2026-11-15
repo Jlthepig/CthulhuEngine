@@ -545,6 +545,37 @@ Result Session::replaceReferences(std::string_view from, std::string_view to)
     return execute(Commands::replaceReferences(std::string(from), std::string(to)));
 }
 
+Result Session::repairReferences(std::uint64_t sceneGeneration, std::string_view from, std::string_view to)
+{
+    if (sceneGeneration != engine.getSceneGeneration())
+        return Result::failed("The displayed scene changed. Reopen reference repair.");
+
+    if (engine.getWorldMode() != WorldMode::Edit || refuseEdit())
+        return Result::failed("Reference repair requires Edit mode without a transform preview.");
+
+    if (!engine.hasActiveScene() || !engine.getProject())
+        return Result::failed("There is no open scene and project to repair.");
+
+    std::string replacement;
+    if (!to.empty())
+    {
+        const auto key = Assets::normaliseResourcePath(to);
+        const auto *record = key ? engine.getAssetManager().getRegistry().findByPath(*key) : nullptr;
+        const auto file = record ? engine.getProject()->resolveResourcePath(record->path) : std::nullopt;
+
+        std::error_code error;
+        if (!record || record->missing || !file || !std::filesystem::is_regular_file(*file, error) || error)
+        {
+            return Result::failed("Choose an existing project asset. Import outside files first.");
+        }
+
+        replacement = record->path;
+    }
+
+    history.endMerge();
+    return replaceReferences(from, replacement);
+}
+
 std::vector<SceneAssetUsage> Session::findAssetUsage(Assets::AssetId id)
 {
     std::vector<SceneAssetUsage> out;

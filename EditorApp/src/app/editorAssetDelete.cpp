@@ -90,20 +90,16 @@ void EditorShell::showAssetDelete(Context &ctx, Engine &engine, Scribe::Session 
         }
     }
 
-    exitDialog.show(
-        ctx,
-        deletingMissing ? "Forget missing asset?" : "Recycle asset?",
-        !usage.empty() ? "This asset is still used by an open scene."
-                      : deletingMissing
-                            ? "Forgetting this asset clears Undo/Redo for all open scenes."
-                            : "Recycling clears Undo/Redo for all open scenes.",
-        deletingMissing ? "Forget" : "Recycle",
-        "");
+    const auto *active = engine.getActiveScene();
+    const bool canResolve = active && !active->findAssetReferences(deletingPath).empty();
+
+    exitDialog.show(ctx, deletingMissing ? "Forget missing asset?" : "Recycle asset?", !usage.empty() ? "This asset is still used by an open scene." : deletingMissing
+                    ? "Forgetting this asset clears Undo/Redo for all open scenes." : "Recycling clears Undo/Redo for all open scenes.",
+                    deletingMissing ? "Forget" : "Recycle", canResolve ? "Resolve References..." : "");
 
     exitDialog.setDetails(ctx, lines);
-    exitDialog.setNotice(ctx, usage.empty()
-        ? "Other saved scenes may also use this asset."
-        : "Remove these references or close the scene, then try again.");
+    exitDialog.setNotice(ctx, usage.empty() ? "Other saved scenes may also use this asset." : canResolve ? "Resolve references in the active scene, then review deletion again." 
+                        : "Select a listed scene to repair its references, or close its tab.");
     exitDialog.setPrimaryEnabled(ctx, usage.empty());
 }
 
@@ -121,7 +117,7 @@ void EditorShell::handleAssetDelete(Context &ctx, Engine &engine,
         return;
     }
 
-    if (choice != DialogChoice::Primary)
+    if (choice != DialogChoice::Primary && choice != DialogChoice::Secondary)
         return;
 
     const auto fail = [&](std::string_view message) {
@@ -149,6 +145,12 @@ void EditorShell::handleAssetDelete(Context &ctx, Engine &engine,
     if (!file || error || exists == deletingMissing || (exists && !std::filesystem::is_regular_file(*file, error)) || error)
     {
         fail("The file changed or is unavailable. Cancel and refresh the browser.");
+        return;
+    }
+
+    if (choice == DialogChoice::Secondary)
+    {
+        beginReferenceRepair(ctx, engine, session, true, deletingPath);
         return;
     }
 

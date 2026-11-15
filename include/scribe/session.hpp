@@ -141,6 +141,7 @@ class Session
     Result moveAsset(Assets::AssetId id, std::string_view destination);
 
     Result replaceReferences(std::string_view from, std::string_view to);
+    Result repairReferences(std::uint64_t sceneGeneration, std::string_view from, std::string_view to);
 
     [[nodiscard]] std::vector<SceneAssetUsage> findAssetUsage(Assets::AssetId id);
 

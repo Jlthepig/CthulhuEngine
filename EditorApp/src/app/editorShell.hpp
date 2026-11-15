@@ -17,6 +17,7 @@
 #include "editorDialog.hpp"
 #include "camera.hpp"
 #include "platform.hpp"
+#include "session.hpp"
 
 using namespace octogui;
 
@@ -141,6 +142,24 @@ class EditorShell
     bool beginAssetDelete(Context &ctx, Engine &engine, Scribe::Session &session);
     void showAssetDelete(Context &ctx, Engine &engine, Scribe::Session &session);
     void handleAssetDelete(Context &ctx, Engine &engine, Scribe::Session &session);
+
+    bool beginReferenceRepair(Context &ctx, Engine &engine, Scribe::Session &session, bool manual, std::string_view source = {});
+    void showReferenceRepair(Context &ctx, Engine &engine);
+    void showRepairGroup(Context &ctx, Engine &engine);
+    void handleReferenceRepair(Context &ctx, Engine &engine, Scribe::Session &session);
+    void finishReferenceRepair(Context &ctx, Engine &engine, Scribe::Session &session);
+
+    NodeHandle missingAssetsButton{};
+    bool missingCheckPending = true;
+    std::uint64_t checkedMissingGeneration{};
+
+    bool referenceRepairOpen = false;
+    std::uint64_t repairGeneration{};
+    std::filesystem::path repairProject;
+    std::string repairSource;
+    std::vector<Scribe::MissingAsset> repairGroups;
+    std::vector<std::string> repairTargets;
+    int repairGroup = -1;
 
     Assets::AssetId deletingAsset{};
     std::string deletingPath;

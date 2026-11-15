@@ -179,6 +179,8 @@ void EditorShell::build(Context &ctx)
 
     const NodeHandle statusBar = ctx.createPanel(editorContent);
     fixedBar(ctx, statusBar, 24.0f);
+    missingAssetsButton = ctx.createButton(statusBar, "Missing Assets...");
+    fixedSize(ctx, missingAssetsButton, 140.0f, 22.0f);
     exitDialog.build(ctx, root, editorContent);
 }
 
@@ -200,6 +202,13 @@ bool EditorShell::frame(EditorUi &ui, Engine &engine, Scribe::Session &session, 
     if (!ctx.input().mouse.wasDown(MouseButton::Left))
         assetDrag.ownsInput = false;
 
+    if (closeRequested && referenceRepairOpen)
+    {
+        referenceRepairOpen = false;
+        deletingAsset = {};
+        exitDialog.hide(ctx);
+    }
+
     if (closeRequested && closingAllScenes)
     {
         closingAllScenes = false;
@@ -212,11 +221,12 @@ bool EditorShell::frame(EditorUi &ui, Engine &engine, Scribe::Session &session, 
         deletingAsset = {};
     }
 
-    const bool handlingExit =
-        closeRequested || closingAllScenes || exitDialog.isOpen(ctx);
+    const bool handlingExit = closeRequested || closingAllScenes || exitDialog.isOpen(ctx);
     if (handlingExit)
     {
-        if (deletingAsset.isValid())
+        if (referenceRepairOpen)
+            handleReferenceRepair(ctx, engine, session);
+        else if (deletingAsset.isValid())
             handleAssetDelete(ctx, engine, session);
         else if (handleExit(ctx, engine, session))
         {
@@ -269,6 +279,15 @@ void EditorShell::update(Context &ctx, Engine &engine, Scribe::Session &session)
     const std::uint64_t inputGeneration = engine.getSceneGeneration();
 
     const auto changes = session.takeEvents();
+
+    missingCheckPending =
+    missingCheckPending || checkedMissingGeneration != inputGeneration ||
+    std::any_of(
+        changes.begin(), changes.end(),
+        [](const Scribe::ChangeEvent &event) {
+            return event.type == Scribe::ChangeType::SceneReplaced ||
+                Scribe::isAssetChange(event.type);
+        });
     
     hierarchyPanelUI.update(ctx, engine, session, changes);
 
@@ -397,6 +416,28 @@ void EditorShell::update(Context &ctx, Engine &engine, Scribe::Session &session)
 
     const bool canSaveOrPlay = !playing && engine.hasActiveScene();
     ctx.setEnabled(playButton.button, canSaveOrPlay);
+
+    const bool canRepair =
+    engine.hasActiveScene() && !playing &&
+    !session.transformEditActive() &&
+    !assetDrag.asset.isValid() && !assetDrag.ownsInput &&
+    !restoreTabSelection && !exitDialog.isOpen(ctx) &&
+    !ctx.contextMenuOwnsInput() && !closingAllScenes;
+
+    ctx.setEnabled(missingAssetsButton, canRepair);
+
+    const bool manualRepair = ctx.isClicked(missingAssetsButton);
+    const auto focus = ctx.focused();
+    const bool typing = ctx.isValid(focus) && (ctx.tree().type(focus) == NodeType::TextInput || ctx.tree().type(focus) == NodeType::NumericInput);
+
+    const auto &mouse = ctx.input().mouse;
+    if (canRepair && (manualRepair || (missingCheckPending && !typing)) && !mouse.isDown(MouseButton::Left) && !mouse.isDown(MouseButton::Right) &&
+        !mouse.isDown(MouseButton::Middle))
+    {
+        missingCheckPending = false;
+        checkedMissingGeneration = engine.getSceneGeneration();
+        beginReferenceRepair(ctx, engine, session, manualRepair);
+    }
 
 }
 } // namespace Cthulhu::Editor

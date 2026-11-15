@@ -557,52 +557,195 @@ inline void validateScribeDelete(Engine& engine, Results& r)
 	cleanImportFolder(engine);
 }
 
-inline void validateMissingAssets(Engine& engine, Results& r)
+inline void validateMissingAssets(Engine &engine, Results &r)
 {
-	using Status = Scribe::Result::Status;
-	constexpr std::string_view floorPath = "res://assets/models/Floor.glb";
-	constexpr std::string_view missingPath = "res://validation_import/V_NotThere.glb";
+    using Status = Scribe::Result::Status;
+    constexpr std::string_view floorPath = "res://assets/models/Floor.glb";
+    constexpr std::string_view missingPath =
+        "res://validation_import/V_NotThere.glb";
+    constexpr std::string_view aliasPath =
+        "res://validation_import/./V_NotThere.glb";
 
-	Scribe::Session session(engine);
+    struct RestoreMode
+    {
+        Engine &engine;
+        WorldMode previous;
+        ~RestoreMode() { engine.setWorldMode(previous); }
+    } restore{engine, engine.getWorldMode()};
 
-	auto groupFor = [&](std::string_view path) -> std::optional<Scribe::MissingAsset> {
-		for (auto& missing : session.findMissingAssets())
-		{
-			if (missing.path == path)
-			{
-				return missing;
-			}
-		}
-		return std::nullopt;
-	};
+    engine.setWorldMode(WorldMode::Edit);
+    if (!engine.createEmptyScene("Reference repair"))
+    {
+        check(r, false, "Reference repair creates its fixture");
+        return;
+    }
 
-	auto a = session.createEntity("V_MissingA");
-	auto b = session.createEntity("V_MissingB");
-	for (const auto id : {a.id, b.id})
-	{
-		session.addComponent(id, "Mesh");
-		session.setField(id, "Mesh", "modelPath", std::string(missingPath));
-	}
+    auto *scene = engine.getActiveScene();
+    auto a = scene->createEntity("Missing A");
+    auto b = scene->createEntity("Missing B");
+    auto other = scene->createEntity("Existing model");
 
-	auto group = groupFor(missingPath);
-	check(r, group.has_value(), "Q1 missing asset is reported");
-	check(r, group && group->references.size() == 2, "Q1 references are grouped per missing file");
-	check(r, !groupFor(floorPath), "Q1 existing assets are not reported");
+    a.set(CS::MeshComponent{std::string(missingPath)});
+    b.set(CS::MeshComponent{std::string(aliasPath)});
+    other.set(CS::MeshComponent{std::string(floorPath)});
 
-	session.endMerge();
-	const bool relocated = session.replaceReferences(missingPath, floorPath).status == Status::Applied &&
-						   !groupFor(missingPath);
-	session.undo();
-	check(r, relocated, "Q2 Relocate fixes the missing asset");
-	check(r, groupFor(missingPath).has_value(), "Q2 undo Relocate reports it again");
+    const auto aId = idOf(a), bId = idOf(b), otherId = idOf(other);
+    scene->markClean();
+    Scribe::Session session(engine);
 
-	check(r, session.replaceReferences(missingPath, "").status == Status::Applied && !groupFor(missingPath),
-		  "Q3 Remove clears the missing asset");
+    const auto pathOf = [&](CS::EntityId id) {
+        const auto entity = engine.getActiveScene()->findEntity(id);
+        const auto *mesh =
+            entity ? entity->try_get<CS::MeshComponent>() : nullptr;
+        return mesh
+            ? mesh->modelPath
+            : std::string{"<missing component>"};
+    };
 
-	session.deleteEntity(a.id);
-	session.deleteEntity(b.id);
+    const auto original = [&]() {
+        return pathOf(aId) == missingPath &&
+            pathOf(bId) == aliasPath &&
+            pathOf(otherId) == floorPath;
+    };
+
+    const auto repaired = [&](std::string_view path) {
+        return pathOf(aId) == path &&
+            pathOf(bId) == path &&
+            pathOf(otherId) == floorPath;
+    };
+
+    const auto groups = session.findMissingAssets();
+    const auto group = std::find_if(
+        groups.begin(), groups.end(),
+        [&](const auto &entry) { return entry.path == missingPath; });
+
+    check(
+        r,
+        group != groups.end() && group->references.size() == 2 &&
+            std::all_of(
+                group->references.begin(), group->references.end(),
+                [](const auto &ref) {
+                    return ref.component == "Mesh" &&
+                        ref.field == "modelPath";
+                }),
+        "Missing paths are grouped with their affected fields");
+
+    const auto generation = engine.getSceneGeneration();
+    const auto wrongType =
+        session.repairReferences(generation, missingPath, TEST_AUDIO);
+
+    check(
+        r,
+        !wrongType.ok() &&
+            wrongType.error.find("WRONG ASSET TYPE") != std::string::npos &&
+            original() && !scene->isDirty() && !session.canUndo(),
+        "Wrong-type repair rejects the entire group without changing history");
+
+    const auto absent = session.repairReferences(
+        generation, missingPath,
+        "res://validation_import/V_AbsentReplacement.glb");
+
+    check(
+        r, !absent.ok() && original() && !scene->isDirty(),
+        "Replacement must be an existing registered project asset");
+
+    const auto outside =
+        session.repairReferences(generation, missingPath, "C:/outside.glb");
+
+    check(
+        r, !outside.ok() && original(),
+        "Outside files must be imported before repair");
+
+    const auto replacement =
+        session.repairReferences(generation, missingPath, floorPath);
+
+    check(
+        r,
+        replacement.status == Status::Applied &&
+            repaired(floorPath) && scene->isDirty(),
+        "Replacement updates only the selected path group and marks the scene dirty");
+
+    if (replacement.status != Status::Applied)
+        return;
+
+    check(
+        r, session.undo() && original() && !scene->isDirty(),
+        "One undo restores all original spellings and the clean state");
+
+    check(
+        r, session.redo() && repaired(floorPath) && scene->isDirty(),
+        "Redo reapplies the grouped replacement");
+
+    if (!session.undo())
+        return;
+
+    const auto cleared =
+        session.repairReferences(generation, missingPath, "");
+
+    check(
+        r, cleared.status == Status::Applied && repaired("") && scene->isDirty(),
+        "Clear References clears the group and preserves unrelated fields");
+
+    if (cleared.status != Status::Applied)
+        return;
+
+    check(
+        r, session.undo() && original() && !scene->isDirty(),
+        "Clear References is undone as one operation");
+
+    check(
+        r, session.redo() && repaired(""),
+        "Clear References can be redone");
+
+    if (!session.undo())
+        return;
+
+    const auto snapshot = scene->captureScene();
+    auto switched = session.newSceneDocument();
+
+    if (!switched.result.ok() || !switched.previous ||
+        !engine.getActiveScene()->restoreScene(snapshot))
+    {
+        check(r, false, "Scene-scope fixture preserves matching entity IDs");
+        return;
+    }
+
+    const auto stale =
+        session.repairReferences(generation, missingPath, "");
+
+    check(
+        r,
+        !stale.ok() && original() &&
+            !engine.getActiveScene()->isDirty() && !session.canUndo(),
+        "Stale repair cannot edit another scene with the same entity IDs");
+
+    const auto current = session.repairReferences(
+        engine.getSceneGeneration(), missingPath, "");
+
+    check(
+        r, current.status == Status::Applied && repaired(""),
+        "The displayed scene accepts a repair with its current generation");
+
+    auto returned = session.activateSceneDocument(switched.previous);
+
+    check(
+        r,
+        returned.result.ok() && original() &&
+            !engine.getActiveScene()->isDirty() &&
+            !session.canUndo() && session.canRedo(),
+        "Repairing another tab preserves the first scene and its history");
+
+    if (returned.previous)
+    {
+        check(
+            r, session.closeInactiveSceneDocument(returned.previous).ok(),
+            "The repaired test document can be closed");
+    }
+
+    if (returned.result.ok())
+        for (const auto id : {aId, bId, otherId})
+            session.deleteEntity(id);
 }
-
 
 inline void validateReimport(Engine& engine, Results& r)
 {
