@@ -102,16 +102,15 @@ class Renderer
     void setDirectionalLight(const DirectionalLight &light);
     void setPointLights(const std::vector<PointLight> &lights);
     void setOutlineTargets(std::span<const Scene::EntityId> entities);
-    void render(unsigned int width,
-                unsigned int height,
-                float deltaTime,
-                const std::vector<Renderable> &renderables,
-                int destX = 0,
-                int destY = 0,
-                std::span<const OverlayVertex> overlayVertices = {},
-                const ModelPreview &preview = {});
+    void render(unsigned int width, unsigned int height,float deltaTime, const std::vector<Renderable> &renderables, int destX = 0, int destY = 0,
+                std::span<const OverlayVertex> overlayVertices = {}, const ModelPreview &preview = {});
     void addDebugLine(const glm::vec3 &start, const glm::vec3 &end, const glm::vec3 &color, float duration = 0.0f);
     void shutdown();
+
+    void setCamera(Scene::Camera &value) noexcept
+    {
+        camera = &value;
+    }
 
     [[nodiscard]] const RenderConfig &getConfig() const noexcept
     {

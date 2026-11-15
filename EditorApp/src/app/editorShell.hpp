@@ -150,6 +150,8 @@ class EditorShell
     void finishReferenceRepair(Context &ctx, Engine &engine, Scribe::Session &session);
 
     NodeHandle missingAssetsButton{};
+    NodeHandle cameraStatusLabel{};
+    Scene::GameCameraStatus displayedCameraStatus = Scene::GameCameraStatus::Editor;
     bool missingCheckPending = true;
     std::uint64_t checkedMissingGeneration{};
 

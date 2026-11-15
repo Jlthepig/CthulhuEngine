@@ -50,6 +50,8 @@ struct AudioSourceRuntimeComponent
 struct CameraComponent
 {
     glm::vec3 front{0.0f, 0.0f, -1.0f};
+    bool primary = false;
+    float fov = 90.0f;
 };
 
 struct TransformComponent

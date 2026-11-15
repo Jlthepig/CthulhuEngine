@@ -1,4 +1,6 @@
 #include <vector>
+#include <cmath>
+#include <cstddef>
 
 #include <common.hpp>
 #include <ext/matrix_transform.hpp>
@@ -10,6 +12,8 @@
 #include <glad.h>
 
 #include "camera.hpp"
+#include "components.hpp"
+#include "scene.hpp"
 #include "input.hpp"
 #include "log_utils.hpp"
 
@@ -19,6 +23,88 @@ using KalaHeaders::KalaLog::LogType;
 namespace Cthulhu::Scene
 {
 static std::vector<unique_ptr<Camera>> cameraContainer;
+
+std::string_view gameCameraMessage(GameCameraStatus status)
+{
+    switch (status)
+    {
+        case GameCameraStatus::Missing:
+            return "No active Camera. Showing the preview view.";
+        case GameCameraStatus::NoPrimary:
+            return "Several Cameras: mark one Primary. Showing the preview view.";
+        case GameCameraStatus::MultiplePrimary:
+            return "Several Cameras are Primary: keep one. Showing the preview view.";
+        case GameCameraStatus::Invalid:
+            return "Invalid Camera position, direction or FOV. Showing the preview view.";
+        case GameCameraStatus::Editor:
+        case GameCameraStatus::Ready:
+            return {};
+    }
+
+    return {};
+}
+
+GameCameraStatus Camera::updateFromScene(Scene &scene)
+{
+    std::size_t cameraCount{};
+    std::size_t primaryCount{};
+    flecs::entity soleCamera;
+    flecs::entity primaryCamera;
+
+    scene.getWorld().each(
+        [&](flecs::entity entity, const CameraComponent &component) {
+            if (!entity.has<TagActive>())
+                return;
+
+            ++cameraCount;
+            soleCamera = entity;
+
+            if (component.primary)
+            {
+                ++primaryCount;
+                primaryCamera = entity;
+            }
+        });
+
+    if (cameraCount == 0)
+        return GameCameraStatus::Missing;
+
+    if (primaryCount > 1)
+        return GameCameraStatus::MultiplePrimary;
+
+    if (primaryCount == 0 && cameraCount > 1)
+        return GameCameraStatus::NoPrimary;
+
+    const auto selected = primaryCount == 1 ? primaryCamera : soleCamera;
+    const auto *transform = selected.try_get<TransformComponent>();
+    const auto *component = selected.try_get<CameraComponent>();
+
+    if (!transform || !component)
+        return GameCameraStatus::Invalid;
+
+    const auto finite = [](const glm::vec3 &value) {
+        return std::isfinite(value.x) && std::isfinite(value.y) && std::isfinite(value.z);
+    };
+
+    const glm::vec3 worldPosition{transform->cachedModelMatrix[3]};
+    const float lengthSquared = glm::dot(component->front, component->front);
+
+    if (!finite(worldPosition) || !finite(component->front) || !std::isfinite(lengthSquared) || lengthSquared <= 1.0e-12f ||
+        !std::isfinite(component->fov) || component->fov < 1.0f || component->fov > 179.0f)
+    {
+        return GameCameraStatus::Invalid;
+    }
+
+    position = worldPosition;
+    front = component->front / std::sqrt(lengthSquared);
+    fov = component->fov;
+    up = glm::vec3(0.0f, 1.0f, 0.0f);
+    yaw = glm::degrees(std::atan2(front.z, front.x));
+    pitch = glm::degrees(std::asin(glm::clamp(front.y, -1.0f, 1.0f)));
+    currentRecoil = glm::vec2(0.0f);
+
+    return GameCameraStatus::Ready;
+}
 
 Camera *Camera::init()
 {
@@ -90,21 +176,30 @@ glm::vec3 Camera::setPosition(const glm::vec3 &newPos)
     return position;
 }
 
+void Camera::addSpeed(float additionalSpeed)
+{
+    speed += additionalSpeed;
+    speed = glm::clamp(speed, 1.0f, 25.0f);
+}
+
 glm::mat4 Camera::getViewMatrix() const
 {
     glm::vec3 finalFront = front;
-    glm::vec3 worldUp = glm::vec3(0.0f, 1.0f, 0.0f);
+    const glm::vec3 worldUp = std::abs(front.y) > 0.999f ? glm::vec3(0.0f, 0.0f, 1.0f) : glm::vec3(0.0f, 1.0f, 0.0f);
     glm::vec3 right = glm::normalize(glm::cross(front, worldUp));
     glm::vec3 up = glm::normalize(glm::cross(right, front));
 
     if (currentRecoil != glm::vec2(0.0f))
     {
-        finalFront = glm::normalize(glm::rotate(glm::mat4(1.0f), glm::radians(currentRecoil.y), right) *
-                                    glm::vec4(finalFront, 0.0f));
-        finalFront = glm::normalize(glm::rotate(glm::mat4(1.0f), glm::radians(currentRecoil.x), up) *
-                                    glm::vec4(finalFront, 0.0f));
+        finalFront = glm::normalize(glm::rotate(glm::mat4(1.0f), glm::radians(currentRecoil.y), right) * glm::vec4(finalFront, 0.0f));
+        finalFront = glm::normalize(glm::rotate(glm::mat4(1.0f), glm::radians(currentRecoil.x), up) * glm::vec4(finalFront, 0.0f));
     }
     return glm::lookAt(position, position + finalFront, up);
+}
+
+glm::vec3 Camera::getFront() const
+{
+  return front;
 }
 
 float Camera::getFov() const

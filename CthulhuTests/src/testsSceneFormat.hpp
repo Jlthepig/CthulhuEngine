@@ -40,7 +40,7 @@ inline void validateSceneFormat(Engine& engine, Results& r)
 
     auto* scene = engine.getActiveScene();
     flecs::entity camera = scene->createEntity("V_Camera");
-    camera.set(CS::CameraComponent{glm::vec3(0.0f, -0.5f, -0.75f)});
+    camera.set(CS::CameraComponent{glm::vec3(0.0f, -0.5f, -0.75f), true, 65.0f});
     camera.set(ValidationHealth{12.5f, true});
     flecs::entity crate = scene->createEntity("V_Crate");
     crate.set(CS::PhysicsComponent{CS::PhysicsBodyType::Dynamic, glm::vec3(0.25f), 3.0f});
@@ -89,6 +89,7 @@ inline void validateSceneFormat(Engine& engine, Results& r)
     const bool lenientWritten = writeFormat4SceneText(engine, R"(
         { "id": "0123456789abcdef0123456789abcdef", "name": "V_Lenient", "components": {
             "Transform": { "position": [1, 2, 3] },
+            "Camera": { "front": [0, 0, -1] },
             "Weapon": { "fireRate": 4, "noSuchField": 1 },
             "NoSuchComponent": { "x": 1 } } })");
     const bool lenientLoaded = lenientWritten && engine.loadScene(FORMAT_PATH);
@@ -99,6 +100,10 @@ inline void validateSceneFormat(Engine& engine, Results& r)
     check(r, weapon && weapon->fireRate == 4.0f && weapon->maxRange == CS::WeaponComponent{}.maxRange && transform &&
                  transform->position == glm::vec3(1.0f, 2.0f, 3.0f) && transform->scale == glm::vec3(1.0f),
           "F4 missing fields keep defaults; unknown fields and components are skipped");
+
+    const auto *oldCamera = lenient ? lenient->try_get<CS::CameraComponent>() : nullptr;
+    check(r, oldCamera && !oldCamera->primary && oldCamera->fov == 90.0f,
+          "GC14 old Camera data receives Primary and FOV defaults");
 
     check(r, writeFormat4SceneText(engine, R"(
         { "id": "0123456789abcdef0123456789abcdef", "name": "V_Bad", "components": {

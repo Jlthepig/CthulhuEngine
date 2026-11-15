@@ -153,13 +153,14 @@ ComponentDescriptor describeCamera()
 {
     auto d = makeComponentDescriptor<CameraComponent>("Camera");
 
-    d.fields.push_back(
-        makeField<CameraComponent, &CameraComponent::front>(
-            "front", FieldType::Vec3));
+    d.fields.push_back(makeField<CameraComponent, &CameraComponent::front>("front", FieldType::Vec3));
+
+    d.fields.push_back( makeField<CameraComponent, &CameraComponent::primary>("primary", FieldType::Bool));
+
+    d.fields.push_back(makeField<CameraComponent, &CameraComponent::fov>("fov", FieldType::Float, 1.0f, 179.0f, 1.0f));
 
     return d;
 }
-
 } // namespace
 
 bool registerBuiltinComponents(ComponentRegistry &registry)

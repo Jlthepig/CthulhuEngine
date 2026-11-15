@@ -181,6 +181,8 @@ void EditorShell::build(Context &ctx)
     fixedBar(ctx, statusBar, 24.0f);
     missingAssetsButton = ctx.createButton(statusBar, "Missing Assets...");
     fixedSize(ctx, missingAssetsButton, 140.0f, 22.0f);
+    cameraStatusLabel = ctx.createLabel(statusBar, "");
+    ctx.setVisible(cameraStatusLabel, false);
     exitDialog.build(ctx, root, editorContent);
 }
 
@@ -256,6 +258,17 @@ bool EditorShell::frame(EditorUi &ui, Engine &engine, Scribe::Session &session, 
                              ? std::span<const Rendering::OverlayVertex>{}
                              : viewportPanelUI.overlayVertices();
     engine.render(overlay, preview);
+
+    const auto cameraStatus = engine.getGameCameraStatus();
+    if (cameraStatus != displayedCameraStatus)
+    {
+        const auto message = Scene::gameCameraMessage(cameraStatus);
+        ctx.setText(cameraStatusLabel, message);
+        ctx.setVisible(cameraStatusLabel, !message.empty());
+        ctx.resolvePendingLayout();
+        displayedCameraStatus = cameraStatus;
+    }
+
     ui.endFrame(assetFeedback.span());
     engine.present();
     return true;

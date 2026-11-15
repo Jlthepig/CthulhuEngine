@@ -75,6 +75,7 @@ inline int run(Engine& engine)
     checkRefInvariant(engine, r, "after scribe entities");
 
 	validateSimStateOnSwitch(engine, r);
+	validateGameCamera(engine, r);
 	validateWorldModes(engine, r);
 	validateSceneSnapshot(engine, r);
 	validatePlayStop(engine, r);

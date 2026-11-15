@@ -1,6 +1,7 @@
 #pragma once
 
 #include <memory>
+#include <string_view>
 
 #include <glm.hpp>
 
@@ -9,6 +10,20 @@ using std::unique_ptr;
 
 namespace Cthulhu::Scene
 {
+
+class Scene;
+
+enum class GameCameraStatus
+{
+    Editor,
+    Ready,
+    Missing,
+    NoPrimary,
+    MultiplePrimary,
+    Invalid
+};
+
+std::string_view gameCameraMessage(GameCameraStatus status);
 class Camera
 {
   public:
@@ -18,18 +33,13 @@ class Camera
     glm::vec3 getPosition() const;
     glm::vec3 setPosition(const glm::vec3 &newPos);
 
-    void addSpeed(float additionalSpeed)
-    {
-        speed += additionalSpeed;
-        speed = glm::clamp(speed, 1.0f, 25.0f);
-    }
+    [[nodiscard]] GameCameraStatus updateFromScene(Scene &scene);
+
+    void addSpeed(float additionalSpeed);
 
     glm::mat4 getViewMatrix() const;
 
-    glm::vec3 getFront() const
-    {
-        return front;
-    }
+    glm::vec3 getFront() const;
 
     float getFov() const;
 

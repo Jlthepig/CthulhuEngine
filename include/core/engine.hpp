@@ -175,6 +175,11 @@ class Engine
         return camera;
     }
 
+    Scene::GameCameraStatus getGameCameraStatus() const noexcept
+    {
+        return gameCameraStatus;
+    }
+
     Core::Window *getWindow()
     {
         return window;
@@ -254,6 +259,9 @@ class Engine
     Scene::ComponentRegistry componentRegistry;
 
     Scene::Camera *camera = nullptr;
+    Scene::Camera gameCamera{};
+    Scene::GameCameraStatus gameCameraStatus = Scene::GameCameraStatus::Editor;
+
     Core::Window *window = nullptr;
     GLFWwindow *glfwWindow = nullptr;
 

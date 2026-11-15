@@ -62,6 +62,19 @@ void onUpdate([[maybe_unused]] void *context, [[maybe_unused]] float deltaTime)
                                          KalaHeaders::KalaLog::LogType::LOG_INFO);
     }
 
+    if (engine->getWorldMode() == Cthulhu::WorldMode::Play)
+    {
+        if (isCameraLooking)
+        {
+            glfwSetInputMode(engine->getWindow()->getWindow(), GLFW_CURSOR, GLFW_CURSOR_NORMAL);
+
+            Cthulhu::Core::Input::resetMouseTracking();
+            isCameraLooking = false;
+        }
+
+        return;
+    }
+
     const bool gizmoDragging = viewportPanel && viewportPanel->gizmoDragActive();
     const float scrollDeltaY = Cthulhu::Core::Input::getScrollDeltaY();
 

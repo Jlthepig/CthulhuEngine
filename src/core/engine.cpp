@@ -1,5 +1,6 @@
 #include <algorithm>
 #include <cstdlib>
+#include <string>
 
 #define STBI_WINDOWS_UTF8
 #define STB_IMAGE_IMPLEMENTATION
@@ -332,6 +333,7 @@ void Engine::shutdown()
     Core::Input::shutdown();
 
     camera = nullptr;
+    gameCameraStatus = Scene::GameCameraStatus::Editor;
     window = nullptr;
     glfwWindow = nullptr;
 
@@ -941,12 +943,30 @@ void Engine::render(std::span<const Rendering::OverlayVertex> overlayVertices, c
         return;
     }
 
+    auto status = Scene::GameCameraStatus::Editor;
+    if (worldMode == WorldMode::Play)
+    {
+        status = activeScene ? gameCamera.updateFromScene(*activeScene) : Scene::GameCameraStatus::Missing;
+    }
+
+    if (status != gameCameraStatus)
+    {
+        const auto message = Scene::gameCameraMessage(status);
+        if (!message.empty())
+            Log::Print(std::string{message}, "ENGINE", LogType::LOG_WARNING);
+    }
+
+    gameCameraStatus = status;
+
+    if (status == Scene::GameCameraStatus::Ready)
+        renderer.setCamera(gameCamera);
+    else if (camera)
+        renderer.setCamera(*camera);
+
     if (activeScene)
     {
-        activeScene->getWorld().each([&](flecs::entity e,
-                                         const Scene::TransformComponent &transform,
-                                         const Scene::MeshComponent &,
-                                         const Scene::MeshRuntimeComponent &meshRuntime) {
+        activeScene->getWorld().each([&](flecs::entity e, const Scene::TransformComponent &transform, const Scene::MeshComponent &,
+                                              const Scene::MeshRuntimeComponent &meshRuntime) {
             if (!e.has<Scene::TagActive>())
             {
                 return;
@@ -969,8 +989,8 @@ void Engine::render(std::span<const Rendering::OverlayVertex> overlayVertices, c
         });
     }
 
-    int x = 0;
-    int y = 0;
+    int x{};
+    int y{};
     int w = fbw;
     int h = fbh;
     if (viewportWidth > 0 && viewportHeight > 0)
