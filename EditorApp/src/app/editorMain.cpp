@@ -10,6 +10,7 @@
 #include "log_utils.hpp"
 #include "session.hpp"
 #include "window.hpp"
+#include "editorShortcuts.hpp"
 
 static bool isFullscreen = false;
 static bool isVSyncEnabled = true;
@@ -27,9 +28,9 @@ void onUpdate([[maybe_unused]] void *context, [[maybe_unused]] float deltaTime)
 
     const bool sceneHasMouse = !editorUi || !editorUi->wantsMouse();
 
-    const bool sceneHasKeyboard = !editorUi || !editorUi->wantsKeyboard();
+    const auto shortcut = editorUi ? Cthulhu::Editor::Shortcuts::read(editorUi->context()) : Cthulhu::Editor::Shortcuts::Action::None;
 
-    if (sceneHasKeyboard && Cthulhu::Core::Input::isKeyPressed(GLFW_KEY_F11))
+    if (shortcut == Cthulhu::Editor::Shortcuts::Action::ToggleFullscreen)
     {
         isFullscreen = !isFullscreen;
 
@@ -51,7 +52,7 @@ void onUpdate([[maybe_unused]] void *context, [[maybe_unused]] float deltaTime)
         }
     }
 
-    if (sceneHasKeyboard && Cthulhu::Core::Input::isKeyPressed(GLFW_KEY_F9))
+    if (shortcut == Cthulhu::Editor::Shortcuts::Action::ToggleVSync)
     {
         isVSyncEnabled = !isVSyncEnabled;
 

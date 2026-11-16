@@ -39,7 +39,12 @@ class ContentBrowserPanel
     std::optional<AssetDropFeedback> folderDrop(octogui::Context &ctx, Engine &engine, Scribe::Session &session, const Assets::AssetRecord &asset, 
                                                 bool released,
                                                 octogui::DrawList &feedback);
-    
+
+    [[nodiscard]] bool actionPending() const noexcept
+    {
+        return pendingAsset.isValid();
+    }
+
     Assets::AssetId takeSceneOpenRequest();
     Assets::AssetId takeDeleteRequest();
 

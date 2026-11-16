@@ -18,6 +18,7 @@
 #include "camera.hpp"
 #include "platform.hpp"
 #include "session.hpp"
+#include "editorShortcuts.hpp"
 
 using namespace octogui;
 
@@ -46,7 +47,7 @@ class EditorShell
   public:
     void build(Context &ctx);
 
-    void update(Context &ctx, Engine &engine, Scribe::Session &session);
+    void update(Context &ctx, Engine &engine, Scribe::Session &session, Shortcuts::Action shortcut);
 
     [[nodiscard]] bool frame(EditorUi &ui, Engine &engine, Scribe::Session &session, void (*routeInput)(void *, float));
 
@@ -102,6 +103,8 @@ class EditorShell
     std::optional<std::size_t> closingTab;
     std::size_t closeReturnTab{};
     bool restoreTabSelection = false;
+
+    bool executeCommand(Context &ctx, Engine &engine, Scribe::Session &session, Shortcuts::Action action);
 
     bool updateFileMenu(Context &ctx, Engine &engine, Scribe::Session &session);
     Scribe::Result newSceneTab(Context &ctx, Engine &engine, Scribe::Session &session);

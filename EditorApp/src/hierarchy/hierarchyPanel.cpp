@@ -1,16 +1,17 @@
+#include <algorithm>
+#include <cctype>
+#include <string>
+#include <string_view>
+
 #include "hierarchyPanel.hpp"
 #include "editorPanels.hpp"
+#include "editorShortcuts.hpp"
 
 #include "components.hpp"
 #include "engine.hpp"
 #include "log_utils.hpp"
 #include "scene.hpp"
 #include "session.hpp"
-
-#include <algorithm>
-#include <cctype>
-#include <string>
-#include <string_view>
 
 using namespace octogui;
 
@@ -462,10 +463,12 @@ void HierarchyPanel::update(Context &ctx, Engine &engine, Scribe::Session &sessi
         updateSelection(ctx);
     }
 
-    bool f2Pressed = false;
+   const auto shortcut = session.transformEditActive() ? Shortcuts::Action::None : Shortcuts::read(ctx);
+
+    const bool f2Pressed = shortcut == Shortcuts::Action::Rename;
     bool enterPressed = false;
     bool escapePressed = false;
-    bool deletePressed = false;
+    const bool deletePressed = shortcut == Shortcuts::Action::Delete;
 
     for (const InputEvent &event : ctx.input().events)
     {
@@ -473,11 +476,9 @@ void HierarchyPanel::update(Context &ctx, Engine &engine, Scribe::Session &sessi
         {
             continue;
         }
-
-        f2Pressed = f2Pressed || event.key == Key::F2;
+        
         enterPressed = enterPressed || event.key == Key::Enter || event.key == Key::KeypadEnter;
         escapePressed = escapePressed || event.key == Key::Escape;
-        deletePressed = deletePressed || event.key == Key::Delete;
     }
 
     bool renameRequested = f2Pressed && ctx.isFocused(hierarchyTree);

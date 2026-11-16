@@ -10,6 +10,7 @@
 #include "input.hpp"
 #include "pickingMath.hpp"
 #include "viewportPanel.hpp"
+#include "editorShortcuts.hpp"
 #include "window.hpp"
 #include "session.hpp"
 #include "log_utils.hpp"
@@ -204,23 +205,32 @@ void ViewportPanel::update(Context &ctx, bool editing)
         return;
     }
 
-    const bool canShortcut =
-        !ctx.isValid(ctx.focused()) ||
-        (!ctx.isFocused(snapMoveInput) && !ctx.isFocused(snapRotateInput) && !ctx.isFocused(snapScaleInput));
-    if (canShortcut && !Cthulhu::Core::Input::isMouseButtonDown(GLFW_MOUSE_BUTTON_RIGHT))
+    if (!gizmoDragActive())
     {
-        if (Cthulhu::Core::Input::isKeyPressed(GLFW_KEY_Q))
+        switch (Shortcuts::read(ctx))
+        {
+        case Shortcuts::Action::SelectTool:
             setMode(ctx, GizmoMode::Select);
-        else if (Cthulhu::Core::Input::isKeyPressed(GLFW_KEY_W))
+            break;
+
+        case Shortcuts::Action::MoveTool:
             setMode(ctx, GizmoMode::Move);
-        else if (Cthulhu::Core::Input::isKeyPressed(GLFW_KEY_E))
+            break;
+
+        case Shortcuts::Action::RotateTool:
             setMode(ctx, GizmoMode::Rotate);
-        else if (Cthulhu::Core::Input::isKeyPressed(GLFW_KEY_R))
+            break;
+
+        case Shortcuts::Action::ScaleTool:
             setMode(ctx, GizmoMode::Scale);
+            break;
+
+        default:
+            break;
+        }
     }
 
-    snapActive = Cthulhu::Core::Input::isKeyDown(GLFW_KEY_LEFT_CONTROL) ||
-                 Cthulhu::Core::Input::isKeyDown(GLFW_KEY_RIGHT_CONTROL);
+    snapActive = Cthulhu::Core::Input::isKeyDown(GLFW_KEY_LEFT_CONTROL) || Cthulhu::Core::Input::isKeyDown(GLFW_KEY_RIGHT_CONTROL);
 
     if (ctx.isClicked(selectButton))
         setMode(ctx, GizmoMode::Select);

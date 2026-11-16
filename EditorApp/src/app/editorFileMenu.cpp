@@ -13,11 +13,12 @@ namespace Cthulhu::Editor
 {
 namespace
 {
-enum FileAction : u64
-{
-    NewScene = 1, OpenScene, OpenRecent, SaveScene, SaveSceneAs,
-    CloseScene, CloseAllScenes, Quit, RecentScene = 100
-};
+using Action = Shortcuts::Action;
+
+constexpr u64 OpenRecent = 100;
+constexpr u64 RecentScene = 101;
+
+static_assert(static_cast<u64>(Action::Count) < OpenRecent);
 }
 
 Scribe::Result EditorShell::newSceneTab(Context &ctx, Engine &engine, Scribe::Session &session)
@@ -80,6 +81,68 @@ Scribe::Result EditorShell::closeAllSceneTabs(Context &ctx, Engine &engine, Scri
     return closeSceneTab(ctx, engine, session, 0, 0);
 }
 
+bool EditorShell::executeCommand(Context &ctx, Engine &engine, Scribe::Session &session, Shortcuts::Action action)
+{
+    using Action = Shortcuts::Action;
+
+    if (action == Action::Quit)
+    {
+        glfwSetWindowShouldClose(engine.getWindow()->getWindow(), GLFW_TRUE);
+        return true;
+    }
+
+    if (!engine.hasActiveScene() || engine.isPlaying() ||
+        session.transformEditActive() ||
+        assetDrag.asset.isValid() || assetDrag.ownsInput)
+    {
+        return false;
+    }
+
+    session.endMerge();
+    Scribe::Result result = Scribe::Result::noChange();
+
+    switch (action)
+    {
+    case Action::Undo:
+        if (session.canUndo() && !session.undo())
+            result = Scribe::Result::failed("Could not undo the last edit. See the log.");
+        break;
+
+    case Action::Redo:
+        if (session.canRedo() && !session.redo())
+            result = Scribe::Result::failed("Could not redo the last edit. See the log.");
+        break;
+
+    case Action::NewScene:
+        result = newSceneTab(ctx, engine, session);
+        break;
+
+    case Action::OpenScene:
+        openSceneFile(ctx, engine, session);
+        return true;
+
+    case Action::SaveScene:
+    case Action::SaveSceneAs:
+        result = saveScene(ctx, engine, session, action == Action::SaveSceneAs);
+        break;
+
+    case Action::CloseScene:
+        if (!sceneTabs.empty())
+            requestSceneTabClose(ctx, engine, session, activeTab);
+        return true;
+
+    case Action::CloseAllScenes:
+        closingAllScenes = true;
+        return true;
+
+    default:
+        return false;
+    }
+
+    contentBrowserUI.reportError(ctx, result.error);
+    return true;
+}
+
 bool EditorShell::updateFileMenu(Context &ctx, Engine &engine, Scribe::Session &session)
 {
     const auto *project = engine.getProject();
@@ -101,10 +164,9 @@ bool EditorShell::updateFileMenu(Context &ctx, Engine &engine, Scribe::Session &
     ContextMenuSelection choice;
     if (ctx.pollContextMenuSelection(choice, fileButton))
     {
-        if (choice.action == Quit)
+        if (choice.action == static_cast<u64>(Action::Quit))
         {
-            glfwSetWindowShouldClose(
-                engine.getWindow()->getWindow(), GLFW_TRUE);
+            (void)executeCommand(ctx, engine, session, Action::Quit);
             return true;
         }
 
@@ -114,46 +176,18 @@ bool EditorShell::updateFileMenu(Context &ctx, Engine &engine, Scribe::Session &
             return true;
         }
 
-        session.endMerge();
-        Scribe::Result result = Scribe::Result::noChange();
-
-        switch (choice.action)
+        if (choice.action >= RecentScene && choice.action - RecentScene < recentScenes.size())
         {
-        case NewScene:
-            result = newSceneTab(ctx, engine, session);
-            break;
+            session.endMerge();
 
-        case OpenScene:
-            openSceneFile(ctx, engine, session);
-            return true;
-
-        case SaveScene:
-        case SaveSceneAs:
-            result = saveScene(
-                ctx, engine, session, choice.action == SaveSceneAs);
-            break;
-
-        case CloseScene:
-            if (!sceneTabs.empty())
-                requestSceneTabClose(ctx, engine, session, activeTab);
-            return true;
-
-        case CloseAllScenes:
-            closingAllScenes = true;
-            return true;
-
-        default:
-            if (choice.action >= RecentScene &&
-                choice.action - RecentScene < recentScenes.size())
-            {
-                const std::string path =
-                    recentScenes[choice.action - RecentScene];
-                result = openSceneTab(ctx, engine, session, path);
-            }
-            break;
+            const std::string path = recentScenes[choice.action - RecentScene];
+            const auto result = openSceneTab(ctx, engine, session, path);
+            contentBrowserUI.reportError(ctx, result.error);
         }
-
-        contentBrowserUI.reportError(ctx, result.error);
+        else
+        {
+            (void)executeCommand(ctx, engine, session, static_cast<Action>(choice.action));
+        }
         return true;
     }
 
@@ -170,15 +204,15 @@ bool EditorShell::updateFileMenu(Context &ctx, Engine &engine, Scribe::Session &
         recentItems.push_back({RecentScene, "No recent scenes", false});
 
     const ContextMenuItem menu[] = {
-        {NewScene, "New Scene", canEdit},
-        {OpenScene, "Open Scene", canEdit},
+        {static_cast<u64>(Action::NewScene), "New Scene", canEdit},
+        {static_cast<u64>(Action::OpenScene), "Open Scene", canEdit},
         {OpenRecent, "Open Recent",
             canEdit && !recentScenes.empty(), recentItems},
-        {SaveScene, "Save Scene", canEdit},
-        {SaveSceneAs, "Save Scene As", canEdit},
-        {CloseScene, "Close Scene", canEdit},
-        {CloseAllScenes, "Close All Scenes", canEdit},
-        {Quit, "Quit", true}
+        {static_cast<u64>(Action::SaveScene), "Save Scene", canEdit},
+        {static_cast<u64>(Action::SaveSceneAs), "Save Scene As", canEdit},
+        {static_cast<u64>(Action::CloseScene), "Close Scene", canEdit},
+        {static_cast<u64>(Action::CloseAllScenes), "Close All Scenes", canEdit},
+        {static_cast<u64>(Action::Quit), "Quit", true}
     };
 
     const Rect button = ctx.visibleRect(fileButton);

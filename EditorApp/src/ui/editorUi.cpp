@@ -66,10 +66,11 @@ void EditorUi::shutdown()
     initialized = false;
 }
 
-void EditorUi::beginFrame(float deltaTime, bool suppressInput)
+Shortcuts::Action EditorUi::beginFrame(float deltaTime, bool suppressInput)
 {
     octogui::glfw::updateInput(ctx, window);
     auto &input = ctx.input();
+    const auto capturedShortcut = Shortcuts::read(input);
     const bool mouseDown =
         input.mouse.isDown(octogui::MouseButton::Left) ||
         input.mouse.isDown(octogui::MouseButton::Right) ||
@@ -100,6 +101,11 @@ void EditorUi::beginFrame(float deltaTime, bool suppressInput)
     const bool overControl = ctx.isValid(hovered) && hovered != ctx.root() && hovered != sceneNode;
 
     mouseOverUi = !overScene || overControl;
+
+    if (suppressInput)
+        return capturedShortcut == Shortcuts::Action::TogglePlay ? capturedShortcut : Shortcuts::Action::None;
+
+    return waitForMouseRelease ? Shortcuts::Action::None : Shortcuts::read(ctx);
 }
 
 void EditorUi::endFrame(std::span<const octogui::DrawCommand> overlay)

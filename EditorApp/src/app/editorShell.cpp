@@ -122,7 +122,7 @@ void EditorShell::build(Context &ctx)
     fileStyle.hovered.background = ctx.theme().surfaceHovered;
     fileStyle.active.background = ctx.theme().surfaceActive;
 
-    const NodeHandle controlsSpacer = ctx.createContainer(topBar);
+    (void)ctx.createContainer(topBar);
 
     playButton = iconButton(ctx, topBar, "play");
     pauseButton = iconButton(ctx, topBar, "pause");
@@ -297,7 +297,7 @@ bool EditorShell::frame(EditorUi &ui, Engine &engine, Scribe::Session &session, 
         setPlayInputCaptured(engine, false);
     }
 
-    ui.beginFrame(engine.getDeltaTime(), beganCaptured || !windowFocused);
+    const auto shortcut = ui.beginFrame(engine.getDeltaTime(), beganCaptured || !windowFocused);
 
     if (!ctx.input().mouse.wasDown(MouseButton::Left))
         assetDrag.ownsInput = false;
@@ -341,7 +341,7 @@ bool EditorShell::frame(EditorUi &ui, Engine &engine, Scribe::Session &session, 
             routeInput(&engine, engine.getDeltaTime());
         }
 
-        update(ctx, engine, session);
+       update(ctx, engine, session, windowFocused ? shortcut : Shortcuts::Action::None);
     }
 
     const bool canCapture =
@@ -415,7 +415,7 @@ bool EditorShell::frame(EditorUi &ui, Engine &engine, Scribe::Session &session, 
     return true;
 }
 
-void EditorShell::update(Context &ctx, Engine &engine, Scribe::Session &session)
+void EditorShell::update(Context &ctx, Engine &engine, Scribe::Session &session, Shortcuts::Action shortcut)
 {
     assetFeedback.clear();
     assetPreviewPosition.reset();
@@ -431,6 +431,17 @@ void EditorShell::update(Context &ctx, Engine &engine, Scribe::Session &session)
         addSceneTab(ctx);
 
     const std::uint64_t inputGeneration = engine.getSceneGeneration();
+
+    if (assetDrag.asset.isValid() || assetDrag.ownsInput || session.transformEditActive() || restoreTabSelection || contentBrowserUI.actionPending() 
+        || (engine.isPlaying() && shortcut != Shortcuts::Action::TogglePlay))
+    {
+        shortcut = Shortcuts::Action::None;
+    }
+
+    if (shortcut == Shortcuts::Action::SaveScene || shortcut == Shortcuts::Action::SaveSceneAs)
+    {
+        ctx.clearFocus();
+    }
 
     const auto changes = session.takeEvents();
 
@@ -482,8 +493,7 @@ void EditorShell::update(Context &ctx, Engine &engine, Scribe::Session &session)
     }
 
     const bool wasPlaying = engine.isPlaying();
-    const bool togglePlay = !assetDrag.asset.isValid() && !assetDrag.ownsInput && !ctx.contextMenuOwnsInput() && !ctx.isValid(ctx.focused()) && 
-                            Core::Input::isKeyPressed(GLFW_KEY_F5);
+    const bool togglePlay = shortcut == Shortcuts::Action::TogglePlay;
 
     if ((ctx.isClicked(playButton.button) || togglePlay) && !wasPlaying && engine.hasActiveScene() && !assetDrag.asset.isValid() && !assetDrag.ownsInput &&
         !restoreTabSelection)
@@ -561,8 +571,14 @@ void EditorShell::update(Context &ctx, Engine &engine, Scribe::Session &session)
     inspectorUI.update(ctx, engine, session, engine.getActiveScene(), 
                         hierarchyPanelUI.selectedEntity(),
                         uiEvents, inputGeneration, assetsChanged);
+
     if (updateFileMenu(ctx, engine, session))
         return;
+
+    if (shortcut != Shortcuts::Action::None && inputGeneration == engine.getSceneGeneration() && executeCommand(ctx, engine, session, shortcut))
+    {
+        return;
+    }
 
     // commit Inspector edits before asset operations can clear history
     updateAssetDrag(ctx, engine, session);

@@ -5,6 +5,8 @@
 #include "OctoGui/Context.h"
 #include "OctoGui_OpenGL.h"
 
+#include "editorShortcuts.hpp"
+
 struct GLFWwindow;
 
 namespace Cthulhu::Editor
@@ -23,7 +25,7 @@ class EditorUi
     bool init(GLFWwindow *window, const std::filesystem::path &resourceRoot);
     void shutdown();
 
-    void beginFrame(float deltaTime, bool suppressInput = false);
+    [[nodiscard]] Shortcuts::Action beginFrame(float deltaTime, bool suppressInput = false);
     void endFrame(std::span<const octogui::DrawCommand> overlay = {});
 
     [[nodiscard]] octogui::Context &context() noexcept
