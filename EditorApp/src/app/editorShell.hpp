@@ -72,6 +72,8 @@ class EditorShell
     };
 
     void buildSceneTabBar(Context &ctx, NodeHandle parent);
+    void setPlayInputCaptured(Engine &engine, bool captured);
+    void updatePlayControls(Context &ctx, Engine &engine);
     void addSceneTab(Context &ctx);
     void rememberSceneView(Engine &engine);
     void restoreSceneView(Engine &engine);
@@ -139,6 +141,8 @@ class EditorShell
 
     bool lastPlaying = false;
     bool lastPaused = false;
+    bool playInputCaptured = false;
+    std::uint64_t capturedSceneGeneration{};
 
     bool handleExit(Context &ctx, Engine &engine, Scribe::Session &session);
     bool beginAssetDelete(Context &ctx, Engine &engine, Scribe::Session &session);

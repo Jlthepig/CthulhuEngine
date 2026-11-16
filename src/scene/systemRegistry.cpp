@@ -104,8 +104,7 @@ void RegisterCoreSystems(flecs::world &world, Cthulhu::Engine *engineContext)
         .each(
             [engineContext](flecs::entity entity, PhysicsComponent &) { createPhysicsRuntime(entity, engineContext); });
 
-    world.system<flecs::entity,
-                 TransformComponent,
+    world.system<TransformComponent,
                  const PhysicsComponent,
                  const PhysicsRuntimeComponent>("PhysicsSyncSystem")
         .each([engineContext](flecs::entity entity,
@@ -159,11 +158,11 @@ void RegisterCoreSystems(flecs::world &world, Cthulhu::Engine *engineContext)
             Physics::CharacterController::createRuntime(entity, engineContext->getPhysicsWorld());
         });
 
-    world.system<flecs::entity, CharacterControllerRuntimeComponent, TransformComponent>("CharacterInterpolationSystem")
+    world.system<CharacterControllerRuntimeComponent, TransformComponent>("CharacterInterpolationSystem")
         .each([engineContext](flecs::entity entity,
                               CharacterControllerRuntimeComponent &runtime,
                               TransformComponent &transform) {
-            const float alpha = engineContext->getPhysicsWorld().getInterpolationAlpha();
+            const float alpha = engineContext->getSimulationState() == SimulationState::Stepping ? 1.0f : engineContext->getPhysicsWorld().getInterpolationAlpha();
 
             const auto localPosition = worldPositionToLocal(
                 entity, glm::mix(runtime.prevPos, runtime.currentPos, alpha));

@@ -186,9 +186,86 @@ void EditorShell::build(Context &ctx)
     exitDialog.build(ctx, root, editorContent);
 }
 
+void EditorShell::setPlayInputCaptured(Engine &engine, bool captured)
+{
+   const auto *window = engine.getWindow();
+   if (!window || !window->getWindow())
+   {
+       playInputCaptured = false;
+       capturedSceneGeneration = 0;
+       return;
+   }
+
+   GLFWwindow *nativeWindow = window->getWindow();
+   const int wanted = captured ? GLFW_CURSOR_DISABLED : GLFW_CURSOR_NORMAL;
+
+   if (playInputCaptured == captured && glfwGetInputMode(nativeWindow, GLFW_CURSOR) == wanted)
+   {
+       return;
+   }
+
+   glfwSetInputMode(nativeWindow, GLFW_CURSOR, wanted);
+   playInputCaptured = captured && glfwGetInputMode(nativeWindow, GLFW_CURSOR) == GLFW_CURSOR_DISABLED;
+
+   capturedSceneGeneration = playInputCaptured ? engine.getSceneGeneration() : 0;
+
+   Core::Input::resetMouseTracking();
+   (void)Core::Input::getScrollDeltaY();
+
+   if (playInputCaptured)
+   {
+       Core::Input::suppressMouseButtonUntilRelease(GLFW_MOUSE_BUTTON_LEFT);
+   }
+}
+
+void EditorShell::updatePlayControls(Context &ctx, Engine &engine)
+{
+    const bool playing = engine.isPlaying();
+    const auto simulation = engine.getSimulationState();
+    const bool paused =
+        playing && simulation != SimulationState::Running;
+    const bool playingChanged = playing != lastPlaying;
+
+    if (playingChanged)
+    {
+        ctx.setEnabled(pauseButton.button, playing);
+        ctx.setEnabled(stopButton.button, playing);
+
+        ctx.setIconColor(
+            playButton.icon,
+            playing ? ctx.theme().textDisabled : ctx.theme().text);
+
+        ctx.setIconColor(
+            stopButton.icon,
+            playing ? ctx.theme().text : ctx.theme().textDisabled);
+    }
+
+    if (paused != lastPaused || playingChanged)
+    {
+        styleToggle(ctx, pauseButton, paused);
+
+        if (!playing)
+            ctx.setIconColor(pauseButton.icon, ctx.theme().textDisabled);
+
+        ctx.setTooltip(
+            pauseButton.button,
+            paused ? "Resume simulation" : "Pause simulation");
+    }
+
+    const bool canPlay =
+        !playing && engine.hasActiveScene() && !restoreTabSelection &&
+        !assetDrag.asset.isValid() && !assetDrag.ownsInput;
+
+    ctx.setEnabled(playButton.button, canPlay);
+
+    lastPlaying = playing;
+    lastPaused = paused;
+}
+
 bool EditorShell::frame(EditorUi &ui, Engine &engine, Scribe::Session &session, void (*routeInput)(void *, float))
 {
-    engine.update();
+   if (!engine.prepareFrame())
+       return false;
 
     const auto *window = engine.getWindow();
     if (!window || !window->getWindow())
@@ -198,8 +275,29 @@ bool EditorShell::frame(EditorUi &ui, Engine &engine, Scribe::Session &session, 
     if (closeRequested)
         glfwSetWindowShouldClose(window->getWindow(), GLFW_FALSE);
 
-    ui.beginFrame(engine.getDeltaTime());
     auto &ctx = ui.context();
+    GLFWwindow *nativeWindow = window->getWindow();
+
+    const bool beganPlaying = engine.isPlaying();
+    const bool beganCaptured = playInputCaptured;
+    const bool windowFocused = glfwGetWindowAttrib(nativeWindow, GLFW_FOCUSED) == GLFW_TRUE &&
+                               glfwGetWindowAttrib(nativeWindow, GLFW_ICONIFIED) == GLFW_FALSE;
+
+    const bool blocked = closeRequested || closingAllScenes || exitDialog.isOpen(ctx) || ctx.contextMenuOwnsInput() || !windowFocused;
+
+    const bool mustRelease =
+        blocked || !engine.isPlaying() || !engine.hasActiveScene() ||
+        engine.getSimulationState() != SimulationState::Running ||
+        capturedSceneGeneration != engine.getSceneGeneration() ||
+        Core::Input::isKeyPressed(GLFW_KEY_ESCAPE) ||
+        glfwGetInputMode(nativeWindow, GLFW_CURSOR) != GLFW_CURSOR_DISABLED;
+
+    if ((playInputCaptured && mustRelease) || (!playInputCaptured && (beganPlaying || blocked)))
+    {
+        setPlayInputCaptured(engine, false);
+    }
+
+    ui.beginFrame(engine.getDeltaTime(), beganCaptured || !windowFocused);
 
     if (!ctx.input().mouse.wasDown(MouseButton::Left))
         assetDrag.ownsInput = false;
@@ -238,11 +336,54 @@ bool EditorShell::frame(EditorUi &ui, Engine &engine, Scribe::Session &session, 
     }
     else
     {
-        if (routeInput && !assetDrag.asset.isValid() && !assetDrag.ownsInput)
+        if (routeInput && !beganCaptured && windowFocused && !assetDrag.asset.isValid() && !assetDrag.ownsInput)
+        {
             routeInput(&engine, engine.getDeltaTime());
+        }
 
         update(ctx, engine, session);
     }
+
+    const bool canCapture =
+    engine.isPlaying() && engine.hasActiveScene() &&
+    engine.getSimulationState() == SimulationState::Running &&
+    windowFocused && !handlingExit && !closingAllScenes &&
+    !exitDialog.isOpen(ctx) && !ctx.contextMenuOwnsInput() &&
+    !engine.shouldClose() &&
+    !assetDrag.asset.isValid() && !assetDrag.ownsInput;
+
+    if (!canCapture || !beganPlaying)
+    {
+        if (playInputCaptured || beganPlaying || engine.isPlaying() || handlingExit || exitDialog.isOpen(ctx) || !windowFocused)
+        {
+            setPlayInputCaptured(engine, false);
+        }
+    }
+    else if (!playInputCaptured && !beganCaptured && !ui.wantsMouse() && ctx.input().mouse.pressed(MouseButton::Left) && !Core::Input::isKeyDown(GLFW_KEY_ESCAPE))
+    {
+        ctx.clearFocus();
+        ctx.clearEvents();
+        setPlayInputCaptured(engine, true);
+    }
+
+    engine.advanceSimulation(canCapture && playInputCaptured);
+
+    const auto *currentWindow = engine.getWindow();
+    if (!currentWindow || !currentWindow->getWindow())
+    {
+        playInputCaptured = false;
+        ctx.endFrame();
+        return false;
+    }
+
+    if (playInputCaptured && (!engine.isPlaying() || !engine.hasActiveScene() || engine.getSimulationState() != SimulationState::Running ||
+        capturedSceneGeneration != engine.getSceneGeneration() || engine.shouldClose() ||
+        glfwGetWindowAttrib(currentWindow->getWindow(), GLFW_FOCUSED) != GLFW_TRUE))
+    {
+        setPlayInputCaptured(engine, false);
+    }
+
+    updatePlayControls(ctx, engine);
 
     ctx.resolvePendingLayout();
     engine.refreshSceneTransforms();
@@ -396,44 +537,20 @@ void EditorShell::update(Context &ctx, Engine &engine, Scribe::Session &session)
     }
 
     const bool playing = engine.isPlaying();
-    const bool paused = playing && engine.getSimulationState() != SimulationState::Running;
 
     if (!assetDrag.asset.isValid() && !assetDrag.ownsInput)
         viewportPanelUI.update(ctx, !playing && !restoreTabSelection);
-
-    if (paused != lastPaused)
-    {
-        styleToggle(ctx, pauseButton, paused);
-        lastPaused = paused;
-    }
-
-    if (playing != lastPlaying)
-    {
-        ctx.setEnabled(pauseButton.button, playing);
-        ctx.setEnabled(stopButton.button, playing);
-
-        ctx.setIconColor(playButton.icon, playing ? ctx.theme().textDisabled : ctx.theme().text);
-        ctx.setIconColor(pauseButton.icon, playing ? ctx.theme().text : ctx.theme().textDisabled);
-        ctx.setIconColor(stopButton.icon, playing ? ctx.theme().text : ctx.theme().textDisabled);
-
-        lastPlaying = playing;
-    }
 
     if (!playing && !restoreTabSelection && !assetDrag.asset.isValid() && !assetDrag.ownsInput)
     {
         if (ctx.input().mouse.pressed(MouseButton::Left))
         {
-            viewportPanelUI.updateGizmo(
-                ctx, engine, session, hierarchyPanelUI, sceneNode);
+            viewportPanelUI.updateGizmo(ctx, engine, session, hierarchyPanelUI, sceneNode);
         }
 
-        viewportPanelUI.updateMarquee(
-            ctx, sceneNode,
-            !engine.isPlaying() && engine.hasActiveScene(),
-            engine.getSceneGeneration());
+        viewportPanelUI.updateMarquee(ctx, sceneNode, !engine.isPlaying() && engine.hasActiveScene(), engine.getSceneGeneration());
 
-        viewportPanelUI.updatePicking(
-            ctx, engine, hierarchyPanelUI, sceneNode);
+        viewportPanelUI.updatePicking(ctx, engine, hierarchyPanelUI, sceneNode);
     }
 
     if (engine.isPlaying())
@@ -462,9 +579,6 @@ void EditorShell::update(Context &ctx, Engine &engine, Scribe::Session &session)
     }
 
     updateSceneTabs(ctx, engine, session);
-
-    const bool canSaveOrPlay = !playing && engine.hasActiveScene() && !restoreTabSelection && !assetDrag.asset.isValid() && !assetDrag.ownsInput;
-    ctx.setEnabled(playButton.button, canSaveOrPlay);
 
     const bool canRepair =
     engine.hasActiveScene() && !playing &&

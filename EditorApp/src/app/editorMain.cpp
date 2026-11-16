@@ -64,16 +64,11 @@ void onUpdate([[maybe_unused]] void *context, [[maybe_unused]] float deltaTime)
 
     if (engine->getWorldMode() == Cthulhu::WorldMode::Play)
     {
-        if (isCameraLooking)
-        {
-            glfwSetInputMode(engine->getWindow()->getWindow(), GLFW_CURSOR, GLFW_CURSOR_NORMAL);
-
-            Cthulhu::Core::Input::resetMouseTracking();
-            isCameraLooking = false;
-        }
-
+        isCameraLooking = false;
         return;
     }
+
+    GLFWwindow *window = engine->getWindow()->getWindow();
 
     const bool gizmoDragging = viewportPanel && viewportPanel->gizmoDragActive();
     const float scrollDeltaY = Cthulhu::Core::Input::getScrollDeltaY();
@@ -82,12 +77,12 @@ void onUpdate([[maybe_unused]] void *context, [[maybe_unused]] float deltaTime)
 
     const bool rightMousePressed = Cthulhu::Core::Input::isMouseButtonPressed(GLFW_MOUSE_BUTTON_2);
 
-     const bool shouldLook = camera && rightMouseDown && (!editorUi || !editorUi->context().contextMenuOwnsInput()) &&
-                             (isCameraLooking || (sceneHasMouse && rightMousePressed));
+    const bool alreadyLooking = isCameraLooking && glfwGetInputMode(window, GLFW_CURSOR) == GLFW_CURSOR_DISABLED;
+
+    const bool shouldLook = camera && rightMouseDown && glfwGetWindowAttrib(window, GLFW_FOCUSED) == GLFW_TRUE &&
+                            (!editorUi || !editorUi->context().contextMenuOwnsInput()) && (alreadyLooking || (sceneHasMouse && rightMousePressed));
 
     const int cursorModeWanted = shouldLook ? GLFW_CURSOR_DISABLED : GLFW_CURSOR_NORMAL;
-
-    GLFWwindow *window = engine->getWindow()->getWindow();
 
     if (shouldLook != isCameraLooking || glfwGetInputMode(window, GLFW_CURSOR) != cursorModeWanted)
     {

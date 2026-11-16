@@ -706,7 +706,7 @@ void Engine::setSimulationState(SimulationState state)
 
 void Engine::stepSimulation()
 {
-    if (worldMode != WorldMode::Play)
+    if (worldMode != WorldMode::Play || simState != SimulationState::Paused)
     {
         return;
     }
@@ -854,15 +854,21 @@ bool Engine::shouldClose() const
 
 void Engine::update()
 {
+    if (prepareFrame())
+        advanceSimulation();
+}
+
+bool Engine::prepareFrame()
+{
     if (state == EngineState::Uninitialized || !glfwWindow)
     {
-        return;
+        return false;
     }
 
     applyPendingTransition();
     if (state == EngineState::Uninitialized || !glfwWindow)
     {
-        return;
+        return false;
     }
 
     const double currentFrame = glfwGetTime();
@@ -875,6 +881,26 @@ void Engine::update()
 
     Core::Input::update();
     Core::Audio::update();
+
+    return true;
+}
+
+void Engine::advanceSimulation(bool acceptInput)
+{
+    if (state == EngineState::Uninitialized || !glfwWindow)
+        return;
+
+    struct RestoreInput
+    {
+        bool previous;
+
+        ~RestoreInput()
+        {
+            (void)Core::Input::setEnabled(previous);
+        }
+    };
+
+    const RestoreInput restoreInput{Core::Input::setEnabled(acceptInput)};
 
     const float simulationDt = simState == SimulationState::Stepping ? physicsWorld.fixedDeltaTime() : deltaTime;
 

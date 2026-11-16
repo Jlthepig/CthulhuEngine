@@ -23,7 +23,7 @@ class EditorUi
     bool init(GLFWwindow *window, const std::filesystem::path &resourceRoot);
     void shutdown();
 
-    void beginFrame(float deltaTime);
+    void beginFrame(float deltaTime, bool suppressInput = false);
     void endFrame(std::span<const octogui::DrawCommand> overlay = {});
 
     [[nodiscard]] octogui::Context &context() noexcept
@@ -51,6 +51,7 @@ class EditorUi
     octogui::OpenGLBackend renderer;
     octogui::NodeHandle sceneNode{};
     bool mouseOverUi = false;
+    bool waitForMouseRelease = false;
     bool initialized = false;
 };
 } // namespace Cthulhu::Editor

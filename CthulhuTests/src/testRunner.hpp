@@ -77,6 +77,7 @@ inline int run(Engine& engine)
 	validateSimStateOnSwitch(engine, r);
 	validateGameCamera(engine, r);
 	validateWorldModes(engine, r);
+	validateInputRouting(engine, r);
 	validateSceneSnapshot(engine, r);
 	validatePlayStop(engine, r);
 	validatePlayCameraRendering(engine, r);

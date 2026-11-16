@@ -36,6 +36,12 @@ inline void validatePhysics(Engine& engine, CS::Scene& scene, Results& r)
 	check(r, rt && rt->bodyId.has_value(), "01 add PhysicsComponent -> runtime body exists");
 	check(r, bodies(engine) == base + 1, "01 add PhysicsComponent -> exactly one Jolt body");
 	const auto oldBody = rt ? rt->bodyId : std::nullopt;
+	const auto physicalPosition = oldBody ? engine.getPhysicsWorld().getBodyTransform(*oldBody).position : glm::vec3(0.0f);
+	e.get_mut<CS::TransformComponent>().position = physicalPosition + glm::vec3(5.0f);
+	auto syncSystem = scene.getWorld().lookup("PhysicsSyncSystem");
+	ecs_run(scene.getWorld().c_ptr(), syncSystem.id(), 0.0f, nullptr);
+	check(r, oldBody && glm::length(e.get<CS::TransformComponent>().position - physicalPosition) < 0.001f,
+		  "01 physics sync updates the rendered dynamic body position");
 	e.set(CS::PhysicsComponent{CS::PhysicsBodyType::Static, glm::vec3(1.0f), 1.0f});
 	rt = e.try_get<CS::PhysicsRuntimeComponent>();
 	check(r, rt && rt->bodyId.has_value() && rt->bodyId != oldBody, "02 modify PhysicsComponent -> body rebuilt");

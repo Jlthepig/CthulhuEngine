@@ -28,6 +28,9 @@ class Input
 
     static void scroll_callback(GLFWwindow *window, double xoffset, double yoffset);
 
+    static bool setEnabled(bool value) noexcept;
+    static void suppressMouseButtonUntilRelease(int button) noexcept;
+
     static float getMouseX();
     static float getMouseY();
     static float getMouseDeltaX();
@@ -37,10 +40,12 @@ class Input
 
   private:
     static GLFWwindow *windowHandle;
+    static bool enabled;
     static bool currentKeys[GLFW_KEY_LAST + 1];
     static bool previousKeys[GLFW_KEY_LAST + 1];
     static bool currentMouseButtons[GLFW_MOUSE_BUTTON_LAST + 1];
     static bool previousMouseButtons[GLFW_MOUSE_BUTTON_LAST + 1];
+    static bool suppressedMouseButtons[GLFW_MOUSE_BUTTON_LAST + 1];
     static bool firstMouse;
     static float mouseDeltaX;
     static float mouseDeltaY;

@@ -66,9 +66,31 @@ void EditorUi::shutdown()
     initialized = false;
 }
 
-void EditorUi::beginFrame(float deltaTime)
+void EditorUi::beginFrame(float deltaTime, bool suppressInput)
 {
     octogui::glfw::updateInput(ctx, window);
+    auto &input = ctx.input();
+    const bool mouseDown =
+        input.mouse.isDown(octogui::MouseButton::Left) ||
+        input.mouse.isDown(octogui::MouseButton::Right) ||
+        input.mouse.isDown(octogui::MouseButton::Middle);
+
+    if (suppressInput)
+        waitForMouseRelease = true;
+    else if (!mouseDown)
+        waitForMouseRelease = false;
+
+    if (suppressInput || waitForMouseRelease)
+    {
+        input.events.clear();
+        input.modifiers.clear();
+        input.mouse.down.fill(false);
+        input.mouse.previousDown.fill(false);
+        input.mouse.wheel = {};
+        input.mouse.position = {-1.0f, -1.0f};
+        input.mouse.previousPosition = input.mouse.position;
+    }
+
     ctx.beginFrame(deltaTime);
     ctx.layout();
 
