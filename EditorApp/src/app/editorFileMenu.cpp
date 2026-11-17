@@ -134,7 +134,7 @@ bool EditorShell::executeCommand(Context &ctx, Engine &engine, Scribe::Session &
         if (session.canRedo() && !session.redo())
             result = Scribe::Result::failed("Could not redo the last edit. See the log.");
         break;
-    
+
     case Action::Copy:
     case Action::Cut:
         result = session.copyEntities(hierarchyPanelUI.selection(), action == Action::Cut);
