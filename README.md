@@ -135,8 +135,6 @@ Cthulhu/
 └── build/               # Build output
 ```
 
-Game projects and sandbox projects are kept separate from the engine repository.
-
 For example:
 
 ```text
@@ -166,7 +164,7 @@ Phase 1 established the project format, resource paths, runtime, project creatio
 
 Phase 2 made scenes, assets, entities, components, and engine APIs robust enough for the editor, and added Play/Stop and a runtime gameplay API.
 
-Phase 3 brought those foundations into a working OctoGUI editor, including scene editing, asset workflows, viewport tools, Play controls, and persistent layouts.
+Phase 3 brought those foundations into an editor, including scene editing, asset workflows, viewport tools, Play controls, and more.
 
 ---
 
