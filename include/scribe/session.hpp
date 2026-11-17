@@ -21,6 +21,12 @@
 namespace Cthulhu::Scribe
 {
 
+struct EntitiesResult
+{
+    Result result;
+    std::vector<Scene::EntityId> ids;
+};
+
 struct MissingAsset
 {
     std::string path;
@@ -88,6 +94,7 @@ class Session
 
     [[nodiscard]] bool canUndo() const noexcept;
     [[nodiscard]] bool canRedo() const noexcept;
+    [[nodiscard]] bool canPasteEntities() const;
 
     [[nodiscard]] std::string_view undoName() const noexcept
     {
@@ -121,6 +128,10 @@ class Session
 
     EntityResult createEntity(std::string_view name, std::optional<Scene::EntityId> parent = std::nullopt);
     EntityResult placeModel(Assets::AssetId asset, glm::vec3 position);
+    Result deleteEntities(std::span<const Scene::EntityId> selection);
+    Result copyEntities(std::span<const Scene::EntityId> selection, bool cut = false);
+    EntitiesResult duplicateEntities(std::span<const Scene::EntityId> selection);
+    EntitiesResult pasteEntities();
     Result deleteEntity(Scene::EntityId id);
     EntityResult duplicateEntity(Scene::EntityId id);
     Result renameEntity(Scene::EntityId id, std::string_view newName);
@@ -153,6 +164,14 @@ class Session
     Result setAudioImportSettings(Assets::AssetId id, const Assets::AudioImportSettings &settings);
 
   private:
+    Result captureEntities(std::span<const Scene::EntityId> selection, std::vector<Scene::EntitySnapshot> &out);
+    EntitiesResult insertEntities(std::vector<Scene::EntitySnapshot> snapshots, std::uint64_t sourceGeneration, std::string_view title, bool keepNames);
+
+    std::vector<Scene::EntitySnapshot> clipboardEntities;
+    std::filesystem::path clipboardProject;
+    std::uint64_t clipboardGeneration{};
+    bool clipboardCut = false;
+
     Engine &engine;
     History history;
     std::vector<ChangeEvent> events;

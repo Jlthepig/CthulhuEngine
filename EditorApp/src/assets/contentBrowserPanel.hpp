@@ -48,6 +48,10 @@ class ContentBrowserPanel
     Assets::AssetId takeSceneOpenRequest();
     Assets::AssetId takeDeleteRequest();
 
+    [[nodiscard]] octogui::NodeHandle layoutSplit() const noexcept
+    {
+        return folderSplit;
+    }
   private:
     struct Crumb
     {
@@ -92,6 +96,7 @@ class ContentBrowserPanel
     octogui::NodeHandle selectionLabel{}, countLabel{};
     octogui::NodeHandle actionBar{}, actionConfirm{}, actionCancel{};
     octogui::NodeHandle moveRow{}, moveDestination{};
+    octogui::NodeHandle folderSplit{};
 
     Assets::AssetId pendingAsset{};
     std::string sourcePath;

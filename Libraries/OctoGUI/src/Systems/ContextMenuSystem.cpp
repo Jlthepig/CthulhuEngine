@@ -46,7 +46,10 @@ bool usableViewport(Rect rect) {
 
 } // namespace
 
-bool ContextMenuSystem::open(const Tree& tree, NodeHandle newRoot, NodeHandle newOwner, Rect viewport, Vec2 position, std::span<const ContextMenuItem> source, Font& font) {
+bool ContextMenuSystem::open(
+    const Tree& tree, NodeHandle newRoot, NodeHandle newOwner,
+    Rect viewport, Vec2 position,
+    std::span<const ContextMenuItem> source, Font& font) {
     if (source.empty() || !font.isLoaded() ||
         !usableOwner(tree, newRoot, newOwner) ||
         !usableViewport(viewport) ||
@@ -54,49 +57,76 @@ bool ContextMenuSystem::open(const Tree& tree, NodeHandle newRoot, NodeHandle ne
         return false;
     }
 
-    const f32 newRowHeight = std::max(28.0f, font.metrics().lineHeight + 8.0f);
-    const f32 newHeight = 8.0f + newRowHeight * static_cast<f32>(source.size());
-
-    if (!std::isfinite(newRowHeight) || !std::isfinite(newHeight)) {
-        return false;
-    }
+    const f32 newRowHeight =
+        std::max(28.0f, font.metrics().lineHeight + 8.0f);
+    if (!std::isfinite(newRowHeight)) return false;
 
     std::vector<Item> replacement;
     replacement.reserve(source.size());
     f32 newWidth = 160.0f;
+    f32 rowsHeight = 0.0f;
 
     for (const ContextMenuItem& item : source) {
-        if (item.label.empty() ||
-            item.label.find_first_of("\r\n") != std::string_view::npos) {
-            return false;
-        }
+        Item copy;
+        copy.action = item.action;
+        copy.separator = item.separator;
+        copy.checked = item.checked;
+        copy.top = rowsHeight;
+        copy.height = item.separator ? 9.0f : newRowHeight;
 
-        for (const Item& previous : replacement) {
-            if (previous.action == item.action) {
+        if (item.separator) {
+            if (!item.children.empty() || !item.shortcut.empty())
+                return false;
+
+            copy.enabled = false;
+        } else {
+            if (item.label.empty() ||
+                item.label.find_first_of("\r\n") != std::string_view::npos ||
+                item.shortcut.find_first_of("\r\n") != std::string_view::npos) {
                 return false;
             }
-        }
 
-        const f32 textWidth = font.measureText(item.label).x;
-        if (!std::isfinite(textWidth) || textWidth < 0.0f) {
-            return false;
-        }
+            for (const Item& previous : replacement)
+                if (!previous.separator && previous.action == item.action)
+                    return false;
 
-        Item copy{item.action, std::string(item.label), item.enabled, {}};
-        if (!item.children.empty()) {
-            // shortcut >> one submenu level extend when a nested menu is needed.
-            for (const auto& child : item.children) {
-                if (!child.children.empty()) return false;
-            }
+            const f32 textWidth = font.measureText(item.label).x;
+            copy.shortcutWidth = font.measureText(item.shortcut).x;
 
-            copy.submenu = std::make_unique<ContextMenuSystem>();
-            if (!copy.submenu->open(tree, newRoot, newOwner, viewport, position, item.children, font)) {
+            if (!std::isfinite(textWidth) || textWidth < 0.0f ||
+                !std::isfinite(copy.shortcutWidth) ||
+                copy.shortcutWidth < 0.0f) {
                 return false;
             }
-            copy.submenu->close();
+
+            copy.label = item.label;
+            copy.shortcut = item.shortcut;
+            copy.enabled = item.enabled;
+
+            if (!item.children.empty()) {
+                // shortcut: one submenu level; extend when nested menus are needed.
+                for (const auto& child : item.children)
+                    if (!child.children.empty()) return false;
+
+                copy.submenu = std::make_unique<ContextMenuSystem>();
+                if (!copy.submenu->open(
+                        tree, newRoot, newOwner, viewport,
+                        position, item.children, font)) {
+                    return false;
+                }
+                copy.submenu->close();
+            }
+
+            const f32 width = textWidth + 40.0f +
+                (copy.shortcut.empty() ? 0.0f : copy.shortcutWidth + 16.0f) +
+                (copy.submenu ? 20.0f : 0.0f);
+
+            if (!std::isfinite(width)) return false;
+            newWidth = std::max(newWidth, width);
         }
 
-        newWidth = std::max(newWidth, textWidth + (copy.submenu ? 44.0f : 24.0f));
+        rowsHeight += copy.height;
+        if (!std::isfinite(rowsHeight)) return false;
         replacement.push_back(std::move(copy));
     }
 
@@ -107,7 +137,7 @@ bool ContextMenuSystem::open(const Tree& tree, NodeHandle newRoot, NodeHandle ne
     requestedPosition = position;
     preferredWidth = newWidth;
     rowHeight = newRowHeight;
-    fullHeight = newHeight;
+    fullHeight = rowsHeight + 8.0f;
     scrollY = 0.0f;
     active = NoItem;
     pressed = NoItem;
@@ -119,6 +149,23 @@ bool ContextMenuSystem::open(const Tree& tree, NodeHandle newRoot, NodeHandle ne
 
     (void)reflow(viewport);
     moveSelection(1);
+
+#ifndef NDEBUG
+    assert(active == NoItem ||
+           (items[active].enabled && !items[active].separator));
+
+    for (usize i = 0; i < items.size(); ++i) {
+        assert(i == 0 ||
+               items[i].top == items[i - 1].top + items[i - 1].height);
+
+        const Rect row = rowRect(i);
+        const Vec2 point{row.x + 1.0f, row.y + row.h * 0.5f};
+
+        if (box.shrink(4.0f).contains(point))
+            assert(itemAt(point) == (items[i].enabled ? i : NoItem));
+    }
+#endif
+
     return true;
 }
 
@@ -160,11 +207,15 @@ bool ContextMenuSystem::reflow(Rect viewport) {
 }
 
 Rect ContextMenuSystem::rowRect(usize index) const noexcept {
-    return Rect{
+    if (index >= items.size()) return {};
+
+    const Item& item = items[index];
+    return {
         box.x + 4.0f,
-        box.y + 4.0f + static_cast<f32>(index) * rowHeight - scrollY,
+        box.y + 4.0f + item.top - scrollY,
         box.w - 8.0f,
-        rowHeight};
+        item.height
+    };
 }
 
 usize ContextMenuSystem::itemAt(Vec2 point) const noexcept {
@@ -186,8 +237,8 @@ void ContextMenuSystem::revealSelection() {
         return;
     }
 
-    const f32 top = static_cast<f32>(active) * rowHeight;
-    const f32 bottom = top + rowHeight;
+    const f32 top = items[active].top;
+    const f32 bottom = top + items[active].height;
     const f32 visibleHeight = box.h - 8.0f;
 
     if (top < scrollY) {
@@ -474,15 +525,60 @@ void ContextMenuSystem::paint(const Tree& tree, NodeHandle currentRoot, Font* fo
         }
 
         const Item& item = items[index];
-        if (index == active && item.enabled) {
-            list.addRoundedRectFilled(
-                row, theme.surfaceHovered, theme.smallRadius);
+
+        if (item.separator) {
+            const f32 y = row.y + row.h * 0.5f;
+            list.addLine(
+                {row.x + 8.0f, y}, {row.maxX() - 8.0f, y},
+                theme.border, 1.0f);
+            continue;
         }
 
-        const Rect textClip{row.x + 8.0f, row.y, std::max(0.0f, row.w - (item.submenu ? 36.0f : 16.0f)),row.h};
-        const Vec2 position{textClip.x, row.y + (rowHeight - font->metrics().lineHeight) * 0.5f};
+        if (index == active && item.enabled)
+            list.addRoundedRectFilled(
+                row, theme.surfaceHovered, theme.smallRadius);
 
-        font->drawTextClipped(list, item.label, position, item.enabled ? theme.text : theme.textDisabled, textClip.intersection(content));
+        const f32 left = row.x + 24.0f;
+        const f32 right = row.maxX() - (item.submenu ? 28.0f : 8.0f);
+        const f32 baseline =
+            row.y + (row.h - font->metrics().lineHeight) * 0.5f;
+
+        f32 textRight = right;
+
+        if (!item.shortcut.empty()) {
+            const f32 x = std::max(left, right - item.shortcutWidth);
+            const Rect shortcutClip{
+                x, row.y, std::max(0.0f, right - x), row.h
+            };
+
+            font->drawTextClipped(
+                list, item.shortcut, {x, baseline},
+                item.enabled ? theme.textMuted : theme.textDisabled,
+                shortcutClip.intersection(content));
+
+            textRight = x - 16.0f;
+        }
+
+        const Rect textClip{
+            left, row.y, std::max(0.0f, textRight - left), row.h
+        };
+
+        font->drawTextClipped(
+            list, item.label, {left, baseline},
+            item.enabled ? theme.text : theme.textDisabled,
+            textClip.intersection(content));
+
+        if (item.checked) {
+            const f32 x = row.x + 7.0f;
+            const f32 y = row.y + row.h * 0.5f;
+            const Color color =
+                item.enabled ? theme.text : theme.textDisabled;
+
+            list.addLine({x, y}, {x + 3.0f, y + 3.0f}, color, 1.5f);
+            list.addLine(
+                {x + 3.0f, y + 3.0f}, {x + 10.0f, y - 4.0f},
+                color, 1.5f);
+        }
 
         if (item.submenu) {
             const f32 x = row.maxX() - 14.0f;

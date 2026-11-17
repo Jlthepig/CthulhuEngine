@@ -39,6 +39,10 @@ private:
         std::string label;
         bool enabled = true;
         std::unique_ptr<ContextMenuSystem> submenu;
+        std::string shortcut;
+        bool separator = false;
+        bool checked = false;
+        f32 top{}, height{}, shortcutWidth{};
     };
 
     static constexpr usize NoItem = std::numeric_limits<usize>::max();

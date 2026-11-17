@@ -1,6 +1,7 @@
 #pragma once
 
-#include <string>
+#include <string_view>
+
 #include "OctoGui/Context.h"
 
 namespace Cthulhu::Editor::Shortcuts
@@ -21,5 +22,11 @@ enum class Action : octogui::u64
 
 [[nodiscard]] Action read(const octogui::InputState &input) noexcept;
 [[nodiscard]] Action read(const octogui::Context &ctx) noexcept;
-[[nodiscard]] std::string label(Action action);
+[[nodiscard]] std::string_view label(Action action);
+
+constexpr bool isLayoutAction(Action action) noexcept
+{
+    return action == Action::ResetLayout || action == Action::ToggleHierarchy || action == Action::ToggleInspector || action == Action::ToggleContentBrowser;
+}
+
 }

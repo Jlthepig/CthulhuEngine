@@ -196,6 +196,7 @@ int main(int argc, char *argv[])
     viewportPanel = nullptr;
     editorUi = nullptr;
 
+    shell.saveLayout(ui.context(), true);
     ui.shutdown();
     engine.shutdown();
 

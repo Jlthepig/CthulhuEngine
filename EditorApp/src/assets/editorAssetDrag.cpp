@@ -82,8 +82,8 @@ AssetDropFeedback EditorShell::dropInViewport(Context &ctx, Engine &engine, Scri
         return {false, placed.result.error, true};
 
     assert(placed.id.isValid());
-    pendingAssetSelection = placed.id;
-    pendingAssetSelectionGeneration = engine.getSceneGeneration();
+    pendingEntitySelection = {placed.id};
+    pendingEntitySelectionGeneration = engine.getSceneGeneration();
     return {true, "Model placed."};
 }
 

@@ -23,11 +23,11 @@ bool usesResourcePath(std::string_view path, std::string_view key)
     return path == key || Assets::normaliseResourcePath(path) == key;
 }
 
-bool updateSnapshotReferences(Scene::SceneSnapshot &snapshot, const Scene::ComponentRegistry &registry, std::string_view from,
+bool updateSnapshotReferences(std::span<Scene::EntitySnapshot> entities, const Scene::ComponentRegistry &registry, std::string_view from,
                               std::optional<std::string_view> replacement = std::nullopt)
 {
     bool found = false;
-    for (auto &entity : snapshot.entities)
+    for (auto &entity : entities)
     {
         for (auto &component : entity.components)
         {
@@ -174,6 +174,17 @@ bool Session::canUndo() const noexcept
 bool Session::canRedo() const noexcept
 {
     return !engine.isPlaying() && !transformActive && history.canRedo();
+}
+
+bool Session::canPasteEntities() const
+{
+    const auto *project = engine.getProject();
+
+    return !engine.isPlaying() &&
+        !transformActive &&
+        !clipboardEntities.empty() &&
+        project &&
+        clipboardProject == project->getProjectFilePath();
 }
 
 void Session::refreshDirty(Scene::Scene &scene)
@@ -354,28 +365,15 @@ EntityResult Session::createEntity(std::string_view name, std::optional<Scene::E
 
 Result Session::deleteEntity(Scene::EntityId id)
 {
-    return execute(Commands::deleteEntity(id));
+    return deleteEntities(std::span{&id, 1});
 }
 
 EntityResult Session::duplicateEntity(Scene::EntityId id)
 {
-    const std::size_t firstEvent = events.size();
-    Result result = execute(Commands::duplicateEntity(id));
+    auto duplicated = duplicateEntities(std::span{&id, 1});
+    const auto root = duplicated.ids.empty() ? Scene::EntityId{} : duplicated.ids.front();
 
-    EntityResult out{result, {}};
-    if (result.status == Result::Status::Applied)
-    {
-        // The command emits the new root's EntityCreated first
-        for (std::size_t i = firstEvent; i < events.size(); ++i)
-        {
-            if (events[i].type == ChangeType::EntityCreated)
-            {
-                out.id = events[i].entityId;
-                break;
-            }
-        }
-    }
-    return out;
+    return {std::move(duplicated.result), root};
 }
 
 Result Session::renameEntity(Scene::EntityId id, std::string_view newName)
@@ -531,8 +529,13 @@ Result Session::moveAsset(Assets::AssetId id, std::string_view destination)
 
     for (auto &doc : inactiveDocuments)
     {
-        if (updateSnapshotReferences(doc.snapshot, engine.getComponentRegistry(), oldPath, *newPath))
+        if (updateSnapshotReferences(doc.snapshot.entities, engine.getComponentRegistry(), oldPath, *newPath))
             doc.snapshot.dirty = true;
+    }
+
+    if (const auto *project = engine.getProject(); project && clipboardProject == project->getProjectFilePath())
+    {
+        (void)updateSnapshotReferences(clipboardEntities, engine.getComponentRegistry(), oldPath, *newPath);
     }
 
     resetHistoryAfterAssetChange();

@@ -46,6 +46,22 @@ class HierarchyPanel
         return selectedEntities;
     }
 
+    [[nodiscard]] bool ownsFocus(const octogui::Context &ctx) const noexcept
+    {
+        const auto focus = ctx.focused();
+        return focus == hierarchy || ctx.tree().isDescendant(hierarchy, focus);
+    }
+
+    void requestRename(octogui::Context &ctx)
+    {
+        if (!selectedEntity())
+            return;
+
+        requestedRename = selectedEntity();
+        hierarchyInitialized = false;
+        ctx.setFocused(hierarchyTree);
+    }
+
     void selectEntity(octogui::Context &ctx, std::optional<Scene::EntityId> entity);
     void selectEntities(octogui::Context &ctx, std::vector<Scene::EntityId> entities);
 
@@ -63,6 +79,7 @@ class HierarchyPanel
     bool hierarchyInitialized = false;
     bool resetHierarchyExpansion = false;
 
+    std::optional<Scene::EntityId> requestedRename;
     octogui::NodeHandle hierarchyRenameInput{};
     std::optional<Scene::EntityId> hierarchyRenameEntity;
     octogui::TreeViewItemId hierarchyRenameItem{};

@@ -19,6 +19,7 @@
 #include "platform.hpp"
 #include "session.hpp"
 #include "editorShortcuts.hpp"
+#include "editorLayout.hpp"
 
 using namespace octogui;
 
@@ -52,6 +53,8 @@ class EditorShell
     [[nodiscard]] bool frame(EditorUi &ui, Engine &engine, Scribe::Session &session, void (*routeInput)(void *, float));
 
     void clearAssetDrag(Engine &engine);
+
+    void saveLayout(Context &ctx, bool force = false);
 
     [[nodiscard]] const ViewportPanel &viewport() const noexcept
     {
@@ -112,8 +115,17 @@ class EditorShell
     Scribe::Result closeAllSceneTabs(Context &ctx, Engine &engine, Scribe::Session &session);
     void rememberSceneFile(Engine &engine, std::string_view path);
     
+    NodeHandle fileButton{}, editButton{}, viewButton{};
 
-    NodeHandle fileButton{};
+    std::array<NodeHandle, 4> layoutSplits{};
+    EditorLayout layoutSettings, lastLayoutAttempt;
+    bool layoutSavePending = false;
+
+    void captureLayout(Context &ctx);
+    void applyLayout(Context &ctx);
+    bool changeLayout(Context &ctx, Shortcuts::Action action);
+    bool updateEditViewMenus(Context &ctx, Engine &engine, Scribe::Session &session);
+
     std::vector<std::string> recentScenes;
     std::filesystem::path recentProject;
     std::uint64_t fileMenuGeneration{};
@@ -134,8 +146,8 @@ class EditorShell
     DrawList assetFeedback;
 
     std::optional<glm::vec3> assetPreviewPosition;
-    Scene::EntityId pendingAssetSelection{};
-    std::uint64_t pendingAssetSelectionGeneration{};
+    std::vector<Scene::EntityId> pendingEntitySelection;
+    std::uint64_t pendingEntitySelectionGeneration{};
 
     void updateAssetDrag(Context &ctx, Engine &engine, Scribe::Session &session);
     AssetDropFeedback dropInViewport(Context &ctx, Engine &engine, Scribe::Session &session, const Assets::AssetRecord &asset, bool released);

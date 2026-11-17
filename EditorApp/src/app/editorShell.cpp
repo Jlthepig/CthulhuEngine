@@ -2,6 +2,7 @@
 
 #include <string>
 #include <algorithm>
+#include <iterator>
 
 #include "editorShell.hpp"
 #include "editorUi.hpp"
@@ -110,17 +111,24 @@ void EditorShell::build(Context &ctx)
 
     verticalSeparator(ctx, topBar, 24.0f);
 
-    fileButton = ctx.createButton(topBar, "File");
-    fixedSize(ctx, fileButton, 52.0f, 28.0f);
+    const char *menuNames[] = {"File", "Edit", "View"};
+    NodeHandle *menuButtons[] = {&fileButton, &editButton, &viewButton};
 
-    auto fileStyle = ctx.style(fileButton);
-    fileStyle.all.background = Color::transparent();
-    fileStyle.all.gradient = LinearGradient{};
-    fileStyle.borderWidth = 0.0f;
-    fileStyle.pressedOffsetY = 0.0f;
-    fileStyle.shadow = ShadowStyle{};
-    fileStyle.hovered.background = ctx.theme().surfaceHovered;
-    fileStyle.active.background = ctx.theme().surfaceActive;
+    for (std::size_t i = 0; i < std::size(menuNames); ++i)
+    {
+        const auto button = ctx.createButton(topBar, menuNames[i]);
+        *menuButtons[i] = button;
+        fixedSize(ctx, button, 52.0f, 28.0f);
+
+        auto style = ctx.style(button);
+        style.all.background = Color::transparent();
+        style.all.gradient = LinearGradient{};
+        style.borderWidth = 0.0f;
+        style.pressedOffsetY = 0.0f;
+        style.shadow = ShadowStyle{};
+        style.hovered.background = ctx.theme().surfaceHovered;
+        style.active.background = ctx.theme().surfaceActive;
+    }
 
     (void)ctx.createContainer(topBar);
 
@@ -184,6 +192,14 @@ void EditorShell::build(Context &ctx)
     cameraStatusLabel = ctx.createLabel(statusBar, "");
     ctx.setVisible(cameraStatusLabel, false);
     exitDialog.build(ctx, root, editorContent);
+
+    layoutSplits = {
+        workspace, mainContent, hierarchyViewport,
+        contentBrowserUI.layoutSplit()
+    };
+    layoutSettings = loadEditorLayout();
+    lastLayoutAttempt = layoutSettings;
+    applyLayout(ctx);
 }
 
 void EditorShell::setPlayInputCaptured(Engine &engine, bool captured)
@@ -410,6 +426,18 @@ bool EditorShell::frame(EditorUi &ui, Engine &engine, Scribe::Session &session, 
         displayedCameraStatus = cameraStatus;
     }
 
+    const auto &mouse = ctx.input().mouse;
+    bool mouseBusy = false;
+
+    for (const auto button : {
+        MouseButton::Left, MouseButton::Right, MouseButton::Middle})
+    {
+        mouseBusy |= mouse.isDown(button) || mouse.wasDown(button);
+    }
+
+    if (!mouseBusy)
+        saveLayout(ctx);
+
     ui.endFrame(assetFeedback.span());
     engine.present();
     return true;
@@ -433,7 +461,9 @@ void EditorShell::update(Context &ctx, Engine &engine, Scribe::Session &session,
     const std::uint64_t inputGeneration = engine.getSceneGeneration();
 
     if (assetDrag.asset.isValid() || assetDrag.ownsInput || session.transformEditActive() || restoreTabSelection || contentBrowserUI.actionPending() 
-        || (engine.isPlaying() && shortcut != Shortcuts::Action::TogglePlay))
+        || (engine.isPlaying() &&
+            shortcut != Shortcuts::Action::TogglePlay &&
+            !Shortcuts::isLayoutAction(shortcut)))
     {
         shortcut = Shortcuts::Action::None;
     }
@@ -441,6 +471,24 @@ void EditorShell::update(Context &ctx, Engine &engine, Scribe::Session &session,
     if (shortcut == Shortcuts::Action::SaveScene || shortcut == Shortcuts::Action::SaveSceneAs)
     {
         ctx.clearFocus();
+    }
+
+    switch (shortcut)
+    {
+    case Shortcuts::Action::Cut:
+    case Shortcuts::Action::Copy:
+    case Shortcuts::Action::Paste:
+    case Shortcuts::Action::Duplicate:
+    case Shortcuts::Action::Delete:
+    case Shortcuts::Action::Rename:
+        if (ctx.isValid(ctx.focused()) && ctx.focused() != sceneNode && !hierarchyPanelUI.ownsFocus(ctx))
+        {
+            shortcut = Shortcuts::Action::None;
+        }
+        break;
+
+    default:
+        break;
     }
 
     const auto changes = session.takeEvents();
@@ -474,15 +522,20 @@ void EditorShell::update(Context &ctx, Engine &engine, Scribe::Session &session,
         return Scribe::isAssetChange(event.type);
     });
 
-    if (pendingAssetSelection.isValid())
+    if (!pendingEntitySelection.empty())
     {
         const auto *scene = engine.getActiveScene();
-        if (pendingAssetSelectionGeneration == engine.getSceneGeneration() &&
-            !engine.isPlaying() && scene && scene->isEntityAlive(pendingAssetSelection))
+
+        if (pendingEntitySelectionGeneration == engine.getSceneGeneration() && !engine.isPlaying() && scene)
         {
-            hierarchyPanelUI.selectEntity(ctx, pendingAssetSelection);
+            std::erase_if(pendingEntitySelection, [&](Scene::EntityId id) {
+                return !scene->isEntityAlive(id);
+            });
+
+            hierarchyPanelUI.selectEntities(ctx, std::move(pendingEntitySelection));
         }
-        pendingAssetSelection = {};
+
+        pendingEntitySelection.clear();
     }
 
     uiEvents.clear();
@@ -572,7 +625,8 @@ void EditorShell::update(Context &ctx, Engine &engine, Scribe::Session &session,
                         hierarchyPanelUI.selectedEntity(),
                         uiEvents, inputGeneration, assetsChanged);
 
-    if (updateFileMenu(ctx, engine, session))
+    if (updateFileMenu(ctx, engine, session) ||
+        updateEditViewMenus(ctx, engine, session))
         return;
 
     if (shortcut != Shortcuts::Action::None && inputGeneration == engine.getSceneGeneration() && executeCommand(ctx, engine, session, shortcut))

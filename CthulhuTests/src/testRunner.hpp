@@ -14,6 +14,7 @@
 #include "testsWorldModes.hpp"
 #include "testsUserSystems.hpp"
 #include "testsAuditRegressions.hpp"
+#include "testsEntityClipboard.hpp"
 
 namespace Cthulhu::Validation
 {
@@ -63,6 +64,7 @@ inline int run(Engine& engine)
 	validateScribeCore(engine, r);
     validateScribeDocumentSwitch(engine, r);
 	validateScribeEntities(engine, r);
+	validateEntityClipboard(engine, r);
 	validateScribeTransforms(engine, r);
 	validateScribeComponents(engine, r);
 	validateScribeModelPlacement(engine, r);

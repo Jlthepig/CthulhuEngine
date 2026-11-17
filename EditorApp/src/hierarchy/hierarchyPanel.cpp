@@ -5,7 +5,6 @@
 
 #include "hierarchyPanel.hpp"
 #include "editorPanels.hpp"
-#include "editorShortcuts.hpp"
 
 #include "components.hpp"
 #include "engine.hpp"
@@ -405,6 +404,7 @@ void HierarchyPanel::update(Context &ctx, Engine &engine, Scribe::Session &sessi
         if (event.type == Scribe::ChangeType::SceneReplaced)
         {
             selectedEntities.clear();
+            requestedRename.reset();
             hierarchyDirty = true;
             resetHierarchyExpansion = true;
         }
@@ -463,12 +463,8 @@ void HierarchyPanel::update(Context &ctx, Engine &engine, Scribe::Session &sessi
         updateSelection(ctx);
     }
 
-   const auto shortcut = session.transformEditActive() ? Shortcuts::Action::None : Shortcuts::read(ctx);
-
-    const bool f2Pressed = shortcut == Shortcuts::Action::Rename;
     bool enterPressed = false;
     bool escapePressed = false;
-    const bool deletePressed = shortcut == Shortcuts::Action::Delete;
 
     for (const InputEvent &event : ctx.input().events)
     {
@@ -481,7 +477,25 @@ void HierarchyPanel::update(Context &ctx, Engine &engine, Scribe::Session &sessi
         escapePressed = escapePressed || event.key == Key::Escape;
     }
 
-    bool renameRequested = f2Pressed && ctx.isFocused(hierarchyTree);
+    bool renameRequested = false;
+
+    if (requestedRename)
+    {
+        const auto *state = ctx.tree().treeViewState(hierarchyTree);
+
+        if (engine.isPlaying() || requestedRename != selectedEntity() ||
+            !ctx.isFocused(hierarchyTree))
+        {
+            requestedRename.reset();
+        }
+        else if (state && !state->visibleItemsDirty &&
+                !state->scrollToSelectionPending)
+        {
+            renameRequested = true;
+            requestedRename.reset();
+        }
+    }
+
     if (!engine.isPlaying() && !ctx.isValid(hierarchyRenameInput) && ctx.input().mouse.released(MouseButton::Left))
     {
         const TreeViewState *treeState = ctx.tree().treeViewState(hierarchyTree);
@@ -612,8 +626,7 @@ void HierarchyPanel::update(Context &ctx, Engine &engine, Scribe::Session &sessi
         closeHierarchyRename();
     };
 
-    if (renameRequested && !engine.isPlaying() && activeScene && selectedEntity() &&
-        !ctx.isValid(hierarchyRenameInput) && ctx.isFocused(hierarchyTree))
+    if (renameRequested && !engine.isPlaying() && activeScene && selectedEntity() && !ctx.isValid(hierarchyRenameInput) && ctx.isFocused(hierarchyTree))
     {
         beginHierarchyRename();
     }
@@ -642,30 +655,6 @@ void HierarchyPanel::update(Context &ctx, Engine &engine, Scribe::Session &sessi
         else if (!ctx.isFocused(hierarchyRenameInput))
         {
             finishHierarchyRename(true);
-        }
-    }
-
-    const NodeHandle focused = ctx.focused();
-    const bool textFieldFocused = ctx.isValid(focused) && (ctx.tree().type(focused) == NodeType::TextInput ||
-                                                           ctx.tree().type(focused) == NodeType::NumericInput);
-
-    if (deletePressed && !engine.isPlaying() && activeScene && ctx.isFocused(hierarchyTree) && !textFieldFocused &&
-        !ctx.isValid(hierarchyRenameInput) && selectedEntity())
-    {
-        const Scene::EntityId entityId = *selectedEntity();
-
-        session.endMerge();
-        const auto result = session.deleteEntity(entityId);
-        session.endMerge();
-
-        if (result.ok())
-        {
-            selectEntity(ctx, std::nullopt);
-            ctx.setTreeViewSelectedItem(hierarchyTree, TreeViewItemId{});
-        }
-        else
-        {
-            Log::Print("DELETE ENTITY FAILED: " + result.error, "Editor", LogType::LOG_ERROR);
         }
     }
 

@@ -120,8 +120,7 @@ void ContentBrowserPanel::build(Context &ctx, NodeHandle parent)
     ctx.setIconColor(icon, ctx.theme().textMuted);
 
     title = ctx.createLabel(toolbar, "CONTENT BROWSER");
-    const float titleWidth =
-        std::ceil(ctx.font().measureText("CONTENT BROWSER").x) + 8.0f;
+    const float titleWidth = std::ceil(ctx.font().measureText("CONTENT BROWSER").x) + 8.0f;
     fixed(ctx, title, titleWidth, 24.0f);
     ctx.style(title).all.text = ctx.theme().textMuted;
 
@@ -224,6 +223,7 @@ void ContentBrowserPanel::build(Context &ctx, NodeHandle parent)
     ctx.setSplitMinimumSizes(split, 160.0f, 240.0f);
     ctx.style(split).all.background = Color::transparent();
     ctx.style(split).shadow = ShadowStyle{};
+    folderSplit = split;
 
     const NodeHandle foldersPane = ctx.splitFirstPane(split);
     const NodeHandle assetsPane = ctx.splitSecondPane(split);

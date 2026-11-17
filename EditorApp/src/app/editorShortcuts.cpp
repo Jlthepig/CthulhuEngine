@@ -1,8 +1,9 @@
-#include "editorShortcuts.hpp"
-
 #include <iterator>
 #include <string_view>
+#include <array>
+#include <string>
 
+#include "editorShortcuts.hpp"
 namespace Cthulhu::Editor::Shortcuts
 {
 namespace
@@ -235,21 +236,28 @@ Action read(const octogui::Context &ctx) noexcept
     return action;
 }
 
-std::string label(Action action)
+std::string_view label(Action action)
 {
-    for (const auto &binding : bindings)
-    {
-        if (binding.action != action || binding.key == octogui::Key::Unknown)
-            continue;
+    static const auto labels = [] {
+        std::array<std::string, static_cast<std::size_t>(Action::Count)> result;
 
-        std::string result;
-        if (binding.modifiers.ctrl) result += "Ctrl+";
-        if (binding.modifiers.shift) result += "Shift+";
-        if (binding.modifiers.alt) result += "Alt+";
-        if (binding.modifiers.super) result += "Super+";
-        return result + keyLabel(binding.key);
-    }
+        for (const auto &binding : bindings)
+        {
+            if (binding.key == octogui::Key::Unknown) continue;
 
-    return {};
+            auto &text = result.at(static_cast<std::size_t>(binding.action));
+            if (binding.modifiers.ctrl) text += "Ctrl+";
+            if (binding.modifiers.shift) text += "Shift+";
+            if (binding.modifiers.alt) text += "Alt+";
+            if (binding.modifiers.super) text += "Super+";
+            text += keyLabel(binding.key);
+        }
+        return result;
+    }();
+
+    const auto index = static_cast<std::size_t>(action);
+    return index < labels.size()
+        ? std::string_view(labels[index])
+        : std::string_view{};
 }
 }

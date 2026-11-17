@@ -12,6 +12,9 @@ struct ContextMenuItem {
     std::string_view label;
     bool enabled = true;
     std::span<const ContextMenuItem> children{};
+    std::string_view shortcut{};
+    bool separator = false;
+    bool checked = false;
 };
 
 struct ContextMenuSelection {
