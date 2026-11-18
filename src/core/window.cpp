@@ -14,26 +14,117 @@ namespace Cthulhu::Core
 {
 static std::vector<unique_ptr<Window>> windowContainer;
 
-Window *Window::createWindow(const WindowConfig &config, const char *windowTitle)
+Window::~Window()
 {
-    unique_ptr<Window> window = std::make_unique<Window>();
-    window->glfWwindow = glfwCreateWindow((int)config.resolution.x, (int)config.resolution.y, windowTitle, NULL, NULL);
+    if (glfWwindow)
+        glfwDestroyWindow(glfWwindow);
+}
 
-    if (!window->glfWwindow)
+Window *Window::createWindow(const WindowConfig &config, const char *windowTitle, const Window *centerOver)
+{
+    const auto validDimension = [](float value) {
+        return value >= 1.0f && static_cast<double>(value) <= std::numeric_limits<int>::max();
+    };
+
+    if (!validDimension(config.resolution.x) || !validDimension(config.resolution.y))
     {
-        Log::Print("FAILED TO CREATE A WINDOW.", "Main", LogType::LOG_ERROR);
-        glfwTerminate();
+        Log::Print("INVALID WINDOW SIZE", "Window", LogType::LOG_ERROR);
         return nullptr;
     }
-    Window *window_ptr = window.get();
-    window->windowSize = config.resolution;
-    glfwMakeContextCurrent(window->glfWwindow);
-    glfwSwapInterval(config.vSync ? 1 : 0); // Enable or disable V-Sync based on config
-    glfwSetWindowUserPointer(window->glfWwindow,
-                             window_ptr); // attach this instance
 
-    windowContainer.push_back(std::move(window));
-    return window_ptr;
+    auto window = std::make_unique<Window>();
+    GLFWwindow *previous = glfwGetCurrentContext();
+
+    glfwWindowHint(GLFW_VISIBLE, config.visible ? GLFW_TRUE : GLFW_FALSE);
+    window->glfWwindow = glfwCreateWindow(static_cast<int>(config.resolution.x), static_cast<int>(config.resolution.y),
+                                         windowTitle, nullptr, nullptr);
+    glfwWindowHint(GLFW_VISIBLE, GLFW_TRUE);
+    if (!window->glfWwindow)
+    {
+        Log::Print("FAILED TO CREATE A WINDOW", "Window", LogType::LOG_ERROR);
+        return nullptr;
+    }
+
+    GLFWwindow *native = window->glfWwindow;
+    glfwMakeContextCurrent(native);
+    if (glfwGetCurrentContext() != native)
+    {
+        glfwMakeContextCurrent(previous);
+        Log::Print("FAILED TO ACTIVATE THE WINDOW CONTEXT", "Window", LogType::LOG_ERROR);
+        return nullptr;
+    }
+
+    if (centerOver)
+        window->centerOn(*centerOver);
+
+    int width = 0, height = 0;
+    glfwGetWindowSize(native, &width, &height);
+    window->windowSize = {static_cast<float>(width), static_cast<float>(height)};
+
+    if (config.minimumSize.x > 0 || config.minimumSize.y > 0)
+    {
+        const int minWidth = config.minimumSize.x > 0 ? std::min(config.minimumSize.x, width) : GLFW_DONT_CARE;
+        const int minHeight = config.minimumSize.y > 0 ? std::min(config.minimumSize.y, height) : GLFW_DONT_CARE;
+        glfwSetWindowSizeLimits(native, minWidth, minHeight, GLFW_DONT_CARE, GLFW_DONT_CARE);
+    }
+
+    glfwSwapInterval(config.vSync ? 1 : 0);
+    glfwSetWindowUserPointer(native, window.get());
+    return windowContainer.emplace_back(std::move(window)).get();
+}
+
+void Window::centerOn(const Window &parent)
+{
+    int parentX = 0, parentY = 0, parentWidth = 0, parentHeight = 0;
+    glfwGetWindowPos(parent.glfWwindow, &parentX, &parentY);
+    glfwGetWindowSize(parent.glfWwindow, &parentWidth, &parentHeight);
+
+    int width = 0, height = 0;
+    glfwGetWindowSize(glfWwindow, &width, &height);
+
+    int workX = 0, workY = 0, workWidth = 0, workHeight = 0;
+    if (auto *monitor = parent.getCurrentMonitor())
+        glfwGetMonitorWorkarea(monitor, &workX, &workY, &workWidth, &workHeight);
+
+    int x = parentX + (parentWidth - width) / 2;
+    int y = parentY + (parentHeight - height) / 2;
+
+    if (workWidth > 0 && workHeight > 0)
+    {
+        int left = 0, top = 0, right = 0, bottom = 0;
+        glfwGetWindowFrameSize(glfWwindow, &left, &top, &right, &bottom);
+
+        const int fittedWidth = std::min(width, std::max(1, workWidth - left - right));
+        const int fittedHeight = std::min(height, std::max(1, workHeight - top - bottom));
+        if (fittedWidth != width || fittedHeight != height)
+            glfwSetWindowSize(glfWwindow, fittedWidth, fittedHeight);
+
+        const int minX = workX + left;
+        const int minY = workY + top;
+        x = std::clamp(parentX + (parentWidth - fittedWidth) / 2, minX,
+                       std::max(minX, workX + workWidth - right - fittedWidth));
+        y = std::clamp(parentY + (parentHeight - fittedHeight) / 2, minY,
+                       std::max(minY, workY + workHeight - bottom - fittedHeight));
+    }
+
+    glfwSetWindowPos(glfWwindow, x, y);
+}
+
+void Window::show()
+{
+    glfwShowWindow(glfWwindow);
+}
+
+void Window::focus()
+{
+    if (glfwGetWindowAttrib(glfWwindow, GLFW_ICONIFIED))
+        glfwRestoreWindow(glfWwindow);
+    glfwFocusWindow(glfWwindow);
+}
+
+bool Window::shouldClose() const
+{
+    return glfwWindowShouldClose(glfWwindow) == GLFW_TRUE;
 }
 
 void Window::setWindowMode(WindowMode newMode)
@@ -110,7 +201,7 @@ GLFWmonitor *Window::getCurrentMonitor() const
             int xPos, yPos;
             glfwGetMonitorPos(monitors[i], &xPos, &yPos);
             const GLFWvidmode *mode = glfwGetVideoMode(monitors[i]);
-            if (centerX >= xPos && centerX < xPos + mode->width && centerY >= yPos && centerY < yPos + mode->height)
+            if (mode && centerX >= xPos && centerX < xPos + mode->width && centerY >= yPos && centerY < yPos + mode->height)
             {
                 return monitors[i];
             }
@@ -120,17 +211,15 @@ GLFWmonitor *Window::getCurrentMonitor() const
     return glfwGetPrimaryMonitor();
 }
 
+void Window::destroyWindow(Window *window)
+{
+    const auto it = std::find_if(windowContainer.begin(), windowContainer.end(), [window](const auto &owned) { return owned.get() == window; });
+    if (it != windowContainer.end())
+        windowContainer.erase(it);
+}
+
 void Window::destroyAll()
 {
-    for (auto &window : windowContainer)
-    {
-        if (window && window->glfWwindow)
-        {
-            glfwDestroyWindow(window->glfWwindow);
-            window->glfWwindow = nullptr;
-        }
-    }
-
     windowContainer.clear();
 }
 

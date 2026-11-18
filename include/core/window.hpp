@@ -28,25 +28,40 @@ struct WindowConfig
 {
     glm::vec2 resolution = glm::vec2(1920.0f, 1080.0f);
     WindowMode initialMode = WindowMode::Windowed;
-    bool vSync = false; // Currently hardcoded to 0 (off) in window.cpp
+    bool vSync = false;
+    bool visible = true;
+    glm::ivec2 minimumSize{0, 0};
 };
 
 class Window
 {
   public:
-    static Window *createWindow(const WindowConfig &config, const char *windowTitle);
-    void setWindowMode(WindowMode newMode);
-    void setCamera(Cthulhu::Scene::Camera *cam);
+    Window() = default;
+    ~Window();
+    Window(const Window &) = delete;
+    Window &operator=(const Window &) = delete;
 
+    static Window *createWindow(const WindowConfig &config, const char *windowTitle, const Window *centerOver = nullptr);
+    static void destroyWindow(Window *window);
+    static void destroyAll();
+
+    [[nodiscard]] bool shouldClose() const;
     GLFWwindow *getWindow() const;
     float getWidth();
     float getHeight();
+
+    void show();
+    void focus();
+    void setWindowMode(WindowMode newMode);
+    void setCamera(Cthulhu::Scene::Camera *cam);
+
     static void mouse_callback(GLFWwindow *window, double xposIn, double yposIn);
     static void mouse_button_callback(GLFWwindow *window, int button, int action, int mods);
 
-    static void destroyAll();
-
   private:
+    void centerOn(const Window &parent);
+    GLFWmonitor *getCurrentMonitor() const;
+
     GLFWwindow *glfWwindow = nullptr;
     Cthulhu::Scene::Camera *camera = nullptr;
     glm::vec2 windowSize = glm::vec2(1920.0f, 1080.0f);
@@ -59,7 +74,5 @@ class Window
     int cachedY = 0;
     int cachedWidth = 0;
     int cachedHeight = 0;
-
-    GLFWmonitor *getCurrentMonitor() const;
 };
 } // namespace Cthulhu::Core

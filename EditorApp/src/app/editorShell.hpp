@@ -20,6 +20,7 @@
 #include "session.hpp"
 #include "editorShortcuts.hpp"
 #include "editorLayout.hpp"
+#include "projectSettingsWindow.hpp"
 
 using namespace octogui;
 
@@ -47,14 +48,13 @@ class EditorShell
 {
   public:
     void build(Context &ctx);
-
     void update(Context &ctx, Engine &engine, Scribe::Session &session, Shortcuts::Action shortcut);
 
     [[nodiscard]] bool frame(EditorUi &ui, Engine &engine, Scribe::Session &session, void (*routeInput)(void *, float));
 
     void clearAssetDrag(Engine &engine);
-
     void saveLayout(Context &ctx, bool force = false);
+    void shutdown(Context &ctx);
 
     [[nodiscard]] const ViewportPanel &viewport() const noexcept
     {
@@ -115,7 +115,7 @@ class EditorShell
     Scribe::Result closeAllSceneTabs(Context &ctx, Engine &engine, Scribe::Session &session);
     void rememberSceneFile(Engine &engine, std::string_view path);
     
-    NodeHandle fileButton{}, editButton{}, viewButton{};
+    NodeHandle fileButton{}, editButton{}, viewButton{}, projectButton{};
 
     std::array<NodeHandle, 4> layoutSplits{};
     EditorLayout layoutSettings, lastLayoutAttempt;
@@ -125,6 +125,7 @@ class EditorShell
     void applyLayout(Context &ctx);
     bool changeLayout(Context &ctx, Shortcuts::Action action);
     bool updateEditViewMenus(Context &ctx, Engine &engine, Scribe::Session &session);
+    bool updateProjectMenu(Context &ctx, Engine &engine, Scribe::Session &session);
 
     std::vector<std::string> recentScenes;
     std::filesystem::path recentProject;
@@ -191,6 +192,7 @@ class EditorShell
     bool deletingMissing = false;
 
     EditorDialog exitDialog;
+    ProjectSettingsWindow projectSettingsWindow;
     bool resumePlayOnCancel = false;
 };
 } // namespace Cthulhu::Editor

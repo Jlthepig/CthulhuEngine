@@ -111,8 +111,8 @@ void EditorShell::build(Context &ctx)
 
     verticalSeparator(ctx, topBar, 24.0f);
 
-    const char *menuNames[] = {"File", "Edit", "View"};
-    NodeHandle *menuButtons[] = {&fileButton, &editButton, &viewButton};
+    const char *menuNames[] = {"File", "Edit", "View", "Project"};
+    NodeHandle *menuButtons[] = {&fileButton, &editButton, &viewButton, &projectButton};
 
     for (std::size_t i = 0; i < std::size(menuNames); ++i)
     {
@@ -129,6 +129,8 @@ void EditorShell::build(Context &ctx)
         style.hovered.background = ctx.theme().surfaceHovered;
         style.active.background = ctx.theme().surfaceActive;
     }
+
+    fixedSize(ctx, projectButton, 72.0f, 28.0f);
 
     (void)ctx.createContainer(topBar);
 
@@ -301,11 +303,8 @@ bool EditorShell::frame(EditorUi &ui, Engine &engine, Scribe::Session &session, 
 
     const bool blocked = closeRequested || closingAllScenes || exitDialog.isOpen(ctx) || ctx.contextMenuOwnsInput() || !windowFocused;
 
-    const bool mustRelease =
-        blocked || !engine.isPlaying() || !engine.hasActiveScene() ||
-        engine.getSimulationState() != SimulationState::Running ||
-        capturedSceneGeneration != engine.getSceneGeneration() ||
-        Core::Input::isKeyPressed(GLFW_KEY_ESCAPE) ||
+    const bool mustRelease = blocked || !engine.isPlaying() || !engine.hasActiveScene() || engine.getSimulationState() != SimulationState::Running ||
+        capturedSceneGeneration != engine.getSceneGeneration() || Core::Input::isKeyPressed(GLFW_KEY_ESCAPE) ||
         glfwGetInputMode(nativeWindow, GLFW_CURSOR) != GLFW_CURSOR_DISABLED;
 
     if ((playInputCaptured && mustRelease) || (!playInputCaptured && (beganPlaying || blocked)))
@@ -411,9 +410,8 @@ bool EditorShell::frame(EditorUi &ui, Engine &engine, Scribe::Session &session, 
     if (assetPreviewPosition)
         preview = {engine.getAssetManager().getModel(assetDrag.previewModel), *assetPreviewPosition};
 
-    const auto overlay = handlingExit || exitDialog.isOpen(ctx) || !engine.hasActiveScene() || engine.isPlaying() || restoreTabSelection || assetDrag.ownsInput
-                         ? std::span<const Rendering::OverlayVertex>{}
-                         : viewportPanelUI.overlayVertices();
+    const auto overlay = handlingExit || exitDialog.isOpen(ctx) || !engine.hasActiveScene() || engine.isPlaying() || restoreTabSelection || 
+                        assetDrag.ownsInput ? std::span<const Rendering::OverlayVertex>{} : viewportPanelUI.overlayVertices();
     engine.render(overlay, preview);
 
     const auto cameraStatus = engine.getGameCameraStatus();
@@ -439,6 +437,7 @@ bool EditorShell::frame(EditorUi &ui, Engine &engine, Scribe::Session &session, 
         saveLayout(ctx);
 
     ui.endFrame(assetFeedback.span());
+    projectSettingsWindow.frame(engine.getDeltaTime());
     engine.present();
     return true;
 }
@@ -461,9 +460,7 @@ void EditorShell::update(Context &ctx, Engine &engine, Scribe::Session &session,
     const std::uint64_t inputGeneration = engine.getSceneGeneration();
 
     if (assetDrag.asset.isValid() || assetDrag.ownsInput || session.transformEditActive() || restoreTabSelection || contentBrowserUI.actionPending() 
-        || (engine.isPlaying() &&
-            shortcut != Shortcuts::Action::TogglePlay &&
-            !Shortcuts::isLayoutAction(shortcut)))
+        || (engine.isPlaying() && shortcut != Shortcuts::Action::TogglePlay && !Shortcuts::isLayoutAction(shortcut)))
     {
         shortcut = Shortcuts::Action::None;
     }
@@ -625,8 +622,7 @@ void EditorShell::update(Context &ctx, Engine &engine, Scribe::Session &session,
                         hierarchyPanelUI.selectedEntity(),
                         uiEvents, inputGeneration, assetsChanged);
 
-    if (updateFileMenu(ctx, engine, session) ||
-        updateEditViewMenus(ctx, engine, session))
+    if (updateFileMenu(ctx, engine, session) || updateEditViewMenus(ctx, engine, session) || updateProjectMenu(ctx, engine, session))
         return;
 
     if (shortcut != Shortcuts::Action::None && inputGeneration == engine.getSceneGeneration() && executeCommand(ctx, engine, session, shortcut))
