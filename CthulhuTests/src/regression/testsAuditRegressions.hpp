@@ -4,7 +4,7 @@
 #include <chrono>
 
 #include "session.hpp"
-#include "testCommon.hpp"
+#include "../testCommon.hpp"
 
 namespace Cthulhu::Validation
 {

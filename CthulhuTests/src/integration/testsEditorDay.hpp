@@ -7,8 +7,8 @@
 
 #include "componentRegistry.hpp"
 #include "session.hpp"
-#include "testCommon.hpp"
-#include "testsScribeAssets.hpp"
+#include "../testCommon.hpp"
+#include "../scribe/testsScribeAssets.hpp"
 
 namespace Cthulhu::Validation
 {

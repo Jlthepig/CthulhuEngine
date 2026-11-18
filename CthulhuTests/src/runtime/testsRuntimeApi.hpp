@@ -1,6 +1,6 @@
 #pragma once
 
-#include "testCommon.hpp"
+#include "../testCommon.hpp"
 
 namespace Cthulhu::Validation
 {

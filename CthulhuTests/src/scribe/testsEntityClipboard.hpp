@@ -2,7 +2,7 @@
 
 #include <array>
 
-#include "testsEditorDay.hpp"
+#include "../integration/testsEditorDay.hpp"
 
 namespace Cthulhu::Validation
 {

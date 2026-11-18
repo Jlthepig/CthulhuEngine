@@ -1,8 +1,8 @@
 #pragma once
 
-#include "testCommon.hpp"
-#include "testsDescriptors.hpp"
-#include "testsEditorDay.hpp"
+#include "../testCommon.hpp"
+#include "../scene/testsDescriptors.hpp"
+#include "../integration/testsEditorDay.hpp"
 #include "testsWorldModes.hpp"
 #include "session.hpp"
 

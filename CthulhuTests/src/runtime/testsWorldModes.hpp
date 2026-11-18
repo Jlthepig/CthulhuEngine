@@ -6,7 +6,7 @@
 #include <thread>
 
 #include "systemRegistry.hpp"
-#include "testCommon.hpp"
+#include "../testCommon.hpp"
 #include "input.hpp"
 
 namespace Cthulhu::Validation

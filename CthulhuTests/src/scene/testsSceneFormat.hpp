@@ -5,9 +5,9 @@
 #include <optional>
 #include <vector>
 
-#include "testCommon.hpp"
+#include "../testCommon.hpp"
 #include "testsDescriptors.hpp"
-#include "testsEditorDay.hpp"
+#include "../integration/testsEditorDay.hpp"
 #include "pathEncoding.hpp"
 #include "fileReader.hpp"
 

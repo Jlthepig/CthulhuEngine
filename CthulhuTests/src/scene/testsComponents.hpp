@@ -3,7 +3,7 @@
 #include <cmath>
 #include <limits>
 
-#include "testCommon.hpp"
+#include "../testCommon.hpp"
 
 namespace Cthulhu::Validation
 {

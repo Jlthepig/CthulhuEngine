@@ -2,7 +2,7 @@
 
 #include <algorithm>
 
-#include "testCommon.hpp"
+#include "../testCommon.hpp"
 #include "pathEncoding.hpp"
 #include "fileReader.hpp"
 

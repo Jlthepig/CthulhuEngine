@@ -2,7 +2,7 @@
 
 #include <limits>
 
-#include "testCommon.hpp"
+#include "../testCommon.hpp"
 #include "session.hpp"
 
 namespace Cthulhu::Validation
