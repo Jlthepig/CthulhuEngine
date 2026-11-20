@@ -437,7 +437,7 @@ bool EditorShell::frame(EditorUi &ui, Engine &engine, Scribe::Session &session, 
         saveLayout(ctx);
 
     ui.endFrame(assetFeedback.span());
-    projectSettingsWindow.frame(engine.getDeltaTime());
+    projectSettingsWindow.frame(engine, session);
     engine.present();
     return true;
 }

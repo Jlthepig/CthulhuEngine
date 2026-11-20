@@ -163,6 +163,7 @@ enum class ProjectKey
     WindowWidth,
     WindowHeight,
     MainScene,
+    MainSceneId,
     Unknown
 };
 
@@ -176,6 +177,8 @@ static ProjectKey classifyKey(std::string_view key)
         return ProjectKey::WindowHeight;
     if (key == "mainScene")
         return ProjectKey::MainScene;
+    if (key == "mainSceneId")
+        return ProjectKey::MainSceneId;
     return ProjectKey::Unknown;
 }
 
@@ -278,9 +281,7 @@ std::optional<ProjectConfig> ProjectParser::parse(const std::string &path)
             case ProjectKey::Name: {
                 if (foundName)
                 {
-                    Log::Print("DUPLICATE PROJECT SETTING 'name' ON LINE " + std::to_string(lineNumber),
-                               "ProjectParser",
-                               LogType::LOG_ERROR);
+                    Log::Print("DUPLICATE PROJECT SETTING 'name' ON LINE " + std::to_string(lineNumber), "ProjectParser", LogType::LOG_ERROR);
                     return std::nullopt;
                 }
 
@@ -288,9 +289,7 @@ std::optional<ProjectConfig> ProjectParser::parse(const std::string &path)
 
                 if (!parseString(value, name))
                 {
-                    Log::Print("INVALID STRING FOR 'name' ON LINE " + std::to_string(lineNumber),
-                               "ProjectParser",
-                               LogType::LOG_ERROR);
+                    Log::Print("INVALID STRING FOR 'name' ON LINE " + std::to_string(lineNumber), "ProjectParser", LogType::LOG_ERROR);
                     return std::nullopt;
                 }
 
@@ -319,49 +318,48 @@ std::optional<ProjectConfig> ProjectParser::parse(const std::string &path)
                 break;
             }
 
-            case ProjectKey::MainScene: {
+            case ProjectKey::MainScene:
+            case ProjectKey::MainSceneId: {
                 if (foundMainScene)
                 {
-                    Log::Print("DUPLICATE PROJECT SETTING 'mainScene' ON LINE " + std::to_string(lineNumber),
-                               "ProjectParser",
-                               LogType::LOG_ERROR);
+                    Log::Print("DUPLICATE MAIN SCENE SETTING", "ProjectParser", LogType::LOG_ERROR);
                     return std::nullopt;
                 }
 
                 std::string mainScene;
-
-                if (!parseString(value, mainScene))
+                if (!parseString(value, mainScene) || mainScene.empty())
                 {
-                    Log::Print("INVALID STRING FOR 'mainScene' ON LINE " + std::to_string(lineNumber),
-                               "ProjectParser",
-                               LogType::LOG_ERROR);
+                    Log::Print("INVALID MAIN SCENE SETTING", "ProjectParser", LogType::LOG_ERROR);
                     return std::nullopt;
                 }
 
-                if (mainScene.empty())
+                if (key == "mainSceneId")
                 {
-                    Log::Print("'mainScene' CANNOT BE EMPTY. REMOVE THE SETTING IF NO MAIN "
-                               "SCENE IS CONFIGURED.",
-                               "ProjectParser",
-                               LogType::LOG_ERROR);
-                    return std::nullopt;
+                    config.mainSceneId = Assets::assetIdFromString(mainScene);
+                    if (!config.mainSceneId)
+                    {
+                        Log::Print("INVALID MAIN SCENE ASSET ID", "ProjectParser", LogType::LOG_ERROR);
+                        return std::nullopt;
+                    }
+                }
+                else
+                {
+                    if (!mainScene.starts_with("res://"))
+                    {
+                        Log::Print("'mainScene' MUST USE A 'res://' RESOURCE PATH", "ProjectParser", LogType::LOG_ERROR);
+                        return std::nullopt;
+                    }
+
+                    config.mainScene = std::move(mainScene);
                 }
 
-                if (!mainScene.starts_with("res://"))
-                {
-                    Log::Print("'mainScene' MUST USE A 'res://' RESOURCE PATH", "ProjectParser", LogType::LOG_ERROR);
-                    return std::nullopt;
-                }
-
-                config.mainScene = std::move(mainScene);
                 foundMainScene = true;
                 break;
             }
 
             case ProjectKey::Unknown:
             default: {
-                Log::Print("UNKNOWN PROJECT SETTING '" + std::string(key) + "' ON LINE " + std::to_string(lineNumber),
-                           "ProjectParser",
+                Log::Print("UNKNOWN PROJECT SETTING '" + std::string(key) + "' ON LINE " + std::to_string(lineNumber), "ProjectParser",
                            LogType::LOG_ERROR);
                 return std::nullopt;
             }

@@ -588,6 +588,9 @@ bool AssetManager::deleteFile(AssetId id)
         return deleteFailed("UNKNOWN ASSET");
     }
 
+    if (project->isMainScene(*record, registry))
+        return deleteFailed("CLEAR OR CHANGE THE MAIN SCENE IN PROJECT SETTINGS FIRST");
+
     const std::string key = record->path;
 
     if (!record->missing)

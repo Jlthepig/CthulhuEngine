@@ -12,6 +12,7 @@
 #include <algorithm>
 
 #include "editorShell.hpp"
+#include "editorScenePath.hpp"
 #include "engine.hpp"
 #include "input.hpp"
 #include "pathEncoding.hpp"
@@ -31,6 +32,7 @@ bool samePath(const std::filesystem::path &a, const std::filesystem::path &b)
     return a == b;
 #endif
 }
+} // namespace
 
 std::optional<std::string> sceneResourcePath(const Project::Project &project, const std::filesystem::path &selected)
 {
@@ -80,7 +82,6 @@ std::optional<std::string> sceneResourcePath(const Project::Project &project, co
         return std::nullopt;
     }
 }
-} // namespace
 
 Core::Platform::FileDialogResult EditorShell::pickSceneFile(
     Context &ctx, Engine &engine, Scribe::Session &session, bool saving)

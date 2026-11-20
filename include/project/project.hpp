@@ -6,6 +6,12 @@
 
 #include "projectConfig.hpp"
 
+namespace Cthulhu::Assets
+{
+class AssetRegistry;
+struct AssetRecord;
+}
+
 namespace Cthulhu::Project
 {
 class Project
@@ -29,14 +35,13 @@ class Project
         return projectFilePath;
     }
 
-    const std::optional<std::string> &getMainScene() const
-    {
-        return config.mainScene;
-    }
+    [[nodiscard]] const std::string *getMainScene(const Assets::AssetRegistry &registry) const;
+    [[nodiscard]] bool isMainScene(const Assets::AssetRecord &record, const Assets::AssetRegistry &registry) const;
+    [[nodiscard]] bool setMainScene(std::optional<Assets::AssetId> id);
 
     bool hasMainScene() const
     {
-        return config.mainScene.has_value();
+        return config.mainScene.has_value() || config.mainSceneId.has_value();
     }
 
     std::optional<std::filesystem::path> resolveResourcePath(std::string_view resourcePath) const;

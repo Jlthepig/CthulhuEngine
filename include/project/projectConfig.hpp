@@ -4,6 +4,8 @@
 #include <optional>
 #include <string>
 
+#include "assetId.hpp"
+
 namespace Cthulhu::Project
 {
 struct ProjectConfig
@@ -14,5 +16,6 @@ struct ProjectConfig
     uint32_t windowHeight{720};
 
     std::optional<std::string> mainScene;
+    std::optional<Assets::AssetId> mainSceneId;
 };
 } // namespace Cthulhu::Project

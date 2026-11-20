@@ -12,6 +12,7 @@
 #include "projectParser.hpp"
 #include "projectWriter.hpp"
 #include "pathEncoding.hpp"
+#include "assetRegistry.hpp"
 #include "log_utils.hpp"
 
 using namespace KalaHeaders::KalaLog;
@@ -72,9 +73,7 @@ std::optional<std::filesystem::path> Project::resolveResourcePath(std::string_vi
 
     if (!resourcePath.starts_with(prefix))
     {
-        Log::Print("RESOURCE PATH MUST START WITH 'res://': " + std::string(resourcePath),
-                   "Project",
-                   LogType::LOG_ERROR);
+        Log::Print("RESOURCE PATH MUST START WITH 'res://': " + std::string(resourcePath), "Project", LogType::LOG_ERROR);
         return std::nullopt;
     }
 
@@ -119,6 +118,57 @@ std::optional<std::filesystem::path> Project::resolveResourcePath(std::string_vi
     }
 
     return resolved;
+}
+
+bool Project::setMainScene(std::optional<Assets::AssetId> id)
+{
+    if (id && !id->isValid())
+        return false;
+
+    if (!config.mainScene && config.mainSceneId == id)
+        return true;
+
+    auto updated = config;
+    updated.mainScene.reset();
+    updated.mainSceneId = id;
+    if (!ProjectWriter::write(projectFilePath, updated))
+        return false;
+
+    config = std::move(updated);
+    return true;
+}
+
+const std::string *Project::getMainScene(const Assets::AssetRegistry &registry) const
+{
+    if (!config.mainSceneId)
+        return config.mainScene ? &*config.mainScene : nullptr;
+
+    const auto *record = registry.findById(*config.mainSceneId);
+    return record && record->type == Assets::AssetType::Scene && !record->missing ? &record->path : nullptr;
+}
+
+bool Project::isMainScene(const Assets::AssetRecord &record, const Assets::AssetRegistry &registry) const
+{
+    if (record.type != Assets::AssetType::Scene)
+        return false;
+    if (config.mainSceneId == record.id)
+        return true;
+
+    const auto *path = getMainScene(registry);
+    if (!path)
+        return false;
+    if (record.path == *path)
+        return true;
+
+    const auto assigned = resolveResourcePath(*path);
+    const auto candidate = resolveResourcePath(record.path);
+    if (!assigned || !candidate)
+        return false;
+    if (*assigned == *candidate)
+        return true;
+
+    std::error_code error;
+    return std::filesystem::equivalent(*assigned, *candidate, error) && !error;
 }
 
 std::optional<Project> Project::createProject(const std::filesystem::path &requestedRoot, const ProjectConfig &config)

@@ -42,11 +42,13 @@ static std::string escapeString(const std::string &value)
 
 bool ProjectWriter::write(const std::filesystem::path &path, const ProjectConfig &config)
 {
-    std::ofstream file(path, std::ios::out | std::ios::trunc);
+    auto temporary = path;
+    temporary += "." + Assets::assetIdToString(Assets::generateAssetId()) + ".tmp";
 
+    std::ofstream file(temporary, std::ios::out | std::ios::trunc);
     if (!file.is_open())
     {
-        Log::Print("FAILED TO CREATE PROJECT FILE: " + path.string(), "ProjectWriter", LogType::LOG_ERROR);
+        Log::Print("FAILED TO OPEN TEMPORARY PROJECT FILE", "ProjectWriter", LogType::LOG_ERROR);
         return false;
     }
 
@@ -54,18 +56,23 @@ bool ProjectWriter::write(const std::filesystem::path &path, const ProjectConfig
     file << "windowWidth = " << config.windowWidth << '\n';
     file << "windowHeight = " << config.windowHeight << '\n';
 
-    if (config.mainScene)
-    {
+    if (config.mainSceneId)
+        file << "\nmainSceneId = \"" << Assets::assetIdToString(*config.mainSceneId) << "\"\n";
+    else if (config.mainScene)
         file << "\nmainScene = \"" << escapeString(*config.mainScene) << "\"\n";
-    }
 
-    if (!file)
+    file.close();
+    std::error_code error;
+    if (file)
     {
-        Log::Print("FAILED WHILE WRITING PROJECT FILE: " + path.string(), "ProjectWriter", LogType::LOG_ERROR);
-        return false;
+        std::filesystem::rename(temporary, path, error);
+        if (!error)
+            return true;
     }
 
-    return true;
+    std::filesystem::remove(temporary, error);
+    Log::Print("FAILED TO SAVE PROJECT FILE", "ProjectWriter", LogType::LOG_ERROR);
+    return false;
 }
 
 } // namespace Cthulhu::Project

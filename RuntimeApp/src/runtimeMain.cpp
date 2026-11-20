@@ -52,12 +52,14 @@ int main(int argc, char* argv[])
         return 1;
     }
 
-    if (!engine.loadScene(*project->getMainScene()))
+    const auto *mainScene = project->getMainScene(engine.getAssetManager().getRegistry());
+    if (!mainScene || !engine.loadScene(*mainScene))
     {
-        Log::Print("FAILED TO LOAD PROJECT MAIN SCENE", "Runtime",LogType::LOG_ERROR);
+        Log::Print("FAILED TO LOAD PROJECT MAIN SCENE", "Runtime", LogType::LOG_ERROR);
+        engine.shutdown();
         return 1;
     }
-    
+
     engine.setWorldMode(Cthulhu::WorldMode::Play);
 
     engine.run();

@@ -144,6 +144,8 @@ class Session
     Result setField(Scene::EntityId id, std::string_view component, std::string_view field, const Scene::FieldValue &value);
     Result setTransforms(std::span<const TransformValue> values);
 
+    Result setMainScene(std::string_view resourcePath);
+
     // << assets applied immediately never undoable >>
     Result refreshAssets();
     AssetResult importAsset(const std::filesystem::path &sourceFile, std::string_view destination);

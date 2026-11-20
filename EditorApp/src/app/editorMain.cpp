@@ -135,29 +135,18 @@ int main(int argc, char *argv[])
     glfwSwapInterval(1);
     isVSyncEnabled = true;
 
-    std::string_view scenePath = argc > 2 ? argv[2] : "";
-    const Cthulhu::Project::Project *project = engine.getProject();
-    if (scenePath.empty() && project && project->getMainScene())
+    const auto *project = engine.getProject();
+    const auto *mainScene = project ? project->getMainScene(engine.getAssetManager().getRegistry()) : nullptr;
+
+    bool sceneReady = false;
+    if (argc > 2)
+        sceneReady = engine.loadScene(argv[2]);
+    else
+        sceneReady = (mainScene && engine.loadScene(*mainScene)) || engine.createEmptyScene("Untitled");
+
+    if (!sceneReady)
     {
-        scenePath = *project->getMainScene();
-    }
-
-    if (scenePath.empty())
-    {
-        KalaHeaders::KalaLog::Log::Print("NO SCENE PATH PROVIDED AND PROJECT HAS NO CONFIGURED MAIN SCENE",
-                                         "Editor",
-                                         KalaHeaders::KalaLog::LogType::LOG_ERROR);
-
-        engine.shutdown();
-        return 1;
-    }
-
-    if (!engine.loadScene(scenePath))
-    {
-        KalaHeaders::KalaLog::Log::Print("FAILED TO LOAD EDITOR SCENE",
-                                         "Editor",
-                                         KalaHeaders::KalaLog::LogType::LOG_ERROR);
-
+        KalaHeaders::KalaLog::Log::Print("FAILED TO OPEN AN EDITOR SCENE", "Editor", KalaHeaders::KalaLog::LogType::LOG_ERROR);
         engine.shutdown();
         return 1;
     }

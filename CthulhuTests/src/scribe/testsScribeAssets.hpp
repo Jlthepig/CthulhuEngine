@@ -304,18 +304,10 @@ inline void validateScribeMove(Engine& engine, Results& r)
 	session.deleteEntity(created.id);
 	assets.collectUnusedModels();
 
-	const auto* mainRecord = project->getMainScene()
-		? assets.getRegistry().findByPath(*project->getMainScene()) : nullptr;
-	const Assets::AssetId mainId = mainRecord ? mainRecord->id : Assets::AssetId{};
-	const auto mainMove = session.moveAsset(
-		mainId, "res://validation_import/V_MainScene.scene");
-	if (mainMove.status == Status::Applied)
-	{
-		check(r, session.moveAsset(mainId, *project->getMainScene()).ok(),
-			  "M8 restore main scene after an unguarded move");
-	}
-	check(r, mainId.isValid() && mainMove.status == Status::Failed,
-		  "M8 main scene cannot move without updating project settings");
+	const auto *mainPath = project->getMainScene(assets.getRegistry());
+	const auto *mainRecord = mainPath ? assets.getRegistry().findByPath(*mainPath) : nullptr;
+	check(r, mainRecord && project->isMainScene(*mainRecord, assets.getRegistry()),
+		  "M8 identifies the configured main scene for deletion protection");
 
 	constexpr std::string_view sceneStart = "res://validation_import/V_Open.scene";
 	constexpr std::string_view sceneMoved = "res://validation_import/moved/V_Open.scene";

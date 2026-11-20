@@ -26,7 +26,8 @@ int main(int argc, char* argv[])
 
 	const auto* project = engine.getProject();
 
-	if (!project || !project->hasMainScene() || !engine.loadScene(*project->getMainScene()))
+	const auto *mainScene = project ? project->getMainScene(engine.getAssetManager().getRegistry()) : nullptr;
+	if (!mainScene || !engine.loadScene(*mainScene))
 	{
 		Log::Print("TEST PROJECT NEEDS A LOADABLE MAIN SCENE", "Tests", LogType::LOG_ERROR);
 		return 1;

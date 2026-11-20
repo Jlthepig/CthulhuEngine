@@ -455,6 +455,62 @@ AssetResult Session::importAsset(const std::filesystem::path &sourceFile, std::s
     return {Result::applied(), *id};
 }
 
+Result Session::setMainScene(std::string_view resourcePath)
+{
+    if (engine.getWorldMode() != WorldMode::Edit || engine.transitionBlocked() ||
+        engine.hasTransformOwner() || refuseEdit())
+        return Result::failed("Project Settings require Edit mode.");
+
+    if (!engine.project)
+        return Result::failed("No open project.");
+
+    auto &project = *engine.project;
+    std::optional<Assets::AssetId> id;
+    if (!resourcePath.empty())
+    {
+        const auto key = Assets::normaliseResourcePath(resourcePath);
+        const auto file = key ? project.resolveResourcePath(*key) : std::nullopt;
+        std::error_code error;
+        if (!key || Assets::getAssetType(*key) != Assets::AssetType::Scene || !file || !std::filesystem::is_regular_file(*file, error) || error)
+        {
+            return Result::failed("Choose a saved .scene file inside this project.");
+        }
+
+        auto &registry = engine.getAssetManager().getRegistry();
+        if (const auto *record = registry.findByPath(*key))
+        {
+            id = registry.registerFile(record->path);
+        }
+        else
+        {
+            for (const auto &record : registry.getRecords())
+            {
+                if (record.type != Assets::AssetType::Scene)
+                    continue;
+
+                const auto candidate = project.resolveResourcePath(record.path);
+                if (candidate && std::filesystem::equivalent(*file, *candidate, error) && !error)
+                {
+                    id = registry.registerFile(record.path);
+                    break;
+                }
+            }
+
+            if (!id)
+                id = registry.registerFile(*key);
+        }
+
+        if (!id)
+            return Result::failed("Could not register the scene. See the log.");
+    }
+
+    const auto &config = project.getConfig();
+    if (!config.mainScene && config.mainSceneId == id)
+        return Result::noChange();
+
+    return project.setMainScene(id) ? Result::applied() : Result::failed("Could not save project settings. See the log.");
+}
+
 Result Session::moveAsset(Assets::AssetId id, std::string_view destination)
 {
     if (refuseEdit())
@@ -478,6 +534,15 @@ Result Session::moveAsset(Assets::AssetId id, std::string_view destination)
         return Result::noChange();
     }
 
+    if (!newPath)
+        return Result::failed("INVALID DESTINATION PATH");
+
+    if (engine.project && engine.project->getConfig().mainSceneId != id &&
+        engine.project->isMainScene(*record, assets.getRegistry()) && !engine.project->setMainScene(id))
+    {
+        return Result::failed("Could not save the main-scene assignment. The file was left in place.");
+    }
+
     bool movesOpenScene = false;
     std::vector<Scene::SceneSnapshot *> movedDocuments;
     if (record->type == Assets::AssetType::Scene)
@@ -493,11 +558,6 @@ Result Session::moveAsset(Assets::AssetId id, std::string_view destination)
                 return originalFile && file && std::filesystem::equivalent(*originalFile, *file, error) && !error;
             };
 
-            if (project->getMainScene() && sameFile(*project->getMainScene()))
-            {
-                return Result::failed("MOVING THE MAIN SCENE REQUIRES UPDATING PROJECT SETTINGS");
-            }
-
             movesOpenScene = scene && scene->getResourcePath() && sameFile(*scene->getResourcePath());
 
             for (auto &doc : inactiveDocuments)
@@ -508,7 +568,7 @@ Result Session::moveAsset(Assets::AssetId id, std::string_view destination)
         }
     }
 
-    if (!newPath || !assets.moveFile(id, destination))
+    if (!assets.moveFile(id, destination))
     {
         return Result::failed("MOVE FAILED: " + oldPath);
     }
@@ -657,6 +717,9 @@ Result Session::deleteAsset(Assets::AssetId id)
     const auto *record = assets.getRegistry().findById(id);
     if (!record)
         return Result::failed("UNKNOWN ASSET");
+
+    if (const auto *project = engine.getProject(); project && project->isMainScene(*record, assets.getRegistry()))
+        return Result::failed("Clear or change the main scene in Project Settings before deleting this file.");
 
     const auto usage = findAssetUsage(id);
     if (!usage.empty())
