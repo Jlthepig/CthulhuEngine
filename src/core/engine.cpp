@@ -588,11 +588,15 @@ bool Engine::saveActiveSceneAs(std::string_view resourcePath)
         return false;
     }
 
-    if (!Scene::SceneWriter::writeScene(*activeScene, Utils::pathToUtf8(*resolvedPath), assetManager.getRegistry()))
+    const std::string name = !activeScene->hasResourcePath() && activeScene->getName() == "Untitled" ? Utils::pathToUtf8(resolvedPath->stem())
+                             : activeScene->getName();
+
+    if (!Scene::SceneWriter::writeScene(*activeScene, Utils::pathToUtf8(*resolvedPath), assetManager.getRegistry(), name))
     {
         return false;
     }
 
+    activeScene->setName(name);
     activeScene->setResourcePath(std::string(resourcePath));
     activeScene->markClean();
     return true;

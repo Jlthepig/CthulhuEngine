@@ -131,11 +131,42 @@ bool Project::setMainScene(std::optional<Assets::AssetId> id)
     auto updated = config;
     updated.mainScene.reset();
     updated.mainSceneId = id;
+    return saveConfig(std::move(updated));
+}
+
+bool Project::saveConfig(ProjectConfig updated)
+{
     if (!ProjectWriter::write(projectFilePath, updated))
         return false;
 
     config = std::move(updated);
     return true;
+}
+
+std::string_view Project::setDetails(std::string_view name, uint32_t width, uint32_t height)
+{
+    if (name.find_first_not_of(' ') == std::string_view::npos)
+        return "Enter a project name.";
+
+    for (const unsigned char character : name)
+        if (character < 32 || character == 127)
+            return "The project name must be a single line of text.";
+
+    const auto maxSize = ProjectParser::getMaxWindowDimension();
+    if (width == 0 || height == 0 || width > maxSize || height > maxSize)
+        return "Enter a width and height between 1 and 16384.";
+
+    if (config.name == name && config.windowWidth == width && config.windowHeight == height)
+        return {};
+
+    auto updated = config;
+    updated.name = name;
+    updated.windowWidth = width;
+    updated.windowHeight = height;
+    if (!saveConfig(std::move(updated)))
+        return "Could not save project settings. See the log.";
+
+    return {};
 }
 
 const std::string *Project::getMainScene(const Assets::AssetRegistry &registry) const

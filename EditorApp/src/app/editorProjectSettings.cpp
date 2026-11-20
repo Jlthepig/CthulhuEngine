@@ -1,3 +1,4 @@
+#include <charconv>
 #include <string>
 #include <algorithm>
 
@@ -101,15 +102,25 @@ void ProjectSettingsWindow::frame(Engine &engine, Scribe::Session &session)
     const auto *project = engine.getProject();
     const bool canEdit = project && engine.getWorldMode() == WorldMode::Edit &&
                          !session.transformEditActive();
+    for (const auto control : {projectName, windowWidth, windowHeight, applyButton})
+        ctx.setEnabled(control, canEdit);
     ctx.setEnabled(chooseMainScene, canEdit);
     ctx.setEnabled(clearMainScene, canEdit && project->hasMainScene());
 
     bool dismiss = ctx.isClicked(closeButton);
     NodeHandle activated{};
-    const std::array controls{tabs[0], tabs[1], tabs[2], chooseMainScene, clearMainScene, closeButton};
+    const std::array controls{tabs[0], tabs[1], tabs[2], projectName, chooseMainScene, clearMainScene,
+                              windowWidth, windowHeight, applyButton, closeButton};
     const auto available = [&](NodeHandle control) {
-        return (control != chooseMainScene && control != clearMainScene) ||
-               (ctx.isVisible(pages[1]) && ctx.isEnabled(control));
+        if (!ctx.isEnabled(control))
+            return false;
+        if (control == projectName)
+            return ctx.isVisible(pages[0]);
+        if (control == chooseMainScene || control == clearMainScene)
+            return ctx.isVisible(pages[1]);
+        if (control == windowWidth || control == windowHeight)
+            return ctx.isVisible(pages[2]);
+        return true;
     };
 
     for (const auto &event : ctx.input().events)
@@ -149,6 +160,9 @@ void ProjectSettingsWindow::frame(Engine &engine, Scribe::Session &session)
     for (std::size_t i = 0; i < tabs.size(); ++i)
         if (ctx.isClicked(tabs[i]) || activated == tabs[i])
             selectPage(i);
+
+    if (canEdit && (ctx.isClicked(applyButton) || activated == applyButton))
+        applyDetails(session);
 
     if (canEdit && ctx.isVisible(pages[1]))
     {
@@ -217,7 +231,7 @@ void ProjectSettingsWindow::build(const Project::ProjectConfig &config)
         (void)ctx.createSeparator(pages[i]);
     }
 
-    const auto addRow = [&](NodeHandle page, std::string_view label, std::string_view value)
+    const auto addRow = [&](NodeHandle page, std::string_view label)
     {
         const auto row = ctx.createPanel(page);
         ctx.style(row).all.background = ctx.theme().surfaceRaised;
@@ -232,15 +246,13 @@ void ProjectSettingsWindow::build(const Project::ProjectConfig &config)
         ctx.style(name).all.text = ctx.theme().textMuted;
         ctx.layoutStyle(name).preferredSize = Vec2{128.0f, 0.0f};
 
-        const auto text = ctx.createLabel(row, value);
-        ctx.layoutStyle(text).preferredSize = Vec2{};
-        ctx.layoutStyle(text).clip = true;
-        ctx.setTooltip(text, value);
-        return text;
+        return row;
     };
 
-    addRow(pages[0], "Project Name", config.name);
-    mainSceneValue = addRow(pages[1], "Main Scene", "None");
+    projectName = ctx.createTextInput(addRow(pages[0], "Project Name"), config.name);
+    mainSceneValue = ctx.createLabel(addRow(pages[1], "Main Scene"), "None");
+    ctx.layoutStyle(mainSceneValue).preferredSize = Vec2{};
+    ctx.layoutStyle(mainSceneValue).clip = true;
 
     const auto actions = ctx.createContainer(pages[1]);
     auto actionLayout = ctx.layoutStyle(actions);
@@ -259,18 +271,55 @@ void ProjectSettingsWindow::build(const Project::ProjectConfig &config)
     ctx.layoutStyle(mainSceneNotice).clip = true;
     ctx.setVisible(mainSceneNotice, false);
 
-    addRow(pages[2], "Width", std::to_string(config.windowWidth));
-    addRow(pages[2], "Height", std::to_string(config.windowHeight));
+    windowWidth = ctx.createTextInput(addRow(pages[2], "Width"), std::to_string(config.windowWidth));
+    windowHeight = ctx.createTextInput(addRow(pages[2], "Height"), std::to_string(config.windowHeight));
+
+    for (const auto field : {projectName, windowWidth, windowHeight})
+    {
+        ctx.layoutStyle(field).preferredSize = Vec2{};
+        ctx.layoutStyle(field).clip = true;
+    }
 
     const auto footer = ctx.createContainer(root);
     ctx.layoutStyle(footer).mode = LayoutMode::Horizontal;
     ctx.layoutStyle(footer).horizontalAlignment = Alignment::End;
     ctx.layoutStyle(footer).verticalAlignment = Alignment::Stretch;
     ctx.layoutStyle(footer).preferredSize = Vec2{0.0f, 34.0f};
+    ctx.layoutStyle(footer).gap = 8.0f;
+    detailsNotice = ctx.createLabel(footer, "");
+    ctx.layoutStyle(detailsNotice).preferredSize = Vec2{};
+    ctx.layoutStyle(detailsNotice).clip = true;
+
+    applyButton = ctx.createButton(footer, "Apply");
+    ctx.layoutStyle(applyButton).preferredSize = Vec2{92.0f, 34.0f};
+
     closeButton = ctx.createButton(footer, "Close");
     ctx.layoutStyle(closeButton).preferredSize = Vec2{92.0f, 34.0f};
 
     selectPage(0);
+}
+
+void ProjectSettingsWindow::applyDetails(Scribe::Session &session)
+{
+    auto &ctx = ui->context();
+    const auto dimension = [&](NodeHandle field) -> uint32_t {
+        const auto value = ctx.text(field);
+        if (value.empty())
+            return 0;
+
+        uint32_t number = 0;
+        const auto *end = value.data() + value.size();
+        const auto parsed = std::from_chars(value.data(), end, number);
+        return parsed.ec == std::errc{} && parsed.ptr == end ? number : 0;
+    };
+
+    const auto result = session.setProjectDetails(ctx.text(projectName),
+                                                  dimension(windowWidth), dimension(windowHeight));
+    const std::string_view message = result.ok()
+        ? "Saved. Reopen the project to apply."
+        : std::string_view(result.error);
+    ctx.setText(detailsNotice, message);
+    ctx.setTooltip(detailsNotice, message);
 }
 
 void ProjectSettingsWindow::pickMainScene(Engine &engine, Scribe::Session &session)
@@ -322,6 +371,7 @@ void ProjectSettingsWindow::selectPage(std::size_t index)
         ctx.style(tabs[i]).normal.background =
             i == index ? ctx.theme().surfaceActive : ctx.theme().surface;
     }
+    ctx.setFocused(tabs[index]);
 }
 
 bool EditorShell::updateProjectMenu(Context &ctx, Engine &engine, Scribe::Session &session)

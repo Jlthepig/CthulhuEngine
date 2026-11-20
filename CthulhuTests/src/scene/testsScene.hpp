@@ -1,6 +1,8 @@
 #pragma once
 
 #include <algorithm>
+#include <utility>
+#include <vector>
 
 #include "../testCommon.hpp"
 #include "pathEncoding.hpp"
@@ -92,15 +94,32 @@ inline void validateSave(Engine& engine, Results& r)
 
 inline void validateLoadAndSwitch(Engine& engine, Results& r)
 {
-	const size_t modelsBefore = engine.getAssetManager().getLoadedModelCount();
-	const bool loaded = engine.loadScene(SAVE_PATH);
-	check(r, loaded, "13 load saved scene");
-	check(r, engine.getAssetManager().getLoadedModelCount() == modelsBefore, "C1 scene switch reuses loaded models");
-	if (!loaded)
-	{
-		return;
-	}
-	auto& scene = *engine.getActiveScene();
+    std::vector<std::pair<CS::EntityId, Assets::ModelHandle>> modelsBefore;
+    engine.getActiveScene()->getWorld().each([&](flecs::entity entity, const CS::MeshRuntimeComponent& mesh)
+    {
+        modelsBefore.emplace_back(idOf(entity), mesh.model);
+    });
+
+    const bool loaded = engine.loadScene(SAVE_PATH);
+    check(r, loaded, "13 load saved scene");
+    if (!loaded)
+    {
+        return;
+    }
+
+    auto& scene = *engine.getActiveScene();
+    const bool reused = !modelsBefore.empty() &&
+        std::all_of(modelsBefore.begin(), modelsBefore.end(),
+            [&](const std::pair<CS::EntityId, Assets::ModelHandle>& entry)
+        {
+            const auto& [id, handle] = entry;
+            const auto entity = scene.findEntity(id);
+            const auto* mesh = entity ? entity->try_get<CS::MeshRuntimeComponent>() : nullptr;
+            return mesh && handle.isValid() && mesh->model == handle &&
+                   engine.getAssetManager().getModel(handle);
+        });
+    check(r, reused, "C1 scene switch reuses the saved meshes' loaded models");
+
 	auto& world = scene.getWorld();
 	const int physicsEntities = world.count<CS::PhysicsComponent>();
 	check(r, physicsEntities == world.count<CS::PhysicsRuntimeComponent>(), "13 every PhysicsComponent has runtime after load");

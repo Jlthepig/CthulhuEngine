@@ -455,6 +455,19 @@ AssetResult Session::importAsset(const std::filesystem::path &sourceFile, std::s
     return {Result::applied(), *id};
 }
 
+Result Session::setProjectDetails(std::string_view name, uint32_t width, uint32_t height)
+{
+    if (engine.getWorldMode() != WorldMode::Edit || engine.transitionBlocked() ||
+        engine.hasTransformOwner() || refuseEdit())
+        return Result::failed("Project Settings require Edit mode.");
+
+    if (!engine.project)
+        return Result::failed("No open project.");
+
+    const auto error = engine.project->setDetails(name, width, height);
+    return error.empty() ? Result::applied() : Result::failed(std::string(error));
+}
+
 Result Session::setMainScene(std::string_view resourcePath)
 {
     if (engine.getWorldMode() != WorldMode::Edit || engine.transitionBlocked() ||

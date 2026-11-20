@@ -2,6 +2,9 @@
 
 #include <limits>
 
+#include "jsonParser.hpp"
+#include "pathEncoding.hpp"
+
 #include "../testCommon.hpp"
 #include "session.hpp"
 
@@ -58,6 +61,39 @@ inline void validateScribeDocumentSwitch(Engine &engine, Results &r)
                  blank->getEntityCount() == 0 &&
                  !session.canUndo() && !session.canRedo(),
           "New Scene starts with an empty, clean document and separate history");
+
+    const auto testId = Assets::assetIdToString(Assets::generateAssetId());
+    const std::string expectedName = "validation_named_" + testId;
+    const auto file = engine.getProject()->resolveResourcePath(
+        "res://.cthulhu/" + expectedName + ".scene");
+    const bool saved = file && session.saveAs("res://.cthulhu/" + expectedName + ".scene").ok();
+    const auto parsed = saved ? CS::JsonParser::parseScene(Utils::pathToUtf8(*file)) : std::nullopt;
+    check(r, saved && engine.getActiveScene()->getName() == expectedName &&
+                 parsed && parsed->name == expectedName,
+          "Save As uses the filename in memory and on disk for a new Untitled scene");
+
+    if (file)
+    {
+        std::error_code error;
+        if (saved)
+            std::filesystem::remove(*file, error);
+
+        const auto root = file->parent_path() / ("validation_project_" + testId);
+        auto project = Project::Project::createProject(root, {});
+        const auto mainId = Assets::generateAssetId();
+        const bool updated = project && project->setMainScene(mainId) &&
+                             project->setDetails("Validation Project", 960, 540).empty();
+        const bool rejectsInvalid = project && !project->setDetails("   ", 960, 540).empty() &&
+                                    !project->setDetails("Validation Project", 0, 540).empty();
+        const auto reopened = updated ? Project::Project::open(project->getProjectFilePath()) : std::nullopt;
+        check(r, rejectsInvalid && reopened && reopened->getConfig().name == "Validation Project" &&
+                     reopened->getConfig().windowWidth == 960 && reopened->getConfig().windowHeight == 540 &&
+                     reopened->getConfig().mainSceneId == mainId,
+              "Project details round-trip and preserve the main-scene assignment");
+
+        if (project)
+            std::filesystem::remove_all(root, error);
+    }
 
     auto restored = session.activateSceneDocument(created.previous);
     if (!restored.result.ok() || !restored.previous)

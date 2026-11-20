@@ -17,6 +17,6 @@ namespace Cthulhu::Scene
 class SceneWriter
 {
   public:
-    static bool writeScene(const Scene &scene, const std::string &path, const Assets::AssetRegistry &registry);
+    static bool writeScene(const Scene &scene, const std::string &path, const Assets::AssetRegistry &registry, const std::string &name);
 };
 } // namespace Cthulhu::Scene

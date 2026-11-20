@@ -145,6 +145,7 @@ class Session
     Result setTransforms(std::span<const TransformValue> values);
 
     Result setMainScene(std::string_view resourcePath);
+    Result setProjectDetails(std::string_view name, uint32_t width, uint32_t height);
 
     // << assets applied immediately never undoable >>
     Result refreshAssets();

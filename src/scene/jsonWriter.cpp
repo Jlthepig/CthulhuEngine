@@ -236,7 +236,7 @@ bool writeField(JsonWriter &w,
 }
 } // namespace
 
-bool SceneWriter::writeScene(const Scene &scene, const std::string &path, const Assets::AssetRegistry &registry)
+bool SceneWriter::writeScene(const Scene &scene, const std::string &path, const Assets::AssetRegistry &registry, const std::string &name)
 {
     JsonWriter w;
     w.beginObject();
@@ -245,7 +245,7 @@ bool SceneWriter::writeScene(const Scene &scene, const std::string &path, const 
     w.value(static_cast<int>(SCENE_FORMAT_VERSION));
 
     w.key("name");
-    w.value(scene.getName());
+    w.value(name);
 
     w.key("entities");
     w.beginArray();
