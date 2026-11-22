@@ -45,6 +45,7 @@ constexpr Binding bindings[] = {
     {Action::RotateTool,           Key::E},
     {Action::ScaleTool,            Key::R},
     {Action::TogglePlay,           Key::F5},
+    {Action::PlayCurrentScene,     Key::F6},
     {Action::ToggleFullscreen,     Key::F11},
     {Action::ToggleVSync,          Key::F9},
 

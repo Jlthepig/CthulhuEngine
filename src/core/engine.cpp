@@ -372,45 +372,49 @@ std::unique_ptr<Scene::Scene> Engine::createSceneInstance()
     return newScene;
 }
 
-bool Engine::loadScene(std::string_view resourcePath)
+std::unique_ptr<Scene::Scene> Engine::readScene(std::string_view resourcePath)
 {
-    if (transitionBlocked())
-    {
-        Log::Print("LIFECYCLE TRANSITION REQUIRES A FRAME BOUNDARY","ENGINE",LogType::LOG_ERROR);
-        return false;
-    }
-
     if (!project)
     {
         Log::Print("CANNOT LOAD SCENE WITHOUT AN ACTIVE PROJECT", "ENGINE", LogType::LOG_ERROR);
-        return false;
+        return nullptr;
     }
 
     if (Assets::getAssetType(resourcePath) != Assets::AssetType::Scene)
     {
         Log::Print("NOT A SCENE FILE: " + std::string(resourcePath), "ENGINE", LogType::LOG_ERROR);
-        return false;
+        return nullptr;
     }
 
     auto resolvedPath = project->resolveResourcePath(resourcePath);
-
     if (!resolvedPath)
-    {
-        return false;
-    }
+        return nullptr;
 
     auto newScene = createSceneInstance();
     if (!Scene::SceneLoader::load(Utils::pathToUtf8(*resolvedPath), *newScene, assetManager.getRegistry()))
     {
         Log::Print("FAILED TO LOAD SCENE: " + std::string(resourcePath), "ENGINE", LogType::LOG_ERROR);
-
         newScene.reset();
         assetManager.collectUnusedAssets();
-        return false;
+        return nullptr;
     }
 
     newScene->setResourcePath(std::string(resourcePath));
     newScene->markClean();
+    return newScene;
+}
+
+bool Engine::loadScene(std::string_view resourcePath)
+{
+    if (transitionBlocked())
+    {
+        Log::Print("LIFECYCLE TRANSITION REQUIRES A FRAME BOUNDARY", "ENGINE", LogType::LOG_ERROR);
+        return false;
+    }
+
+    auto newScene = readScene(resourcePath);
+    if (!newScene)
+        return false;
 
     activateScene(std::move(newScene));
     Log::Print("ACTIVE SCENE CHANGED TO: " + activeScene->getName(), "ENGINE", LogType::LOG_SUCCESS);
@@ -754,9 +758,24 @@ void Engine::addSystemRegistration(SystemRegistration registration, void *contex
 
 bool Engine::play()
 {
+    return startPlay(nullptr, std::nullopt);
+}
+
+bool Engine::playFromSnapshot(const Scene::SceneSnapshot &snapshot)
+{
+    return startPlay(&snapshot, std::nullopt);
+}
+
+bool Engine::playFromFile(std::string_view resourcePath)
+{
+    return startPlay(nullptr, resourcePath);
+}
+
+bool Engine::startPlay(const Scene::SceneSnapshot *target, std::optional<std::string_view> resourcePath)
+{
     if (transitionBlocked())
     {
-        Log::Print("LIFECYCLE TRANSITION REQUIRES A FRAME BOUNDARY","ENGINE",LogType::LOG_ERROR);
+        Log::Print("LIFECYCLE TRANSITION REQUIRES A FRAME BOUNDARY", "ENGINE", LogType::LOG_ERROR);
         return false;
     }
 
@@ -773,11 +792,15 @@ bool Engine::play()
     }
 
     auto snapshot = std::make_unique<Scene::SceneSnapshot>(activeScene->captureScene());
+    auto playScene = resourcePath ? readScene(*resourcePath) : createSceneInstance();
+    if (!playScene)
+        return false;
 
-    auto playScene = createSceneInstance();
-    if (!playScene->restoreScene(*snapshot))
+    if (!resourcePath && !playScene->restoreScene(target ? *target : *snapshot))
     {
         Log::Print("FAILED TO BUILD THE PLAY SCENE", "ENGINE", LogType::LOG_ERROR);
+        playScene.reset();
+        assetManager.collectUnusedAssets();
         return false;
     }
 
@@ -785,7 +808,7 @@ bool Engine::play()
     editSnapshot = std::move(snapshot);
     worldMode = WorldMode::Play;
     simState = SimulationState::Running;
-    activateScene(std::move(playScene), false);
+    activateScene(std::move(playScene), target != nullptr || resourcePath.has_value());
 
     Log::Print("Play", "ENGINE", LogType::LOG_INFO);
     return true;

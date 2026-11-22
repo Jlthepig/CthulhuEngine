@@ -15,7 +15,7 @@ enum class Action : octogui::u64
     CloseScene, CloseAllScenes, Quit,
     Cut, Copy, Paste, Duplicate, Rename, Delete,
     SelectTool, MoveTool, RotateTool, ScaleTool,
-    TogglePlay, ToggleFullscreen, ToggleVSync,
+    TogglePlay, PlayCurrentScene, ToggleFullscreen, ToggleVSync,
     ResetLayout, ToggleHierarchy, ToggleInspector, ToggleContentBrowser,
     Count
 };

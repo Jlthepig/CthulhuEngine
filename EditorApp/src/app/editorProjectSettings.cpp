@@ -167,7 +167,11 @@ void ProjectSettingsWindow::frame(Engine &engine, Scribe::Session &session)
     if (canEdit && ctx.isVisible(pages[1]))
     {
         if (ctx.isClicked(chooseMainScene) || activated == chooseMainScene)
-            pickMainScene(engine, session);
+        {
+            const auto result = pickProjectMainScene(ctx, *window, engine, session);
+            if (result.status != Scribe::Result::Status::NoChange)
+                showMainSceneMessage(result.error);
+        }
         else if (ctx.isEnabled(clearMainScene) && (ctx.isClicked(clearMainScene) || activated == clearMainScene))
             showMainSceneMessage(session.setMainScene({}).error);
     }
@@ -322,36 +326,34 @@ void ProjectSettingsWindow::applyDetails(Scribe::Session &session)
     ctx.setTooltip(detailsNotice, message);
 }
 
-void ProjectSettingsWindow::pickMainScene(Engine &engine, Scribe::Session &session)
+Scribe::Result pickProjectMainScene(Context &ctx, const Core::Window &owner, Engine &engine, Scribe::Session &session)
 {
     const auto *project = engine.getProject();
     if (!project)
-        return;
+        return Scribe::Result::failed("No open project.");
 
     using namespace Core::Platform;
     constexpr FileDialogFilter filters[] = {{"Scenes (*.scene)", "*.scene"}};
-    const auto picked = openFileDialog(*window, filters, project->getRootPath());
+    const auto picked = openFileDialog(owner, filters, project->getRootPath());
     engine.resetFrameTiming();
     Core::Input::resetMouseTracking();
-    ui->context().clearEvents();
-    ui->context().input().events.clear();
+    ctx.clearEvents();
+    ctx.input().events.clear();
 
     if (picked.status == FileDialogStatus::Cancelled)
-        return;
+        return Scribe::Result::noChange();
     if (picked.status == FileDialogStatus::Failed)
-    {
-        showMainSceneMessage(picked.error);
-        return;
-    }
+        return Scribe::Result::failed(picked.error);
 
-    const auto path = sceneResourcePath(*project, picked.file);
-    if (!path)
-    {
-        showMainSceneMessage("Choose a saved .scene file inside this project.");
-        return;
-    }
+    const auto selected = sceneResourcePath(*project, picked.file);
+    if (!selected)
+        return Scribe::Result::failed("Choose a saved .scene file inside this project.");
 
-    showMainSceneMessage(session.setMainScene(*path).error);
+    auto result = session.setMainScene(*selected);
+    if (result.ok())
+        result.status = Scribe::Result::Status::Applied;
+
+    return result;
 }
 
 void ProjectSettingsWindow::showMainSceneMessage(std::string_view message)

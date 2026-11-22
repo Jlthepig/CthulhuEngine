@@ -15,6 +15,7 @@ class Engine;
 namespace Cthulhu::Scribe
 {
 class Session;
+struct Result;
 }
 
 namespace Cthulhu::Core
@@ -29,6 +30,8 @@ struct ProjectConfig;
 
 namespace Cthulhu::Editor
 {
+
+[[nodiscard]] Scribe::Result pickProjectMainScene(octogui::Context &ctx, const Core::Window &owner, Engine &engine, Scribe::Session &session);
 class ProjectSettingsWindow
 {
   public:
@@ -40,7 +43,6 @@ class ProjectSettingsWindow
     void build(const Project::ProjectConfig &config);
     void selectPage(std::size_t index);
     void applyDetails(Scribe::Session &session);
-    void pickMainScene(Engine &engine, Scribe::Session &session);
     void showMainSceneMessage(std::string_view message);
 
     Core::Window *window = nullptr;

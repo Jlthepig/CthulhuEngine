@@ -135,9 +135,22 @@ void EditorShell::build(Context &ctx)
     (void)ctx.createContainer(topBar);
 
     playButton = iconButton(ctx, topBar, "play");
+    playCurrentSceneButton = iconButton(ctx, topBar, "play-current-scene");
     pauseButton = iconButton(ctx, topBar, "pause");
     stopButton = iconButton(ctx, topBar, "stop");
     styleToggle(ctx, playButton, false);
+    styleToggle(ctx, playCurrentSceneButton, false);
+
+    const auto setPlayTooltip = [&](NodeHandle button, std::string text, Shortcuts::Action action) {
+        const auto shortcut = Shortcuts::label(action);
+        if (!shortcut.empty())
+            text.append(" (").append(shortcut).append(")");
+        ctx.setTooltip(button, text);
+    };
+    setPlayTooltip(playButton.button, "Play Main Scene", Shortcuts::Action::TogglePlay);
+    setPlayTooltip(playCurrentSceneButton.button, "Play Current Scene", Shortcuts::Action::PlayCurrentScene);
+    setPlayTooltip(stopButton.button, "Stop", Shortcuts::Action::TogglePlay);
+
     styleToggle(ctx, pauseButton, false);
     ctx.setEnabled(pauseButton.button, false);
     ctx.setEnabled(stopButton.button, false);
@@ -249,9 +262,9 @@ void EditorShell::updatePlayControls(Context &ctx, Engine &engine)
         ctx.setEnabled(pauseButton.button, playing);
         ctx.setEnabled(stopButton.button, playing);
 
-        ctx.setIconColor(
-            playButton.icon,
-            playing ? ctx.theme().textDisabled : ctx.theme().text);
+        const auto playColor = playing ? ctx.theme().textDisabled : ctx.theme().text;
+        ctx.setIconColor(playButton.icon, playColor);
+        ctx.setIconColor(playCurrentSceneButton.icon, playColor);
 
         ctx.setIconColor(
             stopButton.icon,
@@ -275,9 +288,64 @@ void EditorShell::updatePlayControls(Context &ctx, Engine &engine)
         !assetDrag.asset.isValid() && !assetDrag.ownsInput;
 
     ctx.setEnabled(playButton.button, canPlay);
+    ctx.setEnabled(playCurrentSceneButton.button, canPlay);
 
     lastPlaying = playing;
     lastPaused = paused;
+}
+
+void EditorShell::startScenePlay(Context &ctx, Engine &engine, Scribe::Session &session, bool currentScene)
+{
+    if (currentScene)
+    {
+        if (!engine.play())
+        {
+            playDialogOpen = true;
+            exitDialog.show(ctx, "Could not start Play Current Scene", "The edit scene is still active. See the log.",
+                            "", "", "OK");
+            return;
+        }
+    }
+    else if (const auto launch = session.playMainScene(); !launch.result.ok())
+    {
+        playDialogOpen = true;
+        if (launch.needsMainScene)
+            exitDialog.show(ctx, "Choose a main scene", launch.result.error, "Choose Scene...", "");
+        else
+            exitDialog.show(ctx, "Could not start Play", launch.result.error, "", "", "OK");
+        return;
+    }
+
+    ctx.clearEvents();
+    Core::Input::resetMouseTracking();
+    (void)Core::Input::getScrollDeltaY();
+}
+
+void EditorShell::handlePlayDialog(Context &ctx, Engine &engine, Scribe::Session &session)
+{
+    const auto choice = exitDialog.pollChoice(ctx);
+    ctx.clearEvents();
+    if (choice == DialogChoice::Cancel)
+    {
+        playDialogOpen = false;
+        exitDialog.hide(ctx);
+        return;
+    }
+    if (choice != DialogChoice::Primary)
+        return;
+
+    const auto picked = pickProjectMainScene(ctx, *engine.getWindow(), engine, session);
+    if (!picked.ok())
+    {
+        exitDialog.setError(ctx, picked.error);
+        return;
+    }
+    if (picked.status == Scribe::Result::Status::NoChange)
+        return;
+
+    playDialogOpen = false;
+    exitDialog.hide(ctx);
+    startScenePlay(ctx, engine, session, false);
 }
 
 bool EditorShell::frame(EditorUi &ui, Engine &engine, Scribe::Session &session, void (*routeInput)(void *, float))
@@ -336,10 +404,18 @@ bool EditorShell::frame(EditorUi &ui, Engine &engine, Scribe::Session &session, 
         deletingAsset = {};
     }
 
+    if (closeRequested && playDialogOpen)
+    {
+        playDialogOpen = false;
+        exitDialog.hide(ctx);
+    }
+
     const bool handlingExit = closeRequested || closingAllScenes || exitDialog.isOpen(ctx);
     if (handlingExit)
     {
-        if (referenceRepairOpen)
+        if (playDialogOpen)
+            handlePlayDialog(ctx, engine, session);
+        else if (referenceRepairOpen)
             handleReferenceRepair(ctx, engine, session);
         else if (deletingAsset.isValid())
             handleAssetDelete(ctx, engine, session);
@@ -545,7 +621,11 @@ void EditorShell::update(Context &ctx, Engine &engine, Scribe::Session &session,
     const bool wasPlaying = engine.isPlaying();
     const bool togglePlay = shortcut == Shortcuts::Action::TogglePlay;
 
-    if ((ctx.isClicked(playButton.button) || togglePlay) && !wasPlaying && engine.hasActiveScene() && !assetDrag.asset.isValid() && !assetDrag.ownsInput &&
+    const bool playMainScene = ctx.isClicked(playButton.button) || togglePlay;
+    const bool playCurrentScene = ctx.isClicked(playCurrentSceneButton.button) ||
+                                  shortcut == Shortcuts::Action::PlayCurrentScene;
+    if ((playMainScene || playCurrentScene) && !wasPlaying && engine.hasActiveScene() &&
+        !assetDrag.asset.isValid() && !assetDrag.ownsInput &&
         !restoreTabSelection)
     {
         if (!viewportPanelUI.finishGizmoDrag(session, false))
@@ -563,16 +643,9 @@ void EditorShell::update(Context &ctx, Engine &engine, Scribe::Session &session,
         session.endMerge();
         rememberSceneView(engine);
 
-        if (!engine.play())
-        {
-            contentBrowserUI.reportError(ctx, "Could not start Play. The edit scene is still active.");
-        }
-        else
-        {
-            ctx.clearEvents();
-            Core::Input::resetMouseTracking();
-            (void)Core::Input::getScrollDeltaY();
-        }
+        startScenePlay(ctx, engine, session, playCurrentScene);
+        if (playDialogOpen)
+            return;
     }
 
     if (ctx.isClicked(pauseButton.button) && engine.isPlaying())

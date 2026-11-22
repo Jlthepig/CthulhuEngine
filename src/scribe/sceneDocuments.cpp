@@ -29,6 +29,66 @@ SceneDocument *Session::finishDocumentSwitch(std::optional<Scene::SceneSnapshot>
     return document;
 }
 
+MainScenePlayResult Session::playMainScene()
+{
+    if (!canSwitchDocument() || !engine.hasActiveScene())
+        return {Result::failed("Play requires an active scene in Edit mode.")};
+
+    const auto *project = engine.getProject();
+    if (!project)
+        return {Result::failed("Open a project before starting Play.")};
+    if (!project->hasMainScene())
+        return {Result::failed("Choose a saved scene to use as the project's main scene."), true};
+
+    const auto &registry = engine.getAssetManager().getRegistry();
+    const auto *diskPath = project->getMainScene(registry);
+    const auto *sourcePath = diskPath;
+    if (!sourcePath && project->getConfig().mainSceneId)
+    {
+        // a missing file can still have an open edit document
+        const auto *record = registry.findById(*project->getConfig().mainSceneId);
+        if (record && record->type == Assets::AssetType::Scene)
+            sourcePath = &record->path;
+    }
+
+    constexpr auto unavailable = "The assigned main scene is unavailable. Choose a saved scene.";
+    if (!sourcePath)
+        return {Result::failed(unavailable), true};
+
+    const auto key = Assets::normaliseResourcePath(*sourcePath);
+    const auto file = project->resolveResourcePath(*sourcePath);
+    const auto matches = [&](const std::optional<std::string> &path) {
+        if (!path)
+            return false;
+        if (*path == *sourcePath || (key && Assets::normaliseResourcePath(*path) == key))
+            return true;
+
+        const auto candidate = project->resolveResourcePath(*path);
+        std::error_code error;
+        return file && candidate && std::filesystem::equivalent(*file, *candidate, error) && !error;
+    };
+
+    if (matches(engine.getActiveScene()->getResourcePath()))
+        return {engine.play() ? Result::applied() : Result::failed("Could not play the open main scene.")};
+
+    for (const auto &document : inactiveDocuments)
+    {
+        if (matches(document.snapshot.resourcePath))
+        {
+            return {engine.playFromSnapshot(document.snapshot) ? Result::applied() : Result::failed("Could not play the open main scene.")};
+        }
+    }
+
+    if (diskPath && engine.playFromFile(*diskPath))
+        return {Result::applied()};
+
+    std::error_code error;
+    if (!diskPath || !file || !std::filesystem::is_regular_file(*file, error))
+        return {Result::failed(unavailable), true};
+
+    return {Result::failed("Could not load the saved main scene. Check Project Settings and the log.")};
+}
+
 DocumentSwitchResult Session::newSceneDocument()
 {
     if (!canSwitchDocument())

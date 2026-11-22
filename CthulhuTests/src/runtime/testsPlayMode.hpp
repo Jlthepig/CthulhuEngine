@@ -1,5 +1,7 @@
 #pragma once
 
+#include <algorithm>
+
 #include "../testCommon.hpp"
 #include "../scene/testsDescriptors.hpp"
 #include "../integration/testsEditorDay.hpp"
@@ -219,6 +221,111 @@ inline void validatePlayStop(Engine& engine, Results& r)
 
 	engine.setWorldMode(WorldMode::Play);
 	engine.loadScene(SAVE_PATH);
+}
+
+inline void validateMainScenePlayTarget(Engine& engine, Results& r)
+{
+    const auto previousMode = engine.getWorldMode();
+    const auto run = [&]() {
+        const auto* project = engine.getProject();
+        const auto* path = project ? project->getMainScene(engine.getAssetManager().getRegistry()) : nullptr;
+        if (!path || !engine.loadScene(*path))
+        {
+            check(r, false, "PT0 main scene target setup");
+            return;
+        }
+
+        engine.setWorldMode(WorldMode::Edit);
+        Scribe::Session session(engine);
+
+        const auto marker = session.createEntity("V_UnsavedMainMarker");
+        const bool activeStarted = marker.ok() && session.playMainScene().result.ok();
+        check(r, activeStarted && engine.getActiveScene()->isEntityAlive(marker.id),
+              "PT1 active main scene plays with unsaved edits");
+        if (!activeStarted || !engine.stop())
+        {
+            check(r, false, "PT1 active main scene returns to Edit");
+            return;
+        }
+        (void)session.takeEvents();
+
+        auto parked = session.newSceneDocument();
+        if (!parked.result.ok() || !parked.previous)
+        {
+            check(r, false, "PT2 main scene can be parked behind another tab");
+            return;
+        }
+
+        const auto editMarker = session.createEntity("V_EditBeforeTargetPlay");
+        if (!editMarker.ok() || !session.renameEntity(editMarker.id, "V_RenamedEdit").ok() || !session.undo())
+        {
+            check(r, false, "PT2 edit tab can prepare both undo and redo");
+            return;
+        }
+
+        const auto before = fingerprint(*engine.getActiveScene());
+        const auto generation = engine.getSceneGeneration();
+        const std::string undoName(session.undoName());
+        const std::string redoName(session.redoName());
+        const auto historyRestored = [&]() {
+            return engine.getSceneGeneration() == generation && !engine.isPlaying() &&
+                   engine.getActiveScene()->isDirty() && session.canUndo() && session.canRedo() &&
+                   session.undoName() == undoName && session.redoName() == redoName;
+        };
+
+        const auto* editScene = engine.getActiveScene();
+        const std::string missing = "res://.cthulhu/validation_missing_play_" +
+            Assets::assetIdToString(Assets::generateAssetId()) + ".scene";
+        const bool failed = !engine.playFromFile(missing);
+        check(r, failed && engine.getActiveScene() == editScene && historyRestored(),
+              "PT3 a failed file launch leaves the edit scene and history intact");
+        if (!failed)
+            return;
+
+        const bool parkedStarted = session.playMainScene().result.ok();
+        check(r, parkedStarted && engine.getActiveScene()->isEntityAlive(marker.id),
+              "PT4 parked main scene plays from its unsaved snapshot");
+        if (!parkedStarted)
+            return;
+
+        (void)session.takeEvents();
+        const bool removed = engine.getActiveScene()->destroyEntity(marker.id);
+        if (!engine.stop())
+        {
+            check(r, false, "PT4 Stop restores the original edit world");
+            return;
+        }
+
+        expectSame(r, fingerprint(*engine.getActiveScene()), before, "PT4 Stop restores the original edit document");
+        check(r, removed && historyRestored() && parked.previous->snapshot.dirty &&
+                     std::any_of(parked.previous->snapshot.entities.begin(), parked.previous->snapshot.entities.end(),
+                                 [&](const auto& entity) { return entity.id == marker.id; }),
+              "PT4 play changes stay isolated and both documents keep their authored state");
+
+        const bool closed = session.closeInactiveSceneDocument(parked.previous).ok();
+        const bool savedStarted = closed && session.playMainScene().result.ok();
+        check(r, savedStarted && !engine.getActiveScene()->isEntityAlive(marker.id),
+              "PT5 a closed main scene plays from the saved file");
+        if (!savedStarted)
+            return;
+
+        (void)session.takeEvents();
+        if (!engine.stop())
+        {
+            check(r, false, "PT5 Stop restores the edit world after a file launch");
+            return;
+        }
+
+        expectSame(r, fingerprint(*engine.getActiveScene()), before, "PT5 file launch preserves the edit document");
+        check(r, historyRestored(), "PT5 file launch preserves undo and redo");
+    };
+
+    run();
+    if (engine.isPlaying() && !engine.stop())
+        return;
+
+    engine.setWorldMode(previousMode);
+    check(r, engine.loadScene(SAVE_PATH), "PT6 restore the validation scene");
 }
 
 inline void validateSessionDuringPlay(Engine& engine, Results& r)

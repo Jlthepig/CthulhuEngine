@@ -78,6 +78,8 @@ class EditorShell
     void buildSceneTabBar(Context &ctx, NodeHandle parent);
     void setPlayInputCaptured(Engine &engine, bool captured);
     void updatePlayControls(Context &ctx, Engine &engine);
+    void startScenePlay(Context &ctx, Engine &engine, Scribe::Session &session, bool currentScene);
+    void handlePlayDialog(Context &ctx, Engine &engine, Scribe::Session &session);
     void addSceneTab(Context &ctx);
     void rememberSceneView(Engine &engine);
     void restoreSceneView(Engine &engine);
@@ -133,6 +135,7 @@ class EditorShell
     bool closingAllScenes = false;
 
     IconButton playButton{};
+    IconButton playCurrentSceneButton{};
     IconButton pauseButton{};
     IconButton stopButton{};
 
@@ -192,6 +195,7 @@ class EditorShell
     bool deletingMissing = false;
 
     EditorDialog exitDialog;
+    bool playDialogOpen = false;
     ProjectSettingsWindow projectSettingsWindow;
     bool resumePlayOnCancel = false;
 };

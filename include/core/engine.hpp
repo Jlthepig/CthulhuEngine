@@ -150,6 +150,8 @@ class Engine
     }
 
     bool play();
+    bool playFromSnapshot(const Scene::SceneSnapshot &snapshot);
+    bool playFromFile(std::string_view resourcePath);
     bool stop();
 
     bool isPlaying() const
@@ -270,6 +272,8 @@ class Engine
     Scribe::Session * transformOwner = nullptr;
 
     std::unique_ptr<Scene::Scene> createSceneInstance();
+    std::unique_ptr<Scene::Scene> readScene(std::string_view resourcePath);
+    bool startPlay(const Scene::SceneSnapshot *target, std::optional<std::string_view> resourcePath);
 
     bool restoreEditScene(const Scene::SceneSnapshot &snapshot);
     void activateScene(std::unique_ptr<Scene::Scene> newScene, bool newDocument = true);

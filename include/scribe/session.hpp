@@ -47,6 +47,11 @@ struct SceneDocument
     History history;
 };
 
+struct MainScenePlayResult
+{
+    Result result;
+    bool needsMainScene = false;
+};
 struct DocumentSwitchResult
 {
     Result result;
@@ -114,6 +119,7 @@ class Session
     }
 
     [[nodiscard]] DocumentSwitchResult newSceneDocument();
+    [[nodiscard]] MainScenePlayResult playMainScene();
     [[nodiscard]] DocumentSwitchResult openSceneDocument(std::string_view resourcePath);
     [[nodiscard]] DocumentSwitchResult activateSceneDocument(SceneDocument *&target, bool keepCurrent = true);
     [[nodiscard]] Result closeActiveSceneDocument();
