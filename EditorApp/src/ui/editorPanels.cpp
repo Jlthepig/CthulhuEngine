@@ -55,6 +55,7 @@ NodeHandle createTitledPanel(Context &ctx,
     ctx.setIconColor(headerIcon, ctx.theme().textMuted);
 
     const NodeHandle heading = ctx.createLabel(header, title);
+    ctx.setFontSlot(heading, FontSlot::Secondary);
     ctx.style(heading).all.text = ctx.theme().textMuted;
 
     return panel;

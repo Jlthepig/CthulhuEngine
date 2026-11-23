@@ -27,12 +27,11 @@ NodeHandle inspectorRow(Context &ctx, NodeHandle parent, std::string_view label)
     rowLayout.minSize = Vec2{0.0f, 30.0f};
     rowLayout.preferredSize = Vec2{0.0f, 30.0f};
 
-    const NodeHandle name =
-        ctx.createLabel(row, label == "modelPath" || label == "filePath" ? std::string_view{"Path"} : label);
+    const NodeHandle name = ctx.createLabel(row, label == "modelPath" || label == "filePath" ? std::string_view{"Path"} : label);
     auto nameLayout = ctx.layoutStyle(name);
-    nameLayout.minSize = Vec2{86.0f, 26.0f};
-    nameLayout.preferredSize = Vec2{86.0f, 26.0f};
-    nameLayout.maxSize = Vec2{86.0f, 26.0f};
+    nameLayout.minSize = Vec2{128.0f, 26.0f};
+    nameLayout.preferredSize = Vec2{128.0f, 26.0f};
+    nameLayout.maxSize = Vec2{128.0f, 26.0f};
     nameLayout.verticalAlignment = Alignment::Center;
     return row;
 }
@@ -293,6 +292,7 @@ void InspectorPanel::rebuild(Context &ctx, Engine &engine, Scene::Scene *scene)
 
         const bool isTransform = component.name == "Transform";
         const NodeHandle section = ctx.createCollapsibleSection(generatedContent, component.name, false);
+        ctx.setFontSlot(section, FontSlot::Secondary);
         const NodeHandle content = ctx.collapsibleSectionContent(section);
         auto sectionLayout = ctx.layoutStyle(content);
         sectionLayout.mode = LayoutMode::Vertical;

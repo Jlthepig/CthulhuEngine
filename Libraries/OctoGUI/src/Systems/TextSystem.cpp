@@ -39,7 +39,7 @@ void TextSystem::setTextureBackend(TextureBackend *backend) noexcept {
   textureBackend = backend;
 }
 
-bool TextSystem::loadDefaultFont(std::string_view path, u32 pixelSize) {
+bool TextSystem::loadFont(FontSlot slot, std::string_view path, u32 pixelSize) {
   if (!textureBackend) {
     return false;
   }
@@ -50,16 +50,25 @@ bool TextSystem::loadDefaultFont(std::string_view path, u32 pixelSize) {
     return false;
   }
 
-  return defaultFont.load(bytes.data(), bytes.size(), pixelSize,
-                          *textureBackend);
+  return font(slot).load(bytes.data(), bytes.size(), pixelSize,
+                         *textureBackend);
 }
 
-Font &TextSystem::font() noexcept { return defaultFont; }
+Font &TextSystem::font(FontSlot slot) noexcept {
+  return fonts[static_cast<usize>(slot)];
+}
 
-const Font &TextSystem::font() const noexcept { return defaultFont; }
+const Font &TextSystem::font(FontSlot slot) const noexcept {
+  return fonts[static_cast<usize>(slot)];
+}
+
+Font &TextSystem::fontFor(const Tree &tree, NodeHandle node) noexcept {
+  Font &slotFont = font(tree.fontSlot(node));
+  return slotFont.isLoaded() ? slotFont : font();
+}
 
 void TextSystem::updateLayoutHints(Tree &tree, NodeHandle root) {
-  if (!defaultFont.isLoaded() || !tree.isValid(root)) {
+  if (!font().isLoaded() || !tree.isValid(root)) {
     return;
   }
 
@@ -88,7 +97,7 @@ void TextSystem::updateLayoutHints(Tree &tree, NodeHandle root) {
         LayoutStyle *style = tree.layoutStyle(node);
 
         if (style) {
-          const Vec2 textSize = defaultFont.measureText(nodeText);
+          const Vec2 textSize = fontFor(tree, node).measureText(nodeText);
           const f32 extraWidth = 8.0f;
           const f32 desiredWidth =
               textSize.x + style->padding.horizontal() + extraWidth;
@@ -120,7 +129,7 @@ void TextSystem::updateLayoutHints(Tree &tree, NodeHandle root) {
       f32 textHeight = 0.0f;
 
       if (!nodeText.empty()) {
-        const Vec2 textSize = defaultFont.measureText(nodeText);
+        const Vec2 textSize = fontFor(tree, node).measureText(nodeText);
 
         textWidth = textSize.x;
         textHeight = textSize.y;

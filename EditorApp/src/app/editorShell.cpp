@@ -118,7 +118,8 @@ void EditorShell::build(Context &ctx)
     {
         const auto button = ctx.createButton(topBar, menuNames[i]);
         *menuButtons[i] = button;
-        fixedSize(ctx, button, 52.0f, 28.0f);
+        fixedSize(ctx, button, 0.0f, 28.0f);
+        ctx.layoutStyle(button).padding = Padding{6.0f, 0.0f};
 
         auto style = ctx.style(button);
         style.all.background = Color::transparent();

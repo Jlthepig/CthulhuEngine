@@ -359,6 +359,7 @@ void ProjectSettingsWindow::build(const Project::ProjectConfig &config)
         ctx.layoutStyle(pages[i]).scrollY = true;
 
         const auto heading = ctx.createLabel(pages[i], titles[i]);
+        ctx.setFontSlot(heading, FontSlot::Secondary);
         ctx.layoutStyle(heading).preferredSize = Vec2{0.0f, 34.0f};
         (void)ctx.createSeparator(pages[i]);
     }

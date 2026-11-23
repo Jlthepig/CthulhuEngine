@@ -21,7 +21,7 @@ public:
   void beginFrame() noexcept;
 
   void paint(Tree &tree, NodeHandle root, const InteractionState &interaction,
-             Font *font, const IconAtlas& icons);
+             Font *font, Font *secondaryFont, const IconAtlas& icons);
 
 private:
   struct PaintCacheEntry {
@@ -38,6 +38,7 @@ private:
   std::vector<ComboBoxOverlay> comboBoxOverlays;
 
   DrawList drawListData;
+  Font *secondaryFontData = nullptr;
 
   [[nodiscard]]
   DrawList &paintCacheFor(NodeHandle handle);

@@ -551,6 +551,51 @@ public:
     markPaintDirty(handle);
   }
 
+  // Text boxes, number boxes, dropdowns and tree views always use the
+  // default font, because their carets and rows are measured with it.
+  [[nodiscard]]
+  FontSlot fontSlot(NodeHandle handle) const noexcept {
+    const TextState *state = textState(handle);
+
+    if (!state) {
+      return FontSlot::Default;
+    }
+
+    switch (type(handle)) {
+    case NodeType::TextInput:
+    case NodeType::NumericInput:
+    case NodeType::ComboBox:
+    case NodeType::TreeView:
+      return FontSlot::Default;
+    default:
+      return state->font;
+    }
+  }
+
+  void setFontSlot(NodeHandle handle, FontSlot slot) {
+    if (!isValid(handle)) {
+      return;
+    }
+
+    TextState *state = textState(handle);
+
+    if (!state) {
+      if (slot == FontSlot::Default) {
+        return;
+      }
+
+      state = &ensureTextState(handle.index);
+    }
+
+    if (state->font == slot) {
+      return;
+    }
+
+    state->font = slot;
+    markLayoutDirty(handle);
+    markPaintDirty(handle);
+  }
+
   [[nodiscard]]
   LayoutStyle *layoutStyle(NodeHandle handle) noexcept {
     if (!isValid(handle)) {

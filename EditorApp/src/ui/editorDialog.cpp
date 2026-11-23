@@ -38,6 +38,7 @@ void EditorDialog::build(Context &ctx, NodeHandle root, NodeHandle editorContent
     cardLayout.clip = true;
 
     titleLabel = ctx.createLabel(card, "");
+    ctx.setFontSlot(titleLabel, FontSlot::Secondary);
     messageLabel = ctx.createLabel(card, "");
 
     for (std::size_t i = 0; i < choices.size(); ++i)

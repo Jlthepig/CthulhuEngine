@@ -118,10 +118,13 @@ const DrawList &PaintSystem::drawList() const noexcept { return drawListData; }
 void PaintSystem::beginFrame() noexcept { drawListData.clear(); }
 
 void PaintSystem::paint(Tree &tree, NodeHandle root,
-                        const InteractionState &interaction, Font *font, const IconAtlas& icons) {
+                        const InteractionState &interaction, Font *font,
+                        Font *secondaryFont, const IconAtlas& icons) {
   if (!tree.isValid(root)) {
     return;
   }
+
+  secondaryFontData = secondaryFont;
 
   zOrderScratch.clear();
 
@@ -176,9 +179,14 @@ void PaintSystem::paintNode(Tree &tree, DrawList &drawList, NodeHandle node,
   cache.clear();
 
   const Rect rect = tree.rect(node);
+  Font *nodeFont = font;
+
+  if (secondaryFontData && tree.fontSlot(node) == FontSlot::Secondary) {
+    nodeFont = secondaryFontData;
+  }
 
   if (tree.type(node) == NodeType::Checkbox) {
-    paintCheckbox(tree, cache, node, interaction, font, rect);
+    paintCheckbox(tree, cache, node, interaction, nodeFont, rect);
     tree.clearPaintDirty(node);
     tree.clearStyleDirty(node);
     drawList.appendTranslated(cache.span(), appendOffset);
@@ -205,7 +213,7 @@ void PaintSystem::paintNode(Tree &tree, DrawList &drawList, NodeHandle node,
   }
 
   if (tree.type(node) == NodeType::RadioButton) {
-    paintRadioButton(tree, cache, node, interaction, font, rect);
+    paintRadioButton(tree, cache, node, interaction, nodeFont, rect);
     tree.clearPaintDirty(node);
     tree.clearStyleDirty(node);
     drawList.appendTranslated(cache.span(), appendOffset);
@@ -315,11 +323,11 @@ void PaintSystem::paintNode(Tree &tree, DrawList &drawList, NodeHandle node,
 
   if (tree.type(node) == NodeType::TreeView) {
     paintTreeView(tree, cache, font, node, rect);
-  } else if (font && font->isLoaded()) {
+  } else if (nodeFont && nodeFont->isLoaded()) {
     if (tree.type(node) == NodeType::ComboBox) {
-      paintComboBoxClosed(tree, cache, *font, node, paintRect, textColor);
+      paintComboBoxClosed(tree, cache, *nodeFont, node, paintRect, textColor);
     } else {
-      paintNodeText(tree, cache, *font, node, paintRect, textColor, interaction);
+      paintNodeText(tree, cache, *nodeFont, node, paintRect, textColor, interaction);
     }
   }
 

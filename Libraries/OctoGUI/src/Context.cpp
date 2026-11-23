@@ -264,7 +264,10 @@ void Context::paint() {
 
   Font *font = impl->text.font().isLoaded() ? &impl->text.font() : nullptr;
 
-  impl->paint.paint(impl->tree, impl->root, impl->interaction.state(), font, impl->icons);
+  Font &secondaryFont = impl->text.font(FontSlot::Secondary);
+
+  impl->paint.paint(impl->tree, impl->root, impl->interaction.state(), font,
+                    secondaryFont.isLoaded() ? &secondaryFont : nullptr, impl->icons);
   if (impl->menus.ownsInput()) {
     impl->menus.paint(impl->tree, impl->root, font, impl->styles.theme(), impl->paint.drawList());
   } else {
@@ -880,7 +883,11 @@ void Context::setTextureBackend(TextureBackend *backend) noexcept {
 }
 
 bool Context::loadDefaultFont(std::string_view path, u32 pixelSize) {
-  const bool loaded = impl->text.loadDefaultFont(path, pixelSize);
+  return loadFont(FontSlot::Default, path, pixelSize);
+}
+
+bool Context::loadFont(FontSlot slot, std::string_view path, u32 pixelSize) {
+  const bool loaded = impl->text.loadFont(slot, path, pixelSize);
 
   if (loaded) {
     impl->menus.close();
@@ -929,6 +936,13 @@ Font &Context::font() noexcept { return impl->text.font(); }
 
 const Font &Context::font() const noexcept { return impl->text.font(); }
 
+
+Font &Context::font(FontSlot slot) noexcept { return impl->text.font(slot); }
+
+const Font &Context::font(FontSlot slot) const noexcept {
+  return impl->text.font(slot);
+}
+
 void Context::setText(NodeHandle handle, std::string_view value) {
   impl->tree.setText(handle, value);
 }
@@ -937,9 +951,13 @@ std::string_view Context::text(NodeHandle handle) const noexcept {
   return impl->tree.text(handle);
 }
 
-void Context::setTextAlign(NodeHandle handle, TextAlign horizontal,
-                           TextAlign vertical) {
+void Context::setTextAlign(NodeHandle handle, TextAlign horizontal, TextAlign vertical) {
   impl->tree.setTextAlign(handle, horizontal, vertical);
+}
+
+
+void Context::setFontSlot(NodeHandle handle, FontSlot slot) {
+  impl->tree.setFontSlot(handle, slot);
 }
 
 void Context::setTextInputPlaceholder(NodeHandle handle,

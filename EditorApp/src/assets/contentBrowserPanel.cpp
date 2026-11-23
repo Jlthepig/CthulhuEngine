@@ -120,7 +120,8 @@ void ContentBrowserPanel::build(Context &ctx, NodeHandle parent)
     ctx.setIconColor(icon, ctx.theme().textMuted);
 
     title = ctx.createLabel(toolbar, "CONTENT BROWSER");
-    const float titleWidth = std::ceil(ctx.font().measureText("CONTENT BROWSER").x) + 8.0f;
+    ctx.setFontSlot(title, FontSlot::Secondary);
+    const float titleWidth = std::ceil(ctx.font(FontSlot::Secondary).measureText("CONTENT BROWSER").x) + 8.0f;
     fixed(ctx, title, titleWidth, 24.0f);
     ctx.style(title).all.text = ctx.theme().textMuted;
 

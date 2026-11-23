@@ -371,13 +371,28 @@ public:
   [[nodiscard]]
   const Font &font() const noexcept;
 
+  
+  // Loads a font into a slot. loadDefaultFont is loadFont(FontSlot::Default).
+  [[nodiscard]]
+  bool loadFont(FontSlot slot, std::string_view path, u32 pixelSize);
+
+  [[nodiscard]]
+  Font &font(FontSlot slot) noexcept;
+
+  [[nodiscard]]
+  const Font &font(FontSlot slot) const noexcept;
+
   void setText(NodeHandle handle, std::string_view value);
 
   [[nodiscard]]
   std::string_view text(NodeHandle handle) const noexcept;
 
-  void setTextAlign(NodeHandle handle, TextAlign horizontal,
-                    TextAlign vertical = TextAlign::Center);
+  void setTextAlign(NodeHandle handle, TextAlign horizontal, TextAlign vertical = TextAlign::Center);
+
+  // Labels, buttons, checkboxes, radio buttons and collapsible section titles
+  // can use another loaded font. Text boxes, number boxes, dropdowns and tree
+  // views always use the default font.
+  void setFontSlot(NodeHandle handle, FontSlot slot);
 
   void setTextInputPlaceholder(NodeHandle handle, std::string_view placeholder);
 

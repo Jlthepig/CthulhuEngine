@@ -10,6 +10,11 @@ using KalaHeaders::KalaLog::LogType;
 
 namespace Cthulhu::Editor
 {
+namespace
+{
+constexpr octogui::u32 EditorFontSize = 14;
+} 
+
 bool EditorUi::init(GLFWwindow *glfwWindow, const std::filesystem::path &resourceRoot)
 {
     window = glfwWindow;
@@ -23,11 +28,15 @@ bool EditorUi::init(GLFWwindow *glfwWindow, const std::filesystem::path &resourc
     ctx.setTextureBackend(&renderer);
     ctx.setTheme(octogui::darkTheme());
 
-    const auto font = (resourceRoot / "editor" / "fonts" / "Roboto-SemiBold.ttf").string();
-    if (!ctx.loadDefaultFont(font, 18))
+    const auto fontRoot = resourceRoot / "editor" / "fonts";
+    const auto bodyFont = (fontRoot / "Roboto-Regular.ttf").string();
+    const auto headingFont = (fontRoot / "Roboto-SemiBold.ttf").string();
+    if (!ctx.loadDefaultFont(bodyFont, EditorFontSize) ||
+        !ctx.loadFont(octogui::FontSlot::Secondary, headingFont, EditorFontSize))
     {
-        Log::Print("FAILED TO LOAD EDITOR FONT: " + font, "Editor", LogType::LOG_ERROR);
+        Log::Print("FAILED TO LOAD EDITOR FONTS: " + bodyFont + " / " + headingFont, "Editor", LogType::LOG_ERROR);
         ctx.font().shutdown();
+        ctx.font(octogui::FontSlot::Secondary).shutdown();
         ctx.setTextureBackend(nullptr);
         renderer.shutdown();
         return false;
@@ -61,6 +70,7 @@ void EditorUi::shutdown()
 
     octogui::glfw::shutdownInput(window);
     ctx.font().shutdown();
+    ctx.font(octogui::FontSlot::Secondary).shutdown();
     ctx.setTextureBackend(nullptr);
     renderer.shutdown();
     initialized = false;
