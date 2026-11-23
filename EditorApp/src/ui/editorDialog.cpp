@@ -8,7 +8,7 @@ namespace Cthulhu::Editor
 {
 using namespace octogui;
 
-void EditorDialog::build(Context &ctx, NodeHandle root, NodeHandle editorContent)
+void EditorDialog::build(Context &ctx, NodeHandle root, NodeHandle editorContent, float width)
 {
     content = editorContent;
     backdrop = ctx.createPanel(root);
@@ -31,7 +31,7 @@ void EditorDialog::build(Context &ctx, NodeHandle root, NodeHandle editorContent
     const auto card = ctx.createPanel(backdrop);
     ctx.style(card).all.background = ctx.theme().surfaceRaised;
     auto cardLayout = ctx.layoutStyle(card);
-    cardLayout.preferredSize = Vec2{680.0f, 0.0f};
+    cardLayout.preferredSize = Vec2{width, 0.0f};
     cardLayout.fitContentY = true;
     cardLayout.padding = Padding{20.0f};
     cardLayout.gap = 12.0f;

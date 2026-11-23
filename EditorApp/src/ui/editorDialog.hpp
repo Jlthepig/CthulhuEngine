@@ -15,7 +15,7 @@ enum class DialogChoice { None, Primary, Secondary, Cancel };
 class EditorDialog
 {
   public:
-    void build(octogui::Context &ctx, octogui::NodeHandle root, octogui::NodeHandle editorContent);
+    void build(octogui::Context &ctx, octogui::NodeHandle root, octogui::NodeHandle editorContent, float width = 680.0f);
     void show(octogui::Context &ctx, std::string_view title, std::string_view message, std::string_view primary, std::string_view secondary, std::string_view cancel = "Cancel");
     void setDetails(octogui::Context &ctx, std::span<const std::string> lines);
     void setNotice(octogui::Context &ctx, std::string_view message);

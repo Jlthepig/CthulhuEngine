@@ -468,6 +468,19 @@ Result Session::setProjectDetails(std::string_view name, uint32_t width, uint32_
     return error.empty() ? Result::applied() : Result::failed(std::string(error));
 }
 
+Result Session::setProjectInput(const Project::ProjectInputMap &input)
+{
+    if (engine.getWorldMode() != WorldMode::Edit || engine.transitionBlocked() ||
+        engine.hasTransformOwner() || refuseEdit())
+        return Result::failed("Project Settings require Edit mode.");
+
+    if (!engine.project)
+        return Result::failed("No open project.");
+
+    auto error = engine.project->setInputMap(input);
+    return error.empty() ? Result::applied() : Result::failed(std::move(error));
+}
+
 Result Session::setMainScene(std::string_view resourcePath)
 {
     if (engine.getWorldMode() != WorldMode::Edit || engine.transitionBlocked() ||

@@ -55,6 +55,17 @@ bool ProjectSettingsWindow::open(const Core::Window &parent, const std::filesyst
     return true;
 }
 
+bool ProjectSettingsWindow::deferQuit()
+{
+    if (!window || !inputEditor.dirty(ui->context()))
+        return false;
+
+    quitDeferred = true;
+    closePending = !closePrompt;
+    window->focus();
+    return true;
+}
+
 void ProjectSettingsWindow::close()
 {
     if (!window)
@@ -63,6 +74,8 @@ void ProjectSettingsWindow::close()
     GLFWwindow *native = window->getWindow();
     GLFWwindow *previous = glfwGetCurrentContext();
     glfwMakeContextCurrent(native);
+    inputEditor.cancelCapture();
+    closePending = closePrompt = quitDeferred = false;
     ui->shutdown();
     ui.reset();
     glfwMakeContextCurrent(previous == native ? nullptr : previous);
@@ -75,17 +88,22 @@ void ProjectSettingsWindow::frame(Engine &engine, Scribe::Session &session)
     if (!window)
         return;
 
+    GLFWwindow *native = window->getWindow();
     if (window->shouldClose())
     {
-        close();
-        return;
+        glfwSetWindowShouldClose(native, GLFW_FALSE);
+        closePending = true;
+        window->focus();
     }
 
-    GLFWwindow *native = window->getWindow();
     int width = 0, height = 0;
     glfwGetFramebufferSize(native, &width, &height);
     if (glfwGetWindowAttrib(native, GLFW_ICONIFIED) || width <= 0 || height <= 0)
+    {
+        if (inputEditor.capturing())
+            inputEditor.finishCapture(ui->context(), false);
         return;
+    }
 
     GLFWwindow *previous = glfwGetCurrentContext();
     glfwMakeContextCurrent(native);
@@ -95,99 +113,74 @@ void ProjectSettingsWindow::frame(Engine &engine, Scribe::Session &session)
         return;
     }
 
-    const bool focused = glfwGetWindowAttrib(native, GLFW_FOCUSED) == GLFW_TRUE;
-    (void)ui->beginFrame(engine.getDeltaTime(), !focused);
-    auto &ctx = ui->context();
-
     const auto *project = engine.getProject();
     const bool canEdit = project && engine.getWorldMode() == WorldMode::Edit &&
                          !session.transformEditActive();
-    for (const auto control : {projectName, windowWidth, windowHeight, applyButton})
-        ctx.setEnabled(control, canEdit);
-    ctx.setEnabled(chooseMainScene, canEdit);
-    ctx.setEnabled(clearMainScene, canEdit && project->hasMainScene());
+    const bool focused = glfwGetWindowAttrib(native, GLFW_FOCUSED) == GLFW_TRUE;
+    const bool listening = inputEditor.capturing();
+    auto &ctx = ui->context();
+    inputEditor.setEditable(ctx, canEdit);
+    (void)ui->beginFrame(engine.getDeltaTime(), !focused || listening);
+    if (listening)
+        inputEditor.finishCapture(ctx, focused && canEdit && !closePending);
 
-    bool dismiss = ctx.isClicked(closeButton);
-    NodeHandle activated{};
-    const std::array controls{tabs[0], tabs[1], tabs[2], projectName, chooseMainScene, clearMainScene,
-                              windowWidth, windowHeight, applyButton, closeButton};
-    const auto available = [&](NodeHandle control) {
-        if (!ctx.isEnabled(control))
-            return false;
-        if (control == projectName)
-            return ctx.isVisible(pages[0]);
-        if (control == chooseMainScene || control == clearMainScene)
-            return ctx.isVisible(pages[1]);
-        if (control == windowWidth || control == windowHeight)
-            return ctx.isVisible(pages[2]);
-        return true;
-    };
-
-    for (const auto &event : ctx.input().events)
+    bool finishClose = false;
+    if (closePending)
     {
-        if (event.type != InputEventType::Key || event.action != KeyAction::Press)
-            continue;
-
-        if (event.key == Key::Escape)
-            dismiss = true;
-        else if (event.key == Key::Tab)
+        closePending = false;
+        if (inputEditor.dirty(ctx))
         {
-            const auto current = std::find(controls.begin(), controls.end(), ctx.focused());
-            const auto count = controls.size();
-            const auto step = event.modifiers.shift ? count - 1 : 1;
-            auto index = current == controls.end()
-                ? (event.modifiers.shift ? 0 : count - 1)
-                : static_cast<std::size_t>(current - controls.begin());
-            do
-            {
-                index = (index + step) % count;
-            } while (!available(controls[index]));
-            ctx.setFocused(controls[index]);
+            closePrompt = true;
+            inputDialog.show(ctx, "Apply input changes before closing?",
+                             "Your input changes have not been applied.",
+                             "Apply & Close", "Discard & Close", "Keep Editing");
         }
-        else if (event.key == Key::Enter || event.key == Key::Space)
-            activated = ctx.focused();
+        else
+            finishClose = true;
     }
-
-    dismiss = dismiss || activated == closeButton;
-    if (dismiss)
+    else if (inputDialog.isOpen(ctx))
     {
+        if (closePrompt)
+            inputDialog.setPrimaryEnabled(ctx, canEdit && inputEditor.renameValid());
+
+        const auto choice = inputDialog.pollChoice(ctx);
+        if (choice == DialogChoice::Cancel)
+        {
+            inputDialog.hide(ctx);
+            if (closePrompt)
+                quitDeferred = false;
+            closePrompt = false;
+        }
+        else if (closePrompt && choice == DialogChoice::Primary)
+        {
+            const auto error = inputEditor.apply(ctx, session);
+            finishClose = error.empty();
+            if (!finishClose)
+                inputDialog.setError(ctx, error);
+        }
+        else if (closePrompt && choice == DialogChoice::Secondary)
+            finishClose = true;
+        else if (canEdit && choice == DialogChoice::Primary)
+        {
+            inputDialog.hide(ctx);
+            inputEditor.deleteSelected(ctx);
+        }
+    }
+    else if (!listening)
+        updateControls(ctx, native, engine, session, canEdit);
+
+    if (finishClose)
+    {
+        const bool quit = quitDeferred;
         ctx.endFrame();
         glfwMakeContextCurrent(previous);
         close();
+        if (quit)
+            glfwSetWindowShouldClose(engine.getWindow()->getWindow(), GLFW_TRUE);
         return;
     }
 
-    for (std::size_t i = 0; i < tabs.size(); ++i)
-        if (ctx.isClicked(tabs[i]) || activated == tabs[i])
-            selectPage(i);
-
-    if (canEdit && (ctx.isClicked(applyButton) || activated == applyButton))
-        applyDetails(session);
-
-    if (canEdit && ctx.isVisible(pages[1]))
-    {
-        if (ctx.isClicked(chooseMainScene) || activated == chooseMainScene)
-        {
-            const auto result = pickProjectMainScene(ctx, *window, engine, session);
-            if (result.status != Scribe::Result::Status::NoChange)
-                showMainSceneMessage(result.error);
-        }
-        else if (ctx.isEnabled(clearMainScene) && (ctx.isClicked(clearMainScene) || activated == clearMainScene))
-            showMainSceneMessage(session.setMainScene({}).error);
-    }
-
-    if (const auto *currentProject = engine.getProject(); currentProject && ctx.isVisible(pages[1]))
-    {
-        const auto *path = currentProject->getMainScene(engine.getAssetManager().getRegistry());
-        const std::string_view value = path ? std::string_view(*path) :
-            (currentProject->hasMainScene() ? "Unavailable" : "None");
-        if (ctx.tree().text(mainSceneValue) != value)
-        {
-            ctx.setText(mainSceneValue, value);
-            ctx.setTooltip(mainSceneValue, value);
-        }
-    }
-
+    ctx.setText(tabs[inputPage], inputEditor.dirty(ctx) ? "Input *" : "Input");
     const auto background = ctx.theme().background;
     glClearColor(background.r, background.g, background.b, background.a);
     glClear(GL_COLOR_BUFFER_BIT);
@@ -197,15 +190,150 @@ void ProjectSettingsWindow::frame(Engine &engine, Scribe::Session &session)
     glfwMakeContextCurrent(previous);
 }
 
+void ProjectSettingsWindow::updateControls(Context &ctx, GLFWwindow *native, Engine &engine, Scribe::Session &session, bool canEdit)
+{
+    const auto *project = engine.getProject();
+    const bool onInput = ctx.isVisible(pages[inputPage]);
+    for (const auto control : {projectName, windowWidth, windowHeight, chooseMainScene})
+        ctx.setEnabled(control, canEdit);
+    ctx.setEnabled(clearMainScene, canEdit && project->hasMainScene());
+    ctx.setEnabled(applyButton, canEdit &&
+        (!onInput || (inputEditor.dirty(ctx) && inputEditor.renameValid())));
+
+    focusOrder.assign(tabs.begin(), tabs.end());
+    focusOrder.insert(focusOrder.end(), {projectName, chooseMainScene, clearMainScene, windowWidth, windowHeight});
+    if (onInput)
+        inputEditor.appendControls(focusOrder);
+    focusOrder.insert(focusOrder.end(), {applyButton, closeButton});
+    std::erase_if(focusOrder, [&](NodeHandle node) {
+        return !ctx.isEnabled(node) || !ctx.tree().isVisibleBranch(node);
+    });
+
+    NodeHandle activated{}, entered{};
+    for (const auto &event : ctx.input().events)
+    {
+        if (event.type != InputEventType::Key || event.action != KeyAction::Press)
+            continue;
+
+        const auto focus = ctx.focused();
+        const auto *combo = ctx.tree().comboBoxState(focus);
+        if (event.key == Key::Escape)
+        {
+            if (combo && combo->open)
+            {
+                ctx.clearFocus();
+                ctx.setFocused(focus);
+            }
+            else if (!onInput || !inputEditor.cancelNameEdit(ctx))
+                closePending = true;
+        }
+        else if (event.key == Key::Tab && !focusOrder.empty())
+        {
+            auto current = std::ranges::find(focusOrder, focus);
+            if (event.modifiers.shift)
+                current = current == focusOrder.begin() ? focusOrder.end() - 1 : current - 1;
+            else if (current == focusOrder.end() || ++current == focusOrder.end())
+                current = focusOrder.begin();
+
+            ctx.setFocused(*current);
+            for (const auto page : pages)
+            {
+                if (!ctx.isVisible(page))
+                    continue;
+                const Rect rect = ctx.tree().rect(*current);
+                const Rect area = ctx.tree().rect(page);
+                const float offset = ctx.scrollOffsetY(page);
+                if (ctx.tree().isDescendant(page, *current))
+                {
+                    if (rect.y - offset < area.y)
+                        ctx.setScrollOffsetY(page, rect.y - area.y);
+                    else if (rect.maxY() - offset > area.maxY())
+                        ctx.setScrollOffsetY(page, rect.maxY() - area.maxY());
+                }
+                break;
+            }
+        }
+        else if (combo && ctx.isEnabled(focus) && !combo->items.empty() && (event.key == Key::Up || event.key == Key::Down))
+        {
+            const auto last = static_cast<i32>(combo->items.size() - 1);
+            const auto index = ctx.comboBoxSelectedIndex(focus);
+            ctx.setComboBoxSelectedIndex(focus, std::clamp(index + (event.key == Key::Up ? -1 : 1), 0, last));
+        }
+        else if (event.key == Key::Enter || event.key == Key::Space)
+        {
+            activated = focus;
+            if (event.key == Key::Enter)
+                entered = focus;
+        }
+    }
+
+    const auto chosen = [&](NodeHandle node) {
+        return ctx.isEnabled(node) && ctx.tree().isVisibleBranch(node) &&
+               (ctx.isClicked(node) || activated == node);
+    };
+
+    if (chosen(closeButton) || closePending)
+    {
+        closePending = true;
+        return;
+    }
+
+    if (onInput)
+        inputEditor.update(ctx, native, inputDialog, activated, entered, canEdit);
+    if (inputDialog.isOpen(ctx) || inputEditor.capturing())
+        return;
+
+    if (chosen(applyButton))
+    {
+        if (onInput)
+        {
+            const auto error = inputEditor.apply(ctx, session);
+            if (!error.empty())
+                inputEditor.showNotice(ctx, error);
+        }
+        else
+            applyDetails(session);
+    }
+
+    for (std::size_t i = 0; i < tabs.size(); ++i)
+        if (chosen(tabs[i]))
+            selectPage(i);
+
+    if (canEdit && chosen(chooseMainScene))
+    {
+        const auto result = pickProjectMainScene(ctx, *window, engine, session);
+        if (result.status != Scribe::Result::Status::NoChange)
+            showMainSceneMessage(result.error);
+    }
+    else if (canEdit && chosen(clearMainScene))
+        showMainSceneMessage(session.setMainScene({}).error);
+
+    if (project && ctx.isVisible(pages[1]))
+    {
+        const auto *path = project->getMainScene(engine.getAssetManager().getRegistry());
+        const std::string_view value = path ? std::string_view(*path) :
+            (project->hasMainScene() ? "Unavailable" : "None");
+        if (ctx.tree().text(mainSceneValue) != value)
+        {
+            ctx.setText(mainSceneValue, value);
+            ctx.setTooltip(mainSceneValue, value);
+        }
+    }
+}
+
 void ProjectSettingsWindow::build(const Project::ProjectConfig &config)
 {
     auto &ctx = ui->context();
     const auto root = ctx.ensureRoot();
-    ctx.layoutStyle(root).mode = LayoutMode::Vertical;
-    ctx.layoutStyle(root).padding = Padding{16.0f};
-    ctx.layoutStyle(root).gap = 12.0f;
+    ctx.layoutStyle(root).mode = LayoutMode::Stack;
+    ctx.layoutStyle(root).horizontalAlignment = Alignment::Stretch;
+    ctx.layoutStyle(root).verticalAlignment = Alignment::Stretch;
+    const auto contentRoot = ctx.createContainer(root);
+    ctx.layoutStyle(contentRoot).mode = LayoutMode::Vertical;
+    ctx.layoutStyle(contentRoot).padding = Padding{16.0f};
+    ctx.layoutStyle(contentRoot).gap = 12.0f;
 
-    const auto body = ctx.createContainer(root);
+    const auto body = ctx.createContainer(contentRoot);
     ctx.layoutStyle(body).mode = LayoutMode::Horizontal;
     ctx.layoutStyle(body).verticalAlignment = Alignment::Stretch;
     ctx.layoutStyle(body).gap = 12.0f;
@@ -218,7 +346,7 @@ void ProjectSettingsWindow::build(const Project::ProjectConfig &config)
     const auto content = ctx.createContainer(body);
     ctx.layoutStyle(content).mode = LayoutMode::Stack;
 
-    constexpr std::array titles{"General", "Startup", "Window"};
+    constexpr std::array titles{"General", "Startup", "Window", "Input"};
     for (std::size_t i = 0; i < tabs.size(); ++i)
     {
         tabs[i] = ctx.createButton(sidebar, titles[i]);
@@ -284,7 +412,9 @@ void ProjectSettingsWindow::build(const Project::ProjectConfig &config)
         ctx.layoutStyle(field).clip = true;
     }
 
-    const auto footer = ctx.createContainer(root);
+    inputEditor.build(ctx, pages[inputPage], config.input);
+
+    const auto footer = ctx.createContainer(contentRoot);
     ctx.layoutStyle(footer).mode = LayoutMode::Horizontal;
     ctx.layoutStyle(footer).horizontalAlignment = Alignment::End;
     ctx.layoutStyle(footer).verticalAlignment = Alignment::Stretch;
@@ -300,6 +430,7 @@ void ProjectSettingsWindow::build(const Project::ProjectConfig &config)
     closeButton = ctx.createButton(footer, "Close");
     ctx.layoutStyle(closeButton).preferredSize = Vec2{92.0f, 34.0f};
 
+    inputDialog.build(ctx, root, contentRoot, 500.0f);
     selectPage(0);
 }
 
@@ -373,6 +504,7 @@ void ProjectSettingsWindow::selectPage(std::size_t index)
         ctx.style(tabs[i]).normal.background =
             i == index ? ctx.theme().surfaceActive : ctx.theme().surface;
     }
+    ctx.setVisible(detailsNotice, index != inputPage);
     ctx.setFocused(tabs[index]);
 }
 

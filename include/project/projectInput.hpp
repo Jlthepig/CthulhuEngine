@@ -35,6 +35,8 @@ struct InputAction
     InputActionId id;
     std::string name;
     std::vector<InputBinding> bindings;
+
+    friend bool operator==(const InputAction &, const InputAction &) = default;
 };
 
 enum class InputControl : std::size_t
@@ -56,6 +58,8 @@ struct ProjectInputMap
     std::array<InputActionId, inputControlCount> assignments{};
 
     [[nodiscard]] const InputAction *find(InputActionId id) const noexcept;
+
+    friend bool operator==(const ProjectInputMap &, const ProjectInputMap &) = default;
 };
 
 struct InputActionState

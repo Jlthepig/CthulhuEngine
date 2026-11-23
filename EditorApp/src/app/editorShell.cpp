@@ -357,9 +357,11 @@ bool EditorShell::frame(EditorUi &ui, Engine &engine, Scribe::Session &session, 
     if (!window || !window->getWindow())
         return false;
 
-    const bool closeRequested = engine.shouldClose();
-    if (closeRequested)
+    const bool quitRequested = engine.shouldClose();
+    if (quitRequested)
         glfwSetWindowShouldClose(window->getWindow(), GLFW_FALSE);
+    const bool closeRequested = quitRequested && !projectSettingsWindow.deferQuit();
+    const bool waitingForInput = projectSettingsWindow.waitingForQuit();
 
     auto &ctx = ui.context();
     GLFWwindow *nativeWindow = window->getWindow();
@@ -369,7 +371,8 @@ bool EditorShell::frame(EditorUi &ui, Engine &engine, Scribe::Session &session, 
     const bool windowFocused = glfwGetWindowAttrib(nativeWindow, GLFW_FOCUSED) == GLFW_TRUE &&
                                glfwGetWindowAttrib(nativeWindow, GLFW_ICONIFIED) == GLFW_FALSE;
 
-    const bool blocked = closeRequested || closingAllScenes || exitDialog.isOpen(ctx) || ctx.contextMenuOwnsInput() || !windowFocused;
+    const bool blocked = closeRequested || waitingForInput || closingAllScenes || exitDialog.isOpen(ctx) ||
+                         ctx.contextMenuOwnsInput() || !windowFocused;
 
     const bool mustRelease = blocked || !engine.isPlaying() || !engine.hasActiveScene() || engine.getSimulationState() != SimulationState::Running ||
         capturedSceneGeneration != engine.getSceneGeneration() || Core::Input::isKeyPressed(GLFW_KEY_ESCAPE) ||
@@ -410,8 +413,8 @@ bool EditorShell::frame(EditorUi &ui, Engine &engine, Scribe::Session &session, 
         exitDialog.hide(ctx);
     }
 
-    const bool handlingExit = closeRequested || closingAllScenes || exitDialog.isOpen(ctx);
-    if (handlingExit)
+    const bool handlingExit = closeRequested || waitingForInput || closingAllScenes || exitDialog.isOpen(ctx);
+    if (handlingExit && !waitingForInput)
     {
         if (playDialogOpen)
             handlePlayDialog(ctx, engine, session);
@@ -425,7 +428,7 @@ bool EditorShell::frame(EditorUi &ui, Engine &engine, Scribe::Session &session, 
             return false;
         }
     }
-    else
+    else if (!handlingExit)
     {
         if (routeInput && !beganCaptured && windowFocused && !assetDrag.asset.isValid() && !assetDrag.ownsInput)
         {

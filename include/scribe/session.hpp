@@ -18,6 +18,7 @@
 #include "history.hpp"
 #include "scene.hpp"
 
+namespace Cthulhu::Project { struct ProjectInputMap; }
 namespace Cthulhu::Scribe
 {
 
@@ -152,6 +153,7 @@ class Session
 
     Result setMainScene(std::string_view resourcePath);
     Result setProjectDetails(std::string_view name, uint32_t width, uint32_t height);
+    Result setProjectInput(const Project::ProjectInputMap &input);
 
     // << assets applied immediately never undoable >>
     Result refreshAssets();
