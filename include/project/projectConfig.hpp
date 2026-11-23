@@ -5,6 +5,7 @@
 #include <string>
 
 #include "assetId.hpp"
+#include "projectInput.hpp"
 
 namespace Cthulhu::Project
 {
@@ -15,7 +16,8 @@ struct ProjectConfig
     uint32_t windowWidth{1280};
     uint32_t windowHeight{720};
 
-    std::optional<std::string> mainScene;
-    std::optional<Assets::AssetId> mainSceneId;
+    std::optional<std::string> mainScene{};
+    std::optional<Assets::AssetId> mainSceneId{};
+    ProjectInputMap input = defaultProjectInput();
 };
 } // namespace Cthulhu::Project

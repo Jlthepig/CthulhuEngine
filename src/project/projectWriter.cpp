@@ -61,6 +61,23 @@ bool ProjectWriter::write(const std::filesystem::path &path, const ProjectConfig
     else if (config.mainScene)
         file << "\nmainScene = \"" << escapeString(*config.mainScene) << "\"\n";
 
+    file << "\ninput.version = " << inputFormatVersion << '\n';
+    for (const auto &action : config.input.actions)
+    {
+        const auto id = inputActionIdToString(action.id);
+        file << "input.action." << id << " = \"" << escapeString(action.name) << "\"\n";
+        for (const auto binding : action.bindings)
+        {
+            const char *device = binding.device == InputDevice::Key ? "key:" : "mouse:";
+            file << "input.binding." << id << " = " << device << binding.code << '\n';
+        }
+    }
+    for (std::size_t i = 0; i < inputControlCount; ++i)
+    {
+        const auto id = config.input.assignments[i];
+        file << "input.control." << inputControlKeys[i] << " = " << (id.isValid() ? inputActionIdToString(id) : "none") << '\n';
+    }
+
     file.close();
     std::error_code error;
     if (file)

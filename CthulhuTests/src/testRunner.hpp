@@ -1,6 +1,7 @@
 #pragma once
 
 #include "testCommon.hpp"
+#include "project/testsProjectInput.hpp"
 #include "scene/testsComponents.hpp"
 #include "scene/testsDescriptors.hpp"
 #include "assets/testsAssets.hpp"
@@ -28,6 +29,7 @@ inline int run(Engine& engine)
 		Log::Print("NO ACTIVE SCENE", "Validation", LogType::LOG_ERROR);
 		return 1;
 	}
+	validateProjectInput(engine.getProject()->getRootPath() / ".cthulhu", r);
 	validateAssetManager(engine, r);
 	validateAssetTypes(engine, r);
 	validateAssetRegistry(engine, r);

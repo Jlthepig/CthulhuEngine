@@ -39,6 +39,7 @@ class Project
     [[nodiscard]] const std::string *getMainScene(const Assets::AssetRegistry &registry) const;
     [[nodiscard]] bool isMainScene(const Assets::AssetRecord &record, const Assets::AssetRegistry &registry) const;
     [[nodiscard]] bool setMainScene(std::optional<Assets::AssetId> id);
+    [[nodiscard]] std::string setInputMap(ProjectInputMap input);
     [[nodiscard]] std::string_view setDetails(std::string_view name, uint32_t width, uint32_t height);
 
     bool hasMainScene() const

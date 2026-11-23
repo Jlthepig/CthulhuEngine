@@ -134,6 +134,19 @@ bool Project::setMainScene(std::optional<Assets::AssetId> id)
     return saveConfig(std::move(updated));
 }
 
+std::string Project::setInputMap(ProjectInputMap input)
+{
+    if (auto error = normalizeProjectInput(input, false); !error.empty())
+        return error;
+
+    auto updated = config;
+    updated.input = std::move(input);
+    if (!saveConfig(std::move(updated)))
+        return "Could not save project input settings. See the log.";
+
+    return {};
+}
+
 bool Project::saveConfig(ProjectConfig updated)
 {
     if (!ProjectWriter::write(projectFilePath, updated))
@@ -221,6 +234,13 @@ std::optional<Project> Project::createProject(const std::filesystem::path &reque
 
     std::error_code error;
 
+    auto updated = config;
+    if (const auto inputError = normalizeProjectInput(updated.input, false); !inputError.empty())
+    {
+        Log::Print(inputError, "Project", LogType::LOG_ERROR);
+        return std::nullopt;
+    }
+
     auto root = std::filesystem::absolute(requestedRoot, error);
 
     if (error)
@@ -280,7 +300,7 @@ std::optional<Project> Project::createProject(const std::filesystem::path &reque
 
     const auto projectFile = root / "project.cthulhu";
 
-    if (!ProjectWriter::write(projectFile, config))
+    if (!ProjectWriter::write(projectFile, updated))
     {
         rollback();
         return std::nullopt;

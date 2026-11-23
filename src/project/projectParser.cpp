@@ -1,3 +1,4 @@
+#include <bitset>
 #include <cctype>
 #include <charconv>
 #include <cstdint>
@@ -157,6 +158,81 @@ static bool parseUInt32(std::string_view value, uint32_t &output)
     return true;
 }
 
+static std::string_view parseInputRecord(ProjectInputMap &input, std::bitset<inputControlCount> &seenSlots, bool &seenVersion, std::string_view key, std::string_view value)
+{
+    if (key == "version")
+    {
+        uint32_t version{};
+        if (seenVersion)
+            return "Duplicate input version.";
+        if (!parseUInt32(value, version) || version != inputFormatVersion)
+            return "Unsupported input version. Expected version 1.";
+        seenVersion = true;
+        return {};
+    }
+
+    if (!seenVersion)
+        return "Expected input.version before input records.";
+
+    if (key.starts_with("action."))
+    {
+        const auto id = inputActionIdFromString(key.substr(7));
+        std::string name;
+        if (!id || !parseString(value, name))
+            return "Expected an action ID and quoted name.";
+        input.actions.push_back({*id, std::move(name), {}});
+        return {};
+    }
+
+    if (key.starts_with("binding."))
+    {
+        const auto id = inputActionIdFromString(key.substr(8));
+        if (!id)
+            return "Invalid binding owner ID.";
+
+        const auto action = std::ranges::find(input.actions, *id, &InputAction::id);
+        if (action == input.actions.end())
+            return "Declare the action before its bindings.";
+
+        const auto colon = value.find(':');
+        if (colon == std::string_view::npos)
+            return "Expected key:<code> or mouse:<code>.";
+
+        const auto device = value.substr(0, colon);
+        uint32_t code{};
+        if ((device != "key" && device != "mouse") ||
+            !parseUInt32(value.substr(colon + 1), code) || !std::in_range<int>(code))
+            return "Invalid input binding.";
+
+        action->bindings.push_back({device == "key" ? InputDevice::Key : InputDevice::MouseButton,
+                                    static_cast<int>(code)});
+        return {};
+    }
+
+    if (key.starts_with("control."))
+    {
+        const auto slot = std::ranges::find(inputControlKeys, key.substr(8));
+        if (slot == inputControlKeys.end())
+            return "Unknown built-in input control.";
+
+        const auto index = static_cast<std::size_t>(slot - inputControlKeys.begin());
+        if (seenSlots.test(index))
+            return "Duplicate control assignment.";
+
+        if (value != "none")
+        {
+            const auto id = inputActionIdFromString(value);
+            if (!id)
+                return "Expected an action ID or none.";
+            input.assignments[index] = *id;
+        }
+        seenSlots.set(index);
+        return {};
+    }
+
+    return "Unknown input setting.";
+}
+
 enum class ProjectKey
 {
     Name,
@@ -226,7 +302,9 @@ std::optional<ProjectConfig> ProjectParser::parse(const std::string &path)
         return std::nullopt;
     }
 
-    ProjectConfig config;
+    ProjectConfig config{.input = {}};
+    bool seenInputVersion = false;
+    std::bitset<inputControlCount> seenSlots;
 
     bool foundName = false;
     bool foundWindowWidth = false;
@@ -274,6 +352,18 @@ std::optional<ProjectConfig> ProjectParser::parse(const std::string &path)
                        "ProjectParser",
                        LogType::LOG_ERROR);
             return std::nullopt;
+        }
+
+        if (key.starts_with("input."))
+        {
+            const auto error = parseInputRecord(config.input, seenSlots, seenInputVersion, key.substr(6), value);
+            if (!error.empty())
+            {
+                Log::Print("INVALID '" + std::string(key) + "' ON LINE " + std::to_string(lineNumber) + ": " +
+                               std::string(error), "ProjectParser", LogType::LOG_ERROR);
+                return std::nullopt;
+            }
+            continue;
         }
 
         switch (classifyKey(key))
@@ -366,6 +456,12 @@ std::optional<ProjectConfig> ProjectParser::parse(const std::string &path)
         }
     }
 
+    if (file.bad() || !file.eof())
+    {
+        Log::Print("FAILED TO READ PROJECT FILE: " + path, "ProjectParser", LogType::LOG_ERROR);
+        return std::nullopt;
+    }
+
     if (!foundName || !foundWindowWidth || !foundWindowHeight)
     {
         std::string missing;
@@ -387,6 +483,26 @@ std::optional<ProjectConfig> ProjectParser::parse(const std::string &path)
 
         Log::Print("PROJECT FILE IS MISSING REQUIRED SETTINGS:" + missing, "ProjectParser", LogType::LOG_ERROR);
         return std::nullopt;
+    }
+
+    if (!seenInputVersion)
+        config.input = defaultProjectInput();
+    else
+    {
+        for (std::size_t i = 0; i < inputControlCount; ++i)
+        {
+            if (!seenSlots.test(i))
+            {
+                Log::Print("MISSING INPUT CONTROL '" + std::string(inputControlKeys[i]) + "'.", "ProjectParser", LogType::LOG_ERROR);
+                return std::nullopt;
+            }
+        }
+
+        if (const auto error = normalizeProjectInput(config.input, true); !error.empty())
+        {
+            Log::Print(error, "ProjectParser", LogType::LOG_ERROR);
+            return std::nullopt;
+        }
     }
 
     return config;
