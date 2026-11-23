@@ -1,4 +1,5 @@
 #include "contentBrowserPanel.hpp"
+#include "editorMetrics.hpp"
 
 #include <algorithm>
 #include <cmath>
@@ -80,8 +81,6 @@ void ContentBrowserPanel::applyFilter(Context &ctx)
     {
         selectedAsset = {};
         selectedFolder.clear();
-        ctx.setText(selectionLabel, currentFolder);
-        ctx.setTooltip(selectionLabel, currentFolder);
         styleSelection(ctx);
     }
 
@@ -89,7 +88,6 @@ void ContentBrowserPanel::applyFilter(Context &ctx)
     ctx.setText(emptyLabel, filtered ? "No matching assets." : "This folder is empty.");
     ctx.setVisible(emptyLabel, visible.empty());
     ctx.setVisible(grid, !visible.empty());
-    ctx.setText(countLabel, std::to_string(visible.size()) + (visible.size() == 1 ? " item" : " items"));
 }
 
 void ContentBrowserPanel::showFolder(Context &ctx, std::string_view path, bool recordHistory)
@@ -185,9 +183,9 @@ void ContentBrowserPanel::rebuildBreadcrumbs(Context &ctx)
     const auto separator = [&](std::string_view text, float width) {
         const NodeHandle node = ctx.createLabel(breadcrumbs, text);
         auto layout = ctx.layoutStyle(node);
-        layout.minSize = Vec2{width, 24.0f};
-        layout.preferredSize = Vec2{width, 24.0f};
-        layout.maxSize = Vec2{width, 24.0f};
+        layout.minSize = Vec2{width, RowHeight};
+        layout.preferredSize = Vec2{width, RowHeight};
+        layout.maxSize = Vec2{width, RowHeight};
         ctx.setTextAlign(node, TextAlign::Center, TextAlign::Center);
         ctx.style(node).all.text = ctx.theme().textMuted;
         crumbNodes.push_back(node);
@@ -197,9 +195,9 @@ void ContentBrowserPanel::rebuildBreadcrumbs(Context &ctx)
         const std::string_view name = breadcrumbName(crumbPaths[i]);
         const NodeHandle node = ctx.createButton(breadcrumbs, caption(ctx, name, crumbWidths[i] - 12.0f));
         auto layout = ctx.layoutStyle(node);
-        layout.minSize = Vec2{crumbWidths[i], 24.0f};
-        layout.preferredSize = Vec2{crumbWidths[i], 24.0f};
-        layout.maxSize = Vec2{crumbWidths[i], 24.0f};
+        layout.minSize = Vec2{crumbWidths[i], RowHeight};
+        layout.preferredSize = Vec2{crumbWidths[i], RowHeight};
+        layout.maxSize = Vec2{crumbWidths[i], RowHeight};
         layout.padding = Padding{6.0f, 2.0f};
         layout.clip = true;
 

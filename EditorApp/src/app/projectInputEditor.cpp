@@ -1,4 +1,5 @@
 #include "projectInputEditor.hpp"
+#include "editorMetrics.hpp"
 
 #include <algorithm>
 
@@ -26,7 +27,7 @@ NodeHandle row(Context &ctx, NodeHandle parent)
     layout.mode = LayoutMode::Horizontal;
     layout.verticalAlignment = Alignment::Center;
     layout.preferredSize = Vec2{0.0f, 32.0f};
-    layout.gap = 8.0f;
+    layout.gap = SpaceM;
     return node;
 }
 
@@ -37,7 +38,7 @@ NodeHandle column(Context &ctx, NodeHandle parent)
     layout.mode = LayoutMode::Vertical;
     layout.horizontalAlignment = Alignment::Stretch;
     layout.fitContentY = true;
-    layout.gap = 6.0f;
+    layout.gap = SpaceS;
     return node;
 }
 

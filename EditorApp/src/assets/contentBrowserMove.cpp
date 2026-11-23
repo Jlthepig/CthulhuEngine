@@ -162,7 +162,7 @@ std::optional<AssetDropFeedback> ContentBrowserPanel::folderDrop(Context &ctx, E
         }
         else
         {
-            feedback.addRectOutline(tileRect.shrink(1.0f), ctx.theme().accent, 2.0f);
+            feedback.addRectOutline(tileRect.shrink(1.0f), ctx.theme().focus, 2.0f);
         }
 
         const auto name = folder->path == "res://" ? std::string_view{"project root"} : folder->name();

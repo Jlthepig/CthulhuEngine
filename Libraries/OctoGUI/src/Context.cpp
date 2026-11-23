@@ -532,6 +532,23 @@ void Context::setSplitMinimumSizes(NodeHandle handle, f32 first, f32 second) {
   impl->widgets.setSplitMinimumSizes(impl->tree, handle, first, second);
 }
 
+void Context::setSplitDividerLineWidth(NodeHandle handle, f32 width) {
+  SplitContainerState *state = impl->tree.splitContainerState(handle);
+
+  if (!state) {
+    return;
+  }
+
+  width = width > 0.0f ? width : 0.0f;
+
+  if (state->dividerLineWidth == width) {
+    return;
+  }
+
+  state->dividerLineWidth = width;
+  impl->tree.markPaintDirty(handle);
+}
+
 NodeHandle Context::createComboBox(
     NodeHandle parent,
     const std::vector<std::string>& items,

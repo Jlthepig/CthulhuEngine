@@ -5,6 +5,7 @@
 
 #include "hierarchyPanel.hpp"
 #include "editorPanels.hpp"
+#include "editorMetrics.hpp"
 
 #include "components.hpp"
 #include "engine.hpp"
@@ -21,7 +22,7 @@ namespace Cthulhu::Editor
 {
 namespace
 {
-constexpr f32 HierarchyRowHeight = 26.0f;
+constexpr f32 HierarchyRowHeight = TreeRowHeight;
 constexpr f32 HierarchyIndentWidth = 16.0f;
 constexpr f32 HierarchyChevronWidth = 16.0f;
 constexpr f32 HierarchyTextGap = 4.0f;

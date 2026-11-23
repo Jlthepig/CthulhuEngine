@@ -3,6 +3,8 @@
 #include <cassert>
 
 #include "editorDialog.hpp"
+#include "editorTheme.hpp"
+#include "editorMetrics.hpp"
 
 namespace Cthulhu::Editor
 {
@@ -23,18 +25,20 @@ void EditorDialog::build(Context &ctx, NodeHandle root, NodeHandle editorContent
     backdropLayout.mode = LayoutMode::Vertical;
     backdropLayout.horizontalAlignment = Alignment::Center;
     backdropLayout.verticalAlignment = Alignment::Center;
-    backdropLayout.padding = Padding{12.0f};
+    backdropLayout.padding = Padding{SpaceL};
     backdropLayout.gap = 0.0f;
     backdropLayout.clip = true;
     backdropLayout.scrollY = true;
 
     const auto card = ctx.createPanel(backdrop);
     ctx.style(card).all.background = ctx.theme().surfaceRaised;
+    ctx.style(card).shadow = ctx.theme().elevationHigh;
+    ctx.style(card).cornerRadius = 6.0f;
     auto cardLayout = ctx.layoutStyle(card);
     cardLayout.preferredSize = Vec2{width, 0.0f};
     cardLayout.fitContentY = true;
-    cardLayout.padding = Padding{20.0f};
-    cardLayout.gap = 12.0f;
+    cardLayout.padding = Padding{SpaceXl};
+    cardLayout.gap = SpaceL;
     cardLayout.clip = true;
 
     titleLabel = ctx.createLabel(card, "");
@@ -46,19 +50,19 @@ void EditorDialog::build(Context &ctx, NodeHandle root, NodeHandle editorContent
         choiceRows[i] = ctx.createContainer(card);
         auto row = ctx.layoutStyle(choiceRows[i]);
         row.mode = LayoutMode::Horizontal;
-        row.preferredSize = Vec2{0.0f, 32.0f};
+        row.preferredSize = Vec2{0.0f, ControlHeight};
         row.verticalAlignment = Alignment::Stretch;
-        row.gap = 8.0f;
+        row.gap = SpaceM;
 
         choiceLabels[i] = ctx.createLabel(choiceRows[i], "");
         auto label = ctx.layoutStyle(choiceLabels[i]);
-        label.minSize = Vec2{112.0f, 32.0f};
-        label.preferredSize = Vec2{112.0f, 32.0f};
-        label.maxSize = Vec2{112.0f, 32.0f};
+        label.minSize = Vec2{112.0f, ControlHeight};
+        label.preferredSize = Vec2{112.0f, ControlHeight};
+        label.maxSize = Vec2{112.0f, ControlHeight};
 
         choices[i] = ctx.createComboBox(choiceRows[i], {});
-        ctx.layoutStyle(choices[i]).minSize = Vec2{0.0f, 32.0f};
-        ctx.layoutStyle(choices[i]).preferredSize = Vec2{480.0f, 32.0f};
+        ctx.layoutStyle(choices[i]).minSize = Vec2{0.0f, ControlHeight};
+        ctx.layoutStyle(choices[i]).preferredSize = Vec2{480.0f, ControlHeight};
         ctx.layoutStyle(choices[i]).clip = true;
 
         ctx.setVisible(choices[i], false);
@@ -69,19 +73,19 @@ void EditorDialog::build(Context &ctx, NodeHandle root, NodeHandle editorContent
     auto detailsLayout = ctx.layoutStyle(details);
     detailsLayout.mode = LayoutMode::Vertical;
     detailsLayout.horizontalAlignment = Alignment::Stretch;
-    detailsLayout.padding = Padding{12.0f, 10.0f, 24.0f, 10.0f};
-    detailsLayout.gap = 4.0f;
+    detailsLayout.padding = Padding{SpaceL, SpaceM, SpaceXl + SpaceM, SpaceM};
+    detailsLayout.gap = SpaceS;
     detailsLayout.scrollY = true;
     detailsLayout.clip = true;
     auto detailsStyle = ctx.style(details);
     detailsStyle.all.background = ctx.theme().surface;
     detailsStyle.all.border = ctx.theme().border;
     detailsStyle.borderWidth = 1.0f;
-    detailsStyle.cornerRadius = 4.0f;
+    detailsStyle.cornerRadius = ctx.theme().controlRadius;
     ctx.setVisible(details, false);
 
     noticeLabel = ctx.createLabel(card, "");
-    ctx.layoutStyle(noticeLabel).preferredSize = Vec2{0.0f, 24.0f};
+    ctx.layoutStyle(noticeLabel).preferredSize = Vec2{0.0f, RowHeight};
     ctx.layoutStyle(noticeLabel).clip = true;
     ctx.style(noticeLabel).all.text = ctx.theme().textMuted;
     ctx.setVisible(noticeLabel, false);
@@ -93,26 +97,26 @@ void EditorDialog::build(Context &ctx, NodeHandle root, NodeHandle editorContent
     errorStyle.all.gradient = LinearGradient{};
     errorStyle.borderWidth = 0.0f;
     errorStyle.shadow = ShadowStyle{};
-    ctx.layoutStyle(errorLabel).padding = Padding{0.0f, 2.0f};
+    ctx.layoutStyle(errorLabel).padding = Padding{0.0f, SpaceXs};
     for (const auto label : {titleLabel, messageLabel, errorLabel})
-        ctx.layoutStyle(label).preferredSize = Vec2{0.0f, 28.0f};
+        ctx.layoutStyle(label).preferredSize = Vec2{0.0f, RowHeight};
 
     ctx.style(messageLabel).all.text = ctx.theme().textMuted;
-    ctx.style(errorLabel).all.text = Color::fromRGBA8(242, 115, 115);
+    ctx.style(errorLabel).all.text = DangerColor;
 
     const auto row = ctx.createContainer(card);
     auto rowLayout = ctx.layoutStyle(row);
     rowLayout.mode = LayoutMode::Horizontal;
     rowLayout.horizontalAlignment = Alignment::End;
-    rowLayout.preferredSize = Vec2{0.0f, 36.0f};
+    rowLayout.preferredSize = Vec2{0.0f, DialogButtonHeight};
     rowLayout.verticalAlignment = Alignment::Stretch;
-    rowLayout.gap = 8.0f;
+    rowLayout.gap = SpaceM;
 
     for (auto &button : buttons)
     {
         button = ctx.createButton(row, "");
-        ctx.layoutStyle(button).minSize = Vec2{108.0f, 36.0f};
-        ctx.layoutStyle(button).padding = Padding{16.0f, 4.0f};
+        ctx.layoutStyle(button).minSize = Vec2{108.0f, DialogButtonHeight};
+        ctx.layoutStyle(button).padding = Padding{SpaceXl, SpaceS};
     }
     ctx.setText(buttons.back(), "Cancel");
 
@@ -190,14 +194,14 @@ void EditorDialog::setDetails(Context &ctx, std::span<const std::string> lines)
         style.all.text = detailRows.empty() ? ctx.theme().text : ctx.theme().textMuted;
 
         auto layout = ctx.layoutStyle(row);
-        layout.padding = Padding{0.0f, 2.0f};
-        layout.minSize = Vec2{0.0f, 28.0f};
-        layout.preferredSize = Vec2{0.0f, 28.0f};
-        layout.maxSize = Vec2{InfiniteLayoutSize, 28.0f};
+        layout.padding = Padding{0.0f, SpaceXs};
+        layout.minSize = Vec2{0.0f, RowHeight};
+        layout.preferredSize = Vec2{0.0f, RowHeight};
+        layout.maxSize = Vec2{InfiniteLayoutSize, RowHeight};
         detailRows.push_back(row);
     }
 
-    const float height = 20.0f + 32.0f * static_cast<float>(std::min<std::size_t>(lines.size(), 8)) - 4.0f;
+    const float height = 2.0f * SpaceM + (RowHeight + SpaceS) * static_cast<float>(std::min<std::size_t>(lines.size(), 8)) - SpaceS;
     auto layout = ctx.layoutStyle(details);
     layout.minSize = Vec2{0.0f, height};
     layout.preferredSize = Vec2{0.0f, height};
@@ -308,7 +312,7 @@ DialogChoice EditorDialog::pollChoice(Context &ctx) const
             if (detailFocused)
             {
                 const Rect row = ctx.tree().rect(control(focused));
-                const Rect area = ctx.tree().rect(details).shrink(10.0f);
+                const Rect area = ctx.tree().rect(details).shrink(SpaceM);
                 float offset = ctx.scrollOffsetY(details);
 
                 if (row.y - offset < area.y)

@@ -10,6 +10,7 @@
 #include "input.hpp"
 #include "pickingMath.hpp"
 #include "viewportPanel.hpp"
+#include "editorMetrics.hpp"
 #include "editorShortcuts.hpp"
 #include "window.hpp"
 #include "session.hpp"
@@ -47,24 +48,24 @@ IconButton makeToolButton(Context &ctx, NodeHandle parent, std::string_view icon
     layout.horizontalAlignment = Alignment::Center;
     layout.verticalAlignment = Alignment::Center;
     layout.padding = Padding{};
-    layout.minSize = Vec2{28.0f, 26.0f};
-    layout.preferredSize = Vec2{28.0f, 26.0f};
-    layout.maxSize = Vec2{28.0f, 26.0f};
+    layout.minSize = Vec2{ToolButtonWidth, ControlHeight};
+    layout.preferredSize = Vec2{ToolButtonWidth, ControlHeight};
+    layout.maxSize = Vec2{ToolButtonWidth, ControlHeight};
     result.icon = ctx.createIcon(result.button, iconName);
-    ctx.setIconSize(result.icon, 16.0f);
+    ctx.setIconSize(result.icon, IconSize);
     return result;
 }
 
 void makeSnapIcon(Context &ctx, NodeHandle parent, std::string_view name, Color color)
 {
     const NodeHandle icon = ctx.createIcon(parent, name);
-    ctx.setIconSize(icon, 16.0f);
+    ctx.setIconSize(icon, IconSize);
     ctx.setIconColor(icon, color);
 
     auto layout = ctx.layoutStyle(icon);
-    layout.minSize = Vec2{16.0f, 16.0f};
-    layout.preferredSize = Vec2{16.0f, 16.0f};
-    layout.maxSize = Vec2{16.0f, 16.0f};
+    layout.minSize = Vec2{IconSize, IconSize};
+    layout.preferredSize = Vec2{IconSize, IconSize};
+    layout.maxSize = Vec2{IconSize, IconSize};
 }
 
 NodeHandle makeSnapInput(Context &ctx, NodeHandle parent, float value, float step)
@@ -73,10 +74,10 @@ NodeHandle makeSnapInput(Context &ctx, NodeHandle parent, float value, float ste
     ctx.setNumericRange(input, 0.0, 1000.0);
     ctx.setNumericStep(input, step);
     auto layout = ctx.layoutStyle(input);
-    layout.padding = Padding{6.0f, 2.0f};
-    layout.minSize = Vec2{54.0f, 26.0f};
-    layout.preferredSize = Vec2{54.0f, 26.0f};
-    layout.maxSize = Vec2{54.0f, 26.0f};
+    layout.padding = Padding{SpaceS, SpaceXs};
+    layout.minSize = Vec2{54.0f, ControlHeight};
+    layout.preferredSize = Vec2{54.0f, ControlHeight};
+    layout.maxSize = Vec2{54.0f, ControlHeight};
     return input;
 }
 } // namespace
@@ -97,20 +98,20 @@ void ViewportPanel::build(Context &ctx, NodeHandle viewportRoot)
     headerLayout.verticalAlignment = Alignment::Center;
     headerLayout.gap = 0.0f;
     headerLayout.padding = Padding{};
-    headerLayout.minSize = Vec2{0.0f, 36.0f};
-    headerLayout.preferredSize = Vec2{0.0f, 36.0f};
-    headerLayout.maxSize = Vec2{InfiniteLayoutSize, 36.0f};
+    headerLayout.minSize = Vec2{0.0f, ToolbarHeight};
+    headerLayout.preferredSize = Vec2{0.0f, ToolbarHeight};
+    headerLayout.maxSize = Vec2{InfiniteLayoutSize, ToolbarHeight};
 
     const NodeHandle pill = ctx.createContainer(header);
     auto pillLayout = ctx.layoutStyle(pill);
     pillLayout.mode = LayoutMode::Horizontal;
     pillLayout.horizontalAlignment = Alignment::Start;
     pillLayout.verticalAlignment = Alignment::Center;
-    pillLayout.gap = 4.0f;
-    pillLayout.padding = Padding{6.0f, 4.0f, 6.0f, 4.0f};
-    pillLayout.minSize = Vec2{0.0f, 36.0f};
-    pillLayout.preferredSize = Vec2{0.0f, 36.0f};
-    pillLayout.maxSize = Vec2{InfiniteLayoutSize, 36.0f};
+    pillLayout.gap = SpaceS;
+    pillLayout.padding = Padding{SpaceS, SpaceXs, SpaceS, SpaceXs};
+    pillLayout.minSize = Vec2{0.0f, ToolbarHeight};
+    pillLayout.preferredSize = Vec2{0.0f, ToolbarHeight};
+    pillLayout.maxSize = Vec2{InfiniteLayoutSize, ToolbarHeight};
     {
         auto pillStyle = ctx.style(pill);
         pillStyle.all.background = ctx.theme().surface;
@@ -139,26 +140,26 @@ void ViewportPanel::build(Context &ctx, NodeHandle viewportRoot)
         NodeHandle sep = ctx.createSeparator(pill);
         ctx.setSeparatorOrientation(sep, SeparatorOrientation::Vertical);
         auto layout = ctx.layoutStyle(sep);
-        layout.minSize = Vec2{1.0f, 18.0f};
-        layout.preferredSize = Vec2{1.0f, 18.0f};
-        layout.maxSize = Vec2{1.0f, 18.0f};
+        layout.minSize = Vec2{1.0f, IconSize};
+        layout.preferredSize = Vec2{1.0f, IconSize};
+        layout.maxSize = Vec2{1.0f, IconSize};
     }
 
     worldButton = ctx.createButton(pill, "World");
     {
         auto layout = ctx.layoutStyle(worldButton);
-        layout.minSize = Vec2{48.0f, 26.0f};
-        layout.preferredSize = Vec2{48.0f, 26.0f};
-        layout.maxSize = Vec2{48.0f, 26.0f};
+        layout.minSize = Vec2{48.0f, ControlHeight};
+        layout.preferredSize = Vec2{48.0f, ControlHeight};
+        layout.maxSize = Vec2{48.0f, ControlHeight};
         layout.horizontalAlignment = Alignment::Center;
         layout.verticalAlignment = Alignment::Center;
     }
     localButton = ctx.createButton(pill, "Local");
     {
         auto layout = ctx.layoutStyle(localButton);
-        layout.minSize = Vec2{48.0f, 26.0f};
-        layout.preferredSize = Vec2{48.0f, 26.0f};
-        layout.maxSize = Vec2{48.0f, 26.0f};
+        layout.minSize = Vec2{48.0f, ControlHeight};
+        layout.preferredSize = Vec2{48.0f, ControlHeight};
+        layout.maxSize = Vec2{48.0f, ControlHeight};
         layout.horizontalAlignment = Alignment::Center;
         layout.verticalAlignment = Alignment::Center;
     }
@@ -167,9 +168,9 @@ void ViewportPanel::build(Context &ctx, NodeHandle viewportRoot)
         NodeHandle sep = ctx.createSeparator(pill);
         ctx.setSeparatorOrientation(sep, SeparatorOrientation::Vertical);
         auto layout = ctx.layoutStyle(sep);
-        layout.minSize = Vec2{1.0f, 18.0f};
-        layout.preferredSize = Vec2{1.0f, 18.0f};
-        layout.maxSize = Vec2{1.0f, 18.0f};
+        layout.minSize = Vec2{1.0f, IconSize};
+        layout.preferredSize = Vec2{1.0f, IconSize};
+        layout.maxSize = Vec2{1.0f, IconSize};
     }
 
     [[maybe_unused]] const NodeHandle snappingHeader = ctx.createLabel(pill, " Snapping: ");
@@ -352,8 +353,8 @@ void ViewportPanel::updateMarquee(Context &ctx, NodeHandle sceneNode, bool enabl
 
     auto &draw = ctx.drawList();
     draw.pushClip(Rect{left, top, right - left, bottom - top});
-    draw.addRectFilled(box, Color::fromRGBA8(155, 185, 210, 45));
-    draw.addRectOutline(box, Color::fromRGBA8(175, 200, 220), 1.0f);
+    draw.addRectFilled(box, ctx.theme().focus.withAlpha(0.14f));
+    draw.addRectOutline(box, ctx.theme().focus, 1.0f);
     draw.popClip();
 }
 

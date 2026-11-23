@@ -3,6 +3,7 @@
 #include <cmath>
 
 #include "OctoGui_GLFW.h"
+#include "editorTheme.hpp"
 #include "log_utils.hpp"
 
 using KalaHeaders::KalaLog::Log;
@@ -12,7 +13,7 @@ namespace Cthulhu::Editor
 {
 namespace
 {
-constexpr octogui::u32 EditorFontSize = 14;
+constexpr octogui::u32 EditorFontSize = 15;
 } 
 
 bool EditorUi::init(GLFWwindow *glfwWindow, const std::filesystem::path &resourceRoot)
@@ -26,10 +27,14 @@ bool EditorUi::init(GLFWwindow *glfwWindow, const std::filesystem::path &resourc
     }
 
     ctx.setTextureBackend(&renderer);
-    ctx.setTheme(octogui::darkTheme());
+    ctx.setTheme(cthulhuTheme());
+
+    auto button = ctx.defaultStyle(octogui::NodeType::Button);
+    button.all.gradient = octogui::LinearGradient{};
+    button.pressedOffsetY = 0.0f;
 
     const auto fontRoot = resourceRoot / "editor" / "fonts";
-    const auto bodyFont = (fontRoot / "Roboto-Regular.ttf").string();
+    const auto bodyFont = (fontRoot / "Roboto-Medium.ttf").string();
     const auto headingFont = (fontRoot / "Roboto-SemiBold.ttf").string();
     if (!ctx.loadDefaultFont(bodyFont, EditorFontSize) ||
         !ctx.loadFont(octogui::FontSlot::Secondary, headingFont, EditorFontSize))

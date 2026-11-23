@@ -1,4 +1,5 @@
 #include "editorShell.hpp"
+#include "editorMetrics.hpp"
 
 #include <algorithm>
 #include <cassert>
@@ -12,9 +13,9 @@ namespace Cthulhu::Editor
 namespace
 {
 constexpr float TabWidth = 164.0f;
-constexpr float TabHeight = 28.0f;
-constexpr float TabGap = 16.0f;
-constexpr float ArrowWidth = 24.0f;
+constexpr float TabHeight = PanelHeaderHeight;
+constexpr float TabGap = SpaceXl;
+constexpr float ArrowWidth = IconButtonSize;
 }
 
 void styleTabButton(Context &ctx, NodeHandle button)
@@ -40,7 +41,7 @@ NodeHandle tabIconButton(Context &ctx, NodeHandle parent, std::string_view icon,
     styleTabButton(ctx, button);
 
     const auto image = ctx.createIcon(button, icon);
-    ctx.setIconSize(image, 14.0f);
+    ctx.setIconSize(image, IconSize);
     ctx.setTooltip(button, tooltip);
     return button;
 }
@@ -84,7 +85,7 @@ void EditorShell::addSceneTab(Context &ctx)
     auto title = ctx.layoutStyle(tab.button);
     title.minSize = {TabWidth - ArrowWidth, TabHeight};
     title.maxSize = {TabWidth - ArrowWidth, TabHeight};
-    title.padding = Padding{10.0f, 0.0f, 2.0f, 0.0f};
+    title.padding = Padding{SpaceM, 0.0f, SpaceXs, 0.0f};
     title.clip = true;
     styleTabButton(ctx, tab.button);
     tab.close = tabIconButton(ctx, tab.root, "close", "Close scene");

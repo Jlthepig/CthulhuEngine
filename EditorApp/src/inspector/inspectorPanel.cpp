@@ -1,4 +1,5 @@
 #include "inspectorPanel.hpp"
+#include "editorMetrics.hpp"
 
 #include <algorithm>
 #include <limits>
@@ -23,15 +24,15 @@ NodeHandle inspectorRow(Context &ctx, NodeHandle parent, std::string_view label)
     rowLayout.mode = LayoutMode::Horizontal;
     rowLayout.horizontalAlignment = Alignment::Stretch;
     rowLayout.verticalAlignment = Alignment::Center;
-    rowLayout.gap = 4.0f;
-    rowLayout.minSize = Vec2{0.0f, 30.0f};
-    rowLayout.preferredSize = Vec2{0.0f, 30.0f};
+    rowLayout.gap = SpaceS;
+    rowLayout.minSize = Vec2{0.0f, ControlHeight};
+    rowLayout.preferredSize = Vec2{0.0f, ControlHeight};
 
     const NodeHandle name = ctx.createLabel(row, label == "modelPath" || label == "filePath" ? std::string_view{"Path"} : label);
     auto nameLayout = ctx.layoutStyle(name);
-    nameLayout.minSize = Vec2{128.0f, 26.0f};
-    nameLayout.preferredSize = Vec2{128.0f, 26.0f};
-    nameLayout.maxSize = Vec2{128.0f, 26.0f};
+    nameLayout.minSize = Vec2{128.0f, ControlHeight};
+    nameLayout.preferredSize = Vec2{128.0f, ControlHeight};
+    nameLayout.maxSize = Vec2{128.0f, ControlHeight};
     nameLayout.verticalAlignment = Alignment::Center;
     return row;
 }
@@ -43,16 +44,16 @@ NodeHandle transformInspectorRow(Context &ctx, NodeHandle parent, std::string_vi
     rowLayout.mode = LayoutMode::Horizontal;
     rowLayout.horizontalAlignment = Alignment::Stretch;
     rowLayout.verticalAlignment = Alignment::Center;
-    rowLayout.gap = 4.0f;
-    rowLayout.minSize = Vec2{0.0f, 30.0f};
-    rowLayout.preferredSize = Vec2{0.0f, 30.0f};
+    rowLayout.gap = SpaceS;
+    rowLayout.minSize = Vec2{0.0f, ControlHeight};
+    rowLayout.preferredSize = Vec2{0.0f, ControlHeight};
 
     const NodeHandle name = ctx.createLabel(row, label);
     ctx.style(name).all.text = ctx.theme().textMuted;
     auto nameLayout = ctx.layoutStyle(name);
-    nameLayout.minSize = Vec2{72.0f, 30.0f};
-    nameLayout.preferredSize = Vec2{72.0f, 30.0f};
-    nameLayout.maxSize = Vec2{72.0f, 30.0f};
+    nameLayout.minSize = Vec2{72.0f, ControlHeight};
+    nameLayout.preferredSize = Vec2{72.0f, ControlHeight};
+    nameLayout.maxSize = Vec2{72.0f, ControlHeight};
     return row;
 }
 
@@ -78,9 +79,9 @@ std::string transformFieldLabel(std::string_view field)
 void fitInspectorControl(Context &ctx, NodeHandle control)
 {
     auto layout = ctx.layoutStyle(control);
-    layout.minSize = Vec2{80.0f, 30.0f};
-    layout.preferredSize = Vec2{0.0f, 30.0f};
-    layout.maxSize = Vec2{InfiniteLayoutSize, 30.0f};
+    layout.minSize = Vec2{80.0f, ControlHeight};
+    layout.preferredSize = Vec2{0.0f, ControlHeight};
+    layout.maxSize = Vec2{InfiniteLayoutSize, ControlHeight};
     layout.horizontalAlignment = Alignment::Stretch;
     layout.verticalAlignment = Alignment::Center;
 }
@@ -153,7 +154,7 @@ void InspectorPanel::build(Context &ctx, NodeHandle panelNode)
     layout.mode = LayoutMode::Vertical;
     layout.horizontalAlignment = Alignment::Stretch;
     layout.verticalAlignment = Alignment::Stretch;
-    layout.gap = 4.0f;
+    layout.gap = SpaceS;
     layout.scrollY = true;
     resetContent(ctx);
 }
@@ -170,7 +171,7 @@ void InspectorPanel::resetContent(Context &ctx)
     layout.horizontalAlignment = Alignment::Stretch;
     layout.verticalAlignment = Alignment::Start;
     layout.fitContentY = true;
-    layout.gap = 4.0f;
+    layout.gap = SpaceS;
 }
 
 void InspectorPanel::update(Context &ctx,
@@ -297,8 +298,8 @@ void InspectorPanel::rebuild(Context &ctx, Engine &engine, Scene::Scene *scene)
         auto sectionLayout = ctx.layoutStyle(content);
         sectionLayout.mode = LayoutMode::Vertical;
         sectionLayout.horizontalAlignment = Alignment::Stretch;
-        sectionLayout.gap = 6.0f;
-        sectionLayout.padding = isTransform ? Padding{0.0f, 0.0f, 6.0f, 0.0f} : Padding{4.0f, 3.0f, 6.0f, 3.0f};
+        sectionLayout.gap = SpaceS;
+        sectionLayout.padding = isTransform ? Padding{0.0f, 0.0f, SpaceM, 0.0f} : Padding{SpaceS, SpaceXs, SpaceM, SpaceXs};
 
         if (!component.core)
         {
@@ -307,9 +308,9 @@ void InspectorPanel::rebuild(Context &ctx, Engine &engine, Scene::Scene *scene)
             removeRowLayout.mode = LayoutMode::Horizontal;
             removeRowLayout.horizontalAlignment = Alignment::End;
             removeRowLayout.verticalAlignment = Alignment::Center;
-            removeRowLayout.gap = 6.0f;
-            removeRowLayout.minSize = Vec2{0.0f, 18.0f};
-            removeRowLayout.preferredSize = Vec2{0.0f, 18.0f};
+            removeRowLayout.gap = SpaceS;
+            removeRowLayout.minSize = Vec2{0.0f, IconButtonSize};
+            removeRowLayout.preferredSize = Vec2{0.0f, IconButtonSize};
 
             const NodeHandle removeButton = ctx.createButton(removeRow, "");
             auto buttonLayout = ctx.layoutStyle(removeButton);
@@ -317,11 +318,11 @@ void InspectorPanel::rebuild(Context &ctx, Engine &engine, Scene::Scene *scene)
             buttonLayout.horizontalAlignment = Alignment::Center;
             buttonLayout.verticalAlignment = Alignment::Center;
             buttonLayout.padding = Padding{};
-            buttonLayout.minSize = Vec2{24.0f, 24.0f};
-            buttonLayout.preferredSize = Vec2{24.0f, 24.0f};
-            buttonLayout.maxSize = Vec2{24.0f, 24.0f};
+            buttonLayout.minSize = Vec2{IconButtonSize, IconButtonSize};
+            buttonLayout.preferredSize = Vec2{IconButtonSize, IconButtonSize};
+            buttonLayout.maxSize = Vec2{IconButtonSize, IconButtonSize};
             const NodeHandle trashIcon = ctx.createIcon(removeButton, "trash");
-            ctx.setIconSize(trashIcon, 14.0f);
+            ctx.setIconSize(trashIcon, IconSize);
             ctx.setIconColor(trashIcon, ctx.theme().textMuted);
             ctx.setEnabled(removeButton, !engine.isPlaying());
             removeBindings.push_back({removeButton, component.name});
@@ -368,7 +369,7 @@ void InspectorPanel::rebuild(Context &ctx, Engine &engine, Scene::Scene *scene)
                         constexpr std::string_view axisNames[] = {"X", "Y", "Z"};
                         const NodeHandle axisLabel = ctx.createLabel(numericParent, axisNames[axis]);
                         auto labelLayout = ctx.layoutStyle(axisLabel);
-                        const float rowHeight = isTransform ? 30.0f : 28.0f;
+                        const float rowHeight = ControlHeight;
                         labelLayout.minSize = Vec2{12.0f, rowHeight};
                         labelLayout.preferredSize = Vec2{12.0f, rowHeight};
                         labelLayout.maxSize = Vec2{12.0f, rowHeight};
@@ -398,9 +399,9 @@ void InspectorPanel::rebuild(Context &ctx, Engine &engine, Scene::Scene *scene)
                     if (isTransform || isVector)
                     {
                         auto controlLayout = ctx.layoutStyle(control);
-                        controlLayout.minSize = Vec2{44.0f, 30.0f};
-                        controlLayout.preferredSize = Vec2{0.0f, 30.0f};
-                        controlLayout.maxSize = Vec2{InfiniteLayoutSize, 30.0f};
+                        controlLayout.minSize = Vec2{44.0f, ControlHeight};
+                        controlLayout.preferredSize = Vec2{0.0f, ControlHeight};
+                        controlLayout.maxSize = Vec2{InfiniteLayoutSize, ControlHeight};
                         controlLayout.horizontalAlignment = Alignment::Stretch;
                         controlLayout.verticalAlignment = Alignment::Center;
                     }
@@ -506,9 +507,9 @@ void InspectorPanel::rebuild(Context &ctx, Engine &engine, Scene::Scene *scene)
         rowLayout.mode = LayoutMode::Horizontal;
         rowLayout.horizontalAlignment = Alignment::Stretch;
         rowLayout.verticalAlignment = Alignment::Center;
-        rowLayout.gap = 6.0f;
-        rowLayout.minSize = Vec2{0.0f, 28.0f};
-        rowLayout.preferredSize = Vec2{0.0f, 28.0f};
+        rowLayout.gap = SpaceS;
+        rowLayout.minSize = Vec2{0.0f, ControlHeight};
+        rowLayout.preferredSize = Vec2{0.0f, ControlHeight};
 
         if (availableComponents.empty())
         {
@@ -523,9 +524,9 @@ void InspectorPanel::rebuild(Context &ctx, Engine &engine, Scene::Scene *scene)
 
         addComponentButton = ctx.createButton(addRow, "Add");
         auto buttonLayout = ctx.layoutStyle(addComponentButton);
-        buttonLayout.minSize = Vec2{48.0f, 26.0f};
-        buttonLayout.preferredSize = Vec2{48.0f, 26.0f};
-        buttonLayout.maxSize = Vec2{48.0f, 26.0f};
+        buttonLayout.minSize = Vec2{48.0f, ControlHeight};
+        buttonLayout.preferredSize = Vec2{48.0f, ControlHeight};
+        buttonLayout.maxSize = Vec2{48.0f, ControlHeight};
 
         const bool canAdd = !availableComponents.empty() && !engine.isPlaying();
         ctx.setEnabled(addComponentCombo, canAdd);

@@ -10,6 +10,7 @@
 #include "project.hpp"
 #include "session.hpp"
 #include "window.hpp"
+#include "editorTheme.hpp"
 
 namespace Cthulhu::Editor
 {
@@ -29,7 +30,7 @@ void drawAssetBadge(Context &ctx, DrawList &draw, std::string_view name, const A
     const float y = std::clamp(mouse.y + 18.0f, 4.0f, std::max(4.0f, display.y - height - 4.0f));
 
     const Rect rect{x, y, width, height};
-    const auto color = feedback.accepted ? ctx.theme().accent : Color::fromRGBA8(224, 90, 90);
+    const auto color = feedback.accepted ? ctx.theme().focus : DangerColor;
 
     draw.addRoundedRectFilled(rect, ctx.theme().surfaceRaised, 4.0f);
     draw.addRoundedRectOutline(rect, color, 4.0f, 1.0f);

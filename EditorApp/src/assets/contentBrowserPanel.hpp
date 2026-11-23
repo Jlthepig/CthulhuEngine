@@ -93,7 +93,6 @@ class ContentBrowserPanel
     octogui::NodeHandle backButton{}, forwardButton{}, upButton{};
     octogui::NodeHandle breadcrumbs{}, breadcrumbLabel{}, errorLabel{};
     octogui::NodeHandle folderTree{}, assetScroll{}, grid{}, emptyLabel{};
-    octogui::NodeHandle selectionLabel{}, countLabel{};
     octogui::NodeHandle actionBar{}, actionConfirm{}, actionCancel{};
     octogui::NodeHandle moveRow{}, moveDestination{};
     octogui::NodeHandle folderSplit{};

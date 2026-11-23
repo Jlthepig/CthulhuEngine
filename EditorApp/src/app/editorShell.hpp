@@ -160,6 +160,7 @@ class EditorShell
 
     bool lastPlaying = false;
     bool lastPaused = false;
+    bool lastCanPlay = false;
     bool playInputCaptured = false;
     std::uint64_t capturedSceneGeneration{};
 
@@ -176,6 +177,7 @@ class EditorShell
 
     NodeHandle missingAssetsButton{};
     NodeHandle cameraStatusLabel{};
+    NodeHandle sceneStatusLabel{};
     Scene::GameCameraStatus displayedCameraStatus = Scene::GameCameraStatus::Editor;
     bool missingCheckPending = true;
     std::uint64_t checkedMissingGeneration{};

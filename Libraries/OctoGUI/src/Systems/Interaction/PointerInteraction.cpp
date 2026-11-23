@@ -35,6 +35,17 @@ void InteractionSystem::updatePointerTargets(Tree& tree, NodeHandle root, const 
     splitterHit = interaction.splitterActive;
   }
 
+  if (interaction.splitterHovered != splitterHit) {
+    // Dividers can look different while hovered, so repaint both.
+    if (tree.isValid(interaction.splitterHovered)) {
+      tree.markPaintDirty(interaction.splitterHovered);
+    }
+
+    if (tree.isValid(splitterHit)) {
+      tree.markPaintDirty(splitterHit);
+    }
+  }
+
   interaction.splitterHovered = splitterHit;
 
   zOrderScratch.clear();

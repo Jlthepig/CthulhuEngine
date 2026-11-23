@@ -51,6 +51,10 @@ struct SplitContainerState {
 
   f32 minFirst = 80.0f;
   f32 minSecond = 80.0f;
+
+  // 0 draws the classic filled divider. Above 0, the divider is drawn as a
+  // centred line of this width, and only while it is hovered or dragged.
+  f32 dividerLineWidth = 0.0f;
 };
 struct NumericInputState {
   f64 value = 0.0;

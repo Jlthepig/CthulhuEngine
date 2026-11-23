@@ -2,6 +2,8 @@
 
 #include <string>
 #include <charconv>
+#include <algorithm>
+#include <cmath>
 
 #include "Internal/LayoutGeometry.h"
 #include "Internal/PaintHelpers.h"
@@ -1069,9 +1071,43 @@ void PaintSystem::paintSplitContainerDivider(
     return;
   }
 
-  Color color = Color::white().withAlpha(0.22f);
-
   const VisualStyle* style = tree.visualStyle(node);
+
+  if (split->dividerLineWidth > 0.0f) {
+    const bool active = interaction.splitterActive == node;
+
+    if (!active && interaction.splitterHovered != node) {
+      return;
+    }
+
+    Color lineColor = Color::white();
+
+    if (style) {
+      const StateStyle& state =
+          stateStyle(*style, active ? StyleState::Active : StyleState::Hovered);
+
+      if (!state.indicator.isTransparent()) {
+        lineColor = state.indicator;
+      }
+    }
+
+    Rect line = geometry.divider;
+
+    if (split->orientation == SplitOrientation::Horizontal) {
+      const f32 width = std::min(split->dividerLineWidth, line.w);
+      line.x += std::floor((line.w - width) * 0.5f);
+      line.w = width;
+    } else {
+      const f32 height = std::min(split->dividerLineWidth, line.h);
+      line.y += std::floor((line.h - height) * 0.5f);
+      line.h = height;
+    }
+
+    drawList.addRectFilled(line, lineColor);
+    return;
+  }
+
+  Color color = Color::white().withAlpha(0.22f);
 
   if (style) {
     const StateStyle& normal = stateStyle(*style, StyleState::Normal);

@@ -5,6 +5,7 @@
 #include "GLFW/glfw3.h"
 
 #include "editorShell.hpp"
+#include "editorMetrics.hpp"
 #include "editorScenePath.hpp"
 #include "engine.hpp"
 #include "input.hpp"
@@ -330,18 +331,18 @@ void ProjectSettingsWindow::build(const Project::ProjectConfig &config)
     ctx.layoutStyle(root).verticalAlignment = Alignment::Stretch;
     const auto contentRoot = ctx.createContainer(root);
     ctx.layoutStyle(contentRoot).mode = LayoutMode::Vertical;
-    ctx.layoutStyle(contentRoot).padding = Padding{16.0f};
-    ctx.layoutStyle(contentRoot).gap = 12.0f;
+    ctx.layoutStyle(contentRoot).padding = Padding{SpaceXl};
+    ctx.layoutStyle(contentRoot).gap = SpaceL;
 
     const auto body = ctx.createContainer(contentRoot);
     ctx.layoutStyle(body).mode = LayoutMode::Horizontal;
     ctx.layoutStyle(body).verticalAlignment = Alignment::Stretch;
-    ctx.layoutStyle(body).gap = 12.0f;
+    ctx.layoutStyle(body).gap = SpaceL;
 
     const auto sidebar = ctx.createPanel(body);
     ctx.layoutStyle(sidebar).preferredSize = Vec2{164.0f, 0.0f};
-    ctx.layoutStyle(sidebar).padding = Padding{8.0f};
-    ctx.layoutStyle(sidebar).gap = 4.0f;
+    ctx.layoutStyle(sidebar).padding = Padding{SpaceM};
+    ctx.layoutStyle(sidebar).gap = SpaceS;
 
     const auto content = ctx.createContainer(body);
     ctx.layoutStyle(content).mode = LayoutMode::Stack;
@@ -351,16 +352,16 @@ void ProjectSettingsWindow::build(const Project::ProjectConfig &config)
     {
         tabs[i] = ctx.createButton(sidebar, titles[i]);
         ctx.setTextAlign(tabs[i], TextAlign::Start, TextAlign::Center);
-        ctx.layoutStyle(tabs[i]).preferredSize = Vec2{0.0f, 34.0f};
+        ctx.layoutStyle(tabs[i]).preferredSize = Vec2{0.0f, PanelHeaderHeight};
 
         pages[i] = ctx.createPanel(content);
-        ctx.layoutStyle(pages[i]).padding = Padding{16.0f};
-        ctx.layoutStyle(pages[i]).gap = 8.0f;
+        ctx.layoutStyle(pages[i]).padding = Padding{SpaceXl};
+        ctx.layoutStyle(pages[i]).gap = SpaceM;
         ctx.layoutStyle(pages[i]).scrollY = true;
 
         const auto heading = ctx.createLabel(pages[i], titles[i]);
         ctx.setFontSlot(heading, FontSlot::Secondary);
-        ctx.layoutStyle(heading).preferredSize = Vec2{0.0f, 34.0f};
+        ctx.layoutStyle(heading).preferredSize = Vec2{0.0f, PanelHeaderHeight};
         (void)ctx.createSeparator(pages[i]);
     }
 
@@ -371,9 +372,9 @@ void ProjectSettingsWindow::build(const Project::ProjectConfig &config)
         auto layout = ctx.layoutStyle(row);
         layout.mode = LayoutMode::Horizontal;
         layout.verticalAlignment = Alignment::Stretch;
-        layout.preferredSize = Vec2{0.0f, 34.0f};
-        layout.padding = Padding{8.0f, 0.0f};
-        layout.gap = 8.0f;
+        layout.preferredSize = Vec2{0.0f, ControlHeight};
+        layout.padding = Padding{SpaceM, 0.0f};
+        layout.gap = SpaceM;
 
         const auto name = ctx.createLabel(row, label);
         ctx.style(name).all.text = ctx.theme().textMuted;
@@ -391,16 +392,16 @@ void ProjectSettingsWindow::build(const Project::ProjectConfig &config)
     auto actionLayout = ctx.layoutStyle(actions);
     actionLayout.mode = LayoutMode::Horizontal;
     actionLayout.verticalAlignment = Alignment::Stretch;
-    actionLayout.preferredSize = Vec2{0.0f, 34.0f};
-    actionLayout.gap = 8.0f;
+    actionLayout.preferredSize = Vec2{0.0f, DialogButtonHeight};
+    actionLayout.gap = SpaceM;
 
     chooseMainScene = ctx.createButton(actions, "Choose Scene...");
     clearMainScene = ctx.createButton(actions, "Clear");
-    ctx.layoutStyle(chooseMainScene).preferredSize = Vec2{148.0f, 34.0f};
-    ctx.layoutStyle(clearMainScene).preferredSize = Vec2{80.0f, 34.0f};
+    ctx.layoutStyle(chooseMainScene).preferredSize = Vec2{148.0f, DialogButtonHeight};
+    ctx.layoutStyle(clearMainScene).preferredSize = Vec2{80.0f, DialogButtonHeight};
 
     mainSceneNotice = ctx.createLabel(pages[1], "");
-    ctx.layoutStyle(mainSceneNotice).preferredSize = Vec2{0.0f, 30.0f};
+    ctx.layoutStyle(mainSceneNotice).preferredSize = Vec2{0.0f, RowHeight};
     ctx.layoutStyle(mainSceneNotice).clip = true;
     ctx.setVisible(mainSceneNotice, false);
 
@@ -419,17 +420,17 @@ void ProjectSettingsWindow::build(const Project::ProjectConfig &config)
     ctx.layoutStyle(footer).mode = LayoutMode::Horizontal;
     ctx.layoutStyle(footer).horizontalAlignment = Alignment::End;
     ctx.layoutStyle(footer).verticalAlignment = Alignment::Stretch;
-    ctx.layoutStyle(footer).preferredSize = Vec2{0.0f, 34.0f};
-    ctx.layoutStyle(footer).gap = 8.0f;
+    ctx.layoutStyle(footer).preferredSize = Vec2{0.0f, DialogButtonHeight};
+    ctx.layoutStyle(footer).gap = SpaceM;
     detailsNotice = ctx.createLabel(footer, "");
     ctx.layoutStyle(detailsNotice).preferredSize = Vec2{};
     ctx.layoutStyle(detailsNotice).clip = true;
 
     applyButton = ctx.createButton(footer, "Apply");
-    ctx.layoutStyle(applyButton).preferredSize = Vec2{92.0f, 34.0f};
+    ctx.layoutStyle(applyButton).preferredSize = Vec2{92.0f, DialogButtonHeight};
 
     closeButton = ctx.createButton(footer, "Close");
-    ctx.layoutStyle(closeButton).preferredSize = Vec2{92.0f, 34.0f};
+    ctx.layoutStyle(closeButton).preferredSize = Vec2{92.0f, DialogButtonHeight};
 
     inputDialog.build(ctx, root, contentRoot, 500.0f);
     selectPage(0);

@@ -18,4 +18,6 @@ octogui::NodeHandle createTitledPanel(
     std::string_view icon,
     std::string_view title,
     IconButton *leadingAction = nullptr);
+
+void styleSplitter(octogui::Context &ctx, octogui::NodeHandle split);
 } // namespace Cthulhu::Editor

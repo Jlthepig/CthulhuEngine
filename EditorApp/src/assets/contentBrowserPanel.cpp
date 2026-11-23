@@ -1,4 +1,6 @@
 #include "contentBrowserPanel.hpp"
+#include "editorMetrics.hpp"
+#include "editorPanels.hpp"
 
 #include <algorithm>
 #include <cmath>
@@ -14,8 +16,9 @@ namespace
 {
 constexpr float TileWidth = 112.0f;
 constexpr float TileHeight = 88.0f;
-constexpr float TileGap = 8.0f;
+constexpr float TileGap = SpaceM;
 constexpr float GridInset = 6.0f;
+constexpr float TileIconSize = 44.0f;
 
 void fixed(Context &ctx, NodeHandle node, float width, float height)
 {
@@ -47,8 +50,8 @@ NodeHandle bar(Context &ctx, NodeHandle parent, float height)
     auto layout = ctx.layoutStyle(node);
     layout.mode = LayoutMode::Horizontal;
     layout.verticalAlignment = Alignment::Center;
-    layout.padding = Padding{8.0f, 2.0f};
-    layout.gap = 6.0f;
+    layout.padding = Padding{SpaceM, SpaceXs};
+    layout.gap = SpaceS;
     layout.minSize = Vec2{0.0f, height};
     layout.preferredSize = Vec2{0.0f, height};
     layout.maxSize = Vec2{InfiniteLayoutSize, height};
@@ -59,7 +62,7 @@ NodeHandle bar(Context &ctx, NodeHandle parent, float height)
 NodeHandle disabledIconButton(Context &ctx, NodeHandle parent, std::string_view name)
 {
     const NodeHandle button = ctx.createButton(parent, "");
-    fixed(ctx, button, 24.0f, 24.0f);
+    fixed(ctx, button, IconButtonSize, IconButtonSize);
 
     auto layout = ctx.layoutStyle(button);
     layout.mode = LayoutMode::Horizontal;
@@ -68,7 +71,7 @@ NodeHandle disabledIconButton(Context &ctx, NodeHandle parent, std::string_view 
     layout.padding = Padding{};
 
     const NodeHandle icon = ctx.createIcon(button, name);
-    ctx.setIconSize(icon, 16.0f);
+    ctx.setIconSize(icon, IconSize);
     ctx.setIconColor(icon, ctx.theme().textMuted);
     ctx.setEnabled(button, false);
     return button;
@@ -82,9 +85,9 @@ NodeHandle flexibleLabel(Context &ctx, NodeHandle parent)
     layout.horizontalAlignment = Alignment::Stretch;
     layout.verticalAlignment = Alignment::Stretch;
     layout.clip = true;
-    layout.minSize = Vec2{0.0f, 22.0f};
-    layout.preferredSize = Vec2{0.0f, 22.0f};
-    layout.maxSize = Vec2{InfiniteLayoutSize, 22.0f};
+    layout.minSize = Vec2{0.0f, RowHeight};
+    layout.preferredSize = Vec2{0.0f, RowHeight};
+    layout.maxSize = Vec2{InfiniteLayoutSize, RowHeight};
 
     const NodeHandle label = ctx.createLabel(host, "");
     ctx.style(label).all.text = ctx.theme().textMuted;
@@ -114,39 +117,42 @@ void ContentBrowserPanel::build(Context &ctx, NodeHandle parent)
     layout.clip = true;
     ctx.style(panel).shadow = ShadowStyle{};
 
-    toolbar = bar(ctx, panel, 32.0f);
+    toolbar = bar(ctx, panel, ToolbarHeight);
     const NodeHandle icon = ctx.createIcon(toolbar, "folder");
-    ctx.setIconSize(icon, 16.0f);
+    ctx.setIconSize(icon, IconSize);
     ctx.setIconColor(icon, ctx.theme().textMuted);
 
     title = ctx.createLabel(toolbar, "CONTENT BROWSER");
     ctx.setFontSlot(title, FontSlot::Secondary);
     const float titleWidth = std::ceil(ctx.font(FontSlot::Secondary).measureText("CONTENT BROWSER").x) + 8.0f;
-    fixed(ctx, title, titleWidth, 24.0f);
+    fixed(ctx, title, titleWidth, RowHeight);
     ctx.style(title).all.text = ctx.theme().textMuted;
 
     importButton = ctx.createButton(toolbar, "Import");
-    fixed(ctx, importButton, 60.0f, 26.0f);
+    fixed(ctx, importButton, 60.0f, ControlHeight);
     ctx.setEnabled(importButton, false);
     ctx.setTooltip(importButton, "Import one asset into the current folder.");
 
     searchInput = ctx.createTextInput(toolbar, "", "Search assets...");
     auto searchLayout = ctx.layoutStyle(searchInput);
-    searchLayout.padding = Padding{8.0f, 2.0f};
-    searchLayout.minSize = Vec2{0.0f, 26.0f};
-    searchLayout.preferredSize = Vec2{0.0f, 26.0f};
-    searchLayout.maxSize = Vec2{InfiniteLayoutSize, 26.0f};
+    searchLayout.padding = Padding{SpaceM, SpaceXs};
+    searchLayout.minSize = Vec2{0.0f, ControlHeight};
+    searchLayout.preferredSize = Vec2{0.0f, ControlHeight};
+    searchLayout.maxSize = Vec2{InfiniteLayoutSize, ControlHeight};
     ctx.setEnabled(searchInput, false);
 
     typeFilter = ctx.createComboBox(toolbar, {"All types", "Models", "Audio", "Scenes"}, 0);
-    fixed(ctx, typeFilter, 120.0f, 26.0f);
-    ctx.layoutStyle(typeFilter).padding = Padding{8.0f, 2.0f};
+    fixed(ctx, typeFilter, 120.0f, ControlHeight);
+    ctx.layoutStyle(typeFilter).padding = Padding{SpaceM, SpaceXs};
     ctx.setEnabled(typeFilter, false);
 
     refreshButton = disabledIconButton(ctx, toolbar, "refresh");
     ctx.setTooltip(refreshButton, "Refresh project assets and folders.");
 
-    const NodeHandle navigation = bar(ctx, panel, 28.0f);
+    const NodeHandle toolbarSeparator = ctx.createSeparator(panel);
+    ctx.setSeparatorOrientation(toolbarSeparator, SeparatorOrientation::Horizontal);
+
+    const NodeHandle navigation = bar(ctx, panel, PanelHeaderHeight);
     backButton = disabledIconButton(ctx, navigation, "chevron-left");
     forwardButton = disabledIconButton(ctx, navigation, "chevron-right");
     upButton = disabledIconButton(ctx, navigation, "chevron-up");
@@ -159,19 +165,19 @@ void ContentBrowserPanel::build(Context &ctx, NodeHandle parent)
     breadcrumbLayout.mode = LayoutMode::Horizontal;
     breadcrumbLayout.verticalAlignment = Alignment::Center;
     breadcrumbLayout.clip = true;
-    breadcrumbLayout.minSize = Vec2{0.0f, 24.0f};
-    breadcrumbLayout.preferredSize = Vec2{0.0f, 24.0f};
-    breadcrumbLayout.maxSize = Vec2{InfiniteLayoutSize, 24.0f};
+    breadcrumbLayout.minSize = Vec2{0.0f, RowHeight};
+    breadcrumbLayout.preferredSize = Vec2{0.0f, RowHeight};
+    breadcrumbLayout.maxSize = Vec2{InfiniteLayoutSize, RowHeight};
 
     breadcrumbLabel = ctx.createLabel(breadcrumbs, "res://");
     ctx.style(breadcrumbLabel).all.text = ctx.theme().textMuted;
 
     errorLabel = ctx.createLabel(panel, "");
     auto errorLayout = ctx.layoutStyle(errorLabel);
-    errorLayout.minSize = Vec2{0.0f, 24.0f};
-    errorLayout.preferredSize = Vec2{0.0f, 24.0f};
-    errorLayout.maxSize = Vec2{InfiniteLayoutSize, 24.0f};
-    errorLayout.padding = Padding{8.0f, 0.0f};
+    errorLayout.minSize = Vec2{0.0f, RowHeight};
+    errorLayout.preferredSize = Vec2{0.0f, RowHeight};
+    errorLayout.maxSize = Vec2{InfiniteLayoutSize, RowHeight};
+    errorLayout.padding = Padding{SpaceM, 0.0f};
     errorLayout.clip = true;
     ctx.setVisible(errorLabel, false);
 
@@ -179,49 +185,50 @@ void ContentBrowserPanel::build(Context &ctx, NodeHandle parent)
     auto actionLayout = ctx.layoutStyle(actionBar);
     actionLayout.mode = LayoutMode::Vertical;
     actionLayout.horizontalAlignment = Alignment::Stretch;
-    actionLayout.padding = Padding{8.0f, 2.0f};
-    actionLayout.gap = 2.0f;
+    actionLayout.padding = Padding{SpaceM, SpaceXs};
+    actionLayout.gap = SpaceXs;
     actionLayout.minSize = Vec2{0.0f, 56.0f};
     actionLayout.preferredSize = Vec2{0.0f, 56.0f};
     actionLayout.maxSize = Vec2{InfiniteLayoutSize, 56.0f};
     actionLayout.clip = true;
 
-    moveRow = bar(ctx, actionBar, 26.0f);
+    moveRow = bar(ctx, actionBar, ControlHeight);
     ctx.layoutStyle(moveRow).padding = Padding{};
     const NodeHandle moveLabel = ctx.createLabel(moveRow, "Move to");
-    fixed(ctx, moveLabel, 72.0f, 26.0f);
+    fixed(ctx, moveLabel, 72.0f, ControlHeight);
 
     moveDestination = ctx.createComboBox(moveRow, {}, -1);
     auto moveLayout = ctx.layoutStyle(moveDestination);
-    moveLayout.minSize = Vec2{0.0f, 26.0f};
-    moveLayout.preferredSize = Vec2{0.0f, 26.0f};
-    moveLayout.maxSize = Vec2{InfiniteLayoutSize, 26.0f};
-    moveLayout.padding = Padding{8.0f, 2.0f};
+    moveLayout.minSize = Vec2{0.0f, ControlHeight};
+    moveLayout.preferredSize = Vec2{0.0f, ControlHeight};
+    moveLayout.maxSize = Vec2{InfiniteLayoutSize, ControlHeight};
+    moveLayout.padding = Padding{SpaceM, SpaceXs};
     ctx.style(moveDestination).focusRing = FocusRingStyle{};
-    ctx.style(moveDestination).focused.border = ctx.theme().accent;
+    ctx.style(moveDestination).focused.border = ctx.theme().focus;
     ctx.setVisible(moveRow, false);
 
-    const NodeHandle actionButtons = bar(ctx, actionBar, 26.0f);
+    const NodeHandle actionButtons = bar(ctx, actionBar, ControlHeight);
     ctx.layoutStyle(actionButtons).padding = Padding{};
     const NodeHandle warning = flexibleLabel(ctx, actionButtons);
     ctx.setText(warning, "Clears scene Undo/Redo.");
 
     actionCancel = ctx.createButton(actionButtons, "Cancel");
-    fixed(ctx, actionCancel, 68.0f, 26.0f);
+    fixed(ctx, actionCancel, 68.0f, ControlHeight);
 
     actionConfirm = ctx.createButton(actionButtons, "Move");
-    fixed(ctx, actionConfirm, 76.0f, 26.0f);
+    fixed(ctx, actionConfirm, 76.0f, ControlHeight);
 
     for (NodeHandle button : {actionCancel, actionConfirm})
     {
-        ctx.layoutStyle(button).padding = Padding{8.0f, 2.0f};
+        ctx.layoutStyle(button).padding = Padding{SpaceM, SpaceXs};
         ctx.style(button).focusRing = FocusRingStyle{};
-        ctx.style(button).focused.border = ctx.theme().accent;
+        ctx.style(button).focused.border = ctx.theme().focus;
     }
     ctx.setVisible(actionBar, false);
 
     const NodeHandle split = ctx.createSplitContainer(panel, SplitOrientation::Horizontal, 0.22f);
     ctx.setSplitMinimumSizes(split, 160.0f, 240.0f);
+    styleSplitter(ctx, split);
     ctx.style(split).all.background = Color::transparent();
     ctx.style(split).shadow = ShadowStyle{};
     folderSplit = split;
@@ -260,13 +267,6 @@ void ContentBrowserPanel::build(Context &ctx, NodeHandle parent)
     emptyLabel = ctx.createLabel(assetScroll, "No project open.");
     ctx.style(emptyLabel).all.text = ctx.theme().textMuted;
     ctx.layoutStyle(emptyLabel).clip = true;
-
-    const NodeHandle footer = bar(ctx, panel, 26.0f);
-    selectionLabel = flexibleLabel(ctx, footer);
-    countLabel = ctx.createLabel(footer, "0 items");
-    fixed(ctx, countLabel, 108.0f, 22.0f);
-    ctx.style(countLabel).all.text = ctx.theme().textMuted;
-    ctx.setTextAlign(countLabel, TextAlign::End, TextAlign::Center);
 }
 
 void ContentBrowserPanel::clearTiles(Context &ctx)
@@ -319,7 +319,6 @@ void ContentBrowserPanel::bindProject(Context &ctx, const Project::Project *proj
     selectedAsset = {};
     selectedFolder.clear();
     lastFolderClick.clear();
-    ctx.setTooltip(selectionLabel, "");
     ctx.setTooltip(breadcrumbs, "");
     std::string error;
 
@@ -331,8 +330,6 @@ void ContentBrowserPanel::bindProject(Context &ctx, const Project::Project *proj
     else
     {
         ctx.setText(breadcrumbLabel, project ? "res://" : "No project");
-        ctx.setText(selectionLabel, project ? "res://" : "No project open.");
-        ctx.setText(countLabel, "0 items");
         ctx.setText(emptyLabel, project ? "Assets are unavailable." : "No project open.");
         ctx.setVisible(emptyLabel, true);
         ctx.setVisible(grid, false);
@@ -376,8 +373,6 @@ void ContentBrowserPanel::select(Context &ctx, std::size_t entryIndex)
     const ContentBrowserEntry &entry = entries[entryIndex];
     selectedAsset = entry.folder ? Assets::AssetId{} : entry.assetId;
     selectedFolder = entry.folder ? entry.path : std::string{};
-    ctx.setText(selectionLabel, entry.path);
-    ctx.setTooltip(selectionLabel, entry.path);
     styleSelection(ctx);
 }
 
@@ -403,8 +398,7 @@ void ContentBrowserPanel::styleSelection(Context &ctx)
 
 void ContentBrowserPanel::rebuildTiles(Context &ctx)
 {
-    const bool filtered = appliedType != 0 ||
-        searchText.find_first_not_of(" \t\r\n") != std::string::npos;
+    const bool filtered = appliedType != 0 || searchText.find_first_not_of(" \t\r\n") != std::string::npos;
     const float tileHeight = filtered ? 112.0f : TileHeight;
     const float width =
         ctx.tree().rect(assetScroll).w - 24.0f - GridInset * 2.0f;
@@ -466,7 +460,7 @@ void ContentBrowserPanel::rebuildTiles(Context &ctx)
         style.active.background = ctx.theme().surfaceActive;
 
         const NodeHandle icon = ctx.createIcon(button, entryIcon(entry));
-        ctx.setIconSize(icon, 44.0f);
+        ctx.setIconSize(icon, TileIconSize);
         if (!entry.folder || entry.missing)
         {
             ctx.setIconColor(icon, ctx.theme().textMuted);

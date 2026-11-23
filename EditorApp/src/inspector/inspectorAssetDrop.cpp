@@ -9,6 +9,7 @@
 #include "log_utils.hpp"
 #include "project.hpp"
 #include "session.hpp"
+#include "editorTheme.hpp"
 
 namespace Cthulhu::Editor
 {
@@ -25,7 +26,7 @@ AssetDropFeedback InspectorPanel::assetDrop(octogui::Context &ctx, Engine &engin
     if (!entity || asset.missing) return result;
 
     auto &registry = engine.getComponentRegistry();
-    const auto reject = octogui::Color::fromRGBA8(224, 90, 90);
+    const auto reject = DangerColor;
 
     for (const Binding &binding : bindings)
     {
@@ -43,7 +44,7 @@ AssetDropFeedback InspectorPanel::assetDrop(octogui::Context &ctx, Engine &engin
 
         if (!rect.isEmpty() && (compatible || hovered))
         {
-            feedback.addRectOutline(rect.shrink(1.0f), compatible ? ctx.theme().accent : reject, hovered ? 2.0f : 1.0f);
+            feedback.addRectOutline(rect.shrink(1.0f), compatible ? ctx.theme().focus : reject, hovered ? 2.0f : 1.0f);
         }
 
         if (!hovered) continue;

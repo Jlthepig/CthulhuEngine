@@ -6,6 +6,8 @@
 
 #include "editorShell.hpp"
 #include "editorUi.hpp"
+#include "editorMetrics.hpp"
+#include "editorTheme.hpp"
 
 #include "engine.hpp"
 #include "input.hpp"
@@ -54,7 +56,7 @@ IconButton iconButton(Context &ctx, NodeHandle parent, std::string_view icon)
 {
     IconButton result;
     result.button = ctx.createButton(parent, "");
-    fixedSize(ctx, result.button, 32.0f, 26.0f);
+    fixedSize(ctx, result.button, ToolButtonWidth, ControlHeight);
 
     auto layout = ctx.layoutStyle(result.button);
     layout.mode = LayoutMode::Horizontal;
@@ -62,17 +64,22 @@ IconButton iconButton(Context &ctx, NodeHandle parent, std::string_view icon)
     layout.horizontalAlignment = Alignment::Center;
     layout.verticalAlignment = Alignment::Center;
 
+    auto style = ctx.style(result.button);
+    style.all.background = Color::transparent();
+    style.borderWidth = 0.0f;
+    style.cornerRadius = 0.0f;
+    style.hovered.background = ctx.theme().surfaceHovered;
+    style.active.background = ctx.theme().surfaceActive;
+
     result.icon = ctx.createIcon(result.button, icon);
-    ctx.setIconSize(result.icon, 18.0f);
+    ctx.setIconSize(result.icon, IconSize);
     return result;
 }
 
 void styleToggle(Context &ctx, const IconButton &toggle, bool on)
 {
     const Theme &theme = ctx.theme();
-    auto style = ctx.style(toggle.button);
-    style.normal.background = on ? theme.accent : theme.surface;
-    style.normal.border = on ? theme.accentActive : theme.border;
+    ctx.style(toggle.button).normal.background = on ? theme.accent : Color::transparent();
     ctx.setIconColor(toggle.icon, on ? theme.accentText : theme.text);
 }
 
@@ -81,8 +88,8 @@ void fixedBar(Context &ctx, NodeHandle bar, f32 height)
     auto layout = ctx.layoutStyle(bar);
     layout.mode = LayoutMode::Horizontal;
     layout.verticalAlignment = Alignment::Center;
-    layout.gap = 6.0f;
-    layout.padding = Padding{8.0f, 2.0f};
+    layout.gap = SpaceS;
+    layout.padding = Padding{SpaceM, SpaceXs};
     layout.minSize = Vec2{0.0f, height};
     layout.preferredSize = Vec2{0.0f, height};
 }
@@ -100,26 +107,37 @@ void EditorShell::build(Context &ctx)
     editorLayout.horizontalAlignment = Alignment::Stretch;
 
     const NodeHandle topBar = ctx.createPanel(editorContent);
-    fixedBar(ctx, topBar, 50.0f);
+    fixedBar(ctx, topBar, TopBarHeight);
     auto topLayout = ctx.layoutStyle(topBar);
-    topLayout.gap = 8.0f;
-    topLayout.padding = Padding{12.0f, 2.0f};
+    topLayout.gap = SpaceM;
+    topLayout.padding = Padding{SpaceL, 0.0f};
     topLayout.horizontalAlignment = Alignment::Start;
 
-    const NodeHandle logo = ctx.createIcon(topBar, "Cthulhu");
-    ctx.setIconSize(logo, 46.0f);
+    const NodeHandle topLeft = ctx.createContainer(topBar);
+    auto leftLayout = ctx.layoutStyle(topLeft);
+    leftLayout.mode = LayoutMode::Horizontal;
+    leftLayout.verticalAlignment = Alignment::Center;
+    leftLayout.gap = SpaceM;
+    leftLayout.minSize = Vec2{0.0f, ControlHeight};
+    leftLayout.preferredSize = Vec2{0.0f, ControlHeight};
+    leftLayout.clip = true;
 
-    verticalSeparator(ctx, topBar, 24.0f);
+    const NodeHandle logo = ctx.createIcon(topLeft, "Cthulhu");
+    ctx.setIconSize(logo, LogoSize);
+
+    verticalSeparator(ctx, topLeft, IconSize);
 
     const char *menuNames[] = {"File", "Edit", "View", "Project"};
     NodeHandle *menuButtons[] = {&fileButton, &editButton, &viewButton, &projectButton};
 
     for (std::size_t i = 0; i < std::size(menuNames); ++i)
     {
-        const auto button = ctx.createButton(topBar, menuNames[i]);
+        const auto button = ctx.createButton(topLeft, menuNames[i]);
         *menuButtons[i] = button;
-        fixedSize(ctx, button, 0.0f, 28.0f);
-        ctx.layoutStyle(button).padding = Padding{6.0f, 0.0f};
+        fixedSize(ctx, button, 0.0f, ControlHeight);
+        // 10 px each side: OctoGUI adds 8 px after the text when sizing to it.
+        ctx.layoutStyle(button).padding = Padding{SpaceM + SpaceXs, 0.0f, SpaceXs, 0.0f};
+        ctx.setTextAlign(button, TextAlign::Start, TextAlign::Center);
 
         auto style = ctx.style(button);
         style.all.background = Color::transparent();
@@ -131,14 +149,35 @@ void EditorShell::build(Context &ctx)
         style.active.background = ctx.theme().surfaceActive;
     }
 
-    fixedSize(ctx, projectButton, 72.0f, 28.0f);
+    const NodeHandle playGroup = ctx.createPanel(topBar);
+    auto groupLayout = ctx.layoutStyle(playGroup);
+    groupLayout.mode = LayoutMode::Horizontal;
+    groupLayout.verticalAlignment = Alignment::Center;
+    groupLayout.padding = Padding{1.0f};
+    groupLayout.gap = 0.0f;
+    groupLayout.clip = true;
+    const Vec2 groupSize{4.0f * ToolButtonWidth + 3.0f + 2.0f, ControlHeight + 2.0f};
+    groupLayout.minSize = groupSize;
+    groupLayout.preferredSize = groupSize;
+    groupLayout.maxSize = groupSize;
+
+    auto groupStyle = ctx.style(playGroup);
+    groupStyle.all.background = ctx.theme().surfaceRaised;
+    groupStyle.all.border = ctx.theme().border;
+    groupStyle.borderWidth = 1.0f;
+    groupStyle.cornerRadius = ctx.theme().controlRadius;
+    groupStyle.shadow = ShadowStyle{};
+
+    playButton = iconButton(ctx, playGroup, "play");
+    verticalSeparator(ctx, playGroup, ControlHeight);
+    playCurrentSceneButton = iconButton(ctx, playGroup, "play-current-scene");
+    verticalSeparator(ctx, playGroup, ControlHeight);
+    pauseButton = iconButton(ctx, playGroup, "pause");
+    verticalSeparator(ctx, playGroup, ControlHeight);
+    stopButton = iconButton(ctx, playGroup, "stop");
 
     (void)ctx.createContainer(topBar);
 
-    playButton = iconButton(ctx, topBar, "play");
-    playCurrentSceneButton = iconButton(ctx, topBar, "play-current-scene");
-    pauseButton = iconButton(ctx, topBar, "pause");
-    stopButton = iconButton(ctx, topBar, "stop");
     styleToggle(ctx, playButton, false);
     styleToggle(ctx, playCurrentSceneButton, false);
 
@@ -158,9 +197,13 @@ void EditorShell::build(Context &ctx)
     ctx.setIconColor(pauseButton.icon, ctx.theme().textDisabled);
     ctx.setIconColor(stopButton.icon, ctx.theme().textDisabled);
 
+    ctx.setIconColor(playButton.icon, ctx.theme().textDisabled);
+    ctx.setIconColor(playCurrentSceneButton.icon, ctx.theme().textDisabled);
+
     // left >> hierarchy viewport and browser. right >> inspector.
     const NodeHandle workspace = ctx.createSplitContainer(editorContent, SplitOrientation::Horizontal, 0.80f);
     ctx.setSplitMinimumSizes(workspace, 444.0f, 280.0f);
+    styleSplitter(ctx, workspace);
     seeThrough(ctx, workspace);
 
     const NodeHandle mainPane = ctx.splitFirstPane(workspace);
@@ -170,6 +213,7 @@ void EditorShell::build(Context &ctx)
     // top >> hierarchy and viewport. bottom >> content browser
     const NodeHandle mainContent = ctx.createSplitContainer(mainPane, SplitOrientation::Vertical, 0.72f);
     ctx.setSplitMinimumSizes(mainContent, 260.0f, 180.0f);
+    styleSplitter(ctx, mainContent);
     seeThrough(ctx, mainContent);
 
      const NodeHandle upperPane = ctx.splitFirstPane(mainContent);
@@ -178,6 +222,7 @@ void EditorShell::build(Context &ctx)
 
     const NodeHandle hierarchyViewport = ctx.createSplitContainer(upperPane, SplitOrientation::Horizontal, 0.18f);
     ctx.setSplitMinimumSizes(hierarchyViewport, 180.0f, 260.0f);
+    styleSplitter(ctx, hierarchyViewport);
     seeThrough(ctx, hierarchyViewport);
 
     hierarchyPanelUI.build(ctx, ctx.splitFirstPane(hierarchyViewport));
@@ -202,11 +247,32 @@ void EditorShell::build(Context &ctx)
     contentBrowserUI.build(ctx, ctx.splitSecondPane(mainContent));
 
     const NodeHandle statusBar = ctx.createPanel(editorContent);
-    fixedBar(ctx, statusBar, 24.0f);
-    missingAssetsButton = ctx.createButton(statusBar, "Missing Assets...");
-    fixedSize(ctx, missingAssetsButton, 140.0f, 22.0f);
+    fixedBar(ctx, statusBar, StatusBarHeight);
+    ctx.layoutStyle(statusBar).gap = SpaceM;
+
     cameraStatusLabel = ctx.createLabel(statusBar, "");
+    ctx.style(cameraStatusLabel).all.text = ctx.theme().textMuted;
     ctx.setVisible(cameraStatusLabel, false);
+
+    (void)ctx.createContainer(statusBar);
+
+    missingAssetsButton = ctx.createButton(statusBar, "Missing Assets...");
+    fixedSize(ctx, missingAssetsButton, 0.0f, StatusBarHeight - 2.0f * SpaceXs);
+    ctx.layoutStyle(missingAssetsButton).padding = Padding{SpaceM, 0.0f};
+    {
+        auto style = ctx.style(missingAssetsButton);
+        style.all.background = Color::transparent();
+        style.borderWidth = 0.0f;
+        style.all.text = ctx.theme().textMuted;
+        style.hovered.background = ctx.theme().surfaceHovered;
+        style.hovered.text = ctx.theme().text;
+        style.active.background = ctx.theme().surfaceActive;
+        style.disabled.text = ctx.theme().textDisabled;
+    }
+
+    sceneStatusLabel = ctx.createLabel(statusBar, "");
+    ctx.style(sceneStatusLabel).all.text = ctx.theme().textMuted;
+
     exitDialog.build(ctx, root, editorContent);
 
     layoutSplits = {
@@ -254,22 +320,25 @@ void EditorShell::updatePlayControls(Context &ctx, Engine &engine)
 {
     const bool playing = engine.isPlaying();
     const auto simulation = engine.getSimulationState();
-    const bool paused =
-        playing && simulation != SimulationState::Running;
+    const bool paused = playing && simulation != SimulationState::Running;
     const bool playingChanged = playing != lastPlaying;
+
+    const bool canPlay = !playing && engine.hasActiveScene() && !restoreTabSelection && !assetDrag.asset.isValid() && !assetDrag.ownsInput;
 
     if (playingChanged)
     {
         ctx.setEnabled(pauseButton.button, playing);
         ctx.setEnabled(stopButton.button, playing);
 
-        const auto playColor = playing ? ctx.theme().textDisabled : ctx.theme().text;
-        ctx.setIconColor(playButton.icon, playColor);
-        ctx.setIconColor(playCurrentSceneButton.icon, playColor);
-
         ctx.setIconColor(
             stopButton.icon,
             playing ? ctx.theme().text : ctx.theme().textDisabled);
+    }
+
+    if (playingChanged || canPlay != lastCanPlay)
+    {
+        ctx.setIconColor(playButton.icon, canPlay ? LiveColor : ctx.theme().textDisabled);
+        ctx.setIconColor(playCurrentSceneButton.icon, canPlay ? ctx.theme().text : ctx.theme().textDisabled);
     }
 
     if (paused != lastPaused || playingChanged)
@@ -279,20 +348,15 @@ void EditorShell::updatePlayControls(Context &ctx, Engine &engine)
         if (!playing)
             ctx.setIconColor(pauseButton.icon, ctx.theme().textDisabled);
 
-        ctx.setTooltip(
-            pauseButton.button,
-            paused ? "Resume simulation" : "Pause simulation");
+        ctx.setTooltip(pauseButton.button, paused ? "Resume simulation" : "Pause simulation");
     }
-
-    const bool canPlay =
-        !playing && engine.hasActiveScene() && !restoreTabSelection &&
-        !assetDrag.asset.isValid() && !assetDrag.ownsInput;
 
     ctx.setEnabled(playButton.button, canPlay);
     ctx.setEnabled(playCurrentSceneButton.button, canPlay);
 
     lastPlaying = playing;
     lastPaused = paused;
+    lastCanPlay = canPlay;
 }
 
 void EditorShell::startScenePlay(Context &ctx, Engine &engine, Scribe::Session &session, bool currentScene)
@@ -731,6 +795,21 @@ void EditorShell::update(Context &ctx, Engine &engine, Scribe::Session &session,
     !ctx.contextMenuOwnsInput() && !closingAllScenes;
 
     ctx.setEnabled(missingAssetsButton, canRepair);
+
+    ctx.setVisible(missingAssetsButton, !playing && engine.hasActiveScene());
+
+    if (!playing)
+    {
+        std::string sceneStatus;
+        if (const auto *scene = engine.hasActiveScene() ? engine.getActiveScene() : nullptr)
+        {
+            sceneStatus = scene->getName().empty() ? "Untitled" : scene->getName();
+            if (scene->needsSave())
+                sceneStatus += "  \xE2\x80\xA2";
+        }
+        if (ctx.text(sceneStatusLabel) != sceneStatus)
+            ctx.setText(sceneStatusLabel, sceneStatus);
+    }
 
     const bool manualRepair = ctx.isClicked(missingAssetsButton);
     const auto focus = ctx.focused();

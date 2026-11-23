@@ -193,6 +193,10 @@ public:
 
   void setSplitMinimumSizes(NodeHandle handle, f32 first, f32 second);
 
+  // Draws the divider as a thin line shown only on hover and drag, coloured
+  // by the split's hovered/active indicator. 0 restores the filled divider.
+  void setSplitDividerLineWidth(NodeHandle handle, f32 width);
+
   [[nodiscard]]
   NodeHandle createNumericInput(NodeHandle parent = {}, f64 value = 0.0, NumericInputType type = NumericInputType::Float);
 
