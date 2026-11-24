@@ -27,7 +27,7 @@ inline constexpr float IconButtonSize = 24.0f;
 inline constexpr float ToolButtonWidth = 28.0f;
 inline constexpr float LogoSize = 24.0f;
 
-// OctoGUI draws tree rows at a fixed 26 px (detail::TreeViewRowHeight). The
+// OctoGUI draws tree rows at a fixed 24 px (detail::TreeViewRowHeight). The
 // Hierarchy rename box must line up with them, so keep this in step.
-inline constexpr float TreeRowHeight = 26.0f;
+inline constexpr float TreeRowHeight = 24.0f;
 } // namespace Cthulhu::Editor

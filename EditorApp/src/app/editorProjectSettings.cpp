@@ -134,7 +134,7 @@ void ProjectSettingsWindow::frame(Engine &engine, Scribe::Session &session)
             closePrompt = true;
             inputDialog.show(ctx, "Apply input changes before closing?",
                              "Your input changes have not been applied.",
-                             "Apply & Close", "Discard & Close", "Keep Editing");
+                             "Apply & Close", "Discard & Close", "Keep Editing", ButtonRole::Primary, ButtonRole::Destructive);
         }
         else
             finishClose = true;
@@ -340,6 +340,7 @@ void ProjectSettingsWindow::build(const Project::ProjectConfig &config)
     ctx.layoutStyle(body).gap = SpaceL;
 
     const auto sidebar = ctx.createPanel(body);
+    ctx.style(sidebar).borderWidth = 0.0f;
     ctx.layoutStyle(sidebar).preferredSize = Vec2{164.0f, 0.0f};
     ctx.layoutStyle(sidebar).padding = Padding{SpaceM};
     ctx.layoutStyle(sidebar).gap = SpaceS;
@@ -353,22 +354,26 @@ void ProjectSettingsWindow::build(const Project::ProjectConfig &config)
         tabs[i] = ctx.createButton(sidebar, titles[i]);
         ctx.setTextAlign(tabs[i], TextAlign::Start, TextAlign::Center);
         ctx.layoutStyle(tabs[i]).preferredSize = Vec2{0.0f, PanelHeaderHeight};
+        ctx.layoutStyle(tabs[i]).padding = Padding{SpaceL, 0.0f};
 
         pages[i] = ctx.createPanel(content);
         ctx.layoutStyle(pages[i]).padding = Padding{SpaceXl};
         ctx.layoutStyle(pages[i]).gap = SpaceM;
         ctx.layoutStyle(pages[i]).scrollY = true;
+        ctx.style(pages[i]).all.background = Color::transparent();
+        ctx.style(pages[i]).borderWidth = 0.0f;
+        ctx.style(pages[i]).shadow = ShadowStyle{};
 
         const auto heading = ctx.createLabel(pages[i], titles[i]);
         ctx.setFontSlot(heading, FontSlot::Secondary);
         ctx.layoutStyle(heading).preferredSize = Vec2{0.0f, PanelHeaderHeight};
+        ctx.style(heading).all.text = ctx.theme().textMuted;
         (void)ctx.createSeparator(pages[i]);
     }
 
     const auto addRow = [&](NodeHandle page, std::string_view label)
     {
-        const auto row = ctx.createPanel(page);
-        ctx.style(row).all.background = ctx.theme().surfaceRaised;
+        const auto row = ctx.createContainer(page);
         auto layout = ctx.layoutStyle(row);
         layout.mode = LayoutMode::Horizontal;
         layout.verticalAlignment = Alignment::Stretch;
@@ -414,7 +419,7 @@ void ProjectSettingsWindow::build(const Project::ProjectConfig &config)
         ctx.layoutStyle(field).clip = true;
     }
 
-    inputEditor.build(ctx, pages[inputPage], config.input);
+    inputEditor.build(ctx, pages[inputPage], root, config.input);
 
     const auto footer = ctx.createContainer(contentRoot);
     ctx.layoutStyle(footer).mode = LayoutMode::Horizontal;
@@ -428,9 +433,11 @@ void ProjectSettingsWindow::build(const Project::ProjectConfig &config)
 
     applyButton = ctx.createButton(footer, "Apply");
     ctx.layoutStyle(applyButton).preferredSize = Vec2{92.0f, DialogButtonHeight};
+    styleButtonRole(ctx, applyButton, ButtonRole::Primary);
 
     closeButton = ctx.createButton(footer, "Close");
     ctx.layoutStyle(closeButton).preferredSize = Vec2{92.0f, DialogButtonHeight};
+    styleButtonRole(ctx, closeButton, ButtonRole::Ghost);
 
     inputDialog.build(ctx, root, contentRoot, 500.0f);
     selectPage(0);
@@ -503,8 +510,29 @@ void ProjectSettingsWindow::selectPage(std::size_t index)
     for (std::size_t i = 0; i < pages.size(); ++i)
     {
         ctx.setVisible(pages[i], i == index);
-        ctx.style(tabs[i]).normal.background =
-            i == index ? ctx.theme().surfaceActive : ctx.theme().surface;
+
+        const bool selected = i == index;
+        const Theme &theme = ctx.theme();
+        styleButtonRole(ctx, tabs[i], ButtonRole::Ghost);
+        auto style = ctx.style(tabs[i]);
+        const Color background = selected ? theme.accent.withAlpha(0.18f) : Color::transparent();
+        const Color text = selected ? theme.text : theme.textMuted;
+        style.normal.background = background;
+        style.focused.background = background;
+        style.normal.text = text;
+        style.focused.text = text;
+        if (selected)
+            style.hovered.background = theme.accent.withAlpha(0.26f);
+
+        AccentEdgeStyle edge;
+        if (selected)
+        {
+            edge.color = theme.focus;
+            edge.width = 2.0f;
+            edge.inset = SpaceS;
+            edge.side = AccentEdgeSide::Left;
+        }
+        style.accentEdge = edge;
     }
     ctx.setVisible(detailsNotice, index != inputPage);
     ctx.setFocused(tabs[index]);

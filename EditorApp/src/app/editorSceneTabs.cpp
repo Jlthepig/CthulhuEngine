@@ -3,6 +3,7 @@
 
 #include <algorithm>
 #include <cassert>
+#include <cmath>
 
 #include "engine.hpp"
 #include "input.hpp"
@@ -12,10 +13,13 @@ namespace Cthulhu::Editor
 {
 namespace
 {
-constexpr float TabWidth = 164.0f;
+constexpr float TabMinWidth = 96.0f;
+constexpr float TabMaxWidth = 220.0f;
 constexpr float TabHeight = PanelHeaderHeight;
-constexpr float TabGap = SpaceXl;
+constexpr float TabGap = 1.0f;
 constexpr float ArrowWidth = IconButtonSize;
+constexpr std::string_view DirtyDot = "\xE2\x80\xA2";
+constexpr Color ActiveTabHovered = Color::fromRGBA8(37, 43, 43);
 }
 
 void styleTabButton(Context &ctx, NodeHandle button)
@@ -30,12 +34,15 @@ void styleTabButton(Context &ctx, NodeHandle button)
     style.active.background = ctx.theme().surfaceActive;
 }
 
-NodeHandle tabIconButton(Context &ctx, NodeHandle parent, std::string_view icon, std::string_view tooltip)
+NodeHandle tabIconButton(Context &ctx, NodeHandle parent, std::string_view icon, std::string_view tooltip,
+                         NodeHandle *iconOut = nullptr)
 {
     const auto button = ctx.createButton(parent,"");
     auto layout = ctx.layoutStyle(button);
     layout.mode = LayoutMode::Horizontal;
+    layout.minSize = {ArrowWidth, TabHeight};
     layout.preferredSize = {ArrowWidth, TabHeight};
+    layout.maxSize = {ArrowWidth, TabHeight};
     layout.horizontalAlignment = Alignment::Center;
     layout.verticalAlignment = Alignment::Center;
     styleTabButton(ctx, button);
@@ -43,6 +50,8 @@ NodeHandle tabIconButton(Context &ctx, NodeHandle parent, std::string_view icon,
     const auto image = ctx.createIcon(button, icon);
     ctx.setIconSize(image, IconSize);
     ctx.setTooltip(button, tooltip);
+    if (iconOut)
+        *iconOut = image;
     return button;
 }
 
@@ -55,6 +64,7 @@ void EditorShell::buildSceneTabBar(Context &ctx, NodeHandle parent)
     bar.gap = TabGap;
     bar.verticalAlignment = Alignment::Stretch;
     bar.clip = true;
+    ctx.style(tabBar).all.background = ctx.theme().surface;
 
     previousTabs = tabIconButton(ctx, tabBar, "chevron-left", "Previous scene tabs");
     tabRow = ctx.createContainer(tabBar);
@@ -76,19 +86,25 @@ void EditorShell::addSceneTab(Context &ctx)
     tab.root = ctx.createContainer(tabRow);
     auto layout = ctx.layoutStyle(tab.root);
     layout.mode = LayoutMode::Horizontal;
-    layout.preferredSize = {TabWidth, TabHeight};
+    layout.preferredSize = {tab.width, TabHeight};
     layout.verticalAlignment = Alignment::Stretch;
     ctx.style(tab.root).cornerRadius = 0.0f;
 
     tab.button = ctx.createButton(tab.root, "");
     ctx.setTextAlign(tab.button, TextAlign::Start, TextAlign::Center);
     auto title = ctx.layoutStyle(tab.button);
-    title.minSize = {TabWidth - ArrowWidth, TabHeight};
-    title.maxSize = {TabWidth - ArrowWidth, TabHeight};
+    title.minSize = {tab.width - ArrowWidth, TabHeight};
+    title.maxSize = {tab.width - ArrowWidth, TabHeight};
     title.padding = Padding{SpaceM, 0.0f, SpaceXs, 0.0f};
     title.clip = true;
     styleTabButton(ctx, tab.button);
-    tab.close = tabIconButton(ctx, tab.root, "close", "Close scene");
+    tab.close = tabIconButton(ctx, tab.root, "close", "Close scene", &tab.closeIcon);
+    for (const auto node : {tab.button, tab.close})
+    {
+        ctx.style(node).hovered.background = Color::transparent();
+        ctx.style(node).active.background = Color::transparent();
+    }
+    ctx.style(tab.button).hovered.text = ctx.theme().text;
 }
 
 void EditorShell::rememberSceneView(Engine &engine)
@@ -204,7 +220,7 @@ void EditorShell::requestSceneTabClose(Context &ctx, Engine &engine, Scribe::Ses
     {
         closingTab = index;
         closeReturnTab = activeTab;
-        exitDialog.show(ctx, "Save changes before closing?", dirtyName->empty() ? "Untitled" : *dirtyName, "Save", "Discard Changes");
+        exitDialog.show(ctx, "Save changes before closing?", dirtyName->empty() ? "Untitled" : *dirtyName, "Save", "Discard Changes", "Cancel", ButtonRole::Primary, ButtonRole::Destructive);
     }
     else
     {
@@ -287,21 +303,52 @@ void EditorShell::updateSceneTabs(Context &ctx, Engine &engine, Scribe::Session 
 
     const float width = ctx.tree().rect(tabBar).w;
     const auto tabCount = sceneTabs.size();
-    const auto capacity = [](float space) {
-        return static_cast<std::size_t>(std::max(1.0f, (space + TabGap) / (TabWidth + TabGap)));
+
+    // Tabs size to their titles, so count how many fit by adding up widths.
+    // fitFrom returns how many tabs fit from `first` onwards (at least one).
+    const auto fitFrom = [&](std::size_t first, float space) {
+        std::size_t count = 0;
+        float used = 0.0f;
+        for (std::size_t i = first; i < tabCount; ++i)
+        {
+            const float next = used + (count > 0 ? TabGap : 0.0f) + sceneTabs[i].width;
+            if (count > 0 && next > space)
+                break;
+            used = next;
+            ++count;
+        }
+        return std::max<std::size_t>(count, 1);
     };
-    const bool overflow = tabCount > capacity(width);
-    const auto visible = capacity(width - (overflow ? 2.0f * (ArrowWidth + TabGap) : 0.0f));
-    const auto lastStart = tabCount > visible ? tabCount - visible : 0;
+
+    const bool overflow = tabCount > 0 && fitFrom(0, width) < tabCount;
+    const float space = width - (overflow ? 2.0f * (ArrowWidth + TabGap) : 0.0f);
+
+    std::size_t lastStart = tabCount;
+    {
+        std::size_t count = 0;
+        float used = 0.0f;
+        while (lastStart > 0)
+        {
+            const float next = used + (count > 0 ? TabGap : 0.0f) + sceneTabs[lastStart - 1].width;
+            if (count > 0 && next > space)
+                break;
+            used = next;
+            ++count;
+            --lastStart;
+        }
+    }
+
     firstVisibleTab = std::min(firstVisibleTab, lastStart);
     if ((previousActive != activeTab || restoreTabSelection) &&
-        (activeTab < firstVisibleTab || activeTab >= firstVisibleTab + visible))
+        (activeTab < firstVisibleTab || activeTab >= firstVisibleTab + fitFrom(firstVisibleTab, space)))
         firstVisibleTab = std::min(activeTab, lastStart);
 
     if (ctx.isClicked(previousTabs) && firstVisibleTab > 0)
         --firstVisibleTab;
     if (ctx.isClicked(nextTabs) && firstVisibleTab < lastStart)
         ++firstVisibleTab;
+
+    const auto visible = fitFrom(firstVisibleTab, space);
 
     ctx.setVisible(previousTabs, overflow);
     ctx.setVisible(nextTabs, overflow);
@@ -315,8 +362,34 @@ void EditorShell::updateSceneTabs(Context &ctx, Engine &engine, Scribe::Session 
         ctx.setVisible(tab.root, i >= firstVisibleTab && i < firstVisibleTab + visible);
         ctx.setEnabled(tab.button, canSwitch);
         ctx.setEnabled(tab.close, canSwitch);
-        ctx.style(tab.root).all.background = i == activeTab ? ctx.theme().surface : Color::transparent();
-        ctx.style(tab.button).normal.text = i == activeTab ? ctx.theme().text : ctx.theme().textMuted;
+       
+        const bool active = i == activeTab;
+        const bool hovered = canSwitch && (ctx.isHovered(tab.button) || ctx.isHovered(tab.close));
+        Color background = Color::transparent();
+        if (active)
+            background = hovered ? ActiveTabHovered : ctx.theme().surfaceRaised;
+        else if (canSwitch && ctx.isPressed(tab.button))
+            background = ctx.theme().surfaceRaised;
+        else if (hovered)
+            background = ctx.theme().surfaceRaised.withAlpha(0.6f);
+        ctx.style(tab.root).all.background = background;
+        AccentEdgeStyle edge;
+
+        if (active)
+        {
+            edge.color = ctx.theme().focus;
+            edge.width = 2.0f;
+            edge.side = AccentEdgeSide::Top;
+        }
+        ctx.style(tab.root).accentEdge = edge;
+        ctx.style(tab.button).normal.text = active ? ctx.theme().text : ctx.theme().textMuted;
+
+        const bool showDot = tab.dirty && !ctx.isHovered(tab.close);
+        ctx.setVisible(tab.closeIcon, !showDot);
+        ctx.setIconColor(tab.closeIcon, canSwitch && ctx.isHovered(tab.close) ? ctx.theme().text : ctx.theme().textMuted);
+
+        if (ctx.text(tab.close) != (showDot ? DirtyDot : std::string_view{}))
+            ctx.setText(tab.close, showDot ? DirtyDot : std::string_view{});
 
         if (!tab.document && (!scene || engine.isPlaying()))
             continue;
@@ -325,10 +398,20 @@ void EditorShell::updateSceneTabs(Context &ctx, Engine &engine, Scribe::Session 
         const auto &path = tab.document ? tab.document->snapshot.resourcePath : scene->getResourcePath();
         const bool dirty = tab.document ? tab.document->snapshot.dirty : scene->needsSave();
         const std::string_view label = name.empty() ? "Untitled" : std::string_view{name};
-        const auto current = ctx.text(tab.button);
-        const bool labelMatches = current.starts_with(label) && current.substr(label.size()) == (dirty ? " *" : "");
-        if (!labelMatches)
-            ctx.setText(tab.button, dirty ? std::string(label) + " *" : std::string(label));
+        tab.dirty = dirty;
+        if (ctx.text(tab.button) != label)
+        {
+            ctx.setText(tab.button, label);
+
+            // Fit the tab to its title: text, title padding, OctoGUI's 8 px text
+            // allowance and the close slot, clamped to a sensible range.
+            tab.width = std::clamp(std::ceil(ctx.font().measureText(label).x) + SpaceM + SpaceXs + 8.0f + ArrowWidth,
+                                   TabMinWidth, TabMaxWidth);
+            ctx.layoutStyle(tab.root).preferredSize = Vec2{tab.width, TabHeight};
+            auto title = ctx.layoutStyle(tab.button);
+            title.minSize = Vec2{tab.width - ArrowWidth, TabHeight};
+            title.maxSize = Vec2{tab.width - ArrowWidth, TabHeight};
+        }
         ctx.setTooltip(tab.button, path ? std::string_view{*path} : label);
     }
 }

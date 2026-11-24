@@ -108,6 +108,8 @@ void EditorShell::build(Context &ctx)
 
     const NodeHandle topBar = ctx.createPanel(editorContent);
     fixedBar(ctx, topBar, TopBarHeight);
+    ctx.style(topBar).shadow = TopBarShadow;
+    ctx.setZLayer(topBar, 1);
     auto topLayout = ctx.layoutStyle(topBar);
     topLayout.gap = SpaceM;
     topLayout.padding = Padding{SpaceL, 0.0f};
@@ -241,10 +243,15 @@ void EditorShell::build(Context &ctx)
 
     const NodeHandle inspectorPane = ctx.splitSecondPane(workspace);
     fillWithChild(ctx, inspectorPane);
-    const NodeHandle inspector = createTitledPanel(ctx, inspectorPane, "sliders", "INSPECTOR");
+    const NodeHandle inspector = createTitledPanel(ctx, inspectorPane, "sliders", "Inspector");
     inspectorUI.build(ctx, inspector);
 
     contentBrowserUI.build(ctx, ctx.splitSecondPane(mainContent));
+
+    for (const NodeHandle pane : {ctx.splitFirstPane(hierarchyViewport), viewportPane, inspectorPane,
+                                  ctx.splitSecondPane(mainContent)})
+        ctx.layoutStyle(pane).padding = Padding{SpaceXs};
+    ctx.layoutStyle(workspace).padding = Padding{SpaceXs};
 
     const NodeHandle statusBar = ctx.createPanel(editorContent);
     fixedBar(ctx, statusBar, StatusBarHeight);

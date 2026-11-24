@@ -32,7 +32,7 @@ namespace octogui {
 namespace {
 
 inline constexpr u32 DefaultIconAtlasColumns = 8;
-inline constexpr u32 DefaultIconAtlasRows = 6;
+inline constexpr u32 DefaultIconAtlasRows = 7;
 inline constexpr u32 DefaultIconSize = 24;
 
 inline constexpr u32 DefaultIconAtlasWidth =
@@ -41,7 +41,7 @@ inline constexpr u32 DefaultIconAtlasWidth =
 inline constexpr u32 DefaultIconAtlasHeight =
     DefaultIconAtlasRows * DefaultIconSize;
 
-inline constexpr std::array<std::string_view, 45> DefaultIconNames{
+inline constexpr std::array<std::string_view, 53> DefaultIconNames{
     "folder",
     "folder-open",
     "file",
@@ -91,7 +91,16 @@ inline constexpr std::array<std::string_view, 45> DefaultIconNames{
     "rotation",
     "scale",
     "cursor",
-    "play-current-scene"
+    "play-current-scene",
+    "entity",
+    "mesh",
+    "camera",
+
+    "player",
+    "character",
+    "physics",
+    "weapon",
+    "audio"
 };
 
 }

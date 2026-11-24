@@ -764,7 +764,7 @@ void Renderer::render(unsigned int width,
     sceneFramebuffer.unbind();
 
     glViewport(0, 0, width, height);
-    glClearColor(0.0f, 0.0f, 0.0f, 1.0f);
+    glClearColor(screenClearColor.r, screenClearColor.g, screenClearColor.b, screenClearColor.a);
     glClear(GL_COLOR_BUFFER_BIT);
 
     sceneFramebuffer.blitToScreen(destX, destY, width, height);

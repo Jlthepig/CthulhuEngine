@@ -123,7 +123,8 @@ void EditorDialog::build(Context &ctx, NodeHandle root, NodeHandle editorContent
     ctx.setVisible(backdrop, false);
 }
 
-void EditorDialog::show(Context &ctx, std::string_view title, std::string_view message, std::string_view primary, std::string_view secondary, std::string_view cancel)
+void EditorDialog::show(Context &ctx, std::string_view title, std::string_view message, std::string_view primary, std::string_view secondary, std::string_view cancel,
+                        ButtonRole primaryRole, ButtonRole secondaryRole)
 {
     if (!isOpen(ctx))
         previousFocus = ctx.focused();
@@ -139,6 +140,10 @@ void EditorDialog::show(Context &ctx, std::string_view title, std::string_view m
     ctx.setText(buttons[1], secondary);
     ctx.setVisible(buttons[1], !secondary.empty());
     ctx.setEnabled(buttons[0], true);
+    // Cancel is a ghost button unless it is the only choice, like an "OK" notice.
+    styleButtonRole(ctx, buttons[0], primaryRole);
+    styleButtonRole(ctx, buttons[1], secondaryRole);
+    styleButtonRole(ctx, buttons.back(), primary.empty() && secondary.empty() ? ButtonRole::Primary : ButtonRole::Ghost);
 
     for (std::size_t i = 0; i < choices.size(); ++i)
         setChoices(ctx, i, {}, {});

@@ -117,6 +117,11 @@ class Renderer
         gridVisible = visible;
     }
 
+    void setScreenClearColor(const glm::vec4 &color) noexcept
+    {
+        screenClearColor = color;
+    }
+
     [[nodiscard]] const RenderConfig &getConfig() const noexcept
     {
         return config;
@@ -172,6 +177,8 @@ class Renderer
     bool pointShadowLimitWarningLogged = false;
 
     bool gridVisible = false;
+
+    glm::vec4 screenClearColor{0.0f, 0.0f, 0.0f, 1.0f};
 
     std::vector<DebugVertex> debugLines;
     std::vector<PersistentLine> persistentLines;

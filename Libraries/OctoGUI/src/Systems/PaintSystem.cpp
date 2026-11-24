@@ -322,7 +322,7 @@ void PaintSystem::paintNode(Tree &tree, DrawList &drawList, NodeHandle node,
   }
 
   if (tree.type(node) == NodeType::TreeView) {
-    paintTreeView(tree, cache, font, node, rect);
+    paintTreeView(tree, cache, font, icons, node, rect);
   } else if (nodeFont && nodeFont->isLoaded()) {
     if (tree.type(node) == NodeType::ComboBox) {
       paintComboBoxClosed(tree, cache, *nodeFont, node, paintRect, textColor);

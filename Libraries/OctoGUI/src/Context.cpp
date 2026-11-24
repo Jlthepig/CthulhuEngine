@@ -2,6 +2,7 @@
 
 #include "OctoGui/Context.h"
 #include "Internal/ContextImpl.h"
+#include "Internal/TreeViewInternal.h"
 #include "Internal/LayoutGeometry.h"
 namespace octogui {
 namespace {
@@ -695,6 +696,21 @@ std::string_view Context::treeViewItemText(NodeHandle treeView,
 void Context::setTreeViewItemText(NodeHandle treeView, TreeViewItemId item,
                                   std::string_view text) {
   impl->widgets.setTreeViewItemText(impl->tree, treeView, item, text);
+}
+
+
+void Context::setTreeViewItemIcon(NodeHandle treeView, TreeViewItemId item,
+                                  std::string_view icon, Color color) {
+  TreeViewState *state = impl->tree.treeViewState(treeView);
+  TreeViewItemSlot *slot = state ? detail::treeViewItem(*state, item) : nullptr;
+
+  if (!slot || (slot->icon == icon && slot->iconColor == color)) {
+    return;
+  }
+
+  slot->icon.assign(icon.data(), icon.size());
+  slot->iconColor = color;
+  impl->tree.markPaintDirty(treeView);
 }
 
 u64 Context::treeViewItemUserValue(NodeHandle treeView,

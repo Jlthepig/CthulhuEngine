@@ -130,7 +130,7 @@ Engine::~Engine()
     shutdown();
 }
 
-bool Engine::init(const std::filesystem::path &projectFilePath)
+bool Engine::init(const std::filesystem::path &projectFilePath, bool maximised)
 {
     if (state != EngineState::Uninitialized)
     {
@@ -191,6 +191,7 @@ bool Engine::init(const std::filesystem::path &projectFilePath)
 
     Cthulhu::Core::WindowConfig windowConfig;
     windowConfig.resolution = resolution;
+    windowConfig.maximised = maximised;
 
     window = Cthulhu::Core::Window::createWindow(windowConfig, projectConfig.name.c_str());
 

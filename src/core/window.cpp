@@ -36,9 +36,11 @@ Window *Window::createWindow(const WindowConfig &config, const char *windowTitle
     GLFWwindow *previous = glfwGetCurrentContext();
 
     glfwWindowHint(GLFW_VISIBLE, config.visible ? GLFW_TRUE : GLFW_FALSE);
+    glfwWindowHint(GLFW_MAXIMIZED, config.maximised ? GLFW_TRUE : GLFW_FALSE);
     window->glfWwindow = glfwCreateWindow(static_cast<int>(config.resolution.x), static_cast<int>(config.resolution.y),
                                          windowTitle, nullptr, nullptr);
     glfwWindowHint(GLFW_VISIBLE, GLFW_TRUE);
+    glfwWindowHint(GLFW_MAXIMIZED, GLFW_FALSE);
     if (!window->glfWwindow)
     {
         Log::Print("FAILED TO CREATE A WINDOW", "Window", LogType::LOG_ERROR);

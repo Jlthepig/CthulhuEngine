@@ -266,6 +266,10 @@ public:
   void setTreeViewItemText(NodeHandle treeView, TreeViewItemId item,
                            std::string_view text);
 
+  void setTreeViewItemIcon(NodeHandle treeView, TreeViewItemId item,
+                           std::string_view icon,
+                           Color color = Color::transparent());
+
   [[nodiscard]]
   u64 treeViewItemUserValue(NodeHandle treeView,
                             TreeViewItemId item) const noexcept;

@@ -133,7 +133,7 @@ bool EditorShell::handleExit(Context &ctx, Engine &engine, Scribe::Session &sess
             : "Save changes before exiting?",
         dirtyNames,
         dirtyCount == 1 ? "Save" : "Save All",
-        "Discard Changes");
+        "Discard Changes", "Cancel", ButtonRole::Primary, ButtonRole::Destructive);
     return false;
 }
 } // namespace Cthulhu::Editor

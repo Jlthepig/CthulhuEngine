@@ -73,6 +73,9 @@ class ViewportPanel
     octogui::NodeHandle snapMoveInput{};
     octogui::NodeHandle snapRotateInput{};
     octogui::NodeHandle snapScaleInput{};
+    octogui::NodeHandle snapMoveIcon{};
+    octogui::NodeHandle snapRotateIcon{};
+    octogui::NodeHandle snapScaleIcon{};
 
     GizmoSystem gizmoSystem;
 

@@ -77,7 +77,7 @@ class Engine
     Engine(const Engine &) = delete;
     Engine &operator=(const Engine &) = delete;
 
-    bool init(const std::filesystem::path &projectFilePath);
+    bool init(const std::filesystem::path &projectFilePath, bool maximised = false);
     void run();
     void shutdown();
     [[nodiscard]] bool requestTransition(EngineTransition transition, std::string argument = {});

@@ -28,15 +28,37 @@ struct IconButton
     NodeHandle icon{};
 };
 
+constexpr Color SnapMoveColor = Color::fromRGBA8(235, 96, 96);
+constexpr Color SnapRotateColor = Color::fromRGBA8(120, 215, 100);
+constexpr Color SnapScaleColor = Color::fromRGBA8(96, 150, 245);
+
 void styleToggle(Context &ctx, NodeHandle button, NodeHandle icon, bool on)
 {
     const Theme &theme = ctx.theme();
     auto style = ctx.style(button);
-    style.normal.background = on ? theme.accent : theme.surface;
-    style.normal.border = on ? theme.accentActive : theme.border;
-    style.hovered.background = on ? theme.accentHovered : theme.surfaceHovered;
-    style.active.background = on ? theme.accentActive : theme.surfaceActive;
-    ctx.setIconColor(icon, on ? theme.accentText : theme.text);
+    style.normal.background = on ? theme.accent.withAlpha(0.25f) : Color::transparent();
+    style.normal.border = Color::transparent();
+    style.hovered.background = on ? theme.accent.withAlpha(0.35f) : theme.surfaceHovered;
+    style.active.background = on ? theme.accent.withAlpha(0.45f) : theme.surfaceActive;
+    ctx.setIconColor(icon, on ? theme.focus : theme.text);
+}
+
+void styleSegment(Context &ctx, NodeHandle button, bool on)
+{
+    const Theme &theme = ctx.theme();
+    auto style = ctx.style(button);
+    style.normal.background = on ? theme.accent.withAlpha(0.25f) : Color::transparent();
+    style.normal.text = on ? theme.focus : theme.textMuted;
+    style.hovered.background = on ? theme.accent.withAlpha(0.35f) : theme.surfaceHovered;
+    style.hovered.text = on ? theme.focus : theme.text;
+    style.active.background = on ? theme.accent.withAlpha(0.45f) : theme.surfaceActive;
+}
+
+NodeHandle makeMutedLabel(Context &ctx, NodeHandle parent, std::string_view text)
+{
+    const NodeHandle label = ctx.createLabel(parent, text);
+    ctx.style(label).all.text = ctx.theme().textMuted;
+    return label;
 }
 
 IconButton makeToolButton(Context &ctx, NodeHandle parent, std::string_view iconName)
@@ -51,12 +73,13 @@ IconButton makeToolButton(Context &ctx, NodeHandle parent, std::string_view icon
     layout.minSize = Vec2{ToolButtonWidth, ControlHeight};
     layout.preferredSize = Vec2{ToolButtonWidth, ControlHeight};
     layout.maxSize = Vec2{ToolButtonWidth, ControlHeight};
+    ctx.style(result.button).borderWidth = 0.0f;
     result.icon = ctx.createIcon(result.button, iconName);
     ctx.setIconSize(result.icon, IconSize);
     return result;
 }
 
-void makeSnapIcon(Context &ctx, NodeHandle parent, std::string_view name, Color color)
+NodeHandle makeSnapIcon(Context &ctx, NodeHandle parent, std::string_view name, Color color)
 {
     const NodeHandle icon = ctx.createIcon(parent, name);
     ctx.setIconSize(icon, IconSize);
@@ -66,6 +89,7 @@ void makeSnapIcon(Context &ctx, NodeHandle parent, std::string_view name, Color 
     layout.minSize = Vec2{IconSize, IconSize};
     layout.preferredSize = Vec2{IconSize, IconSize};
     layout.maxSize = Vec2{IconSize, IconSize};
+    return icon;
 }
 
 NodeHandle makeSnapInput(Context &ctx, NodeHandle parent, float value, float step)
@@ -114,7 +138,7 @@ void ViewportPanel::build(Context &ctx, NodeHandle viewportRoot)
     pillLayout.maxSize = Vec2{InfiniteLayoutSize, ToolbarHeight};
     {
         auto pillStyle = ctx.style(pill);
-        pillStyle.all.background = ctx.theme().surface;
+        pillStyle.all.background = ctx.theme().surfaceRaised;
         pillStyle.cornerRadius = 0.0f;
         pillStyle.borderWidth = 0.0f;
         pillStyle.shadow = ShadowStyle{};
@@ -145,44 +169,66 @@ void ViewportPanel::build(Context &ctx, NodeHandle viewportRoot)
         layout.maxSize = Vec2{1.0f, IconSize};
     }
 
-    worldButton = ctx.createButton(pill, "World");
+    const NodeHandle spaceGroup = ctx.createContainer(pill);
     {
-        auto layout = ctx.layoutStyle(worldButton);
-        layout.minSize = Vec2{48.0f, ControlHeight};
-        layout.preferredSize = Vec2{48.0f, ControlHeight};
-        layout.maxSize = Vec2{48.0f, ControlHeight};
+        auto layout = ctx.layoutStyle(spaceGroup);
+        layout.mode = LayoutMode::Horizontal;
+        layout.verticalAlignment = Alignment::Center;
+        layout.padding = Padding{1.0f};
+        layout.gap = 0.0f;
+        layout.clip = true;
+        const Vec2 size{2.0f * 48.0f + 1.0f + 2.0f, ControlHeight};
+        layout.minSize = size;
+        layout.preferredSize = size;
+        layout.maxSize = size;
+
+        auto style = ctx.style(spaceGroup);
+        style.all.background = ctx.theme().surface;
+        style.all.border = ctx.theme().border;
+        style.borderWidth = 1.0f;
+        style.cornerRadius = ctx.theme().controlRadius;
+    }
+
+    const auto makeSegment = [&](std::string_view text) {
+        const NodeHandle button = ctx.createButton(spaceGroup, text);
+        auto layout = ctx.layoutStyle(button);
+        layout.minSize = Vec2{48.0f, ControlHeight - 2.0f};
+        layout.preferredSize = Vec2{48.0f, ControlHeight - 2.0f};
+        layout.maxSize = Vec2{48.0f, ControlHeight - 2.0f};
         layout.horizontalAlignment = Alignment::Center;
         layout.verticalAlignment = Alignment::Center;
-    }
-    localButton = ctx.createButton(pill, "Local");
+        auto style = ctx.style(button);
+        style.borderWidth = 0.0f;
+        style.cornerRadius = 0.0f;
+        return button;
+    };
+
+    worldButton = makeSegment("World");
     {
-        auto layout = ctx.layoutStyle(localButton);
-        layout.minSize = Vec2{48.0f, ControlHeight};
-        layout.preferredSize = Vec2{48.0f, ControlHeight};
-        layout.maxSize = Vec2{48.0f, ControlHeight};
-        layout.horizontalAlignment = Alignment::Center;
-        layout.verticalAlignment = Alignment::Center;
+        NodeHandle divider = ctx.createSeparator(spaceGroup);
+        ctx.setSeparatorOrientation(divider, SeparatorOrientation::Vertical);
+        auto layout = ctx.layoutStyle(divider);
+        layout.minSize = Vec2{1.0f, ControlHeight - 2.0f};
+        layout.preferredSize = Vec2{1.0f, ControlHeight - 2.0f};
+        layout.maxSize = Vec2{1.0f, ControlHeight - 2.0f};
     }
+    localButton = makeSegment("Local");
 
-    {
-        NodeHandle sep = ctx.createSeparator(pill);
-        ctx.setSeparatorOrientation(sep, SeparatorOrientation::Vertical);
-        auto layout = ctx.layoutStyle(sep);
-        layout.minSize = Vec2{1.0f, IconSize};
-        layout.preferredSize = Vec2{1.0f, IconSize};
-        layout.maxSize = Vec2{1.0f, IconSize};
-    }
+    (void)ctx.createContainer(pill);
 
-    [[maybe_unused]] const NodeHandle snappingHeader = ctx.createLabel(pill, " Snapping: ");
+    (void)makeMutedLabel(ctx, pill, "Snapping");
 
-    makeSnapIcon(ctx, pill, "move", Color::fromRGBA8(235, 96, 96));
+    snapMoveIcon = makeSnapIcon(ctx, pill, "move", SnapMoveColor);
     snapMoveInput = makeSnapInput(ctx, pill, snapMoveValue, 0.1);
+    (void)makeMutedLabel(ctx, pill, "m");
 
-    makeSnapIcon(ctx, pill, "rotation", Color::fromRGBA8(120, 215, 100));
+    snapRotateIcon = makeSnapIcon(ctx, pill, "rotation", SnapRotateColor);
     snapRotateInput = makeSnapInput(ctx, pill, snapRotateValue, 1.0);
+    (void)makeMutedLabel(ctx, pill, "\xC2\xB0");
 
-    makeSnapIcon(ctx, pill, "scale", Color::fromRGBA8(96, 150, 245));
+    snapScaleIcon = makeSnapIcon(ctx, pill, "scale", SnapScaleColor);
     snapScaleInput = makeSnapInput(ctx, pill, snapScaleValue, 0.05);
+    (void)makeMutedLabel(ctx, pill, "\xC3\x97");
 
     refreshToggles(ctx);
 }
@@ -586,16 +632,17 @@ void ViewportPanel::refreshToggles(Context &ctx)
     styleToggle(ctx, rotateButton, rotateIcon, currentMode == GizmoMode::Rotate);
     styleToggle(ctx, scaleButton, scaleIcon, currentMode == GizmoMode::Scale);
 
-    const Theme &theme = ctx.theme();
-    auto styleWorld = ctx.style(worldButton);
-    styleWorld.normal.background = currentSpace == GizmoSpace::World ? theme.accent : theme.surface;
-    styleWorld.normal.text = currentSpace == GizmoSpace::World ? theme.accentText : theme.text;
-    styleWorld.normal.border = currentSpace == GizmoSpace::World ? theme.accentActive : theme.border;
+    styleSegment(ctx, worldButton, currentSpace == GizmoSpace::World);
+    styleSegment(ctx, localButton, currentSpace == GizmoSpace::Local);
 
-    auto styleLocal = ctx.style(localButton);
-    styleLocal.normal.background = currentSpace == GizmoSpace::Local ? theme.accent : theme.surface;
-    styleLocal.normal.text = currentSpace == GizmoSpace::Local ? theme.accentText : theme.text;
-    styleLocal.normal.border = currentSpace == GizmoSpace::Local ? theme.accentActive : theme.border;
+    // The active tool's snap icon stays bright and the others dim, so the
+    // colour reads as "this tool's snap" rather than an axis.
+    const auto snapColor = [&](Color color, GizmoMode mode) {
+        return currentMode == mode || currentMode == GizmoMode::Select ? color : color.withAlpha(0.4f);
+    };
+    ctx.setIconColor(snapMoveIcon, snapColor(SnapMoveColor, GizmoMode::Move));
+    ctx.setIconColor(snapRotateIcon, snapColor(SnapRotateColor, GizmoMode::Rotate));
+    ctx.setIconColor(snapScaleIcon, snapColor(SnapScaleColor, GizmoMode::Scale));
 }
 
 } // namespace Cthulhu::Editor

@@ -69,7 +69,9 @@ class EditorShell
   private:
     struct SceneTab
     {
-        NodeHandle root{}, button{}, close{};
+        NodeHandle root{}, button{}, close{}, closeIcon{};
+        float width = 96.0f;
+        bool dirty = false;
         Scribe::SceneDocument *document = nullptr;
         std::vector<Scene::EntityId> selection;
         std::optional<Scene::Camera> camera;

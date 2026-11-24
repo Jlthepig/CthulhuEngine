@@ -99,6 +99,9 @@ class InspectorPanel
     };
 
     std::vector<RemoveBinding> removeBindings;
+    std::vector<octogui::NodeHandle> labelNodes;
+    octogui::NodeHandle entityNameLabel{};
+    float labelWidth = 128.0f;
     bool initialized = false;
 
     void resetContent(octogui::Context &ctx);

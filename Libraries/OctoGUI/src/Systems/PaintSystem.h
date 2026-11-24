@@ -74,7 +74,7 @@ private:
   
   void paintCollapsibleSectionIndicator(const Tree& tree, DrawList& drawList, NodeHandle node, Rect rect, Color color);
   
-  void paintTreeView(Tree& tree, DrawList& drawList, Font* font, NodeHandle node, Rect rect);
+  void paintTreeView(Tree& tree, DrawList& drawList, Font* font, const IconAtlas& icons, NodeHandle node, Rect rect);
   
   void paintIcon(const Tree& tree, DrawList& drawList, NodeHandle node, const IconAtlas& icons, Rect rect);
 };

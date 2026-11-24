@@ -20,8 +20,11 @@ namespace octogui
         constexpr int roundedSegmentsPerCorner = 12;
         constexpr int maxRoundedPoints = (roundedSegmentsPerCorner + 1) * 4;
 
-        constexpr int shadowSegmentsPerCorner = 6;
-        constexpr int maxShadowPoints = (shadowSegmentsPerCorner + 1) * 4;
+        constexpr int shadowMinSegmentsPerCorner = 6;
+        constexpr int shadowMaxSegmentsPerCorner = 16;
+        constexpr int maxShadowPoints = (shadowMaxSegmentsPerCorner + 1) * 4;
+        constexpr int shadowRingCount = 8;
+
 
         const char* vertexShaderSource = R"(#version 330 core
         layout(location = 0) in vec2 position;
@@ -818,55 +821,79 @@ namespace octogui
 
             if (blur < 0.0f) {blur = 0.0f;}
 
-            const Rect inner{rect.x + offset.x - spread, rect.y + offset.y - spread, rect.w + spread * 2.0f, rect.h + spread * 2.0f};
-            if (inner.isEmpty()) {return;}
+            const Rect base{rect.x + offset.x - spread, rect.y + offset.y - spread, rect.w + spread * 2.0f, rect.h + spread * 2.0f};
+            if (base.isEmpty()) {return;}
 
-            f32 innerRadius = radius + spread;
-            if (innerRadius < 0.0f) {innerRadius = 0.0f;}
-            innerRadius = clampRadius(inner, innerRadius);
+            const f32 baseRadius = radius + spread > 0.0f ? radius + spread : 0.0f;
 
             if (blur <= 0.0f) {
-                appendRoundedRectFilled(inner, color, innerRadius);
+                appendRoundedRectFilled(base, color, clampRadius(base, baseRadius));
                 return;
             }
 
-            const Rect outer{inner.x - blur, inner.y - blur, inner.w + blur * 2.0f, inner.h + blur * 2.0f};
-            const f32 outerRadius = clampRadius(outer, innerRadius + blur);
+            // Gaussian falloff 
+            const f32 sigma = blur * 0.5f;
+            const auto coverage = [sigma](f32 distance) {
+                return 0.5f * std::erfc(distance / (sigma * 1.41421356f));
+            };
 
-            Vec2 innerPoints[maxShadowPoints];
-            Vec2 outerPoints[maxShadowPoints];
+            // How far the innermost ring can sit inside the shape.
+            const f32 halfSmaller = (base.w < base.h ? base.w : base.h) * 0.5f - 0.5f;
+            const f32 shrink = blur < halfSmaller ? blur : (halfSmaller > 0.0f ? halfSmaller : 0.0f);
 
-            const usize innerCount = buildRoundedRectPerimeter(inner, innerRadius, innerPoints, static_cast<usize>(maxShadowPoints), shadowSegmentsPerCorner);
-            const usize outerCount = buildRoundedRectPerimeter(outer, outerRadius, outerPoints, static_cast<usize>(maxShadowPoints), shadowSegmentsPerCorner);
-            const usize count = innerCount < outerCount ? innerCount : outerCount;
+            // More corner segments for wide, round shadows so the outer edge stays smooth.
+            int segments = static_cast<int>(std::ceil((baseRadius + blur) / 3.0f));
+            if (segments < shadowMinSegmentsPerCorner) {segments = shadowMinSegmentsPerCorner;}
+            if (segments > shadowMaxSegmentsPerCorner) {segments = shadowMaxSegmentsPerCorner;}
+
+            Vec2 rings[shadowRingCount + 1][maxShadowPoints];
+            f32 alphas[shadowRingCount + 1];
+            usize count = static_cast<usize>(maxShadowPoints);
+
+            for (int ring = 0; ring <= shadowRingCount; ++ring) {
+                const f32 t = static_cast<f32>(ring) / static_cast<f32>(shadowRingCount);
+                const f32 distance = -shrink + (shrink + blur) * t;
+                const Rect bounds{base.x - distance, base.y - distance, base.w + distance * 2.0f, base.h + distance * 2.0f};
+                const f32 ringRadius = baseRadius + distance > 0.0f ? baseRadius + distance : 0.0f;
+
+                const usize built = buildRoundedRectPerimeter(bounds, ringRadius, rings[ring], static_cast<usize>(maxShadowPoints), segments);
+                count = built < count ? built : count;
+                alphas[ring] = ring == shadowRingCount ? 0.0f : color.a * coverage(distance);
+            }
 
             if (count < 3) {return;}
 
             ensureBatchTexture(TextureHandle{});
 
-            const Vec2 center = inner.center();
+            const auto ringColor = [&](int ring) {
+                return Color{color.r, color.g, color.b, alphas[ring]};
+            };
 
+            const Vec2 center = base.center();
             for (usize i = 0; i < count; ++i) {
                 const usize next = (i + 1) % count;
-                appendSolidTriangle(center, innerPoints[i], innerPoints[next], color);
+                appendSolidTriangle(center, rings[0][i], rings[0][next], ringColor(0));
             }
-
-            const Color transparent{color.r, color.g, color.b, 0.0f};
 
             auto appendVertex = [&](Vec2 position, Color vertexColor) {
                 batchVertices.push_back(Vertex{position.x, position.y, vertexColor.r, vertexColor.g, vertexColor.b, vertexColor.a, 0.0f, 0.0f});
             };
 
-            for (usize i = 0; i < count; ++i) {
-                const usize next = (i + 1) % count;
+            for (int ring = 0; ring < shadowRingCount; ++ring) {
+                const Color inside = ringColor(ring);
+                const Color outside = ringColor(ring + 1);
 
-                appendVertex(innerPoints[i], color);
-                appendVertex(innerPoints[next], color);
-                appendVertex(outerPoints[next], transparent);
+                for (usize i = 0; i < count; ++i) {
+                    const usize next = (i + 1) % count;
 
-                appendVertex(innerPoints[i], color);
-                appendVertex(outerPoints[next], transparent);
-                appendVertex(outerPoints[i], transparent);
+                    appendVertex(rings[ring][i], inside);
+                    appendVertex(rings[ring][next], inside);
+                    appendVertex(rings[ring + 1][next], outside);
+
+                    appendVertex(rings[ring][i], inside);
+                    appendVertex(rings[ring + 1][next], outside);
+                    appendVertex(rings[ring + 1][i], outside);
+                }
             }
         }
 

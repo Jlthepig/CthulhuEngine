@@ -16,7 +16,8 @@ namespace Cthulhu::Editor
 class ProjectInputEditor
 {
   public:
-    void build(octogui::Context &ctx, octogui::NodeHandle page, const Project::ProjectInputMap &input);
+    void build(octogui::Context &ctx, octogui::NodeHandle page, octogui::NodeHandle overlay, 
+              const Project::ProjectInputMap &input);
     void update(octogui::Context &ctx, GLFWwindow *window, EditorDialog &dialog,
                 octogui::NodeHandle activated, octogui::NodeHandle entered, bool canEdit);
     void setEditable(octogui::Context &ctx, bool canEdit);
@@ -35,22 +36,36 @@ class ProjectInputEditor
   private:
     using Handle = octogui::NodeHandle;
     using Context = octogui::Context;
-    struct BindingRow { Handle replace{}, remove{}; };
+    struct BindingRow {Handle replace{}, remove{}; };
+    struct ActionRow
+    {
+      Project::InputActionId id{};
+      Handle label{}, addBinding{}, remove{};
+      std::vector<BindingRow> bindings;
+    };
 
     void refresh(Context &ctx);
-    void selectView(Context &ctx, bool controls);
     void commitName(Context &ctx);
+    void startRename(Context &ctx);
+    void endRename(Context &ctx);
+    void setRenameError(Context &ctx, std::string_view text);
+    void focusSelected(Context &ctx, bool binding);
     void startCapture(Context &ctx, GLFWwindow *window, std::optional<std::size_t> index);
+    void showCapture(Context &ctx, std::string_view input, std::string_view message, bool error);
+    void stopCapture(Context &ctx);
+    [[nodiscard]] bool renamePending(const Context &ctx) const;
     [[nodiscard]] std::size_t selectedIndex() const;
 
     Project::ProjectInputMap saved, draft;
-    Project::InputActionId selected{};
+    Project::InputActionId selected{}, lastClicked{};
     std::array<Handle, Project::inputControlCount> assignments{}, noBindings{};
-    std::vector<BindingRow> bindingRows;
-    Handle actionView{}, controlView{}, actionsTab{}, controlsTab{}, selector{}, details{};
-    Handle newName{}, addAction{}, newNameError{}, name{}, nameError{}, bindingList{};
-    Handle addBinding{}, deleteAction{}, revert{}, notice{};
-    std::string rejectedName;
+    std::vector<ActionRow> actionRows;
+    Handle filter{}, newName{}, addAction{}, newNameError{}, revert{}, notice{};
+    Handle actions{}, actionList{}, name{}, nameError{};
+    Handle captureBackdrop{}, captureTitle{}, captureInput{}, captureMessage{};
+    std::string filterText, rejectedName, renameError;
+    float clickAge = 1.0f;
+    bool renaming = false;
     bool invalidRename = false;
 
     inline static ProjectInputEditor *listener = nullptr;

@@ -110,6 +110,9 @@ struct TreeViewItemSlot {
   bool alive = false;
   bool expanded = true;
   bool highlighted = false;
+
+  std::string icon;
+  Color iconColor = Color::transparent();
 };
 
 struct TreeViewVisibleItem {

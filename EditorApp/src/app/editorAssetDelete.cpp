@@ -95,7 +95,7 @@ void EditorShell::showAssetDelete(Context &ctx, Engine &engine, Scribe::Session 
 
     exitDialog.show(ctx, deletingMissing ? "Forget missing asset?" : "Recycle asset?", !usage.empty() ? "This asset is still used by an open scene." : deletingMissing
                     ? "Forgetting this asset clears Undo/Redo for all open scenes." : "Recycling clears Undo/Redo for all open scenes.",
-                    deletingMissing ? "Forget" : "Recycle", canResolve ? "Resolve References..." : "");
+                    deletingMissing ? "Forget" : "Recycle", canResolve ? "Resolve References..." : "", "Cancel", ButtonRole::Destructive);
 
     exitDialog.setDetails(ctx, lines);
     exitDialog.setNotice(ctx, usage.empty() ? "Other saved scenes may also use this asset." : canResolve ? "Resolve references in the active scene, then review deletion again." 

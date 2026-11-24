@@ -1,7 +1,9 @@
 #include "projectInputEditor.hpp"
 #include "editorMetrics.hpp"
+#include "editorTheme.hpp"
 
 #include <algorithm>
+#include <cctype>
 
 #include <GLFW/glfw3.h>
 
@@ -107,52 +109,142 @@ std::string bindingLabel(InputBinding binding)
         return std::string(1, static_cast<char>(key));
     return "Key " + std::to_string(key);
 }
+
+NodeHandle iconButton(Context &ctx, NodeHandle parent, std::string_view icon, std::string_view tooltip)
+{
+    const auto button = ctx.createButton(parent, "");
+    auto layout = ctx.layoutStyle(button);
+    layout.mode = LayoutMode::Horizontal;
+    layout.minSize = Vec2{IconButtonSize, IconButtonSize};
+    layout.preferredSize = Vec2{IconButtonSize, IconButtonSize};
+    layout.maxSize = Vec2{IconButtonSize, IconButtonSize};
+    layout.horizontalAlignment = Alignment::Center;
+    layout.verticalAlignment = Alignment::Center;
+    styleGhostButton(ctx, button);
+
+    const auto image = ctx.createIcon(button, icon);
+    ctx.setIconSize(image, IconSize);
+    ctx.setIconColor(image, ctx.theme().textMuted);
+    ctx.setTooltip(button, tooltip);
+    return button;
+}
+
+NodeHandle mutedLabel(Context &ctx, NodeHandle parent, std::string_view text)
+{
+    const auto label = ctx.createLabel(parent, text);
+    ctx.style(label).all.text = ctx.theme().textMuted;
+    ctx.layoutStyle(label).clip = true;
+    return label;
+}
+
+std::string lowered(std::string_view text)
+{
+    std::string out(text);
+    for (auto &c : out)
+        c = static_cast<char>(std::tolower(static_cast<unsigned char>(c)));
+    return out;
+}
+
 } // namespace
 
-void ProjectInputEditor::build(Context &ctx, NodeHandle page, const ProjectInputMap &input)
+void ProjectInputEditor::build(Context &ctx, NodeHandle page, NodeHandle overlay, const ProjectInputMap &input)
 {
     saved = draft = input;
-    invalidRename = false;
+    renaming = invalidRename = false;
     rejectedName.clear();
-    selected = {};
-    bindingRows.clear();
-    bindingList = {};
-    const auto nav = row(ctx, page);
-    actionsTab = ctx.createButton(nav, "Actions");
-    controlsTab = ctx.createButton(nav, "Built-in Controls");
-    revert = ctx.createButton(nav, "Revert Changes");
+    renameError.clear();
+    filterText.clear();
+    selected = lastClicked = {};
+    clickAge = 1.0f;
+    actionRows.clear();
+    actionList = name = nameError = {};
+
+    const auto toolbar = row(ctx, page);
+    filter = ctx.createTextInput(toolbar, "", "Filter actions");
+    ctx.layoutStyle(filter).preferredSize = Vec2{};
+    ctx.layoutStyle(filter).clip = true;
+    newName = ctx.createTextInput(toolbar, "", "New action name");
+    ctx.layoutStyle(newName).preferredSize = Vec2{220.0f, 0.0f};
+    ctx.layoutStyle(newName).clip = true;
+    addAction = ctx.createButton(toolbar, "Add Action");
+    revert = ctx.createButton(toolbar, "Revert Changes");
+    styleButtonRole(ctx, revert, ButtonRole::Ghost);
+
+    newNameError = ctx.createLabel(page, "");
+    ctx.layoutStyle(newNameError).clip = true;
+    ctx.style(newNameError).all.text = DangerColor;
     notice = ctx.createLabel(page, "");
     ctx.layoutStyle(notice).clip = true;
 
-    actionView = column(ctx, page);
-    const auto add = row(ctx, actionView);
-    newName = ctx.createTextInput(add, "", "New action name");
-    addAction = ctx.createButton(add, "Add Action");
-    newNameError = ctx.createLabel(actionView, "");
-    ctx.layoutStyle(newNameError).clip = true;
-    selector = ctx.createComboBox(actionView, {});
-    details = column(ctx, actionView);
-    name = ctx.createTextInput(details, "", "Action name");
-    nameError = ctx.createLabel(details, "");
-    ctx.layoutStyle(nameError).clip = true;
-    const auto buttons = row(ctx, details);
-    addBinding = ctx.createButton(buttons, "Add Binding");
-    deleteAction = ctx.createButton(buttons, "Delete Action");
+    actions = column(ctx, page);
+    ctx.layoutStyle(actions).gap = SpaceXs;
 
-    controlView = column(ctx, page);
+    const auto controls = ctx.createCollapsibleSection(page, "Built-in Controls", false);
+    const auto controlBody = ctx.collapsibleSectionContent(controls);
+    (void)mutedLabel(ctx, controlBody, "Choose which action drives each built-in FPS control.");
     for (std::size_t i = 0; i < assignments.size(); ++i)
     {
-        const auto line = row(ctx, controlView);
-        const auto label = ctx.createLabel(line, controlLabels[i]);
-        ctx.layoutStyle(label).preferredSize = Vec2{108.0f, 0.0f};
+        const auto line = row(ctx, controlBody);
+        const auto label = mutedLabel(ctx, line, controlLabels[i]);
+        ctx.layoutStyle(label).preferredSize = Vec2{128.0f, 0.0f};
         assignments[i] = ctx.createComboBox(line, {});
         noBindings[i] = ctx.createLabel(line, "No bindings");
+        ctx.style(noBindings[i]).all.text = WarningColor;
     }
 
+    captureBackdrop = ctx.createPanel(overlay);
+    ctx.setZLayer(captureBackdrop, 1);
+    auto backdropStyle = ctx.style(captureBackdrop);
+    backdropStyle.all.background = Color::fromRGBA8(0, 0, 0, 150);
+    backdropStyle.borderWidth = 0.0f;
+    backdropStyle.cornerRadius = 0.0f;
+    backdropStyle.shadow = ShadowStyle{};
+    auto backdropLayout = ctx.layoutStyle(captureBackdrop);
+    backdropLayout.mode = LayoutMode::Vertical;
+    backdropLayout.horizontalAlignment = Alignment::Center;
+    backdropLayout.verticalAlignment = Alignment::Center;
+    backdropLayout.padding = Padding{SpaceL};
+
+    const auto card = ctx.createPanel(captureBackdrop);
+    ctx.style(card).all.background = ctx.theme().surfaceRaised;
+    ctx.style(card).shadow = ctx.theme().elevationHigh;
+    ctx.style(card).cornerRadius = 6.0f;
+    auto cardLayout = ctx.layoutStyle(card);
+    cardLayout.preferredSize = Vec2{380.0f, 0.0f};
+    cardLayout.fitContentY = true;
+    cardLayout.padding = Padding{SpaceXl};
+    cardLayout.gap = SpaceL;
+
+    captureTitle = ctx.createLabel(card, "");
+    ctx.setFontSlot(captureTitle, FontSlot::Secondary);
+    ctx.layoutStyle(captureTitle).preferredSize = Vec2{0.0f, RowHeight};
+    ctx.layoutStyle(captureTitle).clip = true;
+
+    const auto listen = ctx.createPanel(card);
+    auto listenStyle = ctx.style(listen);
+    listenStyle.all.background = ctx.theme().surface;
+    listenStyle.all.border = ctx.theme().focus;
+    listenStyle.borderWidth = 1.0f;
+    listenStyle.cornerRadius = ctx.theme().controlRadius;
+    listenStyle.shadow = ShadowStyle{};
+    auto listenLayout = ctx.layoutStyle(listen);
+    listenLayout.mode = LayoutMode::Vertical;
+    listenLayout.horizontalAlignment = Alignment::Center;
+    listenLayout.verticalAlignment = Alignment::Center;
+    listenLayout.preferredSize = Vec2{0.0f, 64.0f};
+
+    captureInput = ctx.createLabel(listen, "");
+    ctx.setFontSlot(captureInput, FontSlot::Secondary);
+
+    captureMessage = ctx.createLabel(card, "");
+    ctx.layoutStyle(captureMessage).preferredSize = Vec2{0.0f, RowHeight};
+    ctx.layoutStyle(captureMessage).clip = true;
+    const auto hint = mutedLabel(ctx, card, "Press any key or mouse button. Escape cancels.");
+    ctx.layoutStyle(hint).preferredSize = Vec2{0.0f, RowHeight};
+    ctx.setVisible(captureBackdrop, false);
+
     noticeText(ctx, newNameError, {});
-    noticeText(ctx, nameError, {});
     showNotice(ctx, {});
-    selectView(ctx, false);
     refresh(ctx);
 }
 
@@ -162,25 +254,24 @@ std::size_t ProjectInputEditor::selectedIndex() const
     return static_cast<std::size_t>(iter - draft.actions.begin());
 }
 
+bool ProjectInputEditor::renamePending(const Context &ctx) const
+{
+    const auto *action = draft.find(selected);
+    return renaming && action && ctx.isValid(name) && ctx.text(name) != action->name;
+}
+
 void ProjectInputEditor::refresh(Context &ctx)
 {
-    auto index = selectedIndex();
-    if (index == draft.actions.size() && !draft.actions.empty())
+    if (!draft.find(selected))
     {
-        index = 0;
-        selected = draft.actions[0].id;
+        selected = draft.actions.empty() ? InputActionId{} : draft.actions[0].id;
+        renaming = invalidRename = false;
+        renameError.clear();
     }
 
-    std::vector<std::string> names;
     std::vector<std::string> choices{"Unassigned"};
     for (const auto &action : draft.actions)
-    {
-        names.push_back(action.name);
         choices.push_back("  " + action.name);
-    }
-    ctx.setComboBoxItems(selector, names);
-    ctx.setComboBoxSelectedIndex(selector, names.empty() ? -1 : static_cast<i32>(index));
-    ctx.setEnabled(selector, !names.empty());
 
     for (std::size_t i = 0; i < assignments.size(); ++i)
     {
@@ -191,62 +282,158 @@ void ProjectInputEditor::refresh(Context &ctx)
         ctx.setVisible(noBindings[i], assigned && action->bindings.empty());
     }
 
-    if (ctx.isValid(bindingList))
-        ctx.destroyNode(bindingList);
-    bindingRows.clear();
-    bindingList = column(ctx, details);
+    const std::string pendingName = renaming && ctx.isValid(name) ? std::string(ctx.text(name)) : std::string{};
+    const bool nameFocused = renaming && ctx.isValid(name) && ctx.isFocused(name);
 
-    const auto *action = draft.find(selected);
-    ctx.setVisible(details, action != nullptr);
-    if (!invalidRename)
-        ctx.setText(name, action ? std::string_view(action->name) : std::string_view{});
-    if (!action)
-        return;
+    if (ctx.isValid(actionList))
+        ctx.destroyNode(actionList);
+    actionRows.clear();
+    name = nameError = {};
+    actionList = column(ctx, actions);
+    ctx.layoutStyle(actionList).gap = SpaceXs;
 
-    if (action->bindings.empty())
-        (void)ctx.createLabel(bindingList, "No bindings");
-
-    for (const auto binding : action->bindings)
+    if (draft.actions.empty())
     {
-        const auto line = row(ctx, bindingList);
-        const auto label = ctx.createLabel(line, bindingLabel(binding));
-        ctx.layoutStyle(label).clip = true;
-        bindingRows.push_back({ctx.createButton(line, "Replace"), ctx.createButton(line, "Remove")});
+        (void)mutedLabel(ctx, actionList, "No actions yet. Name one above and press Add Action.");
+        return;
+    }
 
-        std::string overlap;
-        for (const auto &other : draft.actions)
+    const auto needle = lowered(filterText);
+    for (const auto &action : draft.actions)
+    {
+        const bool current = action.id == selected;
+        const bool editing = renaming && current;
+        if (!editing && !needle.empty() && lowered(action.name).find(needle) == std::string::npos)
+            continue;
+
+        auto &entry = actionRows.emplace_back();
+        entry.id = action.id;
+
+        const auto header = ctx.createPanel(actionList);
+        auto headerStyle = ctx.style(header);
+        headerStyle.all.background = current ? ctx.theme().surfaceActive : ctx.theme().surface;
+        headerStyle.borderWidth = 0.0f;
+        headerStyle.cornerRadius = ctx.theme().controlRadius;
+        headerStyle.shadow = ShadowStyle{};
+        auto headerLayout = ctx.layoutStyle(header);
+        headerLayout.mode = LayoutMode::Horizontal;
+        headerLayout.verticalAlignment = Alignment::Center;
+        headerLayout.preferredSize = Vec2{0.0f, ToolbarHeight};
+        headerLayout.padding = Padding{SpaceS, 0.0f};
+        headerLayout.gap = SpaceS;
+
+        if (editing)
         {
-            if (other.id == selected || std::ranges::find(other.bindings, binding) == other.bindings.end())
-                continue;
-            overlap += overlap.empty() ? "Also bound to " : ", ";
-            overlap += other.name;
+            name = ctx.createTextInput(header, pendingName.empty() ? std::string_view(action.name) : std::string_view(pendingName), "Action name");
+            ctx.layoutStyle(name).preferredSize = Vec2{220.0f, ControlHeight};
+            ctx.layoutStyle(name).clip = true;
         }
-        if (!overlap.empty())
+        else
         {
-            const auto warning = ctx.createLabel(bindingList, overlap);
+            entry.label = ctx.createButton(header, action.name);
+            styleGhostButton(ctx, entry.label);
+            ctx.setTextAlign(entry.label, TextAlign::Start, TextAlign::Center);
+            ctx.setFontSlot(entry.label, FontSlot::Secondary);
+            auto labelLayout = ctx.layoutStyle(entry.label);
+            labelLayout.preferredSize = Vec2{220.0f, ControlHeight};
+            labelLayout.padding = Padding{SpaceM, 0.0f};
+            labelLayout.clip = true;
+            ctx.setTooltip(entry.label, "Double-click or press Enter to rename");
+        }
+
+        std::string usedBy;
+        for (std::size_t i = 0; i < draft.assignments.size(); ++i)
+        {
+            if (draft.assignments[i] != action.id)
+                continue;
+            usedBy += usedBy.empty() ? "Used by " : ", ";
+            usedBy += controlLabels[i];
+        }
+        const auto used = mutedLabel(ctx, header, usedBy);
+        ctx.layoutStyle(used).preferredSize = Vec2{};
+        ctx.setTooltip(used, usedBy);
+
+        entry.addBinding = iconButton(ctx, header, "plus", "Add binding");
+        entry.remove = iconButton(ctx, header, "trash", "Delete action");
+
+        if (editing)
+        {
+            nameError = ctx.createLabel(actionList, "");
+            ctx.layoutStyle(nameError).clip = true;
+            ctx.layoutStyle(nameError).padding = Padding{SpaceL, 0.0f};
+            ctx.style(nameError).all.text = DangerColor;
+            noticeText(ctx, nameError, renameError);
+            if (nameFocused)
+                ctx.setFocused(name);
+        }
+
+        if (action.bindings.empty())
+        {
+            const auto line = row(ctx, actionList);
+            ctx.layoutStyle(line).preferredSize = Vec2{0.0f, ControlHeight};
+            ctx.layoutStyle(line).padding = Padding{SpaceXl + SpaceL, 0.0f, SpaceS, 0.0f};
+            (void)mutedLabel(ctx, line, "No bindings. Press + to add one.");
+        }
+
+        for (const auto binding : action.bindings)
+        {
+            const auto line = row(ctx, actionList);
+            auto lineLayout = ctx.layoutStyle(line);
+            lineLayout.preferredSize = Vec2{0.0f, ControlHeight};
+            lineLayout.padding = Padding{SpaceXl + SpaceL, 0.0f, SpaceS, 0.0f};
+            lineLayout.gap = SpaceS;
+
+            const auto label = ctx.createLabel(line, bindingLabel(binding));
+            ctx.layoutStyle(label).preferredSize = Vec2{196.0f, 0.0f};
+            ctx.layoutStyle(label).clip = true;
+
+            std::string overlap;
+            for (const auto &other : draft.actions)
+            {
+                if (other.id == action.id || std::ranges::find(other.bindings, binding) == other.bindings.end())
+                    continue;
+                overlap += overlap.empty() ? "Also bound to " : ", ";
+                overlap += other.name;
+            }
+            const auto warning = ctx.createLabel(line, overlap);
+            ctx.layoutStyle(warning).preferredSize = Vec2{};
             ctx.layoutStyle(warning).clip = true;
+            ctx.style(warning).all.text = WarningColor;
             ctx.setTooltip(warning, overlap);
+
+            entry.bindings.push_back({iconButton(ctx, line, "refresh", "Replace binding"),
+                                      iconButton(ctx, line, "close", "Remove binding")});
         }
     }
+
+    if (actionRows.empty())
+        (void)mutedLabel(ctx, actionList, "No actions match the filter.");
 }
 
-void ProjectInputEditor::selectView(Context &ctx, bool controls)
+void ProjectInputEditor::focusSelected(Context &ctx, bool binding)
 {
-    ctx.setVisible(actionView, !controls);
-    ctx.setVisible(controlView, controls);
-    ctx.style(actionsTab).normal.background = controls ? ctx.theme().surface : ctx.theme().surfaceActive;
-    ctx.style(controlsTab).normal.background = controls ? ctx.theme().surfaceActive : ctx.theme().surface;
+    const auto entry = std::ranges::find(actionRows, selected, &ActionRow::id);
+    if (entry == actionRows.end())
+        ctx.setFocused(newName);
+    else
+        ctx.setFocused(binding || !ctx.isValid(entry->label) ? entry->addBinding : entry->label);
 }
 
 bool ProjectInputEditor::dirty(const Context &ctx) const
 {
-    const auto *action = draft.find(selected);
-    return draft != saved || (action && ctx.text(name) != action->name);
+    return draft != saved || renamePending(ctx);
 }
 
 void ProjectInputEditor::showNotice(Context &ctx, std::string_view text) const
 {
     noticeText(ctx, notice, text);
+}
+
+void ProjectInputEditor::setRenameError(Context &ctx, std::string_view text)
+{
+    renameError = text;
+    if (ctx.isValid(nameError))
+        noticeText(ctx, nameError, text);
 }
 
 bool ProjectInputEditor::cancelNameEdit(Context &ctx)
@@ -257,24 +444,45 @@ bool ProjectInputEditor::cancelNameEdit(Context &ctx)
         noticeText(ctx, newNameError, {});
         return true;
     }
-
-    const auto *action = draft.find(selected);
-    if (!action || !ctx.isFocused(name) || ctx.text(name) == action->name)
+    if (ctx.isFocused(filter) && !ctx.text(filter).empty())
+    {
+        ctx.setText(filter, "");
+        return true;
+    }
+    if (!renaming)
         return false;
 
-    ctx.setText(name, action->name);
-    invalidRename = false;
-    noticeText(ctx, nameError, {});
+    endRename(ctx);
     return true;
+}
+
+void ProjectInputEditor::startRename(Context &ctx)
+{
+    renaming = true;
+    invalidRename = false;
+    setRenameError(ctx, {});
+    refresh(ctx);
+    if (ctx.isValid(name))
+        ctx.setFocused(name);
+}
+
+void ProjectInputEditor::endRename(Context &ctx)
+{
+    renaming = invalidRename = false;
+    rejectedName.clear();
+    setRenameError(ctx, {});
+    refresh(ctx);
+    focusSelected(ctx, false);
 }
 
 void ProjectInputEditor::commitName(Context &ctx)
 {
     const auto index = selectedIndex();
-    if (index == draft.actions.size() || ctx.text(name) == draft.actions[index].name)
+    if (!renaming || !ctx.isValid(name) || index == draft.actions.size())
+        return;
+    if (ctx.text(name) == draft.actions[index].name)
     {
-        invalidRename = false;
-        noticeText(ctx, nameError, {});
+        endRename(ctx);
         return;
     }
 
@@ -283,20 +491,22 @@ void ProjectInputEditor::commitName(Context &ctx)
     const auto error = normalizeProjectInput(candidate, false);
     invalidRename = !error.empty();
     rejectedName = invalidRename ? std::string(ctx.text(name)) : std::string{};
-    noticeText(ctx, nameError, error);
+    setRenameError(ctx, error);
     if (invalidRename)
         return;
 
     draft = std::move(candidate);
+    renaming = false;
     showNotice(ctx, {});
     refresh(ctx);
+    focusSelected(ctx, false);
 }
 
 std::string ProjectInputEditor::apply(Context &ctx, Scribe::Session &session)
 {
     commitName(ctx);
     if (invalidRename)
-        return std::string(ctx.text(nameError));
+        return renameError;
 
     const auto result = session.setProjectInput(draft);
     if (!result.ok())
@@ -318,30 +528,40 @@ void ProjectInputEditor::deleteSelected(Context &ctx)
         if (assignment == selected)
             assignment = {};
     selected = {};
-    invalidRename = false;
-    noticeText(ctx, nameError, {});
+    renaming = invalidRename = false;
+    setRenameError(ctx, {});
     showNotice(ctx, {});
     refresh(ctx);
-    ctx.setFocused(draft.actions.empty() ? newName : selector);
+    focusSelected(ctx, false);
 }
 
 void ProjectInputEditor::appendControls(std::vector<Handle> &controls) const
 {
-    controls.insert(controls.end(), {actionsTab, controlsTab, revert, newName, addAction,
-                                     selector, name, addBinding, deleteAction});
-    for (const auto &binding : bindingRows)
-        controls.insert(controls.end(), {binding.replace, binding.remove});
+    controls.insert(controls.end(), {filter, newName, addAction, revert});
+    for (const auto &entry : actionRows)
+    {
+        controls.push_back(entry.id == selected && renaming ? name : entry.label);
+        controls.insert(controls.end(), {entry.addBinding, entry.remove});
+        for (const auto &binding : entry.bindings)
+            controls.insert(controls.end(), {binding.replace, binding.remove});
+    }
     controls.insert(controls.end(), assignments.begin(), assignments.end());
 }
 
 void ProjectInputEditor::setEditable(Context &ctx, bool canEdit)
 {
-    for (auto control : {newName, addAction, name, addBinding, deleteAction})
-        ctx.setEnabled(control, canEdit);
-    for (const auto &binding : bindingRows)
+    for (auto control : {newName, addAction, name})
+        if (ctx.isValid(control))
+            ctx.setEnabled(control, canEdit);
+    for (const auto &entry : actionRows)
     {
-        ctx.setEnabled(binding.replace, canEdit);
-        ctx.setEnabled(binding.remove, canEdit);
+        ctx.setEnabled(entry.addBinding, canEdit);
+        ctx.setEnabled(entry.remove, canEdit);
+        for (const auto &binding : entry.bindings)
+        {
+            ctx.setEnabled(binding.replace, canEdit);
+            ctx.setEnabled(binding.remove, canEdit);
+        }
     }
     for (auto control : assignments)
         ctx.setEnabled(control, canEdit);
@@ -352,31 +572,44 @@ void ProjectInputEditor::update(Context &ctx, GLFWwindow *window, EditorDialog &
                                 Handle activated, Handle entered, bool canEdit)
 {
     const auto chosen = [&](Handle control) {
-        return ctx.isEnabled(control) && ctx.tree().isVisibleBranch(control) &&
+        return ctx.isValid(control) && ctx.isEnabled(control) && ctx.tree().isVisibleBranch(control) &&
                (ctx.isClicked(control) || activated == control);
     };
+    clickAge = std::min(1.0f, clickAge + ctx.input().deltaTime);
 
-    if (chosen(actionsTab) || chosen(controlsTab))
-        selectView(ctx, chosen(controlsTab));
-
-    const auto *current = draft.find(selected);
-    if (canEdit && current && (invalidRename || ctx.text(name) != current->name) &&
+    if (canEdit && renaming && ctx.isValid(name) &&
         (entered == name || (!ctx.isFocused(name) && (!invalidRename || ctx.text(name) != rejectedName))))
         commitName(ctx);
+    if (!canEdit && renaming && !invalidRename && !renamePending(ctx))
+        endRename(ctx);
 
-    auto index = selectedIndex();
-    const auto choice = ctx.comboBoxSelectedIndex(selector);
-    if (choice >= 0 && static_cast<std::size_t>(choice) < draft.actions.size() &&
-        static_cast<std::size_t>(choice) != index)
+    if (ctx.text(filter) != filterText)
     {
-        if (invalidRename || (index < draft.actions.size() && ctx.text(name) != draft.actions[index].name))
-            ctx.setComboBoxSelectedIndex(selector, static_cast<i32>(index));
+        filterText = std::string(ctx.text(filter));
+        refresh(ctx);
+    }
+
+    for (const auto &entry : actionRows)
+    {
+        if (!chosen(entry.label))
+            continue;
+        if (entry.id != selected && (invalidRename || renamePending(ctx)))
+            break;
+
+        const auto id = entry.id;
+        const bool twice = ctx.isClicked(entry.label) && lastClicked == id && clickAge <= 0.35f;
+        const bool rename = canEdit && (twice || entered == entry.label);
+        lastClicked = id;
+        clickAge = twice ? 1.0f : 0.0f;
+        selected = id;
+        if (rename)
+            startRename(ctx);
         else
         {
-            index = static_cast<std::size_t>(choice);
-            selected = draft.actions[index].id;
             refresh(ctx);
+            focusSelected(ctx, false);
         }
+        return;
     }
 
     ctx.setEnabled(revert, canEdit && dirty(ctx));
@@ -386,8 +619,8 @@ void ProjectInputEditor::update(Context &ctx, GLFWwindow *window, EditorDialog &
     if (chosen(revert))
     {
         draft = saved;
-        invalidRename = false;
-        noticeText(ctx, nameError, {});
+        renaming = invalidRename = false;
+        setRenameError(ctx, {});
         showNotice(ctx, {});
         refresh(ctx);
         return;
@@ -409,71 +642,97 @@ void ProjectInputEditor::update(Context &ctx, GLFWwindow *window, EditorDialog &
         {
             draft = std::move(candidate);
             selected = id;
+            renaming = false;
             ctx.setText(newName, "");
+            ctx.setText(filter, "");
+            filterText.clear();
             showNotice(ctx, {});
             refresh(ctx);
-            ctx.setFocused(addBinding);
+            focusSelected(ctx, true);
         }
         return;
     }
 
-    if (index < draft.actions.size() && chosen(deleteAction))
+    for (const auto &entry : actionRows)
     {
-        std::vector<std::string> affected;
-        for (std::size_t i = 0; i < assignments.size(); ++i)
-            if (draft.assignments[i] == selected)
-                affected.emplace_back(controlLabels[i]);
+        if (entry.id != selected && invalidRename)
+            continue;
 
-        if (affected.empty())
-            deleteSelected(ctx);
-        else
+        const auto id = entry.id;
+        std::optional<std::size_t> replace, remove;
+        for (std::size_t i = 0; i < entry.bindings.size(); ++i)
         {
-            dialog.show(ctx, "Delete " + draft.actions[index].name + "?",
-                        "These controls will become unassigned.", "Delete", "");
-            dialog.setDetails(ctx, affected);
+            if (chosen(entry.bindings[i].replace))
+                replace = i;
+            else if (chosen(entry.bindings[i].remove))
+                remove = i;
         }
-        return;
-    }
+        const bool add = chosen(entry.addBinding);
+        const bool erase = chosen(entry.remove);
+        if (!add && !erase && !replace && !remove)
+            continue;
 
-    if (index < draft.actions.size() && chosen(addBinding))
-    {
-        startCapture(ctx, window, std::nullopt);
-        return;
-    }
-    for (std::size_t i = 0; i < bindingRows.size(); ++i)
-    {
-        if (chosen(bindingRows[i].replace))
+        if (selected != id)
         {
-            startCapture(ctx, window, i);
+            selected = id;
+            renaming = false;
+            refresh(ctx);
+        }
+        const auto index = selectedIndex();
+        if (index == draft.actions.size())
             return;
-        }
-        if (chosen(bindingRows[i].remove) && index < draft.actions.size())
+
+        if (erase)
         {
-            auto &bindings = draft.actions[index].bindings;
-            bindings.erase(bindings.begin() + static_cast<std::ptrdiff_t>(i));
+            std::vector<std::string> affected;
+            for (std::size_t i = 0; i < assignments.size(); ++i)
+                if (draft.assignments[i] == selected)
+                    affected.emplace_back(controlLabels[i]);
+
+            if (affected.empty())
+                deleteSelected(ctx);
+            else
+            {
+                dialog.show(ctx, "Delete " + draft.actions[index].name + "?",
+                            "These controls will become unassigned.", "Delete", "", "Cancel", ButtonRole::Destructive);
+                dialog.setDetails(ctx, affected);
+            }
+        }
+        else if (add || replace)
+            startCapture(ctx, window, replace);
+        else if (auto &bindings = draft.actions[index].bindings; *remove < bindings.size())
+        {
+            bindings.erase(bindings.begin() + static_cast<std::ptrdiff_t>(*remove));
             showNotice(ctx, {});
             refresh(ctx);
-            ctx.setFocused(addBinding);
-            return;
+            focusSelected(ctx, true);
         }
+        return;
     }
 
-    if (ctx.isVisible(controlView))
+    for (std::size_t i = 0; i < assignments.size(); ++i)
     {
-        for (std::size_t i = 0; i < assignments.size(); ++i)
-        {
-            const auto item = ctx.comboBoxSelectedIndex(assignments[i]);
-            if (item < 0 || static_cast<std::size_t>(item) > draft.actions.size())
-                continue;
+        const auto item = ctx.comboBoxSelectedIndex(assignments[i]);
+        if (item < 0 || static_cast<std::size_t>(item) > draft.actions.size())
+            continue;
 
-            const auto *action = item > 0 ? &draft.actions[static_cast<std::size_t>(item - 1)] : nullptr;
-            const auto id = action ? action->id : InputActionId{};
-            if (draft.assignments[i] != id)
-                showNotice(ctx, {});
-            draft.assignments[i] = id;
-            ctx.setVisible(noBindings[i], action && action->bindings.empty());
-        }
+        const auto *action = item > 0 ? &draft.actions[static_cast<std::size_t>(item - 1)] : nullptr;
+        const auto id = action ? action->id : InputActionId{};
+        if (draft.assignments[i] == id)
+            continue;
+
+        draft.assignments[i] = id;
+        showNotice(ctx, {});
+        refresh(ctx);
+        return;
     }
+}
+
+void ProjectInputEditor::showCapture(Context &ctx, std::string_view input, std::string_view message, bool error)
+{
+    ctx.setText(captureInput, input);
+    noticeText(ctx, captureMessage, message);
+    ctx.style(captureMessage).all.text = error ? DangerColor : ctx.theme().textMuted;
 }
 
 void ProjectInputEditor::startCapture(Context &ctx, GLFWwindow *window, std::optional<std::size_t> index)
@@ -504,7 +763,15 @@ void ProjectInputEditor::startCapture(Context &ctx, GLFWwindow *window, std::opt
         if (listener->previousFocus)
             listener->previousFocus(owner, focused);
     });
-    showNotice(ctx, "Press a key or mouse button. Escape cancels.");
+    
+    const auto *action = draft.find(selected);
+    const std::string actionName = action ? action->name : std::string{};
+    ctx.setText(captureTitle, (index ? "Replace binding for " : "Add binding for ") + actionName);
+    const bool current = action && index && *index < action->bindings.size();
+    showCapture(ctx, "Waiting for input...", current ? "Current: " + bindingLabel(action->bindings[*index]) : std::string{}, false);
+    showNotice(ctx, {});
+    ctx.clearFocus();
+    ctx.setVisible(captureBackdrop, true);
 }
 
 void ProjectInputEditor::cancelCapture()
@@ -520,12 +787,19 @@ void ProjectInputEditor::cancelCapture()
     captured.reset();
 }
 
+void ProjectInputEditor::stopCapture(Context &ctx)
+{
+    cancelCapture();
+    ctx.setVisible(captureBackdrop, false);
+}
+
 void ProjectInputEditor::finishCapture(Context &ctx, bool canCapture)
 {
     if (!canCapture || lostFocus || captured == InputBinding{InputDevice::Key, GLFW_KEY_ESCAPE})
     {
+        stopCapture(ctx);
         showNotice(ctx, "Binding capture cancelled.");
-        cancelCapture();
+        focusSelected(ctx, true);
         return;
     }
     if (!captured)
@@ -535,13 +809,13 @@ void ProjectInputEditor::finishCapture(Context &ctx, bool canCapture)
     captured.reset();
     if (binding == InputBinding{InputDevice::Key, GLFW_KEY_F5})
     {
-        showNotice(ctx, "F5 is reserved for Play and Stop. Press another input or Escape.");
+        showCapture(ctx, bindingLabel(binding), "F5 is reserved for Play and Stop. Press another input.", true);
         return;
     }
     const auto index = selectedIndex();
     if (index == draft.actions.size())
     {
-        cancelCapture();
+        stopCapture(ctx);
         return;
     }
 
@@ -555,14 +829,14 @@ void ProjectInputEditor::finishCapture(Context &ctx, bool canCapture)
     const auto error = normalizeProjectInput(candidate, false);
     if (!error.empty())
     {
-        showNotice(ctx, error + " Press another input or Escape.");
+        showCapture(ctx, bindingLabel(binding), error + " Press another input.", true);
         return;
     }
 
     draft = std::move(candidate);
-    cancelCapture();
+    stopCapture(ctx);
     showNotice(ctx, {});
     refresh(ctx);
-    ctx.setFocused(addBinding);
+    focusSelected(ctx, true);
 }
 } // namespace Cthulhu::Editor

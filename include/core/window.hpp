@@ -30,6 +30,7 @@ struct WindowConfig
     WindowMode initialMode = WindowMode::Windowed;
     bool vSync = false;
     bool visible = true;
+    bool maximised = false;
     glm::ivec2 minimumSize{0, 0};
 };
 

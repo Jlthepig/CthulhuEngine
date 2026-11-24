@@ -76,6 +76,9 @@ TreeViewItemId allocateTreeViewItem(TreeViewState& state) {
     item.expanded = true;
     item.highlighted = false;
 
+    item.icon.clear();
+    item.iconColor = Color::transparent();
+
     return TreeViewItemId{
         index,
         item.generation};

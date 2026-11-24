@@ -28,6 +28,25 @@ constexpr f32 HierarchyChevronWidth = 16.0f;
 constexpr f32 HierarchyTextGap = 4.0f;
 constexpr f32 HierarchyIndentCap = 85.0f;
 
+std::string_view entityIcon(const flecs::entity &entity)
+{
+    if (entity.has<Scene::TagPlayer>())
+        return "player";
+    if (entity.has<Scene::CameraComponent>())
+        return "camera";
+    if (entity.has<Scene::CharacterControllerComponent>())
+        return "character";
+    if (entity.has<Scene::WeaponComponent>())
+        return "weapon";
+    if (entity.has<Scene::AudioSourceComponent>())
+        return "audio";
+    if (entity.has<Scene::PhysicsComponent>())
+        return "physics";
+    if (entity.has<Scene::MeshComponent>())
+        return "mesh";
+    return "entity";
+}
+
 std::string trimEntityName(std::string_view value)
 {
     std::size_t first{};
@@ -95,7 +114,7 @@ bool hierarchyItemTextRect(Context &ctx, NodeHandle treeView, TreeViewItemId ite
     const f32 contentWidth = std::max(0.0f, outer.w - padding.horizontal());
 
     const f32 indent = std::min(static_cast<f32>(visible->depth) * HierarchyIndentWidth, HierarchyIndentCap);
-    const f32 textX = contentX + indent + HierarchyChevronWidth + HierarchyTextGap;
+    const f32 textX = contentX + indent + HierarchyChevronWidth + HierarchyTextGap + IconSize + HierarchyTextGap;
     const f32 textWidth = contentX + contentWidth - textX - 4.0f;
 
     if (textWidth <= 0.0f)
@@ -125,11 +144,12 @@ void HierarchyPanel::build(Context &ctx, NodeHandle parent)
     fillWithChild(ctx, parent);
 
     IconButton action{};
-    hierarchy = createTitledPanel(ctx, parent, "sidebar-left", "HIERARCHY", &action);
+    hierarchy = createTitledPanel(ctx, parent, "sidebar-left", "Hierarchy", &action);
     createEntityButton = action.button;
     createEntityIcon = action.icon;
     hierarchyTree = ctx.createTreeView(hierarchy);
     ctx.setTreeViewMaxIndentWidth(hierarchyTree, HierarchyIndentCap);
+    ctx.style(hierarchyTree).all.indicator = ctx.theme().focus;
     auto layout = ctx.layoutStyle(hierarchyTree);
     layout.minSize = Vec2{0.0f, 120.0f};
     layout.preferredSize = Vec2{0.0f, 0.0f};
@@ -171,6 +191,7 @@ void HierarchyPanel::rebuildHierarchy(Context &ctx,
             const std::string label = name ? name->name : "Entity";
             const std::uint64_t token = nextHierarchyToken++;
             const TreeViewItemId item = ctx.addTreeViewItem(hierarchyTree, parentItem, label, token);
+            ctx.setTreeViewItemIcon(hierarchyTree, item, entityIcon(*entity), ctx.theme().textMuted);
 
             hierarchyEntityTokens.emplace_back(token, id);
             hierarchyEntityItems.emplace_back(id, item);
@@ -682,5 +703,14 @@ void HierarchyPanel::update(Context &ctx, Engine &engine, Scribe::Session &sessi
     refreshSelectionHighlights(ctx);
     ctx.setEnabled(createEntityButton, canCreate);
     ctx.setIconColor(createEntityIcon, canCreate ? ctx.theme().textMuted : ctx.theme().textDisabled);
+
+     if (activeScene)
+    {
+        for (const auto &[id, item] : hierarchyEntityItems)
+        {
+            if (const auto entity = activeScene->findEntity(id))
+                ctx.setTreeViewItemIcon(hierarchyTree, item, entityIcon(*entity), ctx.theme().textMuted);
+        }
+    }
 }
 } // namespace Cthulhu::Editor

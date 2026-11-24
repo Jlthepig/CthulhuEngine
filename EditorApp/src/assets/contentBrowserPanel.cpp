@@ -1,6 +1,7 @@
 #include "contentBrowserPanel.hpp"
 #include "editorMetrics.hpp"
 #include "editorPanels.hpp"
+#include "editorTheme.hpp"
 
 #include <algorithm>
 #include <cmath>
@@ -74,6 +75,7 @@ NodeHandle disabledIconButton(Context &ctx, NodeHandle parent, std::string_view 
     ctx.setIconSize(icon, IconSize);
     ctx.setIconColor(icon, ctx.theme().textMuted);
     ctx.setEnabled(button, false);
+    styleGhostButton(ctx, button);
     return button;
 }
 
@@ -92,6 +94,26 @@ NodeHandle flexibleLabel(Context &ctx, NodeHandle parent)
     const NodeHandle label = ctx.createLabel(host, "");
     ctx.style(label).all.text = ctx.theme().textMuted;
     return label;
+}
+
+Color assetTypeColor(const ContentBrowserEntry &entry)
+{
+    if (entry.folder)
+        return Color::transparent();
+    if (entry.missing)
+        return DangerColor;
+
+    switch (entry.type)
+    {
+    case Assets::AssetType::Model:
+        return Color::fromRGBA8(232, 160, 72);
+    case Assets::AssetType::Scene:
+        return Color::fromRGBA8(160, 132, 238);
+    case Assets::AssetType::Audio:
+        return Color::fromRGBA8(222, 110, 180);
+    default:
+        return Color::fromRGBA8(120, 130, 128);
+    }
 }
 
 std::string_view entryIcon(const ContentBrowserEntry &entry)
@@ -115,21 +137,41 @@ void ContentBrowserPanel::build(Context &ctx, NodeHandle parent)
     layout.padding = Padding{};
     layout.gap = 0.0f;
     layout.clip = true;
-    ctx.style(panel).shadow = ShadowStyle{};
+    ctx.style(panel).shadow = PanelShadow;
+    ctx.style(panel).all.border = ctx.theme().border;
+    ctx.style(panel).borderWidth = 1.0f;
 
     toolbar = bar(ctx, panel, ToolbarHeight);
     const NodeHandle icon = ctx.createIcon(toolbar, "folder");
     ctx.setIconSize(icon, IconSize);
     ctx.setIconColor(icon, ctx.theme().textMuted);
 
-    title = ctx.createLabel(toolbar, "CONTENT BROWSER");
+    constexpr std::string_view titleText = "Content Browser";
+    title = ctx.createLabel(toolbar, titleText);
     ctx.setFontSlot(title, FontSlot::Secondary);
-    const float titleWidth = std::ceil(ctx.font(FontSlot::Secondary).measureText("CONTENT BROWSER").x) + 8.0f;
+    const float titleWidth = std::ceil(ctx.font(FontSlot::Secondary).measureText(titleText).x) + 8.0f;
     fixed(ctx, title, titleWidth, RowHeight);
     ctx.style(title).all.text = ctx.theme().textMuted;
 
+    const NodeHandle titleSpacer = ctx.createContainer(toolbar);
+    fixed(ctx, titleSpacer, SpaceS, ControlHeight);
+
     importButton = ctx.createButton(toolbar, "Import");
-    fixed(ctx, importButton, 60.0f, ControlHeight);
+    fixed(ctx, importButton, 80.0f, ControlHeight);
+    {
+        auto layout = ctx.layoutStyle(importButton);
+        layout.mode = LayoutMode::Horizontal;
+        layout.horizontalAlignment = Alignment::Start;
+        layout.verticalAlignment = Alignment::Center;
+        layout.padding = Padding{SpaceM, 0.0f};
+
+        ctx.setTextAlign(importButton, TextAlign::End, TextAlign::Center);
+
+        const NodeHandle importIcon = ctx.createIcon(importButton, "plus");
+        ctx.setIconSize(importIcon, IconSize);
+        ctx.setIconColor(importIcon, ctx.theme().textMuted);
+        fixed(ctx, importIcon, IconSize, IconSize);
+    }
     ctx.setEnabled(importButton, false);
     ctx.setTooltip(importButton, "Import one asset into the current folder.");
 
@@ -218,6 +260,8 @@ void ContentBrowserPanel::build(Context &ctx, NodeHandle parent)
     actionConfirm = ctx.createButton(actionButtons, "Move");
     fixed(ctx, actionConfirm, 76.0f, ControlHeight);
 
+    styleButtonRole(ctx, actionCancel, ButtonRole::Ghost);
+    styleButtonRole(ctx, actionConfirm, ButtonRole::Primary);
     for (NodeHandle button : {actionCancel, actionConfirm})
     {
         ctx.layoutStyle(button).padding = Padding{SpaceM, SpaceXs};
@@ -246,6 +290,7 @@ void ContentBrowserPanel::build(Context &ctx, NodeHandle parent)
     ctx.setTreeViewDragEnabled(folderTree, false);
     ctx.setTreeViewMaxIndentWidth(folderTree, 64.0f);
     ctx.style(folderTree).shadow = ShadowStyle{};
+    ctx.style(folderTree).all.indicator = ctx.theme().focus;
 
     assetScroll = ctx.createContainer(assetsPane);
     auto scrollLayout = ctx.layoutStyle(assetScroll);
@@ -389,10 +434,11 @@ void ContentBrowserPanel::styleSelection(Context &ctx)
         const bool selected = entry.folder ? selectedFolder == entry.path : selectedAsset == entry.assetId;
 
         auto style = ctx.style(tile.button);
-        style.normal.background = selected ? theme.surfaceActive : Color::transparent();
-        style.normal.border = selected ? theme.accent : Color::transparent();
-        style.focused.background = selected ? theme.surfaceActive : Color::transparent();
-        style.focused.border = selected ? theme.accent : theme.borderStrong;
+        style.normal.background = selected ? theme.accent.withAlpha(0.18f) : Color::transparent();
+        style.normal.border = selected ? theme.focus : Color::transparent();
+        style.hovered.background = selected ? theme.accent.withAlpha(0.26f) : theme.surfaceHovered;
+        style.focused.background = selected ? theme.accent.withAlpha(0.18f) : Color::transparent();
+        style.focused.border = selected ? theme.focus : theme.borderStrong;
     }
 }
 
@@ -458,6 +504,16 @@ void ContentBrowserPanel::rebuildTiles(Context &ctx)
         style.shadow = ShadowStyle{};
         style.hovered.background = ctx.theme().surfaceHovered;
         style.active.background = ctx.theme().surfaceActive;
+
+        if (const Color typeColor = assetTypeColor(entry); !typeColor.isTransparent())
+        {
+            AccentEdgeStyle strip;
+            strip.color = typeColor;
+            strip.width = 2.0f;
+            strip.inset = SpaceM;
+            strip.side = AccentEdgeSide::Bottom;
+            style.accentEdge = strip;
+        }
 
         const NodeHandle icon = ctx.createIcon(button, entryIcon(entry));
         ctx.setIconSize(icon, TileIconSize);

@@ -14,7 +14,7 @@ octogui::Theme cthulhuTheme() noexcept
     theme.accentText = Color::white();
     theme.focus = Color::fromRGBA8(48, 184, 160);
 
-    theme.background = Color::fromRGBA8(10, 12, 12);
+    theme.background = Color::fromRGBA8(14, 16, 16);
     theme.surface = Color::fromRGBA8(23, 26, 26);
     theme.surfaceRaised = Color::fromRGBA8(31, 36, 36);
     theme.surfaceHovered = Color::fromRGBA8(41, 47, 47);
@@ -34,6 +34,8 @@ octogui::Theme cthulhuTheme() noexcept
     theme.smallRadius = 2.0f;
 
     theme.elevationLow = octogui::ShadowStyle{};
+    theme.elevationMedium = octogui::ShadowStyle{Color::black().withAlpha(0.40f), octogui::Vec2{0.0f, 3.0f}, 10.0f, 0.0f};
+    theme.elevationHigh = octogui::ShadowStyle{Color::black().withAlpha(0.50f), octogui::Vec2{0.0f, 8.0f}, 28.0f, 0.0f};
 
     return theme;
 }

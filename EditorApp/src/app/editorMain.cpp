@@ -121,7 +121,7 @@ int main(int argc, char *argv[])
 
     Cthulhu::Engine engine;
 
-    if (!engine.init(argv[1]))
+    if (!engine.init(argv[1], true))
     {
         KalaHeaders::KalaLog::Log::Print("FAILED TO INITIALIZE PROJECT",
                                          "Editor",
@@ -154,6 +154,9 @@ int main(int argc, char *argv[])
     engine.setWorldMode(Cthulhu::WorldMode::Edit);
 
     Cthulhu::Editor::EditorUi ui;
+
+    const auto gutter = ui.context().theme().background;
+    engine.getRenderer().setScreenClearColor(glm::vec4(gutter.r, gutter.g, gutter.b, 1.0f));
 
     if (!ui.init(engine.getWindow()->getWindow(), engine.getEngineResourceRoot()))
     {

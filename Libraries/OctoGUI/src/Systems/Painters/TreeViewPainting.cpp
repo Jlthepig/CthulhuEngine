@@ -1,5 +1,6 @@
 #include "Systems/PaintSystem.h"
 
+#include "Internal/IconAtlas.h"
 #include "Internal/LayoutGeometry.h"
 #include "Internal/PaintHelpers.h"
 #include "Internal/TreeViewInternal.h"
@@ -33,7 +34,7 @@ Color treeViewAccentColor(const VisualStyle* style, const StateStyle& current) {
 } // namespace
 
 void PaintSystem::paintTreeView(
-    Tree& tree, DrawList& drawList, Font* font, NodeHandle node, Rect rect) {
+    Tree& tree, DrawList& drawList, Font* font, const IconAtlas& icons, NodeHandle node, Rect rect) {
   TreeViewState* state = tree.treeViewState(node);
 
   if (!state) {
@@ -78,8 +79,9 @@ void PaintSystem::paintTreeView(
   }
 
   const Color accentColor = treeViewAccentColor(visualStyle, currentState);
-  const Color selectedBackground = accentColor.withAlpha(0.16f);
-  const Color hoveredBackground = accentColor.withAlpha(0.08f);
+  const Color selectedBackground = accentColor.withAlpha(0.24f);
+  const Color highlightedBackground = accentColor.withAlpha(0.12f);
+  const Color hoveredBackground = accentColor.withAlpha(0.06f);
 
   const f32 scrollY =
       state->scrollY;
@@ -131,7 +133,8 @@ void PaintSystem::paintTreeView(
         rowHeight};
 
     const bool isDragged = state->dragging && state->dragged == visible.item;
-    const bool selected = state->selected == visible.item || item->highlighted;
+    const bool selected = state->selected == visible.item;
+    const bool highlighted = !selected && item->highlighted;
     const bool hovered = !state->dragging && state->hovered == visible.item;
 
     Color rowTextColor = textColor;
@@ -142,8 +145,11 @@ void PaintSystem::paintTreeView(
     }
     else if (selected) {
       drawList.addRoundedRectFilled(row, selectedBackground, detail::TreeViewRowCornerRadius);
-      drawList.addRoundedRectFilled(Rect{row.x, row.y + 2.0f, detail::TreeViewSelectionAccentWidth, row.h - 4.0f}, 
+      drawList.addRoundedRectFilled(Rect{row.x + 1.0f, row.y + 5.0f, detail::TreeViewSelectionAccentWidth, row.h - 10.0f},
         accentColor, detail::TreeViewSelectionAccentWidth * 0.5f);
+    }
+    else if (highlighted) {
+      drawList.addRoundedRectFilled(row, highlightedBackground, detail::TreeViewRowCornerRadius);
     }
     else if (hovered) {
       drawList.addRoundedRectFilled(row, hoveredBackground, detail::TreeViewRowCornerRadius);
@@ -183,12 +189,30 @@ void PaintSystem::paintTreeView(
       }
     }
 
+    f32 textX = indentX + detail::TreeViewChevronAreaWidth + detail::TreeViewTextGap;
+
+    if (!item->icon.empty()) {
+      ResolvedIcon resolved{};
+
+      if (icons.lookup(item->icon, resolved)) {
+        Color iconColor = item->iconColor.isTransparent() ? rowTextColor : item->iconColor;
+        if (isDragged) iconColor = iconColor.withAlpha(0.45f);
+
+        const Rect iconRect{
+            textX,
+            row.y + (row.h - detail::TreeViewIconSize) * 0.5f,
+            detail::TreeViewIconSize,
+            detail::TreeViewIconSize};
+
+        drawList.addTexturedRect(iconRect, resolved.uv, resolved.texture, iconColor);
+      }
+
+      textX += detail::TreeViewIconSize + detail::TreeViewTextGap;
+    }
+
     if (!canPaintText || item->label.empty()) {
       continue;
     }
-
-    const f32 textX =
-        indentX + detail::TreeViewChevronAreaWidth + detail::TreeViewTextGap;
 
     const f32 textWidth = row.maxX() - textX - 4.0f;
 

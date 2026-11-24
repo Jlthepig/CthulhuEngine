@@ -63,7 +63,7 @@ inline constexpr f32 ProgressBarHeight = 24.0f;
 inline constexpr f32 ProgressBarMinHeight = 14.0f;
 inline constexpr f32 ProgressBarFillInset = 2.0f;
 
-inline constexpr f32 TreeViewRowHeight = 26.0f;
+inline constexpr f32 TreeViewRowHeight = 24.0f;
 inline constexpr f32 TreeViewIndentWidth = 16.0f;
 inline constexpr f32 TreeViewDragThreshold = 5.0f;
 
@@ -77,6 +77,7 @@ inline constexpr f32 TreeViewChevronSize = 7.0f;
 inline constexpr f32 TreeViewChevronThickness = 1.5f;
 
 inline constexpr f32 TreeViewTextGap = 4.0f;
+inline constexpr f32 TreeViewIconSize = 16.0f;
 
 inline constexpr f32 TreeViewSelectionAccentWidth = 2.0f;
 inline constexpr f32 TreeViewRowCornerRadius = 3.0f;
