@@ -241,6 +241,8 @@ bool Engine::init(const std::filesystem::path &projectFilePath, bool maximised)
     camera = Scene::Camera::init();
 
     Core::Input::init(glfwWindow, resolution);
+    gameplayInput.setMap(projectConfig.input);
+
     if (!Core::Audio::init())
     {
         shutdown();
@@ -609,6 +611,17 @@ bool Engine::saveActiveSceneAs(std::string_view resourcePath)
 
 void Engine::processFixedUpdate(float fixedDt)
 {
+    gameplayInput.beginStep();
+
+    // <<<< temporary REMOVE LATER  with game>>>>
+    for (std::size_t i = 0; i < Project::inputControlCount; ++i)
+    {
+        const auto &control = gameplayInput.control(static_cast<Project::InputControl>(i));
+        if (control.pressCount > 0)
+            Log::Print("INPUT " + std::string(Project::inputControlKeys[i]) + " x" + std::to_string(control.pressCount),
+                       "Gameplay", LogType::LOG_INFO);
+    }
+
     if (!activeScene)
     {
         return;
@@ -809,6 +822,7 @@ bool Engine::startPlay(const Scene::SceneSnapshot *target, std::optional<std::st
     editSnapshot = std::move(snapshot);
     worldMode = WorldMode::Play;
     simState = SimulationState::Running;
+    gameplayInput.setMap(project->getConfig().input);
     activateScene(std::move(playScene), target != nullptr || resourcePath.has_value());
 
     Log::Print("Play", "ENGINE", LogType::LOG_INFO);
@@ -882,8 +896,26 @@ bool Engine::shouldClose() const
 
 void Engine::update()
 {
-    if (prepareFrame())
-        advanceSimulation();
+    if (!prepareFrame())
+        return;
+
+    const bool focused = glfwGetWindowAttrib(glfwWindow, GLFW_FOCUSED) == GLFW_TRUE;
+    bool captured = glfwGetInputMode(glfwWindow, GLFW_CURSOR) == GLFW_CURSOR_DISABLED;
+
+    if (captured && (!focused || Core::Input::isKeyPressed(GLFW_KEY_ESCAPE)))
+    {
+        glfwSetInputMode(glfwWindow, GLFW_CURSOR, GLFW_CURSOR_NORMAL);
+        captured = false;
+    }
+    else if (!captured && focused && Core::Input::isMouseButtonPressed(GLFW_MOUSE_BUTTON_LEFT))
+    {
+        glfwSetInputMode(glfwWindow, GLFW_CURSOR, GLFW_CURSOR_DISABLED);
+        Core::Input::suppressMouseButtonUntilRelease(GLFW_MOUSE_BUTTON_LEFT);
+        Core::Input::resetMouseTracking();
+        captured = true;
+    }
+
+    advanceSimulation(captured);
 }
 
 bool Engine::prepareFrame()
@@ -931,6 +963,11 @@ void Engine::advanceSimulation(bool acceptInput)
     const RestoreInput restoreInput{Core::Input::setEnabled(acceptInput)};
 
     const float simulationDt = simState == SimulationState::Stepping ? physicsWorld.fixedDeltaTime() : deltaTime;
+
+     if (acceptInput && worldMode == WorldMode::Play && simState == SimulationState::Running)
+        gameplayInput.gather();
+    else
+        gameplayInput.discard();
 
     {
         const ScopedFlag progress(progressingSimulation);

@@ -8,6 +8,14 @@
 using KalaHeaders::KalaLog::Log;
 using KalaHeaders::KalaLog::LogType;
 
+namespace
+{
+void addEdge(std::uint16_t &count) noexcept
+{
+    if (count < UINT16_MAX)
+        ++count;
+}
+}
 namespace Cthulhu::Core
 {
 
@@ -18,6 +26,8 @@ bool Input::previousKeys[GLFW_KEY_LAST + 1] = {};
 bool Input::currentMouseButtons[GLFW_MOUSE_BUTTON_LAST + 1] = {};
 bool Input::previousMouseButtons[GLFW_MOUSE_BUTTON_LAST + 1] = {};
 bool Input::suppressedMouseButtons[GLFW_MOUSE_BUTTON_LAST + 1] = {};
+Input::ButtonEdges Input::keyEdges[GLFW_KEY_LAST + 1] = {};
+Input::ButtonEdges Input::mouseButtonEdges[GLFW_MOUSE_BUTTON_LAST + 1] = {};
 float Input::mouseDeltaX{};
 float Input::mouseDeltaY{};
 float Input::scrollDeltaY{};
@@ -35,6 +45,7 @@ void Input::shutdown()
     std::memset(currentMouseButtons, 0, sizeof(currentMouseButtons));
     std::memset(previousMouseButtons, 0, sizeof(previousMouseButtons));
     std::memset(suppressedMouseButtons, 0, sizeof(suppressedMouseButtons));
+    clearButtonEdges();
 
     mouseDeltaX = 0.0f;
     mouseDeltaY = 0.0f;
@@ -55,6 +66,7 @@ void Input::init(GLFWwindow *window, glm::vec2 resolution)
     glfwSetCursorPosCallback(windowHandle, mouse_callback);
     glfwSetMouseButtonCallback(windowHandle, mouse_button_callback);
     glfwSetScrollCallback(windowHandle, scroll_callback);
+    glfwSetKeyCallback(windowHandle, key_callback);
     Log::Print("Input system initialized successfully", "ENGINE", LogType::LOG_SUCCESS);
 }
 
@@ -84,6 +96,7 @@ void Input::suppressMouseButtonUntilRelease(int button) noexcept
         return;
 
     suppressedMouseButtons[button] = true;
+    mouseButtonEdges[button] = {};
 }
 
 void Input::update()
@@ -167,12 +180,53 @@ void Input::mouse_callback([[maybe_unused]] GLFWwindow *window, double xposIn, d
     lastY = ypos;
 }
 
-void Input::mouse_button_callback(GLFWwindow *window, int button, int action, [[maybe_unused]] int mods)
+void Input::mouse_button_callback([[maybe_unused]] GLFWwindow *window, int button, int action, [[maybe_unused]] int mods)
 {
-    if (button == GLFW_MOUSE_BUTTON_LEFT && action == GLFW_PRESS)
+    if (button < 0 || button > GLFW_MOUSE_BUTTON_LAST)
+        return;
+
+    if (suppressedMouseButtons[button])
     {
-        glfwSetInputMode(window, GLFW_CURSOR, GLFW_CURSOR_DISABLED);
+        if (action == GLFW_RELEASE)
+            suppressedMouseButtons[button] = false;
+        return;
     }
+
+    if (action == GLFW_PRESS)
+        addEdge(mouseButtonEdges[button].presses);
+    else if (action == GLFW_RELEASE)
+        addEdge(mouseButtonEdges[button].releases);
+}
+
+void Input::key_callback([[maybe_unused]] GLFWwindow *window, int key, [[maybe_unused]] int scancode, int action, [[maybe_unused]] int mods)
+{
+    if (key < GLFW_KEY_SPACE || key > GLFW_KEY_LAST)
+        return;
+
+    if (action == GLFW_PRESS)
+        addEdge(keyEdges[key].presses);
+    else if (action == GLFW_RELEASE)
+        addEdge(keyEdges[key].releases);
+}
+
+Input::ButtonEdges Input::getKeyEdges(int key) noexcept
+{
+    if (!enabled || key < GLFW_KEY_SPACE || key > GLFW_KEY_LAST)
+        return {};
+    return keyEdges[key];
+}
+
+Input::ButtonEdges Input::getMouseButtonEdges(int button) noexcept
+{
+    if (!enabled || button < 0 || button > GLFW_MOUSE_BUTTON_LAST)
+        return {};
+    return mouseButtonEdges[button];
+}
+
+void Input::clearButtonEdges() noexcept
+{
+    std::memset(keyEdges, 0, sizeof(keyEdges));
+    std::memset(mouseButtonEdges, 0, sizeof(mouseButtonEdges));
 }
 
 void Input::scroll_callback([[maybe_unused]] GLFWwindow *window,

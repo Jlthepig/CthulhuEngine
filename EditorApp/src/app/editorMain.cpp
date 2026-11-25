@@ -176,8 +176,6 @@ int main(int argc, char *argv[])
 
     glfwSetInputMode(engine.getWindow()->getWindow(), GLFW_CURSOR, GLFW_CURSOR_NORMAL);
 
-    glfwSetMouseButtonCallback(engine.getWindow()->getWindow(), nullptr);
-
     camera = engine.getCamera();
 
     while (shell.frame(ui, engine, session, onUpdate))

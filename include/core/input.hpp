@@ -28,6 +28,18 @@ class Input
 
     static void scroll_callback(GLFWwindow *window, double xoffset, double yoffset);
 
+    static void key_callback(GLFWwindow *window, int key, int scancode, int action, int mods);
+
+    struct ButtonEdges
+    {
+      std::uint16_t presses{};
+      std::uint16_t releases{};
+    };
+
+    [[nodiscard]] static ButtonEdges getKeyEdges(int key) noexcept;
+    [[nodiscard]] static ButtonEdges getMouseButtonEdges(int button) noexcept;
+    static void clearButtonEdges() noexcept;
+
     static bool setEnabled(bool value) noexcept;
     static void suppressMouseButtonUntilRelease(int button) noexcept;
 
@@ -46,6 +58,8 @@ class Input
     static bool currentMouseButtons[GLFW_MOUSE_BUTTON_LAST + 1];
     static bool previousMouseButtons[GLFW_MOUSE_BUTTON_LAST + 1];
     static bool suppressedMouseButtons[GLFW_MOUSE_BUTTON_LAST + 1];
+    static ButtonEdges keyEdges[GLFW_KEY_LAST + 1];
+    static ButtonEdges mouseButtonEdges[GLFW_MOUSE_BUTTON_LAST + 1];
     static bool firstMouse;
     static float mouseDeltaX;
     static float mouseDeltaY;

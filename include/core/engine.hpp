@@ -9,6 +9,7 @@
 
 #include "assetManager.hpp"
 #include "componentRegistry.hpp"
+#include "gameplayInput.hpp"
 #include "physics.hpp"
 #include "project.hpp"
 #include "renderer.hpp"
@@ -199,6 +200,11 @@ class Engine
         return physicsWorld;
     }
 
+    const Core::GameplayInput &getGameplayInput() const
+    {
+        return gameplayInput;
+    }
+
     Assets::AssetManager &getAssetManager()
     {
         return assetManager;
@@ -259,6 +265,7 @@ class Engine
 
     Rendering::Renderer renderer;
     Physics::PhysicsWorld physicsWorld;
+    Core::GameplayInput gameplayInput;
     Assets::AssetManager assetManager;
     Scene::ComponentRegistry componentRegistry;
 
