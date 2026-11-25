@@ -778,6 +778,9 @@ void EditorShell::update(Context &ctx, Engine &engine, Scribe::Session &session,
         return;
     }
 
+    if (hierarchyPanelUI.takeCreatePlayerRequest())
+        createPlayer(ctx, engine, session);
+
     // commit Inspector edits before asset operations can clear history
     updateAssetDrag(ctx, engine, session);
 

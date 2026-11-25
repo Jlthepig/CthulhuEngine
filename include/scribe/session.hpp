@@ -135,6 +135,7 @@ class Session
 
     EntityResult createEntity(std::string_view name, std::optional<Scene::EntityId> parent = std::nullopt);
     EntityResult placeModel(Assets::AssetId asset, glm::vec3 position);
+    EntityResult placePlayer(glm::vec3 position, float yaw);
     Result deleteEntities(std::span<const Scene::EntityId> selection);
     Result copyEntities(std::span<const Scene::EntityId> selection, bool cut = false);
     EntitiesResult duplicateEntities(std::span<const Scene::EntityId> selection);

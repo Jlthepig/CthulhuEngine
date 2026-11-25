@@ -613,12 +613,12 @@ void Engine::processFixedUpdate(float fixedDt)
 {
     gameplayInput.beginStep();
 
-    // <<<< temporary REMOVE LATER  with game>>>>
-    for (std::size_t i = 0; i < Project::inputControlCount; ++i)
+    // TEMP 4.7: remove when 4.10 consumes gameplay input.
+    for (std::size_t i = 0; i < gameplayInput.actionCount(); ++i)
     {
-        const auto &control = gameplayInput.control(static_cast<Project::InputControl>(i));
-        if (control.pressCount > 0)
-            Log::Print("INPUT " + std::string(Project::inputControlKeys[i]) + " x" + std::to_string(control.pressCount),
+        const auto &state = gameplayInput.actionState(i);
+        if (state.pressCount > 0)
+            Log::Print("INPUT " + gameplayInput.map().actions[i].name + " x" + std::to_string(state.pressCount),
                        "Gameplay", LogType::LOG_INFO);
     }
 

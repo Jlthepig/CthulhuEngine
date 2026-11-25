@@ -1,6 +1,7 @@
 #include <vector>
 #include <cmath>
 #include <cstddef>
+#include <optional>
 
 #include <common.hpp>
 #include <ext/matrix_transform.hpp>
@@ -50,6 +51,8 @@ GameCameraStatus Camera::updateFromScene(Scene &scene)
     std::size_t primaryCount{};
     flecs::entity soleCamera;
     flecs::entity primaryCamera;
+    std::size_t playerCameraCount{};
+    flecs::entity playerCamera;
 
     scene.getWorld().each(
         [&](flecs::entity entity, const CameraComponent &component) {
@@ -58,6 +61,15 @@ GameCameraStatus Camera::updateFromScene(Scene &scene)
 
             ++cameraCount;
             soleCamera = entity;
+
+            const auto *identity = entity.try_get<EntityIdentityComponent>();
+            const auto parent = identity ? scene.getParent(identity->id) : std::nullopt;
+            const auto owner = parent ? scene.findEntity(*parent) : std::nullopt;
+            if (owner && owner->has<TagPlayer>())
+            {
+                ++playerCameraCount;
+                playerCamera = entity;
+            }
 
             if (component.primary)
             {
@@ -72,10 +84,11 @@ GameCameraStatus Camera::updateFromScene(Scene &scene)
     if (primaryCount > 1)
         return GameCameraStatus::MultiplePrimary;
 
-    if (primaryCount == 0 && cameraCount > 1)
+    // No main camera: fall back to the only player's camera.
+    if (primaryCount == 0 && cameraCount > 1 && playerCameraCount != 1)
         return GameCameraStatus::NoPrimary;
 
-    const auto selected = primaryCount == 1 ? primaryCamera : soleCamera;
+    const auto selected = primaryCount == 1 ? primaryCamera : cameraCount == 1 ? soleCamera : playerCamera;
     const auto *transform = selected.try_get<TransformComponent>();
     const auto *component = selected.try_get<CameraComponent>();
 

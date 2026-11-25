@@ -373,4 +373,32 @@ std::optional<glm::vec3> ViewportPanel::modelDropPosition(const octogui::Context
     return anchor;
 }
 
+std::optional<glm::vec3> ViewportPanel::spawnPosition(const octogui::Context &ctx, Engine &engine, octogui::NodeHandle sceneNode) const
+{
+    const auto *scene = engine.getActiveScene();
+    const auto viewport = viewportProjection(ctx, engine, ctx.tree().rect(sceneNode));
+    if (!scene || !viewport)
+        return std::nullopt;
+
+    const auto &rect = viewport->rect;
+    const auto sample = makeViewportRay(*viewport, {rect.x + rect.w * 0.5f, rect.y + rect.h * 0.5f});
+    if (!sample)
+        return std::nullopt;
+
+    const auto &ray = sample->ray;
+    constexpr float reach = 50.0f;
+    constexpr float minFloorNormalY = 0.7f;
+
+    const auto hit = pickMesh(*scene, engine.getAssetManager(), *sample, true);
+    if (hit && hit->distance <= reach && hit->normal.y >= minFloorNormalY)
+        return ray.origin + ray.direction * hit->distance;
+
+    const float gridDistance = ray.direction.y < -0.01f ? -ray.origin.y / ray.direction.y : -1.0f;
+    if (gridDistance >= 0.0f && gridDistance <= reach)
+        return glm::vec3(ray.origin.x + ray.direction.x * gridDistance, 0.0f, ray.origin.z + ray.direction.z * gridDistance);
+
+    constexpr float fallbackDistance = 5.0f;
+    return ray.origin + ray.direction * fallbackDistance;
+}
+
 } // namespace Cthulhu::Editor

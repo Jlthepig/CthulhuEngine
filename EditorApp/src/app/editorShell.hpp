@@ -157,6 +157,7 @@ class EditorShell
 
     void updateAssetDrag(Context &ctx, Engine &engine, Scribe::Session &session);
     AssetDropFeedback dropInViewport(Context &ctx, Engine &engine, Scribe::Session &session, const Assets::AssetRecord &asset, bool released);
+    void createPlayer(Context &ctx, Engine &engine, Scribe::Session &session);
 
     std::vector<octogui::UIEvent> uiEvents;
 

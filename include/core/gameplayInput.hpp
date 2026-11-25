@@ -28,6 +28,16 @@ class GameplayInput
 
     [[nodiscard]] const GameplayControlState &control(Project::InputControl control) const noexcept;
 
+    [[nodiscard]] std::size_t actionCount() const noexcept
+    {
+        return actions.size();
+    }
+
+    [[nodiscard]] const GameplayControlState &actionState(std::size_t index) const noexcept
+    {
+        return actions[index].step;
+    }
+
     [[nodiscard]] const Project::ProjectInputMap &map() const noexcept
     {
         return inputMap;

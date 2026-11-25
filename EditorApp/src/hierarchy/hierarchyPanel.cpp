@@ -137,6 +137,10 @@ void fillWithChild(Context &ctx, NodeHandle pane)
     layout.verticalAlignment = Alignment::Stretch;
 }
 
+constexpr u64 CreateEntityAction = 1;
+constexpr u64 CreateFpsMenu = 2;
+constexpr u64 CreatePlayerAction = 3;
+
 } // namespace
 
 void HierarchyPanel::build(Context &ctx, NodeHandle parent)
@@ -680,23 +684,37 @@ void HierarchyPanel::update(Context &ctx, Engine &engine, Scribe::Session &sessi
         }
     }
 
-    if (ctx.isClicked(createEntityButton) && !engine.isPlaying())
+    ContextMenuSelection createChoice;
+    if (ctx.pollContextMenuSelection(createChoice, createEntityButton) && !engine.isPlaying())
     {
         Scene::Scene *scene = engine.getActiveScene();
-        if (scene)
+
+        if (scene && createChoice.action == CreateEntityAction)
         {
             const std::string name = uniqueEntityName(*scene, "Entity");
             const auto created = session.createEntity(name, selectedEntity());
 
             if (created.ok())
-            {
                 selectEntity(ctx, created.id);
-            }
             else
-            {
                 Log::Print("CREATE ENTITY FAILED: " + created.result.error, "Editor", LogType::LOG_ERROR);
-            }
         }
+        else if (scene && createChoice.action == CreatePlayerAction)
+        {
+            createPlayerRequested = true;
+        }
+    }
+
+    if (ctx.isClicked(createEntityButton) && !engine.isPlaying())
+    {
+        static const ContextMenuItem fpsItems[] = {{CreatePlayerAction, "Player"}};
+        static const ContextMenuItem createItems[] = {
+            {CreateEntityAction, "Entity"},
+            {CreateFpsMenu, "FPS", true, fpsItems},
+        };
+
+        const Rect button = ctx.visibleRect(createEntityButton);
+        (void)ctx.openContextMenu(createEntityButton, {button.x, button.maxY()}, createItems);
     }
 
     const bool canCreate = activeScene && !engine.isPlaying();

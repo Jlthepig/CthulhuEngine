@@ -65,11 +65,18 @@ class HierarchyPanel
     void selectEntity(octogui::Context &ctx, std::optional<Scene::EntityId> entity);
     void selectEntities(octogui::Context &ctx, std::vector<Scene::EntityId> entities);
 
+    [[nodiscard]] bool takeCreatePlayerRequest() noexcept
+    {
+        return std::exchange(createPlayerRequested, false);
+    }
+
   private:
     octogui::NodeHandle hierarchy{};
     octogui::NodeHandle hierarchyTree{};
     octogui::NodeHandle createEntityButton{};
     octogui::NodeHandle createEntityIcon{};
+
+    bool createPlayerRequested = false;
 
     std::vector<std::pair<std::uint64_t, Scene::EntityId>> hierarchyEntityTokens;
     std::vector<std::pair<Scene::EntityId, octogui::TreeViewItemId>> hierarchyEntityItems;

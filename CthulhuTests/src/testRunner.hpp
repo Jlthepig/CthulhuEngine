@@ -1,6 +1,7 @@
 #pragma once
 
 #include "runtime/testsGameplayInput.hpp"
+#include "scribe/testsPlayerPlacement.hpp"
 #include "testCommon.hpp"
 #include "project/testsProjectInput.hpp"
 #include "scene/testsComponents.hpp"
@@ -84,6 +85,7 @@ inline int run(Engine& engine)
 	validateWorldModes(engine, r);
 	validateInputRouting(engine, r);
 	validateGameplayInput(engine, r);
+	validatePlayerPlacement(engine, r);
 	validateSceneSnapshot(engine, r);
 	validatePlayStop(engine, r);
 	validatePlayCameraRendering(engine, r);
